@@ -23,14 +23,20 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
-  },
-  "plugins": [
-    [
-      "expo-image-picker",
-      {
-        "photosPermission": "The app accesses your photos to let you share them with your friends."
-      }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with your friends."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Kogyo would like to use your microphone for voice recording."
+        }
+      ]
     ]
-  ]
+  }
 }
