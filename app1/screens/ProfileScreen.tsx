@@ -157,7 +157,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.secondary500,
+    backgroundColor: Colors.secondary100,
   },
   section: {
     paddingHorizontal: 20,
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   input: {
-    backgroundColor: Colors.secondary400,
+    backgroundColor: Colors.secondary200,
     padding: 15,
     borderRadius: 8,
     marginBottom: 15,
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addButtonText: {
-    color: Colors.secondary500,
+    color: Colors.secondary100,
     fontSize: 24,
   },
   saveButton: {
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveButtonText: {
-    color: Colors.secondary500,
+    color: Colors.secondary100,
     fontSize: 18,
     fontWeight: 'bold',
   },

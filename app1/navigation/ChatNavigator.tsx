@@ -21,20 +21,14 @@ const user = {
 
 
 const theme: DeepPartial<Theme> = {
-  channel: {
-    selectChannel: {
-      backgroundColor: Colors.primary100,
-    },
-  },
-  messageList: {
-    container: {
-      backgroundColor: Colors.secondary500,
-    },
-  },
-  channelPreview: {
-    container: {
-      backgroundColor: Colors.secondary500,
-    },
+  colors: {
+    accent_blue: Colors.primary500,
+    accent_green: Colors.primary500,
+    bg_gradient_start: Colors.primary100,
+    bg_gradient_end: Colors.primary100,
+    grey_whisper: Colors.primary100,
+    transparent: 'transparent',
+    light_blue: Colors.primary100,
   },
 };
 

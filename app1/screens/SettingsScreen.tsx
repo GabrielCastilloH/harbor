@@ -29,7 +29,7 @@ export default function SettingsScreen() {
             value={notifications}
             onValueChange={setNotifications}
             trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
-            thumbColor={Colors.secondary500}
+            thumbColor={Colors.secondary100}
           />
         </View>
 
@@ -39,7 +39,7 @@ export default function SettingsScreen() {
             value={darkMode}
             onValueChange={setDarkMode}
             trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
-            thumbColor={Colors.secondary500}
+            thumbColor={Colors.secondary100}
           />
         </View>
 
@@ -49,7 +49,7 @@ export default function SettingsScreen() {
             value={locationServices}
             onValueChange={setLocationServices}
             trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
-            thumbColor={Colors.secondary500}
+            thumbColor={Colors.secondary100}
           />
         </View>
         <TouchableOpacity
@@ -83,7 +83,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.secondary500,
+    backgroundColor: Colors.secondary100,
   },
   profileButton: {
     flexDirection: 'row',
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
-    backgroundColor: Colors.secondary400,
+    backgroundColor: Colors.secondary200,
     borderRadius: 8,
     marginBottom: 10,
   },
