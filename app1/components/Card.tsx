@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
 import Profile from '../types/App';
 
@@ -21,14 +22,35 @@ export default function Card({ profile, getCardStyle, panHandlers, isTopCard }: 
       {...(isTopCard ? panHandlers : {})}
     >
       <View style={styles.textContainer}>
-        <Text style={styles.nameAge}>{profile.firstName}, {profile.age}</Text>
-        <Text style={styles.yearMajor}>{profile.yearLevel} • {profile.major}</Text>
-        <Text style={styles.aboutHeader}>About</Text>
-        <Text style={styles.about}>{profile.about}</Text>
-        <Text style={styles.sectionHeader}>Interests</Text>
-        <Text style={styles.listText}>{profile.interests.join(' • ')}</Text>
-        <Text style={styles.sectionHeader}>Hobbies</Text>
-        <Text style={styles.listText}>{profile.hobbies.join(' • ')}</Text>
+        <View style={styles.header}>
+          <Ionicons name="person-circle" size={40} color={Colors.primary500} />
+          <Text style={styles.nameAge}>{profile.firstName}, {profile.age}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Ionicons name="school" size={24} color={Colors.primary500} />
+          <Text style={styles.yearMajor}>{profile.yearLevel} • {profile.major}</Text>
+        </View>
+        <View style={styles.section}>
+          <View style={styles.iconTextRow}>
+            <Ionicons name="information-circle" size={24} color={Colors.primary500} />
+            <Text style={styles.sectionHeader}>About</Text>
+          </View>
+          <Text style={styles.about}>{profile.about}</Text>
+        </View>
+        <View style={styles.section}>
+          <View style={styles.iconTextRow}>
+            <Ionicons name="star" size={24} color={Colors.primary500} />
+            <Text style={styles.sectionHeader}>Interests</Text>
+          </View>
+          <Text style={styles.listText}>{profile.interests.join(' • ')}</Text>
+        </View>
+        <View style={styles.section}>
+          <View style={styles.iconTextRow}>
+            <Ionicons name="heart" size={24} color={Colors.primary500} />
+            <Text style={styles.sectionHeader}>Hobbies</Text>
+          </View>
+          <Text style={styles.listText}>{profile.hobbies.join(' • ')}</Text>
+        </View>
       </View>
     </Animated.View>
   );
@@ -52,39 +74,48 @@ const styles = StyleSheet.create({
   textContainer: {
     padding: 20,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   nameAge: {
     fontSize: 32,
     fontWeight: 'bold',
     color: Colors.primary500,
-    marginBottom: 5,
+    marginLeft: 10,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   yearMajor: {
     fontSize: 20,
     color: Colors.primary400,
+    marginLeft: 10,
+  },
+  section: {
     marginBottom: 20,
   },
-  aboutHeader: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: Colors.primary500,
+  iconTextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 10,
-  },
-  about: {
-    fontSize: 16,
-    color: Colors.primary400,
-    marginBottom: 20,
-    lineHeight: 24,
   },
   sectionHeader: {
     fontSize: 20,
     fontWeight: '600',
     color: Colors.primary500,
-    marginTop: 15,
-    marginBottom: 10,
+    marginLeft: 10,
+  },
+  about: {
+    fontSize: 16,
+    color: Colors.primary400,
+    lineHeight: 24,
   },
   listText: {
     fontSize: 16,
     color: Colors.primary400,
-    marginBottom: 15,
   },
 });
