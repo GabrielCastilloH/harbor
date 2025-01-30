@@ -35,8 +35,8 @@ export default function ChatNavigator() {
       <Chat client={chatClient}>
         <Stack.Navigator
           screenOptions={{
-            headerStyle: { backgroundColor: Colors.primary500 },
-            headerTintColor: Colors.secondary500,
+            headerStyle: { backgroundColor: Colors.primary100 },
+            headerTintColor: Colors.primary500,
           }}
         >
           <Stack.Screen

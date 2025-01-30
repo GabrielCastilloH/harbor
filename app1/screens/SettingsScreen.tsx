@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  Platform,
 } from 'react-native';
 import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
@@ -19,14 +20,6 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <TouchableOpacity
-        style={styles.profileButton}
-        onPress={() => navigation.navigate('Profile' as never)}
-      >
-        <Ionicons name="person-circle" size={24} color={Colors.secondary500} />
-        <Text style={styles.profileButtonText}>Edit Profile</Text>
-      </TouchableOpacity>
-
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>App Settings</Text>
 
@@ -35,7 +28,7 @@ export default function SettingsScreen() {
           <Switch
             value={notifications}
             onValueChange={setNotifications}
-            trackColor={{ false: Colors.accent300, true: Colors.primary300 }}
+            trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
             thumbColor={Colors.secondary500}
           />
         </View>
@@ -45,7 +38,7 @@ export default function SettingsScreen() {
           <Switch
             value={darkMode}
             onValueChange={setDarkMode}
-            trackColor={{ false: Colors.accent300, true: Colors.primary300 }}
+            trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
             thumbColor={Colors.secondary500}
           />
         </View>
@@ -55,10 +48,17 @@ export default function SettingsScreen() {
           <Switch
             value={locationServices}
             onValueChange={setLocationServices}
-            trackColor={{ false: Colors.accent300, true: Colors.primary300 }}
+            trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
             thumbColor={Colors.secondary500}
           />
         </View>
+        <TouchableOpacity
+          style={styles.profileButton}
+          onPress={() => navigation.navigate('Profile' as never)}
+        >
+          <Ionicons name="person-circle" size={24} color={Colors.primary500} />
+          <Text style={styles.profileButtonText}>Edit Profile</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.section}>
@@ -72,7 +72,7 @@ export default function SettingsScreen() {
           <Text style={styles.buttonText}>Terms of Service</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.button, styles.logoutButton]}>
-          <Ionicons name="log-out" size={20} color={Colors.secondary500} />
+          <Ionicons name="log-out" size={20} color={Colors.primary500} />
           <Text style={[styles.buttonText, styles.logoutText]}>Log Out</Text>
         </TouchableOpacity>
       </View>
@@ -88,14 +88,28 @@ const styles = StyleSheet.create({
   profileButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.primary500,
+    backgroundColor: Colors.primary100,
     padding: 15,
-    margin: 20,
+    marginTop: 10,
     borderRadius: 10,
     justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {
+          width: 0,
+          height: 2,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 1,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
   },
   profileButtonText: {
-    color: Colors.secondary500,
+    color: Colors.primary500,
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 10,
@@ -117,7 +131,7 @@ const styles = StyleSheet.create({
   },
   settingText: {
     fontSize: 18,
-    color: Colors.primary400,
+    color: Colors.primary500,
   },
   button: {
     flexDirection: 'row',
@@ -133,11 +147,25 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   logoutButton: {
-    backgroundColor: Colors.primary500,
+    backgroundColor: Colors.primary100,
     marginTop: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {
+          width: 0,
+          height: 2,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 1,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
   },
   logoutText: {
-    color: Colors.secondary500,
+    color: Colors.primary500,
     fontWeight: 'bold',
   },
 });
