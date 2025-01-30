@@ -23,6 +23,7 @@
     "@types/node": "^14.14.31",
     "@types/sequelize": "^4.28.10",
     "nodemon": "^2.0.6",
+    "sequelize-cli": "^6.6.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
   }
