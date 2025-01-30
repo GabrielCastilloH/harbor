@@ -1,6 +1,13 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Switch,
+} from 'react-native';
 import React, { useState } from 'react';
-import { NavigationProp, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import Colors from '../constants/Colors';
 
 export default function SettingsScreen() {
@@ -11,43 +18,43 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.profileButton}
         onPress={() => navigation.navigate('Profile' as never)}
       >
         <Text style={styles.profileButtonText}>Edit Profile</Text>
       </TouchableOpacity>
-
+      <View style={styles.section}></View>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>App Settings</Text>
-        
+
         <View style={styles.setting}>
           <Text style={styles.settingText}>Notifications</Text>
-          <Switch 
+          <Switch
             value={notifications}
             onValueChange={setNotifications}
             trackColor={{ false: Colors.accent300, true: Colors.primary300 }}
-            thumbColor={notifications ? Colors.primary500 : Colors.accent500}
+            thumbColor={notifications ? Colors.secondary500 : Colors.secondary500}
           />
         </View>
 
         <View style={styles.setting}>
           <Text style={styles.settingText}>Dark Mode</Text>
-          <Switch 
+          <Switch
             value={darkMode}
             onValueChange={setDarkMode}
             trackColor={{ false: Colors.accent300, true: Colors.primary300 }}
-            thumbColor={darkMode ? Colors.primary500 : Colors.accent500}
+            thumbColor={notifications ? Colors.secondary500 : Colors.secondary500}
           />
         </View>
 
         <View style={styles.setting}>
           <Text style={styles.settingText}>Location Services</Text>
-          <Switch 
+          <Switch
             value={locationServices}
             onValueChange={setLocationServices}
             trackColor={{ false: Colors.accent300, true: Colors.primary300 }}
-            thumbColor={locationServices ? Colors.primary500 : Colors.accent500}
+            thumbColor={notifications ? Colors.secondary500 : Colors.secondary500}
           />
         </View>
       </View>
