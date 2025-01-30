@@ -4,12 +4,11 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   useDerivedValue,
-  useAnimatedGestureHandler,
   interpolate,
   withSpring,
   runOnJS,
 } from 'react-native-reanimated';
-import { PanGestureHandler } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Card from './Card';
 import Profile from '../types/App';
 
@@ -34,10 +33,28 @@ export default function AnimatedStack({ data, onSwipeRight, onSwipeLeft }: Anima
 
   const translateX = useSharedValue(0);
   const rotate = useDerivedValue(
-    () =>
-      interpolate(translateX.value, [0, hiddenTranslateX], [0, ROTATION]) +
-      'deg',
+    () => interpolate(translateX.value, [0, hiddenTranslateX], [0, ROTATION]) + 'deg',
   );
+
+  const panGesture = Gesture.Pan()
+    .onChange((event) => {
+      translateX.value += event.changeX;
+    })
+    .onFinalize((event) => {
+      if (Math.abs(event.velocityX) < SWIPE_VELOCITY) {
+        translateX.value = withSpring(0);
+        return;
+      }
+
+      translateX.value = withSpring(
+        hiddenTranslateX * Math.sign(event.velocityX),
+        {},
+        () => runOnJS(setCurrentIndex)(currentIndex + 1),
+      );
+
+      const onSwipe = event.velocityX > 0 ? onSwipeRight : onSwipeLeft;
+      onSwipe && runOnJS(onSwipe)(currentProfile);
+    });
 
   const cardStyle = useAnimatedStyle(() => ({
     transform: [
@@ -67,30 +84,6 @@ export default function AnimatedStack({ data, onSwipeRight, onSwipeLeft }: Anima
     ),
   }));
 
-  const gestureHandler = useAnimatedGestureHandler({
-    onStart: (_, context) => {
-      context.startX = translateX.value;
-    },
-    onActive: (event, context) => {
-      translateX.value = (context.startX as any) + event.translationX;
-    },
-    onEnd: event => {
-      if (Math.abs(event.velocityX) < SWIPE_VELOCITY) {
-        translateX.value = withSpring(0);
-        return;
-      }
-
-      translateX.value = withSpring(
-        hiddenTranslateX * Math.sign(event.velocityX),
-        {},
-        () => runOnJS(setCurrentIndex)(currentIndex + 1),
-      );
-
-      const onSwipe = event.velocityX > 0 ? onSwipeRight : onSwipeLeft;
-      onSwipe && runOnJS(onSwipe)(currentProfile);
-    },
-  });
-
   useEffect(() => {
     translateX.value = 0;
     setNextIndex(currentIndex + 1);
@@ -107,11 +100,11 @@ export default function AnimatedStack({ data, onSwipeRight, onSwipeLeft }: Anima
       )}
 
       {currentProfile && (
-        <PanGestureHandler onGestureEvent={gestureHandler}>
+        <GestureDetector gesture={panGesture}>
           <Animated.View style={[styles.animatedCard, cardStyle]}>
             <Card profile={currentProfile} getCardStyle={() => {}} panHandlers={{}} isTopCard={true} />
           </Animated.View>
-        </PanGestureHandler>
+        </GestureDetector>
       )}
     </View>
   );
