@@ -3,9 +3,11 @@ import { View, Text, StyleSheet, Dimensions, PanResponder, Animated } from 'reac
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Colors from '../constants/Colors';
 import { mockProfiles } from '../constants/Data';
+import Card from '../components/Card';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SWIPE_THRESHOLD = 0.25 * SCREEN_WIDTH;
+
 export default function HomeScreen() {
   const [profiles, setProfiles] = useState(mockProfiles);
   const position = useRef(new Animated.ValueXY()).current;
@@ -67,61 +69,19 @@ export default function HomeScreen() {
   const renderCards = () => {
     if (profiles.length === 0) {
       return (
-          <Text style={styles.noMoreCards}>No more profiles!</Text>
+        <Text style={styles.noMoreCards}>No more profiles!</Text>
       );
     }
 
-    return profiles.map((profile, index) => {
-      if (index === 0) {
-        return (
-          <Animated.View
-            key={profile.id}
-            style={[
-              styles.cardStyle,
-              getCardStyle(),
-              { zIndex: profiles.length }
-            ]}
-            {...panResponder.panHandlers}
-          >
-            <View style={styles.textContainer}>
-              <Text style={styles.nameAge}>{profile.name}, {profile.age}</Text>
-              <Text style={styles.yearMajor}>{profile.yearLevel} • {profile.major}</Text>
-              <Text style={styles.aboutHeader}>About</Text>
-              <Text style={styles.about}>{profile.about}</Text>
-              <Text style={styles.sectionHeader}>Interests</Text>
-              <Text style={styles.listText}>{profile.interests.join(' • ')}</Text>
-              <Text style={styles.sectionHeader}>Hobbies</Text>
-              <Text style={styles.listText}>{profile.hobbies.join(' • ')}</Text>
-            </View>
-          </Animated.View>
-        );
-      }
-
-      return (
-        <Animated.View
-          key={profile.id}
-          style={[
-            styles.cardStyle,
-            {
-              top: 10 * index,
-              zIndex: profiles.length - index,
-              // transform: [{ scale: 0.95 - (index * 0.05) }]
-            }
-          ]}
-        >
-          <View style={styles.textContainer}>
-            <Text style={styles.nameAge}>{profile.name}, {profile.age}</Text>
-            <Text style={styles.yearMajor}>{profile.yearLevel} • {profile.major}</Text>
-            <Text style={styles.aboutHeader}>About</Text>
-            <Text style={styles.about}>{profile.about}</Text>
-            <Text style={styles.sectionHeader}>Interests</Text>
-            <Text style={styles.listText}>{profile.interests.join(' • ')}</Text>
-            <Text style={styles.sectionHeader}>Hobbies</Text>
-            <Text style={styles.listText}>{profile.hobbies.join(' • ')}</Text>
-          </View>
-        </Animated.View>
-      );
-    }).reverse();
+    return profiles.map((profile, index) => (
+      <Card
+        key={profile.id}
+        profile={profile}
+        getCardStyle={getCardStyle}
+        panHandlers={panResponder.panHandlers}
+        isTopCard={index === 0}
+      />
+    )).reverse();
   };
 
   return (
@@ -142,58 +102,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  cardStyle: {
-    position: 'absolute',
-    width: SCREEN_WIDTH * 0.9,
-    height: '85%',
-    backgroundColor: Colors.secondary400,
-    borderRadius: 20,
-    marginHorizontal: SCREEN_WIDTH * 0.05,
-    marginVertical: 20,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  textContainer: {
-    padding: 20,
-  },
-  nameAge: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: Colors.primary500,
-    marginBottom: 5,
-  },
-  yearMajor: {
-    fontSize: 20,
-    color: Colors.primary400,
-    marginBottom: 20,
-  },
-  aboutHeader: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: Colors.primary500,
-    marginBottom: 10,
-  },
-  about: {
-    fontSize: 16,
-    color: Colors.primary400,
-    marginBottom: 20,
-    lineHeight: 24,
-  },
-  sectionHeader: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: Colors.primary500,
-    marginTop: 15,
-    marginBottom: 10,
-  },
-  listText: {
-    fontSize: 16,
-    color: Colors.primary400,
-    marginBottom: 15,
   },
   noMoreCards: {
     fontSize: 24,
