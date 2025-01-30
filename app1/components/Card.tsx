@@ -49,15 +49,14 @@ export default function Card({
 
   const BasicInfoView = () => (
     <View style={styles.contentContainer}>
-      <LinearGradient
+      {/* <LinearGradient
         colors={[Colors.primary100, Colors.secondary200]}
         style={styles.gradient}
-      />
+      /> */}
       <PageIndicator />
       <View style={styles.content}>
         <View style={styles.header}>
           <View style={styles.profileHeader}>
-            <Ionicons name="person-circle" size={60} color={Colors.primary500} />
             <View style={styles.nameAgeContainer}>
               <Text style={styles.nameText}>{profile.firstName}</Text>
               <Text style={styles.ageText}>{profile.age}</Text>
@@ -65,13 +64,25 @@ export default function Card({
           </View>
           <View style={styles.infoContainer}>
             <View style={styles.infoItem}>
-              <Ionicons name="school" size={24} color={Colors.primary500} />
-              <Text style={styles.infoText}>{profile.yearLevel}</Text>
+              <Ionicons name="school" size={20} color={Colors.primary500} />
+              <Text 
+                style={styles.infoText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {profile.yearLevel}
+              </Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.infoItem}>
-              <Ionicons name="book" size={24} color={Colors.primary500} />
-              <Text style={styles.infoText}>{profile.major}</Text>
+              <Ionicons name="book" size={20} color={Colors.primary500} />
+              <Text 
+                style={styles.infoText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {profile.major}
+              </Text>
             </View>
           </View>
         </View>
@@ -89,10 +100,10 @@ export default function Card({
 
   const InterestsView = () => (
     <View style={styles.contentContainer}>
-      <LinearGradient
+      {/* <LinearGradient
         colors={[Colors.primary100, Colors.secondary200]}
         style={styles.gradient}
-      />
+      /> */}
       <PageIndicator />
       <View style={styles.content}>
         <View style={styles.section}>
@@ -178,9 +189,8 @@ const styles = StyleSheet.create({
   nameAgeContainer: {
     flex: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 16,
     alignItems: 'center',
-    marginLeft: 16,
   },
   nameText: {
     fontSize: 36,
@@ -197,20 +207,22 @@ const styles = StyleSheet.create({
   infoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    justifyContent: 'flex-start',
+    gap: 10,
     backgroundColor: Colors.primary100,
     borderRadius: 16,
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
   },
   infoItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   infoText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '500',
     color: Colors.primary500,
-    marginLeft: 8,
+    marginLeft: 4,
   },
   divider: {
     width: 1,
