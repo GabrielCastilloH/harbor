@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Image, TouchableOpacity, GestureResponderEvent } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Ionicons } from '@expo/vector-icons';
@@ -10,10 +10,34 @@ import AnimatedStack from '../components/AnimatedStack';
 export default function HomeScreen() {
   const [isNoPressed, setIsNoPressed] = useState(false);
   const [isYesPressed, setIsYesPressed] = useState(false);
+  const [touchStart, setTouchStart] = useState({ x: 0, y: 0 });
   const stackRef = React.useRef<{
     swipeLeft: () => void;
     swipeRight: () => void;
   }>(null);
+
+  const handleTouchStart = (event: GestureResponderEvent) => {
+    setTouchStart({
+      x: event.nativeEvent.pageX,
+      y: event.nativeEvent.pageY
+    });
+  };
+
+  const handleTouchEnd = (event: GestureResponderEvent, isNo: boolean) => {
+    const moveThreshold = 30; // pixels
+    const dx = Math.abs(event.nativeEvent.pageX - touchStart.x);
+    const dy = Math.abs(event.nativeEvent.pageY - touchStart.y);
+    
+    if (dx < moveThreshold && dy < moveThreshold) {
+      if (isNo) {
+        stackRef.current?.swipeLeft();
+      } else {
+        stackRef.current?.swipeRight();
+      }
+    }
+    setIsNoPressed(false);
+    setIsYesPressed(false);
+  };
 
   return (
     <GestureHandlerRootView style={styles.container}>
@@ -39,11 +63,11 @@ export default function HomeScreen() {
             styles.noButton,
             isNoPressed && { backgroundColor: Colors.primary500 },
           ]}
-          onPressIn={() => setIsNoPressed(true)}
-          onPressOut={() => {
-            setIsNoPressed(false);
-            stackRef.current?.swipeLeft();
+          onPressIn={(event) => {
+            setIsNoPressed(true);
+            handleTouchStart(event);
           }}
+          onPressOut={(event) => handleTouchEnd(event, true)}
         >
           <Ionicons
             name="close"
@@ -57,11 +81,11 @@ export default function HomeScreen() {
             styles.yesButton,
             isYesPressed && { backgroundColor: Colors.green },
           ]}
-          onPressIn={() => setIsYesPressed(true)}
-          onPressOut={() => {
-            setIsYesPressed(false);
-            stackRef.current?.swipeRight();
+          onPressIn={(event) => {
+            setIsYesPressed(true);
+            handleTouchStart(event);
           }}
+          onPressOut={(event) => handleTouchEnd(event, false)}
         >
           <Ionicons
             name="checkmark"
