@@ -15,13 +15,22 @@ import Profile from '../types/App';
 const ROTATION = 60;
 const SWIPE_VELOCITY = 800;
 
+// Add new prop types
 type AnimatedStackProps = {
   data: Profile[];
   onSwipeRight?: (profile: Profile) => void;
   onSwipeLeft?: (profile: Profile) => void;
+  ref?: React.RefObject<{
+    swipeLeft: () => void;
+    swipeRight: () => void;
+  }>;
 };
 
-export default function AnimatedStack({ data, onSwipeRight, onSwipeLeft }: AnimatedStackProps) {
+export default React.forwardRef(function AnimatedStack({ 
+  data, 
+  onSwipeRight, 
+  onSwipeLeft 
+}: AnimatedStackProps, ref) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [nextIndex, setNextIndex] = useState(currentIndex + 1);
   const [currentCardView, setCurrentCardView] = useState(0);
@@ -115,6 +124,31 @@ export default function AnimatedStack({ data, onSwipeRight, onSwipeLeft }: Anima
     setNextIndex(currentIndex + 1);
   }, [currentIndex, translateX]);
 
+  // Add methods to trigger swipes
+  const swipeLeft = () => {
+    translateX.value = withSpring(
+      -hiddenTranslateX,
+      {},
+      () => runOnJS(setCurrentIndex)(currentIndex + 1),
+    );
+    onSwipeLeft && runOnJS(onSwipeLeft)(currentProfile);
+  };
+
+  const swipeRight = () => {
+    translateX.value = withSpring(
+      hiddenTranslateX,
+      {},
+      () => runOnJS(setCurrentIndex)(currentIndex + 1),
+    );
+    onSwipeRight && runOnJS(onSwipeRight)(currentProfile);
+  };
+
+  // Expose methods via ref
+  React.useImperativeHandle(ref, () => ({
+    swipeLeft,
+    swipeRight,
+  }));
+
   if (!currentProfile) {
     return (
       <View style={styles.noMoreCardsContainer}>
@@ -159,7 +193,7 @@ export default function AnimatedStack({ data, onSwipeRight, onSwipeLeft }: Anima
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   root: {
