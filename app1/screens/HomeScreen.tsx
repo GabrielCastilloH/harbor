@@ -47,7 +47,7 @@ export default function HomeScreen() {
         >
           <Ionicons
             name="close"
-            size={30}
+            size={40}
             color={isNoPressed ? Colors.primary100 : Colors.primary500}
           />
         </TouchableOpacity>
@@ -65,7 +65,7 @@ export default function HomeScreen() {
         >
           <Ionicons
             name="checkmark"
-            size={30}
+            size={40}
             color={isYesPressed ? Colors.primary100 : Colors.green}
           />
         </TouchableOpacity>
@@ -98,13 +98,14 @@ const styles = StyleSheet.create({
   buttonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-evenly',
-    padding: 20,
+    paddingBottom: 20,
+    paddingHorizontal: 30,
     backgroundColor: Colors.primary100,
   },
   button: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
