@@ -1,5 +1,5 @@
 export default {
-  primary500: '#800000', // maroon
+  primary500: '#b43737', // maroon
   primary400: '#A52A2A',
   primary300: '#C41E3A',
   secondary500: '#FFFFFF', // white
