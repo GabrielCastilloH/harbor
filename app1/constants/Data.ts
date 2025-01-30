@@ -22,5 +22,16 @@ export const mockProfiles: Profile[] = [
     about: 'Pre-med student with a passion for research. Love playing basketball!',
     interests: ['Molecular Biology', 'Genetics', 'Medical Research'],
     hobbies: ['Basketball', 'Chess', 'Cooking']
+  },
+  {
+    id: '4',
+    name: 'KJ Heinz',
+    age: 19,
+    yearLevel: 'Junior',
+    major: 'Business',
+    images: [],
+    about: 'Just a chill guy.',
+    interests: ['Guy', 'Just', 'Chill'],
+    hobbies: ['Ball', 'Games', 'PLz']
   }
 ];
