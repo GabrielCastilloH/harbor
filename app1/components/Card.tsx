@@ -37,7 +37,7 @@ export default function Card({
     <>
       <View style={styles.header}>
         <Ionicons name="person-circle" size={40} color={Colors.primary500} />
-        <Text style={styles.nameAge}>{profile.firstName}, {profile.age}</Text>
+        <Text style={styles.nameAge}>{profile.firstName} {profile.age}</Text>
       </View>
       <View style={styles.infoRow}>
         <Ionicons name="school" size={24} color={Colors.primary500} />
