@@ -58,7 +58,7 @@ export default function ProfileScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Personal Information</Text>
+        <Text style={[styles.sectionTitle, {marginTop: 15}]}>Personal Information</Text>
         
         <Text style={styles.label}>First Name</Text>
         <TextInput
@@ -160,18 +160,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.secondary500,
   },
   section: {
-    padding: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 20,
   },
   sectionTitle: {
     fontSize: 22,
     fontWeight: 'bold',
     color: Colors.primary500,
-    marginBottom: 15,
+    marginBottom: 10,
+    marginTop: 15,
   },
   label: {
     fontSize: 16,
-    color: Colors.primary400,
+    color: Colors.primary500,
     marginBottom: 5,
   },
   input: {
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     marginBottom: 15,
-    color: Colors.primary500,
+    color: 'gray',
   },
   imageContainer: {
     position: 'relative',

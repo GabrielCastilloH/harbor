@@ -10,9 +10,9 @@ export default function SettingsStack() {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: Colors.primary500,
+          backgroundColor: Colors.primary100,
         },
-        headerTintColor: Colors.secondary500,
+        headerTintColor: Colors.primary500,
       }}
     >
       <Stack.Screen name="Settings" component={SettingsScreen} />

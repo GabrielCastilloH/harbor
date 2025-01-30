@@ -26,6 +26,7 @@ const styles = StyleSheet.create({
   },
   cardsContainer: {
     flex: 1,
+    backgroundColor: Colors.primary100,
     alignItems: 'center',
     justifyContent: 'center',
   },

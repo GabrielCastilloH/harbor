@@ -110,6 +110,9 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     padding: 20,
+    flex: 1,
+    position: 'relative',
+    height: '100%',
   },
   header: {
     flexDirection: 'row',
@@ -129,7 +132,7 @@ const styles = StyleSheet.create({
   },
   yearMajor: {
     fontSize: 20,
-    color: Colors.primary400,
+    color: Colors.primary500,
     marginLeft: 10,
   },
   section: {
@@ -148,19 +151,20 @@ const styles = StyleSheet.create({
   },
   about: {
     fontSize: 16,
-    color: Colors.primary400,
+    color: Colors.primary500,
     lineHeight: 24,
   },
   listText: {
     fontSize: 16,
-    color: Colors.primary400,
+    color: Colors.primary500,
   },
   navHint: {
     position: 'absolute',
     bottom: 20,
-    width: '100%',
+    left: 20,
+    right: 20,
     textAlign: 'center',
-    color: Colors.primary400,
+    color: Colors.primary500,
     fontSize: 14,
     opacity: 0.7
   }
