@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Animated, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
 import Profile from '../types/App';
@@ -9,9 +9,69 @@ type CardProps = {
   getCardStyle: () => any;
   panHandlers: any;
   isTopCard: boolean;
+  currentView: number;
+  setCurrentView: (view: number) => void;
 };
 
-export default function Card({ profile, getCardStyle, panHandlers, isTopCard }: CardProps) {
+export default function Card({ 
+  profile, 
+  getCardStyle, 
+  panHandlers, 
+  isTopCard,
+  currentView,
+  setCurrentView 
+}: CardProps) {
+  
+  const handlePress = (event: any) => {
+    const screenWidth = event.nativeEvent.locationX;
+    const halfScreen = event.nativeEvent.target.offsetWidth / 2;
+    
+    if (screenWidth > halfScreen && currentView === 0) {
+      setCurrentView(1);
+    } else if (screenWidth <= halfScreen && currentView === 1) {
+      setCurrentView(0);
+    }
+  };
+
+  const BasicInfoView = () => (
+    <>
+      <View style={styles.header}>
+        <Ionicons name="person-circle" size={40} color={Colors.primary500} />
+        <Text style={styles.nameAge}>{profile.firstName}, {profile.age}</Text>
+      </View>
+      <View style={styles.infoRow}>
+        <Ionicons name="school" size={24} color={Colors.primary500} />
+        <Text style={styles.yearMajor}>{profile.yearLevel} • {profile.major}</Text>
+      </View>
+      <View style={styles.section}>
+        <View style={styles.iconTextRow}>
+          <Ionicons name="information-circle" size={24} color={Colors.primary500} />
+          <Text style={styles.sectionHeader}>About</Text>
+        </View>
+        <Text style={styles.about}>{profile.about}</Text>
+      </View>
+    </>
+  );
+
+  const InterestsView = () => (
+    <>
+      <View style={styles.section}>
+        <View style={styles.iconTextRow}>
+          <Ionicons name="star" size={24} color={Colors.primary500} />
+          <Text style={styles.sectionHeader}>Interests</Text>
+        </View>
+        <Text style={styles.listText}>{profile.interests.join(' • ')}</Text>
+      </View>
+      <View style={styles.section}>
+        <View style={styles.iconTextRow}>
+          <Ionicons name="heart" size={24} color={Colors.primary500} />
+          <Text style={styles.sectionHeader}>Hobbies</Text>
+        </View>
+        <Text style={styles.listText}>{profile.hobbies.join(' • ')}</Text>
+      </View>
+    </>
+  );
+
   return (
     <Animated.View
       style={[
@@ -21,37 +81,14 @@ export default function Card({ profile, getCardStyle, panHandlers, isTopCard }: 
       ]}
       {...(isTopCard ? panHandlers : {})}
     >
-      <View style={styles.textContainer}>
-        <View style={styles.header}>
-          <Ionicons name="person-circle" size={40} color={Colors.primary500} />
-          <Text style={styles.nameAge}>{profile.firstName}, {profile.age}</Text>
+      <TouchableWithoutFeedback onPress={handlePress}>
+        <View style={styles.textContainer}>
+          {currentView === 0 ? <BasicInfoView /> : <InterestsView />}
+          <Text style={styles.navHint}>
+            {currentView === 0 ? 'Tap right for more >' : '< Tap left to go back'}
+          </Text>
         </View>
-        <View style={styles.infoRow}>
-          <Ionicons name="school" size={24} color={Colors.primary500} />
-          <Text style={styles.yearMajor}>{profile.yearLevel} • {profile.major}</Text>
-        </View>
-        <View style={styles.section}>
-          <View style={styles.iconTextRow}>
-            <Ionicons name="information-circle" size={24} color={Colors.primary500} />
-            <Text style={styles.sectionHeader}>About</Text>
-          </View>
-          <Text style={styles.about}>{profile.about}</Text>
-        </View>
-        <View style={styles.section}>
-          <View style={styles.iconTextRow}>
-            <Ionicons name="star" size={24} color={Colors.primary500} />
-            <Text style={styles.sectionHeader}>Interests</Text>
-          </View>
-          <Text style={styles.listText}>{profile.interests.join(' • ')}</Text>
-        </View>
-        <View style={styles.section}>
-          <View style={styles.iconTextRow}>
-            <Ionicons name="heart" size={24} color={Colors.primary500} />
-            <Text style={styles.sectionHeader}>Hobbies</Text>
-          </View>
-          <Text style={styles.listText}>{profile.hobbies.join(' • ')}</Text>
-        </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Animated.View>
   );
 }
@@ -118,4 +155,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.primary400,
   },
+  navHint: {
+    position: 'absolute',
+    bottom: 20,
+    width: '100%',
+    textAlign: 'center',
+    color: Colors.primary400,
+    fontSize: 14,
+    opacity: 0.7
+  }
 });

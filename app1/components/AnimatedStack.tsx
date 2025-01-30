@@ -24,6 +24,7 @@ type AnimatedStackProps = {
 export default function AnimatedStack({ data, onSwipeRight, onSwipeLeft }: AnimatedStackProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [nextIndex, setNextIndex] = useState(currentIndex + 1);
+  const [currentCardView, setCurrentCardView] = useState(0);
 
   const currentProfile = data[currentIndex];
   const nextProfile = data[nextIndex];
@@ -55,6 +56,31 @@ export default function AnimatedStack({ data, onSwipeRight, onSwipeLeft }: Anima
       const onSwipe = event.velocityX > 0 ? onSwipeRight : onSwipeLeft;
       onSwipe && runOnJS(onSwipe)(currentProfile);
     });
+
+  const handleRightTap = () => {
+    if (currentCardView === 0) {
+      setCurrentCardView(1);
+    }
+  };
+
+  const handleLeftTap = () => {
+    if (currentCardView === 1) {
+      setCurrentCardView(0);
+    }
+  };
+
+  const tapGesture = Gesture.Tap()
+    .onStart((event) => {
+      const { x } = event;
+      const halfScreen = screenWidth / 2;
+      if (x > halfScreen) {
+        runOnJS(handleRightTap)();
+      } else {
+        runOnJS(handleLeftTap)();
+      }
+    });
+
+  const combinedGestures = Gesture.Race(panGesture, tapGesture);
 
   const cardStyle = useAnimatedStyle(() => ({
     transform: [
@@ -105,15 +131,29 @@ export default function AnimatedStack({ data, onSwipeRight, onSwipeLeft }: Anima
       {nextProfile && (
         <View style={styles.nextCardContainer}>
           <Animated.View style={[styles.animatedCard, nextCardStyle]}>
-            <Card profile={nextProfile} getCardStyle={() => {}} panHandlers={{}} isTopCard={false} />
+            <Card 
+              profile={nextProfile} 
+              getCardStyle={() => {}} 
+              panHandlers={{}} 
+              isTopCard={false} 
+              currentView={0}
+              setCurrentView={() => {}}
+            />
           </Animated.View>
         </View>
       )}
 
       {currentProfile && (
-        <GestureDetector gesture={panGesture}>
+        <GestureDetector gesture={combinedGestures}>
           <Animated.View style={[styles.animatedCard, cardStyle]}>
-            <Card profile={currentProfile} getCardStyle={() => {}} panHandlers={{}} isTopCard={true} />
+            <Card 
+              profile={currentProfile} 
+              getCardStyle={() => {}} 
+              panHandlers={{}} 
+              isTopCard={true}
+              currentView={currentCardView}
+              setCurrentView={setCurrentCardView}
+            />
           </Animated.View>
         </GestureDetector>
       )}
