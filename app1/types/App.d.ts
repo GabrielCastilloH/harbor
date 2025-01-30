@@ -3,7 +3,8 @@ type YearLevel = 'Freshman' | 'Sophomore' | 'Junior' | 'Senior' | 'Graduate';
 type Profile = {
   // Basic Info
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   age: number;
   yearLevel: YearLevel;
   major: string;
