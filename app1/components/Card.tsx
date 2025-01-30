@@ -153,11 +153,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     marginHorizontal: '4%',
     marginVertical: 20,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    borderWidth: 3,
+    borderColor: `${Colors.primary500}50`,
     overflow: 'hidden',
   },
   gradient: {
@@ -269,12 +266,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   dot: {
-    width: 24,
-    height: 8,
+    width: "40%",
+    height: 4,
     borderRadius: 4,
-    backgroundColor: Colors.primary100,
+    backgroundColor: `${Colors.primary500}10`,
   },
   activeDot: {
-    backgroundColor: Colors.primary500,
+    backgroundColor: `${Colors.primary500}99`,
   },
 });
