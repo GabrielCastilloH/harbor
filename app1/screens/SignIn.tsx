@@ -43,7 +43,7 @@ export default function SignIn() {
       <TouchableOpacity style={styles.button} onPress={handleSignIn}>
         <Image 
           source={require('../assets/images/cornell-logo.png')} 
-          style={[styles.cornellLogo, { tintColor: Colors.secondary500 }]}
+          style={[styles.cornellLogo, { tintColor: Colors.secondary100 }]}
           resizeMode="contain"
         />
         <Text style={styles.buttonText}>Sign In With Cornell</Text>
@@ -55,7 +55,7 @@ export default function SignIn() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.secondary500,
+    backgroundColor: Colors.secondary100,
     alignItems: 'center',
     padding: 20,
   },
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   buttonText: {
-    color: Colors.secondary500,
+    color: Colors.secondary100,
     fontSize: 16,
     fontWeight: 'bold',
   },

@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '90%',
     height: '85%',
-    backgroundColor: Colors.secondary400,
+    backgroundColor: Colors.secondary200,
     borderRadius: 20,
     marginHorizontal: '5%',
     marginVertical: 20,
