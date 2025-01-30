@@ -3,7 +3,8 @@ import Profile from "../types/App";
 export const mockProfiles: Profile[] = [
   {
     id: '1',
-    name: 'Sarah Johnson',
+    firstName: 'Sarah',
+    lastName: 'Jhonson',
     age: 20,
     yearLevel: 'Junior',
     major: 'Computer Science',
@@ -14,7 +15,8 @@ export const mockProfiles: Profile[] = [
   },
   {
     id: '2',
-    name: 'Michael Chen',
+    firstName: 'Michael',
+    lastName: 'Chen',
     age: 19,
     yearLevel: 'Sophomore',
     major: 'Biology',
@@ -25,7 +27,8 @@ export const mockProfiles: Profile[] = [
   },
   {
     id: '4',
-    name: 'KJ Heinz',
+    firstName: 'KJ',
+    lastName: 'Heinz',
     age: 19,
     yearLevel: 'Junior',
     major: 'Business',
