@@ -4,7 +4,7 @@ import ChatList from '../screens/ChatList';
 import ChatScreen from '../screens/ChatScreen';
 import LoadingScreen from '../screens/LoadingScreen';
 import Colors from '../constants/Colors';
-import { OverlayProvider, Chat, useCreateChatClient } from 'stream-chat-expo';
+import { OverlayProvider, Chat, useCreateChatClient, DeepPartial, Theme } from 'stream-chat-expo';
 
 const Stack = createNativeStackNavigator();
 
@@ -19,6 +19,25 @@ const user = {
   name: chatUserName,
 };
 
+
+const theme: DeepPartial<Theme> = {
+  channel: {
+    selectChannel: {
+      backgroundColor: Colors.primary100,
+    },
+  },
+  messageList: {
+    container: {
+      backgroundColor: Colors.secondary500,
+    },
+  },
+  channelPreview: {
+    container: {
+      backgroundColor: Colors.secondary500,
+    },
+  },
+};
+
 export default function ChatNavigator() {
   const chatClient = useCreateChatClient({
     apiKey: chatApiKey,
@@ -31,7 +50,7 @@ export default function ChatNavigator() {
   }
 
   return (
-    <OverlayProvider>
+    <OverlayProvider  value={{ style: theme }}>
       <Chat client={chatClient}>
         <Stack.Navigator
           screenOptions={{
