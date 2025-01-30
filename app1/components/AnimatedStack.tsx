@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, useWindowDimensions, Text } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -89,6 +89,17 @@ export default function AnimatedStack({ data, onSwipeRight, onSwipeLeft }: Anima
     setNextIndex(currentIndex + 1);
   }, [currentIndex, translateX]);
 
+  if (!currentProfile) {
+    return (
+      <View style={styles.noMoreCardsContainer}>
+        <Text style={styles.noMoreCardsTitle}>No More Swipes</Text>
+        <Text style={styles.noMoreCardsText}>
+          You have no more swipes left for today. Come back tomorrow for 3 more.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       {nextProfile && (
@@ -127,5 +138,21 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  noMoreCardsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  noMoreCardsTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  noMoreCardsText: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#666',
   },
 });
