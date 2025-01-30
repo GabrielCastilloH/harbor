@@ -1,10 +1,9 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
 import HomeScreen from '../screens/HomeScreen';
-import ChatScreen from '../screens/ChatList';
 import SettingsStack from './SettingsStack';
-
+import ChatNavigator from './ChatNavigator';
+import Colors from '../constants/Colors';
 
 const Tab = createBottomTabNavigator();
 
@@ -32,7 +31,7 @@ export default function TabNavigator() {
       />
       <Tab.Screen 
         name="Chat" 
-        component={ChatScreen}
+        component={ChatNavigator}
         options={{
           tabBarIcon: ({color, size}) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
