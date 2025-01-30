@@ -33,13 +33,14 @@ export default function TabNavigator() {
         name="Chat" 
         component={ChatNavigator}
         options={{
+          headerShown: false,
           tabBarIcon: ({color, size}) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
           ),
         }}
       />
       <Tab.Screen 
-        name="Settings" 
+        name="UserSettings" 
         component={SettingsStack}
         options={{
           headerShown: false,
