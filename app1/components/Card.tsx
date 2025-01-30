@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableWithoutFeedback } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
 import Profile from '../types/App';
@@ -33,43 +34,96 @@ export default function Card({
     }
   };
 
+  const PageIndicator = () => (
+    <View style={styles.pageIndicator}>
+      <View style={[
+        styles.dot,
+        currentView === 0 && styles.activeDot
+      ]} />
+      <View style={[
+        styles.dot,
+        currentView === 1 && styles.activeDot
+      ]} />
+    </View>
+  );
+
   const BasicInfoView = () => (
-    <>
-      <View style={styles.header}>
-        <Ionicons name="person-circle" size={40} color={Colors.primary500} />
-        <Text style={styles.nameAge}>{profile.firstName} {profile.age}</Text>
-      </View>
-      <View style={styles.infoRow}>
-        <Ionicons name="school" size={24} color={Colors.primary500} />
-        <Text style={styles.yearMajor}>{profile.yearLevel} • {profile.major}</Text>
-      </View>
-      <View style={styles.section}>
-        <View style={styles.iconTextRow}>
-          <Ionicons name="information-circle" size={24} color={Colors.primary500} />
-          <Text style={styles.sectionHeader}>About</Text>
+    <View style={styles.contentContainer}>
+      <LinearGradient
+        colors={[Colors.primary100, Colors.secondary200]}
+        style={styles.gradient}
+      />
+      <PageIndicator />
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <View style={styles.profileHeader}>
+            <Ionicons name="person-circle" size={60} color={Colors.primary500} />
+            <View style={styles.nameAgeContainer}>
+              <Text style={styles.nameText}>{profile.firstName}</Text>
+              <Text style={styles.ageText}>{profile.age}</Text>
+            </View>
+          </View>
+          <View style={styles.infoContainer}>
+            <View style={styles.infoItem}>
+              <Ionicons name="school" size={24} color={Colors.primary500} />
+              <Text style={styles.infoText}>{profile.yearLevel}</Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.infoItem}>
+              <Ionicons name="book" size={24} color={Colors.primary500} />
+              <Text style={styles.infoText}>{profile.major}</Text>
+            </View>
+          </View>
         </View>
-        <Text style={styles.about}>{profile.about}</Text>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="information-circle" size={28} color={Colors.primary500} />
+            <Text style={styles.sectionTitle}>About Me</Text>
+          </View>
+          <Text style={styles.aboutText}>{profile.about}</Text>
+        </View>
       </View>
-    </>
+    </View>
   );
 
   const InterestsView = () => (
-    <>
-      <View style={styles.section}>
-        <View style={styles.iconTextRow}>
-          <Ionicons name="star" size={24} color={Colors.primary500} />
-          <Text style={styles.sectionHeader}>Interests</Text>
+    <View style={styles.contentContainer}>
+      <LinearGradient
+        colors={[Colors.primary100, Colors.secondary200]}
+        style={styles.gradient}
+      />
+      <PageIndicator />
+      <View style={styles.content}>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="star" size={28} color={Colors.primary500} />
+            <Text style={styles.sectionTitle}>Interests</Text>
+          </View>
+          <View style={styles.tagsContainer}>
+            {profile.interests.map((interest, index) => (
+              <View key={index} style={styles.tag}>
+                <Text style={styles.tagText}>{interest}</Text>
+              </View>
+            ))}
+          </View>
         </View>
-        <Text style={styles.listText}>{profile.interests.join(' • ')}</Text>
-      </View>
-      <View style={styles.section}>
-        <View style={styles.iconTextRow}>
-          <Ionicons name="heart" size={24} color={Colors.primary500} />
-          <Text style={styles.sectionHeader}>Hobbies</Text>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="heart" size={28} color={Colors.primary500} />
+            <Text style={styles.sectionTitle}>Hobbies</Text>
+          </View>
+          <View style={styles.tagsContainer}>
+            {profile.hobbies.map((hobby, index) => (
+              <View key={index} style={styles.tag}>
+                <Text style={styles.tagText}>{hobby}</Text>
+              </View>
+            ))}
+          </View>
         </View>
-        <Text style={styles.listText}>{profile.hobbies.join(' • ')}</Text>
       </View>
-    </>
+    </View>
   );
 
   return (
@@ -82,11 +136,8 @@ export default function Card({
       {...(isTopCard ? panHandlers : {})}
     >
       <TouchableWithoutFeedback onPress={handlePress}>
-        <View style={styles.textContainer}>
+        <View style={styles.contentContainer}>
           {currentView === 0 ? <BasicInfoView /> : <InterestsView />}
-          <Text style={styles.navHint}>
-            {currentView === 0 ? 'Tap right for more >' : '< Tap left to go back'}
-          </Text>
         </View>
       </TouchableWithoutFeedback>
     </Animated.View>
@@ -96,76 +147,134 @@ export default function Card({
 const styles = StyleSheet.create({
   cardStyle: {
     position: 'absolute',
-    width: '90%',
+    width: '92%',
     height: '85%',
     backgroundColor: Colors.secondary200,
-    borderRadius: 20,
-    marginHorizontal: '5%',
+    borderRadius: 24,
+    marginHorizontal: '4%',
     marginVertical: 20,
-    elevation: 5,
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    overflow: 'hidden',
   },
-  textContainer: {
-    padding: 20,
-    flex: 1,
-    position: 'relative',
+  gradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
     height: '100%',
   },
+  contentContainer: {
+    flex: 1,
+  },
   header: {
+    marginBottom: 24,
+  },
+  profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
   },
-  nameAge: {
-    fontSize: 32,
-    fontWeight: 'bold',
+  nameAgeContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginLeft: 16,
+  },
+  nameText: {
+    fontSize: 36,
+    fontWeight: '700',
     color: Colors.primary500,
-    marginLeft: 10,
+    marginBottom: 4,
   },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  yearMajor: {
-    fontSize: 20,
-    color: Colors.primary500,
-    marginLeft: 10,
-  },
-  section: {
-    marginBottom: 20,
-  },
-  iconTextRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  sectionHeader: {
-    fontSize: 20,
+  ageText: {
+    fontSize: 24,
     fontWeight: '600',
     color: Colors.primary500,
-    marginLeft: 10,
+    opacity: 0.8,
   },
-  about: {
+  infoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    backgroundColor: Colors.primary100,
+    borderRadius: 16,
+    padding: 16,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: Colors.primary500,
+    marginLeft: 8,
+  },
+  divider: {
+    width: 1,
+    height: 24,
+    backgroundColor: Colors.primary500,
+    opacity: 0.2,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: Colors.primary500,
+    marginLeft: 12,
+  },
+  aboutText: {
+    fontSize: 18,
+    lineHeight: 28,
+    color: Colors.primary500,
+    opacity: 0.9,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -4,
+  },
+  tag: {
+    backgroundColor: Colors.primary100,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    margin: 4,
+  },
+  tagText: {
     fontSize: 16,
     color: Colors.primary500,
-    lineHeight: 24,
+    fontWeight: '500',
   },
-  listText: {
-    fontSize: 16,
-    color: Colors.primary500,
+  content: {
+    flex: 1,
+    padding: 24,
   },
-  navHint: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    textAlign: 'center',
-    color: Colors.primary500,
-    fontSize: 14,
-    opacity: 0.7
-  }
+  pageIndicator: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingTop: 16,
+    gap: 8,
+  },
+  dot: {
+    width: 24,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary100,
+  },
+  activeDot: {
+    backgroundColor: Colors.primary500,
+  },
 });
