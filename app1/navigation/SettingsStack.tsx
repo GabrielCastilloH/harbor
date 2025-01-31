@@ -12,7 +12,7 @@ export default function SettingsStack() {
         headerStyle: {
           backgroundColor: Colors.primary100,
         },
-        headerTintColor: Colors.primary500,
+        headerTintColor: Colors.black,
       }}
     >
       <Stack.Screen name="Settings" component={SettingsScreen} />

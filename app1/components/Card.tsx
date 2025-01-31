@@ -50,7 +50,7 @@ export default function Card({
   const BasicInfoView = () => (
     <View style={styles.contentContainer}>
       {/* <LinearGradient
-        colors={[Colors.primary100, Colors.secondary200]}
+        colors={[Colors.primary100, Colors.secondary100]}
         style={styles.gradient}
       /> */}
       <PageIndicator />
@@ -101,7 +101,7 @@ export default function Card({
   const InterestsView = () => (
     <View style={styles.contentContainer}>
       {/* <LinearGradient
-        colors={[Colors.primary100, Colors.secondary200]}
+        colors={[Colors.primary100, Colors.secondary100]}
         style={styles.gradient}
       /> */}
       <PageIndicator />
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '92%',
     height: '92%',
-    backgroundColor: Colors.secondary200,
+    backgroundColor: Colors.secondary100,
     borderRadius: 24,
     marginHorizontal: '4%',
     marginVertical: 20,
@@ -195,23 +195,23 @@ const styles = StyleSheet.create({
   nameText: {
     fontSize: 36,
     fontWeight: '700',
-    color: Colors.primary500,
+    color: Colors.black,
     marginBottom: 4,
   },
   ageText: {
     fontSize: 24,
     fontWeight: '600',
-    color: Colors.primary500,
+    color: Colors.black,
     opacity: 0.8,
   },
   infoContainer: {
+    gap: 10,
+    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    gap: 10,
     backgroundColor: Colors.primary100,
-    borderRadius: 16,
-    paddingVertical: 14,
+    borderRadius: 10,
     paddingHorizontal: 10,
   },
   infoItem: {
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   aboutText: {
     fontSize: 18,
     lineHeight: 28,
-    color: Colors.primary500,
+    color: Colors.black,
     opacity: 0.9,
   },
   tagsContainer: {
