@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   input: {
-    backgroundColor: Colors.secondary200,
+    backgroundColor: Colors.secondary100,
     padding: 15,
     borderRadius: 8,
     marginBottom: 15,

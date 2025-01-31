@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Image, TouchableOpacity, GestureResponderEvent } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  GestureResponderEvent,
+} from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { Ionicons } from '@expo/vector-icons';
+import Entypo from '@expo/vector-icons/Entypo';
 import Colors from '../constants/Colors';
 import { mockProfiles } from '../constants/Data';
 import AnimatedStack from '../components/AnimatedStack';
@@ -19,7 +25,7 @@ export default function HomeScreen() {
   const handleTouchStart = (event: GestureResponderEvent) => {
     setTouchStart({
       x: event.nativeEvent.pageX,
-      y: event.nativeEvent.pageY
+      y: event.nativeEvent.pageY,
     });
   };
 
@@ -27,7 +33,7 @@ export default function HomeScreen() {
     const moveThreshold = 30; // pixels
     const dx = Math.abs(event.nativeEvent.pageX - touchStart.x);
     const dy = Math.abs(event.nativeEvent.pageY - touchStart.y);
-    
+
     if (dx < moveThreshold && dy < moveThreshold) {
       if (isNo) {
         stackRef.current?.swipeLeft();
@@ -43,7 +49,8 @@ export default function HomeScreen() {
     <GestureHandlerRootView style={styles.container}>
       <View style={styles.headerContainer}>
         <Image
-          source={require('../assets/icon.png')}
+          tintColor={Colors.primary500}
+          source={require('../assets/logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -61,7 +68,7 @@ export default function HomeScreen() {
           style={[
             styles.button,
             styles.noButton,
-            isNoPressed && { backgroundColor: Colors.primary500 },
+            isNoPressed && { backgroundColor: Colors.red },
           ]}
           onPressIn={(event) => {
             setIsNoPressed(true);
@@ -69,10 +76,10 @@ export default function HomeScreen() {
           }}
           onPressOut={(event) => handleTouchEnd(event, true)}
         >
-          <Ionicons
-            name="close"
-            size={40}
-            color={isNoPressed ? Colors.primary100 : Colors.primary500}
+          <Entypo
+            name="cross"
+            size={43}
+            color={isNoPressed ? Colors.primary100 : Colors.red}
           />
         </TouchableOpacity>
         <TouchableOpacity
@@ -87,8 +94,8 @@ export default function HomeScreen() {
           }}
           onPressOut={(event) => handleTouchEnd(event, false)}
         >
-          <Ionicons
-            name="checkmark"
+          <Entypo
+            name="check"
             size={40}
             color={isYesPressed ? Colors.primary100 : Colors.green}
           />
@@ -105,14 +112,15 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     width: '100%',
+    height: 120,
     paddingTop: 70,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.primary100,
   },
   logo: {
-    height: 40,
-    width: 120,
+    height: 80,
+    width: 80,
   },
   cardsContainer: {
     flex: 1,
@@ -132,11 +140,11 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     backgroundColor: Colors.primary100,
   },
   noButton: {
-    borderColor: Colors.primary500,
+    borderColor: Colors.red,
   },
   yesButton: {
     borderColor: Colors.green,

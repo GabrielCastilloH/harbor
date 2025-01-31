@@ -1,11 +1,18 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import React from 'react';
 import Colors from '../constants/Colors';
 import { useAppContext } from '../context/AppContext';
 
 const mockCornellAuth = async () => {
   // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise((resolve) => setTimeout(resolve, 1000));
   // Simulate successful auth
   return true;
 };
@@ -27,23 +34,25 @@ export default function SignIn() {
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
-        <Image 
-          source={require('../assets/favicon.png')} 
+        <Image
+          tintColor={Colors.primary500}
+          source={require('../assets/logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />
       </View>
 
       <Text style={styles.title}>Sign In</Text>
-      
+
       <Text style={styles.description}>
-        In order to use this app you must sign in/sign up with your Cornell NetID
+        In order to use this app you must sign in/sign up with your Cornell
+        NetID
       </Text>
 
       <TouchableOpacity style={styles.button} onPress={handleSignIn}>
-        <Image 
-          source={require('../assets/images/cornell-logo.png')} 
-          style={[styles.cornellLogo, { tintColor: Colors.secondary100 }]}
+        <Image
+          source={require('../assets/images/cornell-logo.png')}
+          style={[styles.cornellLogo, { tintColor: Colors.primary500 }]}
           resizeMode="contain"
         />
         <Text style={styles.buttonText}>Sign In With Cornell</Text>
@@ -60,13 +69,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logoContainer: {
-    height: 200,
-    marginTop: 60,
+    height: 120,
+    marginTop: 150,
     justifyContent: 'center',
   },
   logo: {
-    width: 200,
-    height: 200,
+    width: 150,
+    height: 150,
   },
   title: {
     fontSize: 32,
@@ -84,7 +93,7 @@ const styles = StyleSheet.create({
   },
   button: {
     flexDirection: 'row',
-    backgroundColor: Colors.primary500,
+    backgroundColor: Colors.primary100,
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 10,
@@ -96,7 +105,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   buttonText: {
-    color: Colors.secondary100,
+    color: Colors.primary500,
     fontSize: 16,
     fontWeight: 'bold',
   },
