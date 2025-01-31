@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Card from './Card';
-import Profile from '../types/App';
+import { Profile } from '../types/App';
 
 const ROTATION = 60;
 const SWIPE_VELOCITY = 800;
@@ -26,11 +26,10 @@ type AnimatedStackProps = {
   }>;
 };
 
-export default React.forwardRef(function AnimatedStack({ 
-  data, 
-  onSwipeRight, 
-  onSwipeLeft 
-}: AnimatedStackProps, ref) {
+export default React.forwardRef(function AnimatedStack(
+  { data, onSwipeRight, onSwipeLeft }: AnimatedStackProps,
+  ref
+) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [nextIndex, setNextIndex] = useState(currentIndex + 1);
   const [currentCardView, setCurrentCardView] = useState(0);
@@ -43,7 +42,9 @@ export default React.forwardRef(function AnimatedStack({
 
   const translateX = useSharedValue(0);
   const rotate = useDerivedValue(
-    () => interpolate(translateX.value, [0, hiddenTranslateX], [0, ROTATION]) + 'deg',
+    () =>
+      interpolate(translateX.value, [0, hiddenTranslateX], [0, ROTATION]) +
+      'deg'
   );
 
   const panGesture = Gesture.Pan()
@@ -59,7 +60,7 @@ export default React.forwardRef(function AnimatedStack({
       translateX.value = withSpring(
         hiddenTranslateX * Math.sign(event.velocityX),
         {},
-        () => runOnJS(setCurrentIndex)(currentIndex + 1),
+        () => runOnJS(setCurrentIndex)(currentIndex + 1)
       );
 
       const onSwipe = event.velocityX > 0 ? onSwipeRight : onSwipeLeft;
@@ -67,21 +68,20 @@ export default React.forwardRef(function AnimatedStack({
     });
 
   // Add tap gesture for card view navigation
-  const tapGesture = Gesture.Tap()
-    .onStart((event) => {
-      const halfScreen = screenWidth / 2;
-      if (event.x > halfScreen) {
-        // Right side - forward
-        if (currentCardView < 2) {
-          runOnJS(setCurrentCardView)(currentCardView + 1);
-        }
-      } else {
-        // Left side - backward
-        if (currentCardView > 0) {
-          runOnJS(setCurrentCardView)(currentCardView - 1);
-        }
+  const tapGesture = Gesture.Tap().onStart((event) => {
+    const halfScreen = screenWidth / 2;
+    if (event.x > halfScreen) {
+      // Right side - forward
+      if (currentCardView < 2) {
+        runOnJS(setCurrentCardView)(currentCardView + 1);
       }
-    });
+    } else {
+      // Left side - backward
+      if (currentCardView > 0) {
+        runOnJS(setCurrentCardView)(currentCardView - 1);
+      }
+    }
+  });
 
   // Combine gestures
   const combinedGestures = Gesture.Race(panGesture, tapGesture);
@@ -103,14 +103,14 @@ export default React.forwardRef(function AnimatedStack({
         scale: interpolate(
           translateX.value,
           [-hiddenTranslateX, 0, hiddenTranslateX],
-          [1, 0.8, 1],
+          [1, 0.8, 1]
         ),
       },
     ],
     opacity: interpolate(
       translateX.value,
       [-hiddenTranslateX, 0, hiddenTranslateX],
-      [1, 0.5, 1],
+      [1, 0.5, 1]
     ),
   }));
 
@@ -121,19 +121,15 @@ export default React.forwardRef(function AnimatedStack({
 
   // Add methods to trigger swipes
   const swipeLeft = () => {
-    translateX.value = withSpring(
-      -hiddenTranslateX,
-      {},
-      () => runOnJS(setCurrentIndex)(currentIndex + 1),
+    translateX.value = withSpring(-hiddenTranslateX, {}, () =>
+      runOnJS(setCurrentIndex)(currentIndex + 1)
     );
     onSwipeLeft && runOnJS(onSwipeLeft)(currentProfile);
   };
 
   const swipeRight = () => {
-    translateX.value = withSpring(
-      hiddenTranslateX,
-      {},
-      () => runOnJS(setCurrentIndex)(currentIndex + 1),
+    translateX.value = withSpring(hiddenTranslateX, {}, () =>
+      runOnJS(setCurrentIndex)(currentIndex + 1)
     );
     onSwipeRight && runOnJS(onSwipeRight)(currentProfile);
   };
@@ -165,11 +161,11 @@ export default React.forwardRef(function AnimatedStack({
       {nextProfile && (
         <View style={styles.nextCardContainer}>
           <Animated.View style={[styles.animatedCard, nextCardStyle]}>
-            <Card 
-              profile={nextProfile} 
-              getCardStyle={() => {}} 
-              panHandlers={{}} 
-              isTopCard={false} 
+            <Card
+              profile={nextProfile}
+              getCardStyle={() => {}}
+              panHandlers={{}}
+              isTopCard={false}
               currentView={0}
               setCurrentView={() => {}}
             />
@@ -180,10 +176,10 @@ export default React.forwardRef(function AnimatedStack({
       {currentProfile && (
         <GestureDetector gesture={combinedGestures}>
           <Animated.View style={[styles.animatedCard, cardStyle]}>
-            <Card 
-              profile={currentProfile} 
-              getCardStyle={() => {}} 
-              panHandlers={{}} 
+            <Card
+              profile={currentProfile}
+              getCardStyle={() => {}}
+              panHandlers={{}}
               isTopCard={true}
               currentView={currentCardView}
               setCurrentView={setCurrentCardView}
