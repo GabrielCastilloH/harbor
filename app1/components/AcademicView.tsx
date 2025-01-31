@@ -134,7 +134,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 24,
     paddingBottom: 0, // Remove bottom padding to allow full height
   },
   pageIndicator: {

@@ -33,12 +33,12 @@ export default function Card({
       ]}
       {...(isTopCard ? panHandlers : {})}
     >
+      <PageIndicator currentView={currentView} />
       <View style={styles.contentContainer}>
-        <PageIndicator currentView={currentView} />
         {currentView === 0 ? (
           <BasicInfoView profile={profile} />
         ) : currentView === 1 ? (
-          <AcademicView profile={profile}/>
+          <AcademicView profile={profile} />
         ) : (
           <PersonalView profile={profile} />
         )}
@@ -69,5 +69,6 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
+    padding: 24,
   },
 });

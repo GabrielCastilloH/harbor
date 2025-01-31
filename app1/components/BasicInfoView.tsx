@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     opacity: 0.2,
   },
   section: {
-    marginBottom: 0, // Remove existing margin
+    marginBottom: 0,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -129,8 +129,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 20, // Smaller to fit longer prompts
-    flex: 1, // Allow text to wrap
+    fontSize: 20,
+    flex: 1,
     flexWrap: 'wrap',
     fontWeight: '600',
     color: Colors.primary500,
@@ -142,43 +142,9 @@ const styles = StyleSheet.create({
     color: Colors.black,
     opacity: 0.9,
   },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -4,
-  },
-  tag: {
-    backgroundColor: Colors.primary100,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    margin: 4,
-  },
-  tagText: {
-    fontSize: 16,
-    color: Colors.primary500,
-    fontWeight: '500',
-  },
   content: {
     flex: 1,
-    padding: 24,
-    paddingBottom: 0, // Remove bottom padding to allow full height
-  },
-  pageIndicator: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingTop: 16,
-    paddingHorizontal: 15,
-    gap: 8,
-  },
-  dot: {
-    width: '30%', // Adjust for 3 dots
-    height: 4,
-    borderRadius: 4,
-    backgroundColor: `${Colors.primary500}10`,
-  },
-  activeDot: {
-    backgroundColor: `${Colors.primary500}99`,
+    paddingBottom: 0,
   },
   sectionsContainer: {
     flex: 1,
