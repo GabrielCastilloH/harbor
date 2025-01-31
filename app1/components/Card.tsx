@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   Animated,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
@@ -39,10 +38,6 @@ export default function Card({
 
   const BasicInfoView = () => (
     <View style={styles.contentContainer}>
-      {/* <LinearGradient
-        colors={[Colors.primary100, Colors.secondary100]}
-        style={styles.gradient}
-      /> */}
       <PageIndicator />
       <View style={styles.content}>
         <View style={styles.header}>
@@ -76,17 +71,18 @@ export default function Card({
             </View>
           </View>
         </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons
-              name="information-circle"
-              size={28}
-              color={Colors.primary500}
-            />
-            <Text style={styles.sectionTitle}>About Me</Text>
+        <View style={styles.sectionsContainer}>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons
+                name="information-circle"
+                size={28}
+                color={Colors.primary500}
+              />
+              <Text style={styles.sectionTitle}>About Me</Text>
+            </View>
+            <Text style={styles.aboutText}>{profile.aboutMe}</Text>
           </View>
-          <Text style={styles.aboutText}>{profile.about}</Text>
         </View>
       </View>
     </View>
@@ -96,20 +92,28 @@ export default function Card({
     <View style={styles.contentContainer}>
       <PageIndicator />
       <View style={styles.content}>
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="school" size={28} color={Colors.primary500} />
-            <Text style={styles.sectionTitle}>My major is _, because:</Text>
+        <View style={styles.sectionsContainer}>
+          <View style={[styles.section, { flex: 1 }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="school" size={28} color={Colors.primary500} />
+              <Text style={styles.sectionTitle}>My major is _, because</Text>
+            </View>
+            <Text style={styles.aboutText}>{profile.majorReason}</Text>
           </View>
-          <Text style={styles.aboutText}>{profile.majorReason}</Text>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="book" size={28} color={Colors.primary500} />
-            <Text style={styles.sectionTitle}>My favorite study spot is:</Text>
+          <View style={[styles.section, { flex: 1 }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="book" size={28} color={Colors.primary500} />
+              <Text style={styles.sectionTitle}>My favorite study spot is</Text>
+            </View>
+            <Text style={styles.aboutText}>{profile.studySpot}</Text>
           </View>
-          <Text style={styles.aboutText}>{profile.studySpot}</Text>
+          <View style={[styles.section, { flex: 1 }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="people" size={28} color={Colors.primary500} />
+              <Text style={styles.sectionTitle}>Together we could</Text>
+            </View>
+            <Text style={styles.aboutText}>{profile.potentialActivities}</Text>
+          </View>
         </View>
       </View>
     </View>
@@ -119,30 +123,30 @@ export default function Card({
     <View style={styles.contentContainer}>
       <PageIndicator />
       <View style={styles.content}>
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="star" size={28} color={Colors.primary500} />
-            <Text style={styles.sectionTitle}>
-              This year, I really want to:
-            </Text>
+        <View style={styles.sectionsContainer}>
+          <View style={[styles.section, { flex: 1 }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="star" size={28} color={Colors.primary500} />
+              <Text style={styles.sectionTitle}>
+                This year, I really want to
+              </Text>
+            </View>
+            <Text style={styles.aboutText}>{profile.yearlyGoal}</Text>
           </View>
-          <Text style={styles.aboutText}>{profile.yearlyGoal}</Text>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="people" size={28} color={Colors.primary500} />
-            <Text style={styles.sectionTitle}>Together we could:</Text>
+          <View style={[styles.section, { flex: 1 }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="heart" size={28} color={Colors.primary500} />
+              <Text style={styles.sectionTitle}>Some of my hobbies are</Text>
+            </View>
+            <Text style={styles.aboutText}>{profile.hobbies}</Text>
           </View>
-          <Text style={styles.aboutText}>{profile.potentialActivities}</Text>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="heart" size={28} color={Colors.primary500} />
-            <Text style={styles.sectionTitle}>Some of my hobbies are:</Text>
+          <View style={[styles.section, { flex: 1 }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="film" size={28} color={Colors.primary500} />
+              <Text style={styles.sectionTitle}>Favorite book/movie/song</Text>
+            </View>
+            <Text style={styles.aboutText}>{profile.favoriteMedia}</Text>
           </View>
-          <Text style={styles.aboutText}>{profile.hobbies}</Text>
         </View>
       </View>
     </View>
@@ -246,12 +250,12 @@ const styles = StyleSheet.create({
     opacity: 0.2,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 0, // Remove existing margin
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 20, // Smaller to fit longer prompts
@@ -287,11 +291,13 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 24,
+    paddingBottom: 0, // Remove bottom padding to allow full height
   },
   pageIndicator: {
     flexDirection: 'row',
     justifyContent: 'center',
     paddingTop: 16,
+    paddingHorizontal: 15,
     gap: 8,
   },
   dot: {
@@ -302,5 +308,9 @@ const styles = StyleSheet.create({
   },
   activeDot: {
     backgroundColor: `${Colors.primary500}99`,
+  },
+  sectionsContainer: {
+    flex: 1,
+    justifyContent: 'space-between',
   },
 });
