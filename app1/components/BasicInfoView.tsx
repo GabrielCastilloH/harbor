@@ -7,13 +7,11 @@ import { Profile } from '../types/App';
 
 export interface ViewProps {
   profile: Profile;
-  currentView: number;
 }
 
-export default function BasicInfoView({ profile, currentView }: ViewProps) {
+export default function BasicInfoView({ profile }: ViewProps) {
   return (
     <View style={styles.contentContainer}>
-      <PageIndicator currentView={currentView} />
       <View style={styles.content}>
         <View style={styles.header}>
           <View style={styles.profileHeader}>
@@ -65,27 +63,10 @@ export default function BasicInfoView({ profile, currentView }: ViewProps) {
 }
 
 const styles = StyleSheet.create({
-  cardStyle: {
-    position: 'absolute',
-    width: '92%',
-    height: '92%',
-    backgroundColor: Colors.secondary100,
-    borderRadius: 24,
-    marginHorizontal: '4%',
-    marginVertical: 20,
-    borderWidth: 3,
-    borderColor: `${Colors.primary500}50`,
-    overflow: 'hidden',
-  },
-  gradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    height: '100%',
-  },
   contentContainer: {
     flex: 1,
+    backgroundColor: Colors.secondary100,
+    minHeight: 300,
   },
   header: {
     marginBottom: 24,

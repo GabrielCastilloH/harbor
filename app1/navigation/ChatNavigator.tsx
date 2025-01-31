@@ -1,10 +1,13 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import ChatList from '../screens/ChatList';
 import ChatScreen from '../screens/ChatScreen';
 import LoadingScreen from '../screens/LoadingScreen';
 import Colors from '../constants/Colors';
 import { OverlayProvider, Chat, useCreateChatClient, DeepPartial, Theme } from 'stream-chat-expo';
+import ProfileScreen from '../screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -44,7 +47,7 @@ export default function ChatNavigator() {
   }
 
   return (
-    <OverlayProvider  value={{ style: theme }}>
+    <OverlayProvider value={{ style: theme }}>
       <Chat client={chatClient}>
         <Stack.Navigator
           screenOptions={{
@@ -63,8 +66,20 @@ export default function ChatNavigator() {
           <Stack.Screen
             name="ChatScreen"
             component={ChatScreen}
-            options={{
+            options={({ navigation }) => ({
               headerTitle: 'Messages',
+              headerRight: () => (
+                <TouchableOpacity onPress={() => navigation.navigate('ProfileScreen')}>
+                  <Ionicons name="person" size={24} color={Colors.primary500} />
+                </TouchableOpacity>
+              ),
+            })}
+          />
+          <Stack.Screen
+            name="ProfileScreen"
+            component={ProfileScreen}
+            options={{
+              headerTitle: 'Profile',
             }}
           />
         </Stack.Navigator>

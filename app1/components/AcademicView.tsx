@@ -2,18 +2,11 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
-import PageIndicator from './PageIndicator';
-import { Profile } from '../types/App';
+import { CardViewProps, Profile } from '../types/App';
 
-export interface ViewProps {
-  profile: Profile;
-  currentView: number;
-}
-
-export default function AcademicView({ profile, currentView }: ViewProps) {
+export default function AcademicView({ profile }: CardViewProps) {
   return (
     <View style={styles.contentContainer}>
-      <PageIndicator currentView={currentView} />
       <View style={styles.content}>
         <View style={styles.sectionsContainer}>
           <View style={[styles.section, { flex: 1 }]}>
@@ -46,6 +39,7 @@ export default function AcademicView({ profile, currentView }: ViewProps) {
 const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
+    minHeight: 400,
   },
   header: {
     marginBottom: 24,

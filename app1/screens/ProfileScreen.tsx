@@ -12,26 +12,18 @@ import { mockProfiles } from '../constants/Data';
 const mockProfile = mockProfiles[0];
 
 export default function ProfileScreen() {
-  const [currentView, setCurrentView] = useState(0);
-
   return (
-    <View style={styles.container}>
-      <PageIndicator currentView={currentView} />
       <ScrollView style={styles.scrollView}>
-        <BasicInfoView profile={mockProfile} currentView={currentView} />
-        <AcademicView profile={mockProfile} currentView={currentView} />
-        <PersonalView profile={mockProfile} currentView={currentView} />
+        <BasicInfoView profile={mockProfile} />
+        <AcademicView profile={mockProfile} />
+        <PersonalView profile={mockProfile} />
       </ScrollView>
-    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.secondary100,
-  },
   scrollView: {
     flex: 1,
+    backgroundColor: Colors.secondary100,
   },
 });
