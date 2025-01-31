@@ -38,7 +38,7 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="UserSettings"
+        name="Settings"
         component={SettingsStack}
         options={{
           headerShown: false,
