@@ -32,26 +32,6 @@ export default function SettingsScreen() {
             thumbColor={Colors.secondary100}
           />
         </View>
-
-        <View style={styles.setting}>
-          <Text style={styles.settingText}>Dark Mode</Text>
-          <Switch
-            value={darkMode}
-            onValueChange={setDarkMode}
-            trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
-            thumbColor={Colors.secondary100}
-          />
-        </View>
-
-        <View style={styles.setting}>
-          <Text style={styles.settingText}>Location Services</Text>
-          <Switch
-            value={locationServices}
-            onValueChange={setLocationServices}
-            trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
-            thumbColor={Colors.secondary100}
-          />
-        </View>
         <TouchableOpacity
           style={styles.profileButton}
           onPress={() => navigation.navigate('Profile' as never)}
@@ -121,7 +101,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     color: Colors.primary500,
-    marginBottom: 15,
+    marginBottom: 10,
   },
   setting: {
     flexDirection: 'row',
