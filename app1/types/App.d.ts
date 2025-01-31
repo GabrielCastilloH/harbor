@@ -1,21 +1,21 @@
 type YearLevel = 'Freshman' | 'Sophomore' | 'Junior' | 'Senior' | 'Graduate';
 
-type Profile = {
-  // Basic Info
+export interface Profile {
   id: string;
   firstName: string;
   lastName: string;
+  yearLevel: string;
   age: number;
-  yearLevel: YearLevel;
+  about: string;
   major: string;
-  
-  // Profile Content
-  images: string[];  // URLs to photos, first one is main profile picture
-  about: string;     // bio/description
-  
-  // Interests & Activities
-  interests: string[];    // academic/professional interests
-  hobbies: string[];     // personal hobbies and activities
-};
+  imageUrl: string;
+  aboutMe: string;
+  yearlyGoal: string; // "This year, I really want to:"
+  potentialActivities: string; // "Together we could:"
+  favoriteMedia: string; // "Favorite book, movie or song:"
+  majorReason: string; // "My major is _, because:"
+  studySpot: string; // "My favorite study spot is:"
+  hobbies: string; // "Some of my hobbies are:"
+}
 
 export default Profile;
