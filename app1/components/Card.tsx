@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableWithoutFeedback } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
 import Profile from '../types/App';
@@ -14,36 +19,21 @@ type CardProps = {
   setCurrentView: (view: number) => void;
 };
 
-export default function Card({ 
-  profile, 
-  getCardStyle, 
-  panHandlers, 
+export default function Card({
+  profile,
+  getCardStyle,
+  panHandlers,
   isTopCard,
   currentView,
-  setCurrentView 
+  setCurrentView,
 }: CardProps) {
+  // Remove handlePress function
   
-  const handlePress = (event: any) => {
-    const screenWidth = event.nativeEvent.locationX;
-    const halfScreen = event.nativeEvent.target.offsetWidth / 2;
-    
-    if (screenWidth > halfScreen && currentView === 0) {
-      setCurrentView(1);
-    } else if (screenWidth <= halfScreen && currentView === 1) {
-      setCurrentView(0);
-    }
-  };
-
   const PageIndicator = () => (
     <View style={styles.pageIndicator}>
-      <View style={[
-        styles.dot,
-        currentView === 0 && styles.activeDot
-      ]} />
-      <View style={[
-        styles.dot,
-        currentView === 1 && styles.activeDot
-      ]} />
+      <View style={[styles.dot, currentView === 0 && styles.activeDot]} />
+      <View style={[styles.dot, currentView === 1 && styles.activeDot]} />
+      <View style={[styles.dot, currentView === 2 && styles.activeDot]} />
     </View>
   );
 
@@ -65,7 +55,7 @@ export default function Card({
           <View style={styles.infoContainer}>
             <View style={styles.infoItem}>
               <Ionicons name="school" size={20} color={Colors.primary500} />
-              <Text 
+              <Text
                 style={styles.infoText}
                 numberOfLines={1}
                 ellipsizeMode="tail"
@@ -76,7 +66,7 @@ export default function Card({
             <View style={styles.divider} />
             <View style={styles.infoItem}>
               <Ionicons name="book" size={20} color={Colors.primary500} />
-              <Text 
+              <Text
                 style={styles.infoText}
                 numberOfLines={1}
                 ellipsizeMode="tail"
@@ -89,7 +79,11 @@ export default function Card({
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="information-circle" size={28} color={Colors.primary500} />
+            <Ionicons
+              name="information-circle"
+              size={28}
+              color={Colors.primary500}
+            />
             <Text style={styles.sectionTitle}>About Me</Text>
           </View>
           <Text style={styles.aboutText}>{profile.about}</Text>
@@ -98,40 +92,57 @@ export default function Card({
     </View>
   );
 
-  const InterestsView = () => (
+  const AcademicView = () => (
     <View style={styles.contentContainer}>
-      {/* <LinearGradient
-        colors={[Colors.primary100, Colors.secondary100]}
-        style={styles.gradient}
-      /> */}
+      <PageIndicator />
+      <View style={styles.content}>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="school" size={28} color={Colors.primary500} />
+            <Text style={styles.sectionTitle}>My major is _, because:</Text>
+          </View>
+          <Text style={styles.aboutText}>{profile.majorReason}</Text>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="book" size={28} color={Colors.primary500} />
+            <Text style={styles.sectionTitle}>My favorite study spot is:</Text>
+          </View>
+          <Text style={styles.aboutText}>{profile.studySpot}</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const PersonalView = () => (
+    <View style={styles.contentContainer}>
       <PageIndicator />
       <View style={styles.content}>
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="star" size={28} color={Colors.primary500} />
-            <Text style={styles.sectionTitle}>Interests</Text>
+            <Text style={styles.sectionTitle}>
+              This year, I really want to:
+            </Text>
           </View>
-          <View style={styles.tagsContainer}>
-            {profile.interests.map((interest, index) => (
-              <View key={index} style={styles.tag}>
-                <Text style={styles.tagText}>{interest}</Text>
-              </View>
-            ))}
+          <Text style={styles.aboutText}>{profile.yearlyGoal}</Text>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="people" size={28} color={Colors.primary500} />
+            <Text style={styles.sectionTitle}>Together we could:</Text>
           </View>
+          <Text style={styles.aboutText}>{profile.potentialActivities}</Text>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="heart" size={28} color={Colors.primary500} />
-            <Text style={styles.sectionTitle}>Hobbies</Text>
+            <Text style={styles.sectionTitle}>Some of my hobbies are:</Text>
           </View>
-          <View style={styles.tagsContainer}>
-            {profile.hobbies.map((hobby, index) => (
-              <View key={index} style={styles.tag}>
-                <Text style={styles.tagText}>{hobby}</Text>
-              </View>
-            ))}
-          </View>
+          <Text style={styles.aboutText}>{profile.hobbies}</Text>
         </View>
       </View>
     </View>
@@ -142,15 +153,19 @@ export default function Card({
       style={[
         styles.cardStyle,
         isTopCard ? getCardStyle() : {},
-        { zIndex: isTopCard ? 1 : 0 }
+        { zIndex: isTopCard ? 1 : 0 },
       ]}
       {...(isTopCard ? panHandlers : {})}
     >
-      <TouchableWithoutFeedback onPress={handlePress}>
-        <View style={styles.contentContainer}>
-          {currentView === 0 ? <BasicInfoView /> : <InterestsView />}
-        </View>
-      </TouchableWithoutFeedback>
+      <View style={styles.contentContainer}>
+        {currentView === 0 ? (
+          <BasicInfoView />
+        ) : currentView === 1 ? (
+          <AcademicView />
+        ) : (
+          <PersonalView />
+        )}
+      </View>
     </Animated.View>
   );
 }
@@ -239,7 +254,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 20, // Smaller to fit longer prompts
+    flex: 1, // Allow text to wrap
+    flexWrap: 'wrap',
     fontWeight: '600',
     color: Colors.primary500,
     marginLeft: 12,
@@ -278,7 +295,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   dot: {
-    width: "40%",
+    width: '30%', // Adjust for 3 dots
     height: 4,
     borderRadius: 4,
     backgroundColor: `${Colors.primary500}10`,

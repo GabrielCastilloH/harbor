@@ -34,7 +34,6 @@ export default React.forwardRef(function AnimatedStack({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [nextIndex, setNextIndex] = useState(currentIndex + 1);
   const [currentCardView, setCurrentCardView] = useState(0);
-  const [activeCardIndex, setActiveCardIndex] = useState(currentIndex);
 
   const currentProfile = data[currentIndex];
   const nextProfile = data[nextIndex];
@@ -49,21 +48,13 @@ export default React.forwardRef(function AnimatedStack({
 
   const panGesture = Gesture.Pan()
     .onChange((event) => {
-      // Only handle gesture if this is the active card
-      if (currentIndex === activeCardIndex) {
-        translateX.value += event.changeX;
-      }
+      translateX.value += event.changeX;
     })
     .onFinalize((event) => {
-      if (currentIndex !== activeCardIndex) return;
-
       if (Math.abs(event.velocityX) < SWIPE_VELOCITY) {
         translateX.value = withSpring(0);
         return;
       }
-
-      // Set active card to next index immediately
-      runOnJS(setActiveCardIndex)(currentIndex + 1);
 
       translateX.value = withSpring(
         hiddenTranslateX * Math.sign(event.velocityX),
@@ -75,29 +66,24 @@ export default React.forwardRef(function AnimatedStack({
       onSwipe && runOnJS(onSwipe)(currentProfile);
     });
 
-  const handleRightTap = () => {
-    if (currentCardView === 0) {
-      setCurrentCardView(1);
-    }
-  };
-
-  const handleLeftTap = () => {
-    if (currentCardView === 1) {
-      setCurrentCardView(0);
-    }
-  };
-
+  // Add tap gesture for card view navigation
   const tapGesture = Gesture.Tap()
     .onStart((event) => {
-      const { x } = event;
       const halfScreen = screenWidth / 2;
-      if (x > halfScreen) {
-        runOnJS(handleRightTap)();
+      if (event.x > halfScreen) {
+        // Right side - forward
+        if (currentCardView < 2) {
+          runOnJS(setCurrentCardView)(currentCardView + 1);
+        }
       } else {
-        runOnJS(handleLeftTap)();
+        // Left side - backward
+        if (currentCardView > 0) {
+          runOnJS(setCurrentCardView)(currentCardView - 1);
+        }
       }
     });
 
+  // Combine gestures
   const combinedGestures = Gesture.Race(panGesture, tapGesture);
 
   const cardStyle = useAnimatedStyle(() => ({
@@ -131,32 +117,25 @@ export default React.forwardRef(function AnimatedStack({
   useEffect(() => {
     translateX.value = 0;
     setNextIndex(currentIndex + 1);
-    // Don't update activeCardIndex here
   }, [currentIndex, translateX]);
 
   // Add methods to trigger swipes
   const swipeLeft = () => {
-    if (currentIndex !== activeCardIndex) return;
-    
-    setActiveCardIndex(currentIndex + 1);
     translateX.value = withSpring(
       -hiddenTranslateX,
       {},
       () => runOnJS(setCurrentIndex)(currentIndex + 1),
     );
-    onSwipeLeft && onSwipeLeft(currentProfile);
+    onSwipeLeft && runOnJS(onSwipeLeft)(currentProfile);
   };
 
   const swipeRight = () => {
-    if (currentIndex !== activeCardIndex) return;
-    
-    setActiveCardIndex(currentIndex + 1);
     translateX.value = withSpring(
       hiddenTranslateX,
       {},
       () => runOnJS(setCurrentIndex)(currentIndex + 1),
     );
-    onSwipeRight && onSwipeRight(currentProfile);
+    onSwipeRight && runOnJS(onSwipeRight)(currentProfile);
   };
 
   // Expose methods via ref
@@ -165,12 +144,10 @@ export default React.forwardRef(function AnimatedStack({
     swipeRight,
   }));
 
-  // Reset activeCardIndex when running out of cards
+  // Reset card view when card changes
   useEffect(() => {
-    if (!currentProfile) {
-      setActiveCardIndex(currentIndex);
-    }
-  }, [currentProfile, currentIndex]);
+    setCurrentCardView(0);
+  }, [currentIndex]);
 
   if (!currentProfile) {
     return (
