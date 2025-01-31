@@ -9,7 +9,7 @@ import {
   Image,
 } from 'react-native';
 import Colors from '../constants/Colors';
-import Profile from '../types/App';
+import { Profile } from '../types/App';
 import * as ImagePicker from 'expo-image-picker';
 
 const initialProfile: Profile = {

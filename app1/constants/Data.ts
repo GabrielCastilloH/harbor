@@ -1,4 +1,4 @@
-import Profile from "../types/App";
+import { Profile } from "../types/App";
 
 export const mockProfiles: Profile[] = [
   {

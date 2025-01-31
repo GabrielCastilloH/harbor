@@ -1,6 +1,4 @@
-type YearLevel = 'Freshman' | 'Sophomore' | 'Junior' | 'Senior' | 'Graduate';
-
-export interface Profile {
+export type Profile = {
   id: string;
   firstName: string;
   lastName: string;
@@ -17,4 +15,7 @@ export interface Profile {
   hobbies: string; // "Some of my hobbies are:"
 }
 
-export default Profile;
+export interface CardViewProps {
+  profile: Profile;
+  currentView: number;
+}
