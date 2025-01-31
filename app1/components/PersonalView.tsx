@@ -2,13 +2,11 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
-import PageIndicator from './PageIndicator';
 import { CardViewProps } from '../types/App';
 
-export default function PersonalView({ profile, currentView }: CardViewProps) {
+export default function PersonalView({ profile }: CardViewProps) {
   return (
     <View style={styles.contentContainer}>
-      <PageIndicator currentView={currentView} />
       <View style={styles.content}>
         <View style={styles.sectionsContainer}>
           <View style={[styles.section, { flex: 1 }]}>
@@ -43,6 +41,7 @@ export default function PersonalView({ profile, currentView }: CardViewProps) {
 const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
+    minHeight: 400,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -84,22 +83,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     paddingBottom: 0, // Remove bottom padding to allow full height
-  },
-  pageIndicator: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingTop: 16,
-    paddingHorizontal: 15,
-    gap: 8,
-  },
-  dot: {
-    width: '30%', // Adjust for 3 dots
-    height: 4,
-    borderRadius: 4,
-    backgroundColor: `${Colors.primary500}10`,
-  },
-  activeDot: {
-    backgroundColor: `${Colors.primary500}99`,
   },
   sectionsContainer: {
     flex: 1,

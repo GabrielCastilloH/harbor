@@ -5,6 +5,7 @@ import { Profile } from '../types/App';
 import BasicInfoView from './BasicInfoView';
 import AcademicView from './AcademicView';
 import PersonalView from './PersonalView';
+import PageIndicator from './PageIndicator';
 
 type CardProps = {
   profile: Profile;
@@ -33,12 +34,13 @@ export default function Card({
       {...(isTopCard ? panHandlers : {})}
     >
       <View style={styles.contentContainer}>
+        <PageIndicator currentView={currentView} />
         {currentView === 0 ? (
-          <BasicInfoView profile={profile} currentView={currentView} />
+          <BasicInfoView profile={profile} />
         ) : currentView === 1 ? (
-          <AcademicView profile={profile} currentView={currentView} />
+          <AcademicView profile={profile}/>
         ) : (
-          <PersonalView profile={profile} currentView={currentView} />
+          <PersonalView profile={profile} />
         )}
       </View>
     </Animated.View>
