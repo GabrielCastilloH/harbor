@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   cardStyle: {
     position: 'absolute',
     width: '92%',
-    height: '85%',
+    height: '92%',
     backgroundColor: Colors.secondary200,
     borderRadius: 24,
     marginHorizontal: '4%',
