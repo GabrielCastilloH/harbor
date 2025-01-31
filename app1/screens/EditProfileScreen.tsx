@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
 import Colors from '../constants/Colors';
 import Profile from '../types/App';
 import * as ImagePicker from 'expo-image-picker';
@@ -11,20 +19,23 @@ const initialProfile: Profile = {
   age: 20,
   yearLevel: 'Junior',
   major: 'Computer Science',
-  images: [
-    'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/P_Diddy_2000.jpg/190px-P_Diddy_2000.jpg',
-    'https://is1-ssl.mzstatic.com/image/thumb/Features124/v4/ae/25/77/ae25777e-eddf-937a-21c0-48a0d9ac6137/mza_220473596765865662.png/486x486bb.png',
-    'https://d3i6fh83elv35t.cloudfront.net/static/2024/05/2016-08-29T120000Z_998121212_HT1EC8T03CR5Y_RTRMADP_3_AWARDS-MTV-VMA-1024x726.jpg',
-  ],
-  about: 'Lorem ipsum dolor sit amet.',
-  interests: ['Artificial Intelligence', 'Web Development'],
-  hobbies: ['Photography', 'Hiking'],
+  images: [''],
+  aboutMe: 'Tell us about yourself...',
+  yearlyGoal: 'This year, I want to...',
+  potentialActivities: 'We could...',
+  favoriteMedia: 'My favorite book/movie/song is...',
+  majorReason: 'I chose my major because...',
+  studySpot: 'My favorite study spot is...',
+  hobbies: 'In my free time, I like to...',
 };
 
-export default function ProfileScreen() {
+export default function EditProfileScreen() {
   const [profile, setProfile] = useState<Profile>(initialProfile);
 
-  const handleChange = (key: keyof Profile, value: string | string[]) => {
+  const handleChange = (
+    key: keyof Profile,
+    value: string | number | string[]
+  ) => {
     setProfile({ ...profile, [key]: value });
   };
 
@@ -43,7 +54,10 @@ export default function ProfileScreen() {
 
     if (!result.canceled) {
       if (result.assets && result.assets.length > 0) {
-        setProfile({ ...profile, images: [...profile.images, result.assets[0].uri] });
+        setProfile({
+          ...profile,
+          images: [...profile.images, result.assets[0].uri],
+        });
       }
     }
   };
@@ -58,8 +72,10 @@ export default function ProfileScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {marginTop: 15}]}>Personal Information</Text>
-        
+        <Text style={[styles.sectionTitle, { marginTop: 15 }]}>
+          Personal Information
+        </Text>
+
         <Text style={styles.label}>First Name</Text>
         <TextInput
           style={styles.input}
@@ -67,7 +83,7 @@ export default function ProfileScreen() {
           value={profile.firstName}
           onChangeText={(text) => handleChange('firstName', text)}
         />
-        
+
         <Text style={styles.label}>Last Name</Text>
         <TextInput
           style={styles.input}
@@ -75,7 +91,7 @@ export default function ProfileScreen() {
           value={profile.lastName}
           onChangeText={(text) => handleChange('lastName', text)}
         />
-        
+
         <Text style={styles.label}>Age</Text>
         <TextInput
           style={styles.input}
@@ -84,7 +100,7 @@ export default function ProfileScreen() {
           onChangeText={(text) => handleChange('age', text)}
           keyboardType="numeric"
         />
-        
+
         <Text style={styles.label}>Year Level</Text>
         <TextInput
           style={styles.input}
@@ -92,7 +108,7 @@ export default function ProfileScreen() {
           value={profile.yearLevel}
           onChangeText={(text) => handleChange('yearLevel', text)}
         />
-        
+
         <Text style={styles.label}>Major</Text>
         <TextInput
           style={styles.input}
@@ -100,13 +116,61 @@ export default function ProfileScreen() {
           value={profile.major}
           onChangeText={(text) => handleChange('major', text)}
         />
-        
-        <Text style={styles.label}>About</Text>
+
+        <Text style={styles.label}>About Me</Text>
         <TextInput
           style={styles.input}
           placeholder="About"
-          value={profile.about}
-          onChangeText={(text) => handleChange('about', text)}
+          value={profile.aboutMe}
+          onChangeText={(text) => handleChange('aboutMe', text)}
+        />
+
+        <Text style={styles.label}>This year, I really want to</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="This year, I want to..."
+          value={profile.yearlyGoal}
+          onChangeText={(text) => handleChange('yearlyGoal', text)}
+        />
+
+        <Text style={styles.label}>Together we could</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="We could..."
+          value={profile.potentialActivities}
+          onChangeText={(text) => handleChange('potentialActivities', text)}
+        />
+
+        <Text style={styles.label}>My major is _, because</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="I chose my major because..."
+          value={profile.majorReason}
+          onChangeText={(text) => handleChange('majorReason', text)}
+        />
+
+        <Text style={styles.label}>My favorite study spot is</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="My favorite study spot is..."
+          value={profile.studySpot}
+          onChangeText={(text) => handleChange('studySpot', text)}
+        />
+
+        <Text style={styles.label}>Some of my hobbies are</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="In my free time, I like to..."
+          value={profile.hobbies}
+          onChangeText={(text) => handleChange('hobbies', text)}
+        />
+
+        <Text style={styles.label}>Favorite book, movie or song</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="My favorite book/movie/song is..."
+          value={profile.favoriteMedia}
+          onChangeText={(text) => handleChange('favoriteMedia', text)}
         />
       </View>
 
@@ -116,7 +180,10 @@ export default function ProfileScreen() {
           {profile.images.map((image, index) => (
             <View key={index} style={styles.imageContainer}>
               <Image source={{ uri: image }} style={styles.image} />
-              <TouchableOpacity style={styles.removeButton} onPress={() => removeImage(index)}>
+              <TouchableOpacity
+                style={styles.removeButton}
+                onPress={() => removeImage(index)}
+              >
                 <Text style={styles.removeButtonText}>X</Text>
               </TouchableOpacity>
             </View>
@@ -125,26 +192,6 @@ export default function ProfileScreen() {
             <Text style={styles.addButtonText}>+</Text>
           </TouchableOpacity>
         </ScrollView>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Interests</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Interests (comma separated)"
-          value={profile.interests.join(', ')}
-          onChangeText={(text) => handleChange('interests', text.split(',').map(item => item.trim()))}
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Hobbies</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Hobbies (comma separated)"
-          value={profile.hobbies.join(', ')}
-          onChangeText={(text) => handleChange('hobbies', text.split(',').map(item => item.trim()))}
-        />
       </View>
 
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>

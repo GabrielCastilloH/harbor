@@ -6,9 +6,8 @@ export interface Profile {
   lastName: string;
   yearLevel: string;
   age: number;
-  about: string;
   major: string;
-  imageUrl: string;
+  images: string[];
   aboutMe: string;
   yearlyGoal: string; // "This year, I really want to:"
   potentialActivities: string; // "Together we could:"
