@@ -12,7 +12,7 @@ export default function AcademicView({ profile }: CardViewProps) {
           <View style={[styles.section, { flex: 1 }]}>
             <View style={styles.sectionHeader}>
               <Ionicons name="school" size={28} color={Colors.primary500} />
-              <Text style={styles.sectionTitle}>My major is _, because</Text>
+              <Text style={styles.sectionTitle}>I picked my major because</Text>
             </View>
             <Text style={styles.aboutText}>{profile.majorReason}</Text>
           </View>

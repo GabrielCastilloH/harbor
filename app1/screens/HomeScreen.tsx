@@ -7,7 +7,7 @@ import {
   GestureResponderEvent,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Entypo from '@expo/vector-icons/Entypo';
 import Colors from '../constants/Colors';
 import { mockProfiles } from '../constants/Data';
@@ -76,10 +76,19 @@ export default function HomeScreen() {
           }}
           onPressOut={(event) => handleTouchEnd(event, true)}
         >
-          <Entypo
+          {/* <Entypo
             name="cross"
-            size={43}
+            size={45}
             color={isNoPressed ? Colors.primary100 : Colors.red}
+          /> */}
+
+          <Image
+            source={require('../assets/images/shipwreck.png')}
+            style={{
+              height: 40,
+              width: 40,
+              tintColor: isNoPressed ? Colors.primary100 : Colors.red,
+            }}
           />
         </TouchableOpacity>
         <TouchableOpacity
@@ -94,11 +103,13 @@ export default function HomeScreen() {
           }}
           onPressOut={(event) => handleTouchEnd(event, false)}
         >
-          <Entypo
-            name="check"
-            size={40}
-            color={isYesPressed ? Colors.primary100 : Colors.green}
-          />
+          <View style={{ marginBottom: 3, marginLeft: 2 }}>
+            <FontAwesome6
+              name="sailboat"
+              size={35}
+              color={isYesPressed ? Colors.primary100 : Colors.green}
+            />
+          </View>
         </TouchableOpacity>
       </View>
     </GestureHandlerRootView>
@@ -140,7 +151,7 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 5,
     backgroundColor: Colors.primary100,
   },
   noButton: {
