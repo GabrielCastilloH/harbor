@@ -20,7 +20,7 @@ export default function HomeScreen() {
   const [isYesPressed, setIsYesPressed] = useState(false);
   const [touchStart, setTouchStart] = useState({ x: 0, y: 0 });
   const [showMatch, setShowMatch] = useState(true);
-  const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
+  const [matchedProfile, setMatchedProfile] = useState<Profile | null>(mockProfiles[1]); // Set initial profile
   const stackRef = React.useRef<{
     swipeLeft: () => void;
     swipeRight: () => void;
@@ -94,11 +94,6 @@ export default function HomeScreen() {
           }}
           onPressOut={(event) => handleTouchEnd(event, true)}
         >
-          {/* <Entypo
-            name="cross"
-            size={45}
-            color={isNoPressed ? Colors.primary100 : Colors.red}
-          /> */}
 
           <Image
             source={require('../assets/images/shipwreck.png')}
@@ -134,7 +129,7 @@ export default function HomeScreen() {
         visible={showMatch}
         onClose={() => setShowMatch(false)}
         matchedProfile={matchedProfile}
-        currentProfile={mockProfiles[0]} // Replace with actual current user profile
+        currentProfile={mockProfiles[0]}
       />
     </GestureHandlerRootView>
   );
