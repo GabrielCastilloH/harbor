@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,19 +8,37 @@ import {
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
-import Entypo from '@expo/vector-icons/Entypo';
 import Colors from '../constants/Colors';
 import { mockProfiles } from '../constants/Data';
 import AnimatedStack from '../components/AnimatedStack';
+import MatchModal from './MatchModal';
+import { Profile } from '../types/App';
+import SocketService, { MatchEvent, SOCKET_URL } from '../util/SocketService';
 
 export default function HomeScreen() {
   const [isNoPressed, setIsNoPressed] = useState(false);
   const [isYesPressed, setIsYesPressed] = useState(false);
   const [touchStart, setTouchStart] = useState({ x: 0, y: 0 });
+  const [showMatch, setShowMatch] = useState(true);
+  const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
   const stackRef = React.useRef<{
     swipeLeft: () => void;
     swipeRight: () => void;
   }>(null);
+
+  // useEffect(() => {
+  //   const socketService = SocketService.getInstance();
+  //   socketService.connect(SOCKET_URL);
+
+  //   socketService.onMatch((matchData) => {
+  //     setMatchedProfile(matchData.matchedProfile);
+  //     setShowMatch(true);
+  //   });
+
+  //   return () => {
+  //     socketService.disconnect();
+  //   };
+  // }, []);
 
   const handleTouchStart = (event: GestureResponderEvent) => {
     setTouchStart({
@@ -112,6 +130,12 @@ export default function HomeScreen() {
           </View>
         </TouchableOpacity>
       </View>
+      <MatchModal
+        visible={showMatch}
+        onClose={() => setShowMatch(false)}
+        matchedProfile={matchedProfile}
+        currentProfile={mockProfiles[0]} // Replace with actual current user profile
+      />
     </GestureHandlerRootView>
   );
 }
