@@ -11,11 +11,10 @@ import ProfileScreen from '../screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
-const chatApiKey = 'xm7bebbtpuaq';
+const chatApiKey = process.env.CHAT_API_KEY;
 const chatUserId = 'testUser1';
 const chatUserName = 'testUser1';
-const chatUserToken =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdFVzZXIxIn0.GcklwXL-qVjnpkgQVPznV4TGh4taeVUPunf-xggdJzs';
+const chatUserToken = process.env.CHAT_USER_TOKEN; 
 
 const user = {
   id: chatUserId,
