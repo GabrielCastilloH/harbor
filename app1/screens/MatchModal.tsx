@@ -8,14 +8,14 @@ import BasicInfoView from '../components/BasicInfoView';
 interface MatchModalProps {
   visible: boolean;
   onClose: () => void;
-  matchedProfile: Profile | null; // Update type to allow null
+  matchedProfile: Profile | null; 
   currentProfile: Profile;
 }
 
 const { width } = Dimensions.get('window');
 
 export default function MatchModal({ visible, onClose, matchedProfile, currentProfile }: MatchModalProps) {
-  if (!matchedProfile) return null; // Early return if no matched profile
+  if (!matchedProfile) return null; 
 
   return (
     <Modal
