@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   Image,
+  Alert,
 } from 'react-native';
 import Colors from '../constants/Colors';
 import { Profile } from '../types/App';
@@ -39,12 +40,57 @@ export default function EditProfileScreen() {
     setProfile({ ...profile, [key]: value });
   };
 
+  const validateProfile = (): string[] => {
+    const errors: string[] = [];
+    
+    // Check images
+    if (profile.images.filter(img => img !== '').length < 3) {
+      errors.push('Please add at least 3 images');
+    }
+
+    // Check text fields
+    const textFields: (keyof Profile)[] = [
+      'firstName', 'lastName', 'yearLevel', 'major', 'aboutMe',
+      'yearlyGoal', 'potentialActivities', 'majorReason',
+      'studySpot', 'hobbies', 'favoriteMedia'
+    ];
+
+    textFields.forEach(field => {
+      if (!profile[field] || profile[field].toString().trim() === '') {
+        errors.push(`Please fill in ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+      }
+    });
+
+    // Check age
+    if (!profile.age || profile.age < 18) {
+      errors.push('Please enter a valid age (18+)');
+    }
+
+    return errors;
+  };
+
   const handleSave = () => {
+    const errors = validateProfile();
+    
+    if (errors.length > 0) {
+      Alert.alert(
+        'Cannot Save Profile',
+        errors.join('\n'),
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     // Save profile logic here
     console.log('Profile saved:', profile);
   };
 
   const pickImage = async () => {
+    if (profile.images.filter(img => img !== '').length >= 6) {
+      Alert.alert('Maximum Images', 'You can only add up to 6 images');
+      return;
+    }
+
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -64,9 +110,7 @@ export default function EditProfileScreen() {
 
   const removeImage = (index: number) => {
     const newImages = profile.images.filter((_, i) => i !== index);
-    if (newImages.length >= 3) {
-      setProfile({ ...profile, images: newImages });
-    }
+    setProfile({ ...profile, images: newImages });
   };
 
   return (
@@ -141,7 +185,7 @@ export default function EditProfileScreen() {
           onChangeText={(text) => handleChange('potentialActivities', text)}
         />
 
-        <Text style={styles.label}>My major is _, because</Text>
+        <Text style={styles.label}>I chose my major because...</Text>
         <TextInput
           style={styles.input}
           placeholder="I chose my major because..."
