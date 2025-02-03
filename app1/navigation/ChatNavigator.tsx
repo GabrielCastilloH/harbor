@@ -16,6 +16,13 @@ const chatUserId = 'testUser1';
 const chatUserName = 'testUser1';
 const chatUserToken = process.env.CHAT_USER_TOKEN; 
 
+// const chatApiKey = 'xm7bebbtpuaq';
+// const chatUserId = 'testUser1';
+// const chatUserName = 'testUser1';
+// const chatUserToken =
+//   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdFVzZXIxIn0.GcklwXL-qVjnpkgQVPznV4TGh4taeVUPunf-xggdJzs';
+
+
 const user = {
   id: chatUserId,
   name: chatUserName,
@@ -35,6 +42,8 @@ const theme: DeepPartial<Theme> = {
 };
 
 export default function ChatNavigator() {
+  console.log('chatApiKey', chatApiKey);
+  console.log('chatUserToken', chatUserToken);
   const chatClient = useCreateChatClient({
     apiKey: chatApiKey,
     userData: user,
