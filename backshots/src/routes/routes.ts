@@ -1,10 +1,11 @@
 import express from 'express';
+import { validateUser } from '../middleware/userValidation.js';
 import { createUser, getAllUsers } from '../controllers/userController.js';
 
 const router = express.Router();
 
 // POST new user.
-router.post('/users', createUser);
+router.post('/users', validateUser, createUser);
 
 // GET all users.
 router.get('/users', getAllUsers);
