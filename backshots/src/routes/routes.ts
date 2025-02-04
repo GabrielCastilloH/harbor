@@ -13,39 +13,6 @@ router.get('/users', getAllUsers);
 export default router;
 
 
-// // Route to create a new user
-// router.post('/users', async (req: Request, res: Response) => {
-//   const { first_name, last_name, age, graduation_year, major, email } = req.body;
-//   try {
-//     const user = await User.create({
-//       first_name,
-//       last_name,
-//       age,
-//       graduation_year,
-//       major,
-//       email,
-//     });
-//     res.status(201).json({
-//       message: 'User created successfully',
-//       user, 
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: 'Failed to create user' });
-//   }
-// });
-
-// // Route to get all users
-// router.get('/users', async (req: Request, res: Response) => {
-//   try {
-//     const users = await User.findAll(); 
-//     res.json(users); 
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: 'Failed to fetch users' });
-//   }
-// });
-
 // // Route to get a specific user by ID
 // router.get('/users/:id', async (req: Request, res: Response) => {
 //   const userId = req.params.id;
