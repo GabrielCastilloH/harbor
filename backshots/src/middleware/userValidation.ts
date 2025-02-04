@@ -1,8 +1,7 @@
-import type { Request, Response, NextFunction } from 'express';
-import validator = require('express-validator');
-const { body, validationResult } = validator;
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { ValidationChain, validationResult, body } from 'express-validator';
 
-export const validateUser = [
+const validations: ValidationChain[] = [
   body('firstName').trim().notEmpty().withMessage('First name is required'),
   body('lastName').trim().notEmpty().withMessage('Last name is required'),
   body('yearLevel').trim().notEmpty().withMessage('Year level is required'),
@@ -17,15 +16,19 @@ export const validateUser = [
   body('studySpot').trim().notEmpty().withMessage('Study spot is required'),
   body('hobbies').trim().notEmpty().withMessage('Hobbies are required'),
   body('swipes').isArray().withMessage('Swipes must be an array'),
-  
-  (req: Request, res: Response, next: NextFunction) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        success: false,
-        errors: errors.array() 
-      });
-    }
-    next();
-  }
 ];
+
+const validateResults: RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.status(400).json({ 
+      success: false,
+      errors: errors.array() 
+    });
+    return;
+  }
+  next();
+};
+
+// Explicitly cast the array as RequestHandler[]
+export const validateUser = [...validations, validateResults] as RequestHandler[];
