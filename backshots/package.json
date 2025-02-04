@@ -4,7 +4,10 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build": "tsc"
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "watch": "tsc -w"
   },
   "keywords": [],
   "author": "",
@@ -13,5 +16,9 @@
   "devDependencies": {
     "@types/node": "^22.13.1",
     "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@types/express": "^5.0.0",
+    "express": "^4.21.2"
   }
 }
