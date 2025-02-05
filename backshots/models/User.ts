@@ -1,21 +1,62 @@
+import { getDb } from '../util/database.js';
+export class User {
+  firstName: string;
+  lastName: string;
+  yearLevel: string;
+  age: number;
+  major: string;
+  images: string[];
+  aboutMe: string;
+  yearlyGoal: string;
+  potentialActivities: string;
+  favoriteMedia: string;
+  majorReason: string;
+  studySpot: string;
+  hobbies: string;
+  rightSwipes: string[];
+  leftSwipes: string[];
 
-class User {
-  id!: string;
-  firstName!: string;
-  lastName!: string;
-  yearLevel!: string;
-  age!: number;
-  major!: string;
-  images!: string[];
-  aboutMe!: string;
-  yearlyGoal!: string; // "This year, I really want to:"
-  potentialActivities!: string; // "Together we could:"
-  favoriteMedia!: string; // "Favorite book, movie or song:"
-  majorReason!: string; // "My major is _, because:"
-  studySpot!: string; // "My favorite study spot is:"
-  hobbies!: string; // "Some of my hobbies are:"
+  constructor(
+    firstName: string,
+    lastName: string,
+    yearLevel: string,
+    age: number,
+    major: string,
+    images: string[],
+    aboutMe: string,
+    yearlyGoal: string,
+    potentialActivities: string,
+    favoriteMedia: string,
+    majorReason: string,
+    studySpot: string,
+    hobbies: string,
+    rightSwipes: string[] = [],
+    leftSwipes: string[] = []
+  ) {
+    this.firstName = firstName;
+    this.lastName = lastName;
+    this.yearLevel = yearLevel;
+    this.age = age;
+    this.major = major;
+    this.images = images;
+    this.aboutMe = aboutMe;
+    this.yearlyGoal = yearlyGoal;
+    this.potentialActivities = potentialActivities;
+    this.favoriteMedia = favoriteMedia;
+    this.majorReason = majorReason;
+    this.studySpot = studySpot;
+    this.hobbies = hobbies;
+    this.rightSwipes = rightSwipes;
+    this.leftSwipes = leftSwipes;
+  }
 
-  swipes!: string[];
+  async save() {
+    const db = getDb();
+    try {
+      return await db.collection('users').insertOne(this);
+    } catch (error) {
+      throw error;
+    }
+    
+  }
 }
-
-
