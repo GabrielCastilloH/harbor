@@ -57,6 +57,14 @@ export class User {
     } catch (error) {
       throw error;
     }
-    
+  }
+
+  static async fetchAll() {
+    const db = getDb();
+    try {
+      return await db.collection('users').find().limit(3).toArray();
+    } catch (error) {
+      throw error;
+    }
   }
 }

@@ -13,7 +13,7 @@ const MONGODB_URI =
 const mongoConnect = async (callback: () => void): Promise<void> => {
   try {
     const client = await MongoClient.connect(MONGODB_URI);
-    _db = client.db();
+    _db = client.db('harbor');
     callback();
   } catch (err) {
     console.error('Failed to connect to MongoDB', err);
