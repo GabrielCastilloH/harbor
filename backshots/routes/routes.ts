@@ -3,7 +3,8 @@ import { validateUser } from '../middleware/userValidation.js';
 import { validateSwipe } from '../middleware/swipeValidation.js';
 import {
   createSwipe,
-  getRecentSwipes,
+  countRecentSwipes,
+  getSwipesByUser,
 } from '../controllers/swipeController.js';
 import {
   createUser,
@@ -28,16 +29,16 @@ router.post('/users/:id', updateUser);
 
 // Swipe routes.
 router.post('/swipes', validateSwipe, createSwipe);
-router.get('/swipes/:userId', getRecentSwipes);
+router.get('/swipes/:userId/count', countRecentSwipes);
+router.get('/swipes/:userId', getSwipesByUser);
 
 export default router;
 
 // Route to get 3 recommended users to swipe left or right on
 // In its current form, the recommendation system is very basic and just returns random users
-// who are not the current user, and doesn’t include any more personalized or intelligent logic.
+// who arent the current user, BUT also not users that user has swiped on in the past. 
 // ***easy to integrate an algorithm*** TODO
-
-// router.get('/users/:id/recommendations', );
+router.get('/users/:id/recommendations', );
 
 // // Export the router
 // export { router as allRoutes };

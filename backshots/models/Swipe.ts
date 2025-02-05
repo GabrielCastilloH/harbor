@@ -25,18 +25,30 @@ export class Swipe {
     }
   }
 
-  
-  static async findByTime(userId: ObjectId) {
+  // Returns a count of swipes made by the given user in the past 24 hours.
+  static async countSwipesInPast24Hours(userId: ObjectId) {
     const db = getDb();
     try {
-      const allSwipes = await db
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const swipes = await db
         .collection('swipes')
         .find({ swiperId: userId })
         .toArray();
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      return allSwipes.filter((swipe) => {
+      const count = swipes.filter((swipe) => {
+        // Ensure _id is an ObjectId and use its getTimestamp() method
         return (swipe._id as ObjectId).getTimestamp() > twentyFourHoursAgo;
-      });
+      }).length;
+      return count;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Returns all swipes made by the given user.
+  static async findSwipesByUser(userId: ObjectId) {
+    const db = getDb();
+    try {
+      return await db.collection('swipes').find({ swiperId: userId }).toArray();
     } catch (error) {
       throw error;
     }
