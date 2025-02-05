@@ -1,22 +1,31 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient, Db } from 'mongodb';
 import environment from './environment.js';
 
+let _db: Db | undefined;
+
 const MONGODB_URI =
-  environment.mongoURI || 'mongodb://localhost:27017/your_database';
+  environment.mongoURI ||
+  (() => {
+    console.log('MongoDB URI not found in environment variables');
+    throw new Error('MongoDB URI not found in environment variables');
+  })();
 
-console.log(MONGODB_URI);
-
-const mongoConnect = async (
-  callback: (client: MongoClient) => void
-): Promise<void> => {
+const mongoConnect = async (callback: () => void): Promise<void> => {
   try {
     const client = await MongoClient.connect(MONGODB_URI);
-    console.log('Connected to MongoDB');
-    callback(client);
+    _db = client.db();
+    callback();
   } catch (err) {
     console.error('Failed to connect to MongoDB', err);
     throw err;
   }
 };
 
-export default mongoConnect;
+const getDb = () => {
+  if (_db) {
+    return _db;
+  }
+  throw 'No database found!';
+};
+
+export { mongoConnect, getDb };
