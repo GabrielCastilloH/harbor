@@ -14,8 +14,7 @@ export class User {
   majorReason: string;
   studySpot: string;
   hobbies: string;
-  rightSwipes: string[];
-  leftSwipes: string[];
+  swipes: ObjectId[];
 
   constructor(
     firstName: string,
@@ -31,8 +30,7 @@ export class User {
     majorReason: string,
     studySpot: string,
     hobbies: string,
-    rightSwipes: string[] = [],
-    leftSwipes: string[] = []
+    swipes: ObjectId[],
   ) {
     this.firstName = firstName;
     this.lastName = lastName;
@@ -47,8 +45,7 @@ export class User {
     this.majorReason = majorReason;
     this.studySpot = studySpot;
     this.hobbies = hobbies;
-    this.rightSwipes = rightSwipes;
-    this.leftSwipes = leftSwipes;
+    this.swipes = swipes;
   }
 
   async save() {

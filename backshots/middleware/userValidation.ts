@@ -71,13 +71,11 @@ const validations: ValidationChain[] = [
     .notEmpty()
     .withMessage('Hobbies are required'),
 
-  body('leftSwipes')
+  // Since swipes will be managed in a separate collection, we either remove these fields or validate an optional swipes array.
+  body('swipes')
+    .optional()
     .isArray()
-    .withMessage('Left swipes must be an array'),
-
-  body('rightSwipes')
-    .isArray()
-    .withMessage('Right swipes must be an array'),
+    .withMessage('Swipes must be an array'),
 ];
 
 const validateResults: RequestHandler = async (

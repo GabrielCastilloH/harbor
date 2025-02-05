@@ -17,8 +17,7 @@ export const createUser = async (req: Request, res: Response) => {
     majorReason,
     studySpot,
     hobbies,
-    leftSwipes,
-    rightSwipes,
+    swipes
   } = req.body;
 
   const user = new User(
@@ -35,8 +34,7 @@ export const createUser = async (req: Request, res: Response) => {
     majorReason,
     studySpot,
     hobbies,
-    leftSwipes,
-    rightSwipes
+    swipes,
   );
 
   try {
