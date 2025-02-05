@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { User } from '../models/User.js';
+import { ObjectId } from 'mongodb';
 
 export const createUser = async (req: Request, res: Response) => {
   const {
@@ -56,5 +57,27 @@ export const getAllUsers = async (req: Request, res: Response) => {
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch users' });
+  }
+};
+
+// Get user by ID
+export const getUserById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      res.status(400).json({ message: 'User ID is required' });
+      return;
+    }
+    const user = await User.findById(new ObjectId(id));
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+    res.status(200).json(user);
+  } catch (error: any) {
+    res.status(500).json({
+      message: 'Failed to fetch user',
+      error: error.message || error,
+    });
   }
 };

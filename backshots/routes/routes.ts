@@ -1,6 +1,6 @@
 import express from 'express';
 import { validateUser } from '../middleware/userValidation.js';
-import { createUser, getAllUsers } from '../controllers/userController.js';
+import { createUser, getAllUsers, getUserById  } from '../controllers/userController.js';
 
 const router = express.Router();
 
@@ -9,6 +9,9 @@ router.post('/users', validateUser, createUser);
 
 // GET all users.
 router.get('/users', getAllUsers);
+
+// GET a specific user by ID
+router.get('/users/:id', getUserById);
 
 export default router;
 
