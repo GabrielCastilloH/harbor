@@ -8,9 +8,9 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    
+    "types": ["node"],
     "outDir": "./dist"
   },
-  "include": ["src/**/*.ts", "index.ts"],
+  "include": ["src/**/*.ts", "*.ts"],
   "exclude": ["node_modules"]
 }
