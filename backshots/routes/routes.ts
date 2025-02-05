@@ -13,6 +13,8 @@ import {
   updateUser,
 } from '../controllers/userController.js';
 
+import { getRecommendations } from '../controllers/algoDaddy.js';
+
 const router = express.Router();
 
 // POST new user.
@@ -32,13 +34,7 @@ router.post('/swipes', validateSwipe, createSwipe);
 router.get('/swipes/:userId/count', countRecentSwipes);
 router.get('/swipes/:userId', getSwipesByUser);
 
+// Get recommendations
+router.get('/users/:id/recommendations', getRecommendations);
+
 export default router;
-
-// Route to get 3 recommended users to swipe left or right on
-// In its current form, the recommendation system is very basic and just returns random users
-// who arent the current user, BUT also not users that user has swiped on in the past. 
-// ***easy to integrate an algorithm*** TODO
-router.get('/users/:id/recommendations', );
-
-// // Export the router
-// export { router as allRoutes };
