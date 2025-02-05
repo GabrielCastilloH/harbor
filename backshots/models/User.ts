@@ -1,3 +1,4 @@
+import { ObjectId } from 'mongodb';
 import { getDb } from '../util/database.js';
 export class User {
   firstName: string;
@@ -63,6 +64,15 @@ export class User {
     const db = getDb();
     try {
       return await db.collection('users').find().limit(3).toArray();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async findById(id: ObjectId) {
+    const db = getDb();
+    try {
+      return db.collection('users').findOne({ _id: id });
     } catch (error) {
       throw error;
     }
