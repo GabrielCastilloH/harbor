@@ -7,12 +7,18 @@ export const createSwipe = async (req: Request, res: Response) => {
   const { swiperId, swipedId, direction } = req.body;
 
   if (!swiperId || !swipedId || !direction) {
-    res.status(400).json({ message: 'swiperId, swipedId, and direction are required' });
-    return 
+    res
+      .status(400)
+      .json({ message: 'swiperId, swipedId, and direction are required' });
+    return;
   }
 
   try {
-    const swipe = new Swipe(new ObjectId(swiperId as string), new ObjectId(swipedId as string), direction);
+    const swipe = new Swipe(
+      new ObjectId(swiperId as string),
+      new ObjectId(swipedId as string),
+      direction
+    );
     await swipe.save();
     res.status(201).json({
       message: 'Swipe recorded successfully',
@@ -26,19 +32,47 @@ export const createSwipe = async (req: Request, res: Response) => {
   }
 };
 
-// Fetches all swipes made by the given user in the past 24 hours.
-export const getRecentSwipes = async (req: Request, res: Response) => {
+// Fetches the count of swipes made by the given user in the past 24 hours.
+export const countRecentSwipes = async (req: Request, res: Response) => {
   const { userId } = req.params;
 
   if (!userId) {
     res.status(400).json({ message: 'User ID is required' });
-    return
+    return;
   }
 
   try {
-    const swipes = await Swipe.findByTime(new ObjectId(userId));
+    const swipeCount = await Swipe.countSwipesInPast24Hours(
+      new ObjectId(userId)
+    );
     res.status(200).json({
-      message: 'Fetched swipes successfully',
+      message: 'Fetched recent swipe count successfully',
+      swipeCount,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      message: 'Failed to fetch swipe count',
+      error: error.message || error,
+    });
+  }
+};
+
+// Fetches all swipes made by a given user.
+export const getSwipesByUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    res.status(400).json({ message: 'User ID is required' });
+    return;
+  }
+
+  try {
+    const swipes = await Swipe.findSwipesByUser(new ObjectId(userId));
+    res.status(200).json({
+      message: 'Swipes fetched successfully',
       swipes,
     });
   } catch (error: any) {
