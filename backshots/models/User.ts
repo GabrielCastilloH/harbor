@@ -77,4 +77,22 @@ export class User {
       throw error;
     }
   }
+
+  static async updateById(id: ObjectId, updatedData: Partial<User>) {
+    const db = getDb();
+    try {
+      const result = await db.collection('users').updateOne(
+        { _id: id },
+        { $set: updatedData }
+      );
+      if (result.matchedCount === 0) {
+        return null;
+      }
+      return await User.findById(id);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+
 }

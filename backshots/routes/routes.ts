@@ -1,6 +1,6 @@
 import express from 'express';
 import { validateUser } from '../middleware/userValidation.js';
-import { createUser, getAllUsers, getUserById  } from '../controllers/userController.js';
+import { createUser, getAllUsers, getUserById, updateUser  } from '../controllers/userController.js';
 
 const router = express.Router();
 
@@ -13,24 +13,11 @@ router.get('/users', getAllUsers);
 // GET a specific user by ID
 router.get('/users/:id', getUserById);
 
+// POST update a new user.
+router.post('/users/:id', updateUser);
+
+
 export default router;
-
-
-// // Route to get a specific user by ID
-// router.get('/users/:id', async (req: Request, res: Response) => {
-//   const userId = req.params.id;
-//   try {
-//     const user = await User.findOne({ where: { id: userId } });
-//     if (user) {
-//       res.json(user);
-//     } else {
-//       res.status(404).json({ message: `User with ID ${userId} not found` });
-//     }
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: 'Failed to fetch user' });
-//   }
-// });
 
 // // Route to update a user (edit user details)
 // router.put('/users/:id', async (req: Request, res: Response) => {

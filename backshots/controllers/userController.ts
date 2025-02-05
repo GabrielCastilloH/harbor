@@ -81,3 +81,29 @@ export const getUserById = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Update user data by ID.
+export const updateUser = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      res.status(400).json({ message: 'User ID is required' });
+      return;
+    }
+    const updatedData = req.body;
+    const updatedUser = await User.updateById(new ObjectId(id), updatedData);
+    if (!updatedUser) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+    res.status(200).json({
+      message: 'User updated successfully',
+      user: updatedUser,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      message: 'Failed to update user',
+      error: error.message || error,
+    });
+  }
+};
