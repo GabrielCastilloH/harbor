@@ -1,3 +1,4 @@
+//// filepath: /Users/gabrielcastillo/Developer/AppDevelopment/app1/app1/components/AnimatedStack.tsx
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, useWindowDimensions, Text } from 'react-native';
 import Animated, {
@@ -51,7 +52,7 @@ export default React.forwardRef(function AnimatedStack(
       'deg'
   );
 
-  // Helper function to post swipe data
+  // Wrap postSwipe in a helper that handles errors asynchronously.
   const postSwipe = async (direction: 'left' | 'right', swipedProfile: Profile) => {
     try {
       await axios.post(`${serverUrl}/swipes`, {
@@ -61,6 +62,16 @@ export default React.forwardRef(function AnimatedStack(
       });
     } catch (error) {
       console.log('Error posting swipe:', error);
+    }
+  };
+
+  // A helper to handle both posting swipe data and calling any callback.
+  const handleSwipe = (direction: 'left' | 'right', profile: Profile) => {
+    postSwipe(direction, profile);
+    if (direction === 'right' && onSwipeRight) {
+      onSwipeRight(profile);
+    } else if (direction === 'left' && onSwipeLeft) {
+      onSwipeLeft(profile);
     }
   };
 
@@ -81,14 +92,8 @@ export default React.forwardRef(function AnimatedStack(
         () => runOnJS(setCurrentIndex)(currentIndex + 1)
       );
 
-      // Post swipe data and call callback if provided.
-      if (swipeDirection === 'right') {
-        postSwipe('right', currentProfile);
-        onSwipeRight && runOnJS(onSwipeRight)(currentProfile);
-      } else {
-        postSwipe('left', currentProfile);
-        onSwipeLeft && runOnJS(onSwipeLeft)(currentProfile);
-      }
+      // Wrap asynchronous backend logic on the JS thread.
+      runOnJS(handleSwipe)(swipeDirection, currentProfile);
     });
 
   // Add tap gesture for card view navigation
@@ -141,19 +146,13 @@ export default React.forwardRef(function AnimatedStack(
 
   // Add methods to trigger swipes via ref
   const swipeLeft = () => {
-    translateX.value = withSpring(-hiddenTranslateX, {}, () =>
-      runOnJS(setCurrentIndex)(currentIndex + 1)
-    );
-    postSwipe('left', currentProfile);
-    onSwipeLeft && runOnJS(onSwipeLeft)(currentProfile);
+    translateX.value = withSpring(-hiddenTranslateX, {}, () => runOnJS(setCurrentIndex)(currentIndex + 1));
+    runOnJS(handleSwipe)('left', currentProfile);
   };
 
   const swipeRight = () => {
-    translateX.value = withSpring(hiddenTranslateX, {}, () =>
-      runOnJS(setCurrentIndex)(currentIndex + 1)
-    );
-    postSwipe('right', currentProfile);
-    onSwipeRight && runOnJS(onSwipeRight)(currentProfile);
+    translateX.value = withSpring(hiddenTranslateX, {}, () => runOnJS(setCurrentIndex)(currentIndex + 1));
+    runOnJS(handleSwipe)('right', currentProfile);
   };
 
   // Expose methods via ref
