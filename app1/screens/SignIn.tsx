@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   View,
   Text,
@@ -6,9 +7,11 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import React from 'react';
+import axios from 'axios';
 import Colors from '../constants/Colors';
 import { useAppContext } from '../context/AppContext';
+
+const serverUrl = 'https://your-server-url.com'; // replace with your actual server URL
 
 const mockCornellAuth = async () => {
   // Simulate API call delay
@@ -18,13 +21,28 @@ const mockCornellAuth = async () => {
 };
 
 export default function SignIn() {
-  const { setIsAuthenticated } = useAppContext();
+  const { setIsAuthenticated, setUserId } = useAppContext();
 
   const handleSignIn = async () => {
     try {
       const success = await mockCornellAuth();
       if (success) {
         setIsAuthenticated(true);
+        // Simulate getting the authenticated user's email.
+        const email = 'gac232@cornell.edu';
+        try {
+          // Use axios to check if the user exists.
+          const response = await axios.get(
+            `${serverUrl}/users/email/${email}`
+          );
+          // If a user is found (assumes the returned user object has _id)
+          if (response.data && response.data._id) {
+            setUserId(response.data._id);
+          }
+        } catch (error) {
+          // User not found: leave userId empty so that EditProfileScreen shows.
+          console.log('User not found, will prompt to create profile.');
+        }
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to sign in. Please try again.');

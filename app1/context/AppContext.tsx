@@ -7,6 +7,8 @@ interface AppContextType {
   setThread: (thread: any) => void;
   isAuthenticated: boolean;
   setIsAuthenticated: (isAuthenticated: boolean) => void;
+  userId: string;
+  setUserId: (userId: string) => void;
 }
 
 const defaultValue: AppContextType = {
@@ -16,6 +18,8 @@ const defaultValue: AppContextType = {
   setThread: () => {},
   isAuthenticated: false,
   setIsAuthenticated: () => {},
+  userId: '',
+  setUserId: () => {},
 };
 
 export const AppContext = React.createContext<AppContextType>(defaultValue);
@@ -28,6 +32,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [channel, setChannel] = useState<any>(null);
   const [thread, setThread] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userId, setUserId] = useState('');
 
   return (
     <AppContext.Provider value={{ 
@@ -36,7 +41,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       thread, 
       setThread,
       isAuthenticated,
-      setIsAuthenticated
+      setIsAuthenticated,
+      userId,
+      setUserId
     }}>
       {children}
     </AppContext.Provider>

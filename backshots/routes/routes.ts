@@ -9,6 +9,7 @@ import {
 import {
   createUser,
   getAllUsers,
+  getUserByEmail,
   getUserById,
   updateUser,
 } from '../controllers/userController.js';
@@ -25,6 +26,9 @@ router.get('/users', getAllUsers);
 
 // GET a specific user by ID
 router.get('/users/:id', getUserById);
+
+// GET a specific user by email
+router.get('/users/email/:email', getUserByEmail);
 
 // POST update a new user.
 router.post('/users/:id', updateUser);

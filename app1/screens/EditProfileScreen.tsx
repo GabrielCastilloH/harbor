@@ -12,81 +12,123 @@ import {
 import Colors from '../constants/Colors';
 import { Profile } from '../types/App';
 import * as ImagePicker from 'expo-image-picker';
+import axios from 'axios';
+import { useAppContext } from '../context/AppContext';
 
-const initialProfile: Profile = {
-  id: '1',
-  firstName: 'John',
-  lastName: 'Doe',
-  age: 20,
-  yearLevel: 'Junior',
-  major: 'Computer Science',
-  images: [''],
-  aboutMe: 'Tell us about yourself...',
-  yearlyGoal: 'This year, I want to...',
-  potentialActivities: 'We could...',
-  favoriteMedia: 'My favorite book/movie/song is...',
-  majorReason: 'I chose my major because...',
-  studySpot: 'My favorite study spot is...',
-  hobbies: 'In my free time, I like to...',
+const serverUrl = process.env.SERVER_URL
+
+const emptyProfile: Profile = {
+  email: '',
+  firstName: '',
+  lastName: '',
+  age: 0,
+  yearLevel: '',
+  major: '',
+  images: [],
+  aboutMe: '',
+  yearlyGoal: '',
+  potentialActivities: '',
+  favoriteMedia: '',
+  majorReason: '',
+  studySpot: '',
+  hobbies: '',
 };
 
-export default function EditProfileScreen() {
-  const [profile, setProfile] = useState<Profile>(initialProfile);
+interface EditProfileScreenProps {
+  isAccountSetup?: boolean;
+}
+
+export default function EditProfileScreen({
+  isAccountSetup,
+}: EditProfileScreenProps) {
+  const { setUserId } = useAppContext();
+  const [profileData, setProfileData] = useState<Profile>(emptyProfile);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (
     key: keyof Profile,
     value: string | number | string[]
   ) => {
-    setProfile({ ...profile, [key]: value });
+    setProfileData({ ...profileData, [key]: value });
   };
 
   const validateProfile = (): string[] => {
     const errors: string[] = [];
     
     // Check images
-    if (profile.images.filter(img => img !== '').length < 3) {
+    if (profileData.images.filter((img) => img !== '').length < 3) {
       errors.push('Please add at least 3 images');
     }
 
     // Check text fields
     const textFields: (keyof Profile)[] = [
-      'firstName', 'lastName', 'yearLevel', 'major', 'aboutMe',
-      'yearlyGoal', 'potentialActivities', 'majorReason',
-      'studySpot', 'hobbies', 'favoriteMedia'
+      'firstName',
+      'lastName',
+      'yearLevel',
+      'major',
+      'aboutMe',
+      'yearlyGoal',
+      'potentialActivities',
+      'majorReason',
+      'studySpot',
+      'hobbies',
+      'favoriteMedia',
     ];
 
-    textFields.forEach(field => {
-      if (!profile[field] || profile[field].toString().trim() === '') {
-        errors.push(`Please fill in ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+    textFields.forEach((field) => {
+      if (
+        !profileData[field] ||
+        profileData[field].toString().trim() === ''
+      ) {
+        errors.push(
+          `Please fill in ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`
+        );
       }
     });
 
     // Check age
-    if (!profile.age || profile.age < 18) {
+    if (!profileData.age || profileData.age < 18) {
       errors.push('Please enter a valid age (18+)');
     }
 
     return errors;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const errors = validateProfile();
-    
     if (errors.length > 0) {
-      Alert.alert(
-        'Cannot Save Profile',
-        errors.join('\n'),
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Cannot Save Profile', errors.join('\n'), [{ text: 'OK' }]);
       return;
     }
 
-    // Save profile logic here
-    console.log('Profile saved:', profile);
+    try {
+      const response = await axios.post(`${serverUrl}users`, profileData);
+      if (response.data && response.data.user && response.data.user._id) {
+        setUserId(response.data.user._id);
+      }
+    } catch (error: any) {
+      console.log('Failed to save profile:', error);
+
+      // Attempt to extract error details from the backend response.
+      let errorMessage = 'Failed to save profile';
+      if (error.response && error.response.data) {
+        // If you have structured error data like { message: string, errors: string[] }
+        if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+        if (error.response.data.errors) {
+          errorMessage += '\n' + error.response.data.errors.join('\n');
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      Alert.alert('Error', errorMessage);
+    }
   };
 
   const pickImage = async () => {
-    if (profile.images.filter(img => img !== '').length >= 6) {
+    if (profileData.images.filter((img) => img !== '').length >= 6) {
       Alert.alert('Maximum Images', 'You can only add up to 6 images');
       return;
     }
@@ -100,31 +142,44 @@ export default function EditProfileScreen() {
 
     if (!result.canceled) {
       if (result.assets && result.assets.length > 0) {
-        setProfile({
-          ...profile,
-          images: [...profile.images, result.assets[0].uri],
+        setProfileData({
+          ...profileData,
+          images: [...profileData.images, result.assets[0].uri],
         });
       }
     }
   };
 
   const removeImage = (index: number) => {
-    const newImages = profile.images.filter((_, i) => i !== index);
-    setProfile({ ...profile, images: newImages });
+    const newImages = profileData.images.filter((_, i) => i !== index);
+    setProfileData({ ...profileData, images: newImages });
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading profile...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { marginTop: 15 }]}>
-          Personal Information
+        <Text
+          style={[
+            styles.sectionTitle,
+            { marginTop: isAccountSetup ? 100 : 15 },
+          ]}
+        >
+          {isAccountSetup ? 'Setup your Account' : 'Personal Information'}
         </Text>
 
         <Text style={styles.label}>First Name</Text>
         <TextInput
           style={styles.input}
           placeholder="First Name"
-          value={profile.firstName}
+          value={profileData.firstName}
           onChangeText={(text) => handleChange('firstName', text)}
         />
 
@@ -132,7 +187,7 @@ export default function EditProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder="Last Name"
-          value={profile.lastName}
+          value={profileData.lastName}
           onChangeText={(text) => handleChange('lastName', text)}
         />
 
@@ -140,8 +195,8 @@ export default function EditProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder="Age"
-          value={profile.age.toString()}
-          onChangeText={(text) => handleChange('age', text)}
+          value={profileData.age ? profileData.age.toString() : ''}
+          onChangeText={(text) => handleChange('age', Number(text))}
           keyboardType="numeric"
         />
 
@@ -149,7 +204,7 @@ export default function EditProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder="Year Level"
-          value={profile.yearLevel}
+          value={profileData.yearLevel}
           onChangeText={(text) => handleChange('yearLevel', text)}
         />
 
@@ -157,15 +212,15 @@ export default function EditProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder="Major"
-          value={profile.major}
+          value={profileData.major}
           onChangeText={(text) => handleChange('major', text)}
         />
 
         <Text style={styles.label}>About Me</Text>
         <TextInput
           style={styles.input}
-          placeholder="About"
-          value={profile.aboutMe}
+          placeholder="Tell us about yourself..."
+          value={profileData.aboutMe}
           onChangeText={(text) => handleChange('aboutMe', text)}
         />
 
@@ -173,7 +228,7 @@ export default function EditProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder="This year, I want to..."
-          value={profile.yearlyGoal}
+          value={profileData.yearlyGoal}
           onChangeText={(text) => handleChange('yearlyGoal', text)}
         />
 
@@ -181,7 +236,7 @@ export default function EditProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder="We could..."
-          value={profile.potentialActivities}
+          value={profileData.potentialActivities}
           onChangeText={(text) => handleChange('potentialActivities', text)}
         />
 
@@ -189,7 +244,7 @@ export default function EditProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder="I chose my major because..."
-          value={profile.majorReason}
+          value={profileData.majorReason}
           onChangeText={(text) => handleChange('majorReason', text)}
         />
 
@@ -197,7 +252,7 @@ export default function EditProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder="My favorite study spot is..."
-          value={profile.studySpot}
+          value={profileData.studySpot}
           onChangeText={(text) => handleChange('studySpot', text)}
         />
 
@@ -205,7 +260,7 @@ export default function EditProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder="In my free time, I like to..."
-          value={profile.hobbies}
+          value={profileData.hobbies}
           onChangeText={(text) => handleChange('hobbies', text)}
         />
 
@@ -213,7 +268,7 @@ export default function EditProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder="My favorite book/movie/song is..."
-          value={profile.favoriteMedia}
+          value={profileData.favoriteMedia}
           onChangeText={(text) => handleChange('favoriteMedia', text)}
         />
       </View>
@@ -221,7 +276,7 @@ export default function EditProfileScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Profile Images</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {profile.images.map((image, index) => (
+          {profileData.images.map((image, index) => (
             <View key={index} style={styles.imageContainer}>
               <Image source={{ uri: image }} style={styles.image} />
               <TouchableOpacity
@@ -258,7 +313,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.primary500,
     marginBottom: 10,
-    marginTop: 15,
   },
   label: {
     fontSize: 16,
@@ -316,5 +370,10 @@ const styles = StyleSheet.create({
     color: Colors.secondary100,
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
