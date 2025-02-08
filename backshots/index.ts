@@ -1,5 +1,6 @@
 import express from 'express';
 import routes from './routes/routes.js';
+import authRoutes from './routes/authRoutes.js';
 import { mongoConnect } from './util/database.js';
 
 const app = express();
@@ -12,6 +13,8 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 
 app.use(express.json());
 app.use('/', routes);
+app.use('/auth', authRoutes); // All auth routes will be prefixed with /auth
+
 
 mongoConnect(() => {
   app.listen(port, () => {
