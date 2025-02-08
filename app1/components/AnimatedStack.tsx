@@ -9,11 +9,14 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import axios from 'axios';
 import Card from './Card';
 import { Profile } from '../types/App';
+import { useAppContext } from '../context/AppContext';
 
 const ROTATION = 60;
 const SWIPE_VELOCITY = 800;
+const serverUrl = process.env.SERVER_URL; // Ensure this is configured correctly
 
 // Add new prop types
 type AnimatedStackProps = {
@@ -30,6 +33,7 @@ export default React.forwardRef(function AnimatedStack(
   { data, onSwipeRight, onSwipeLeft }: AnimatedStackProps,
   ref
 ) {
+  const { userId } = useAppContext();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [nextIndex, setNextIndex] = useState(currentIndex + 1);
   const [currentCardView, setCurrentCardView] = useState(0);
@@ -47,6 +51,19 @@ export default React.forwardRef(function AnimatedStack(
       'deg'
   );
 
+  // Helper function to post swipe data
+  const postSwipe = async (direction: 'left' | 'right', swipedProfile: Profile) => {
+    try {
+      await axios.post(`${serverUrl}/swipes`, {
+        swiperId: userId,
+        swipedId: swipedProfile._id, // ensure _id exists in your Profile type
+        direction,
+      });
+    } catch (error) {
+      console.log('Error posting swipe:', error);
+    }
+  };
+
   const panGesture = Gesture.Pan()
     .onChange((event) => {
       translateX.value += event.changeX;
@@ -57,14 +74,21 @@ export default React.forwardRef(function AnimatedStack(
         return;
       }
 
+      const swipeDirection = event.velocityX > 0 ? 'right' : 'left';
       translateX.value = withSpring(
         hiddenTranslateX * Math.sign(event.velocityX),
         {},
         () => runOnJS(setCurrentIndex)(currentIndex + 1)
       );
 
-      const onSwipe = event.velocityX > 0 ? onSwipeRight : onSwipeLeft;
-      onSwipe && runOnJS(onSwipe)(currentProfile);
+      // Post swipe data and call callback if provided.
+      if (swipeDirection === 'right') {
+        postSwipe('right', currentProfile);
+        onSwipeRight && runOnJS(onSwipeRight)(currentProfile);
+      } else {
+        postSwipe('left', currentProfile);
+        onSwipeLeft && runOnJS(onSwipeLeft)(currentProfile);
+      }
     });
 
   // Add tap gesture for card view navigation
@@ -88,12 +112,8 @@ export default React.forwardRef(function AnimatedStack(
 
   const cardStyle = useAnimatedStyle(() => ({
     transform: [
-      {
-        translateX: translateX.value,
-      },
-      {
-        rotate: rotate.value,
-      },
+      { translateX: translateX.value },
+      { rotate: rotate.value },
     ],
   }));
 
@@ -119,11 +139,12 @@ export default React.forwardRef(function AnimatedStack(
     setNextIndex(currentIndex + 1);
   }, [currentIndex, translateX]);
 
-  // Add methods to trigger swipes
+  // Add methods to trigger swipes via ref
   const swipeLeft = () => {
     translateX.value = withSpring(-hiddenTranslateX, {}, () =>
       runOnJS(setCurrentIndex)(currentIndex + 1)
     );
+    postSwipe('left', currentProfile);
     onSwipeLeft && runOnJS(onSwipeLeft)(currentProfile);
   };
 
@@ -131,6 +152,7 @@ export default React.forwardRef(function AnimatedStack(
     translateX.value = withSpring(hiddenTranslateX, {}, () =>
       runOnJS(setCurrentIndex)(currentIndex + 1)
     );
+    postSwipe('right', currentProfile);
     onSwipeRight && runOnJS(onSwipeRight)(currentProfile);
   };
 
