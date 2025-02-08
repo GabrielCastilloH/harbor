@@ -1,4 +1,3 @@
-//// filepath: /Users/gabrielcastillo/Developer/AppDevelopment/app1/app/App.tsx
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
@@ -24,7 +23,7 @@ function AppContent() {
         ) : userId ? (
           <TabNavigator />
         ) : (
-          <EditProfileScreen />
+          <EditProfileScreen isAccountSetup />
         )}
       </NavigationContainer>
     </GestureHandlerRootView>
