@@ -11,7 +11,7 @@ import axios from 'axios';
 import Colors from '../constants/Colors';
 import { useAppContext } from '../context/AppContext';
 
-const serverUrl = 'https://your-server-url.com'; // replace with your actual server URL
+const serverUrl = process.env.SERVER_URL; // replace with your actual server URL
 
 const mockCornellAuth = async () => {
   // Simulate API call delay
@@ -33,7 +33,7 @@ export default function SignIn() {
         try {
           // Use axios to check if the user exists.
           const response = await axios.get(
-            `${serverUrl}/users/email/${email}`
+            `${serverUrl}users/email/${email}`
           );
           // If a user is found (assumes the returned user object has _id)
           if (response.data && response.data._id) {

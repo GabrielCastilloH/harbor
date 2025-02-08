@@ -18,6 +18,7 @@ import { useAppContext } from '../context/AppContext';
 const serverUrl = process.env.SERVER_URL
 
 const emptyProfile: Profile = {
+  _id: '',
   email: '',
   firstName: '',
   lastName: '',
@@ -41,7 +42,7 @@ interface EditProfileScreenProps {
 export default function EditProfileScreen({
   isAccountSetup,
 }: EditProfileScreenProps) {
-  const { setUserId } = useAppContext();
+  const { userId, setUserId } = useAppContext();
   const [profileData, setProfileData] = useState<Profile>(emptyProfile);
   const [loading, setLoading] = useState(false);
 
@@ -100,11 +101,22 @@ export default function EditProfileScreen({
       Alert.alert('Cannot Save Profile', errors.join('\n'), [{ text: 'OK' }]);
       return;
     }
-
+    
     try {
-      const response = await axios.post(`${serverUrl}users`, profileData);
-      if (response.data && response.data.user && response.data.user._id) {
-        setUserId(response.data.user._id);
+      if (isAccountSetup) {
+        // Create new user profile
+        const response = await axios.post(`${serverUrl}/users`, profileData);
+        if (response.data && response.data.user && response.data.user._id) {
+          setUserId(response.data.user._id);
+        }
+      } else {
+        // Update existing user profile
+        if (!userId) {
+          Alert.alert('Error', 'User ID is missing. Please log in again.');
+          return;
+        }
+        const response = await axios.post(`${serverUrl}/users/${userId}`, profileData);
+        // Optionally, you could update context or notify the user on success.
       }
     } catch (error: any) {
       console.log('Failed to save profile:', error);
@@ -112,7 +124,6 @@ export default function EditProfileScreen({
       // Attempt to extract error details from the backend response.
       let errorMessage = 'Failed to save profile';
       if (error.response && error.response.data) {
-        // If you have structured error data like { message: string, errors: string[] }
         if (error.response.data.message) {
           errorMessage = error.response.data.message;
         }
