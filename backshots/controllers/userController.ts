@@ -4,25 +4,6 @@ import { ObjectId } from 'mongodb';
 
 export const createUser = async (req: Request, res: Response) => {
   const {
-    email,
-    firstName,
-    lastName,
-    yearLevel,
-    age,
-    major,
-    images,
-    aboutMe,
-    yearlyGoal,
-    potentialActivities,
-    favoriteMedia,
-    majorReason,
-    studySpot,
-    hobbies,
-    swipes,
-  } = req.body;
-
-  const user = new User(
-    email,
     firstName,
     lastName,
     yearLevel,
@@ -37,6 +18,23 @@ export const createUser = async (req: Request, res: Response) => {
     studySpot,
     hobbies,
     swipes
+  } = req.body;
+
+  const user = new User(
+    firstName,
+    lastName,
+    yearLevel,
+    age,
+    major,
+    images,
+    aboutMe,
+    yearlyGoal,
+    potentialActivities,
+    favoriteMedia,
+    majorReason,
+    studySpot,
+    hobbies,
+    swipes,
   );
 
   try {
@@ -77,27 +75,6 @@ export const getUserById = async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(500).json({
       message: 'Failed to fetch user',
-      error: error.message || error,
-    });
-  }
-};
-
-export const getUserByEmail = async (req: Request, res: Response) => {
-  try {
-    const { email } = req.params;
-    if (!email) {
-      res.status(400).json({ message: 'User email is required' });
-      return;
-    }
-    const user = await User.findByEmail(email);
-    if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
-    }
-    res.status(200).json(user);
-  } catch (error: any) {
-    res.status(500).json({
-      message: 'Failed to fetch user by email',
       error: error.message || error,
     });
   }

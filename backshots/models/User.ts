@@ -1,8 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { getDb } from '../util/database.js';
-
 export class User {
-  email: string;
   firstName: string;
   lastName: string;
   yearLevel: string;
@@ -19,7 +17,6 @@ export class User {
   swipes: ObjectId[];
 
   constructor(
-    email: string,
     firstName: string,
     lastName: string,
     yearLevel: string,
@@ -33,9 +30,8 @@ export class User {
     majorReason: string,
     studySpot: string,
     hobbies: string,
-    swipes: ObjectId[]
+    swipes: ObjectId[],
   ) {
-    this.email = email;
     this.firstName = firstName;
     this.lastName = lastName;
     this.yearLevel = yearLevel;
@@ -73,16 +69,7 @@ export class User {
   static async findById(id: ObjectId) {
     const db = getDb();
     try {
-      return await db.collection('users').findOne({ _id: id });
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  static async findByEmail(email: string) {
-    const db = getDb();
-    try {
-      return await db.collection('users').findOne({ email: email });
+      return db.collection('users').findOne({ _id: id });
     } catch (error) {
       throw error;
     }
@@ -103,4 +90,6 @@ export class User {
       throw error;
     }
   }
+
+
 }

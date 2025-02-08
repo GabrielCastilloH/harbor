@@ -1,4 +1,5 @@
 import express from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { validateUser } from '../middleware/userValidation.js';
 import { validateSwipe } from '../middleware/swipeValidation.js';
 import {
@@ -9,7 +10,6 @@ import {
 import {
   createUser,
   getAllUsers,
-  getUserByEmail,
   getUserById,
   updateUser,
 } from '../controllers/userController.js';
@@ -19,16 +19,17 @@ import { getRecommendations } from '../controllers/algoDaddy.js';
 const router = express.Router();
 
 // POST new user.
-router.post('/users', validateUser, createUser);
+router.post('/users', validateUser, async (req: Request, res: Response) => {
+  const { email, name } = req.body;
+  const user = await createUser(email, name);
+  res.status(200).json({ user });
+});
 
 // GET all users.
 router.get('/users', getAllUsers);
 
 // GET a specific user by ID
 router.get('/users/:id', getUserById);
-
-// GET a specific user by email
-router.get('/users/email/:email', getUserByEmail);
 
 // POST update a new user.
 router.post('/users/:id', updateUser);
