@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,38 +6,63 @@ import ChatList from '../screens/ChatList';
 import ChatScreen from '../screens/ChatScreen';
 import LoadingScreen from '../screens/LoadingScreen';
 import Colors from '../constants/Colors';
-import { OverlayProvider, Chat, useCreateChatClient, DeepPartial, Theme } from 'stream-chat-expo';
+import {
+  OverlayProvider,
+  Chat,
+  useCreateChatClient,
+  DeepPartial,
+  Theme,
+} from 'stream-chat-expo';
 import ProfileScreen from '../screens/ProfileScreen';
+import { fetchUserToken } from '../networking/ChatFunctions';
+import { useAppContext } from '../context/AppContext';
 
 const Stack = createNativeStackNavigator();
 
-const chatApiKey = process.env.CHAT_API_KEY;
-const chatUserId = 'testUser1';
-const chatUserName = 'testUser1';
-const chatUserToken = process.env.CHAT_USER_TOKEN; 
-
-
-const user = {
-  id: chatUserId,
-  name: chatUserName,
-};
-
-
-const theme: DeepPartial<Theme> = {
-  colors: {
-    accent_blue: Colors.primary500,
-    accent_green: Colors.primary500,
-    bg_gradient_start: Colors.primary100,
-    bg_gradient_end: Colors.primary100,
-    grey_whisper: Colors.primary100,
-    transparent: 'transparent',
-    light_blue: Colors.primary100,
-  },
-};
-
 export default function ChatNavigator() {
-  console.log('chatApiKey', chatApiKey);
-  console.log('chatUserToken', chatUserToken);
+  const { profile } = useAppContext();
+  const chatUserEmail = profile.email || 'defaultUser@example.com';
+  const chatUserName = profile.firstName || 'DefaultUser';
+
+  // Use state to store the token from the backend.
+  const [chatUserToken, setChatUserToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function getToken() {
+      try {
+        const token = await fetchUserToken(chatUserEmail);
+        setChatUserToken(token);
+      } catch (error) {
+        console.error('Failed to fetch chat token:', error);
+      }
+    }
+    getToken();
+  }, [chatUserEmail]);
+
+  // Render a loading screen until the token is fetched.
+  if (!chatUserToken) {
+    return <LoadingScreen />;
+  }
+
+  const user = {
+    id: chatUserEmail,
+    name: chatUserName,
+  };
+
+  const chatApiKey = process.env.CHAT_API_KEY;
+
+  const theme: DeepPartial<Theme> = {
+    colors: {
+      accent_blue: Colors.primary500,
+      accent_green: Colors.primary500,
+      bg_gradient_start: Colors.primary100,
+      bg_gradient_end: Colors.primary100,
+      grey_whisper: Colors.primary100,
+      transparent: 'transparent',
+      light_blue: Colors.primary100,
+    },
+  };
+
   const chatClient = useCreateChatClient({
     apiKey: chatApiKey,
     userData: user,
@@ -71,7 +96,9 @@ export default function ChatNavigator() {
             options={({ navigation }) => ({
               headerTitle: 'Messages',
               headerRight: () => (
-                <TouchableOpacity onPress={() => navigation.navigate('ProfileScreen')}>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('ProfileScreen')}
+                >
                   <Ionicons name="person" size={24} color={Colors.primary500} />
                 </TouchableOpacity>
               ),

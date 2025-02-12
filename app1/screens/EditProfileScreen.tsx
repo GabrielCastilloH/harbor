@@ -15,7 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { useAppContext } from '../context/AppContext';
 
-const serverUrl = process.env.SERVER_URL
+const serverUrl = process.env.SERVER_URL;
 
 const emptyProfile: Profile = {
   _id: '',
@@ -42,7 +42,7 @@ interface EditProfileScreenProps {
 export default function EditProfileScreen({
   isAccountSetup,
 }: EditProfileScreenProps) {
-  const { userId, setUserId } = useAppContext();
+  const { userId, setUserId, setProfile } = useAppContext();
   const [profileData, setProfileData] = useState<Profile>(emptyProfile);
   const [loading, setLoading] = useState(false);
 
@@ -55,7 +55,7 @@ export default function EditProfileScreen({
 
   const validateProfile = (): string[] => {
     const errors: string[] = [];
-    
+
     // Check images
     if (profileData.images.filter((img) => img !== '').length < 3) {
       errors.push('Please add at least 3 images');
@@ -77,10 +77,7 @@ export default function EditProfileScreen({
     ];
 
     textFields.forEach((field) => {
-      if (
-        !profileData[field] ||
-        profileData[field].toString().trim() === ''
-      ) {
+      if (!profileData[field] || profileData[field].toString().trim() === '') {
         errors.push(
           `Please fill in ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`
         );
@@ -101,13 +98,16 @@ export default function EditProfileScreen({
       Alert.alert('Cannot Save Profile', errors.join('\n'), [{ text: 'OK' }]);
       return;
     }
-    
+
     try {
+      let response;
       if (isAccountSetup) {
         // Create new user profile
-        const response = await axios.post(`${serverUrl}/users`, profileData);
+        response = await axios.post(`${serverUrl}/users`, profileData);
         if (response.data && response.data.user && response.data.user._id) {
           setUserId(response.data.user._id);
+          // Store the full user profile in context
+          setProfile(response.data.user);
         }
       } else {
         // Update existing user profile
@@ -115,8 +115,12 @@ export default function EditProfileScreen({
           Alert.alert('Error', 'User ID is missing. Please log in again.');
           return;
         }
-        const response = await axios.post(`${serverUrl}/users/${userId}`, profileData);
-        // Optionally, you could update context or notify the user on success.
+        response = await axios.post(
+          `${serverUrl}/users/${userId}`,
+          profileData
+        );
+        // Store the updated full user profile in context
+        setProfile(response.data.user);
       }
     } catch (error: any) {
       console.log('Failed to save profile:', error);
