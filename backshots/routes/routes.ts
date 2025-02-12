@@ -15,6 +15,11 @@ import {
 } from '../controllers/userController.js';
 
 import { getRecommendations } from '../controllers/algoDaddy.js';
+import {
+  generateUserToken,
+  createChatChannel,
+  updateChannelChatDisabled,
+} from '../controllers/chatController.js';
 
 const router = express.Router();
 
@@ -41,5 +46,9 @@ router.get('/swipes/:userId', getSwipesByUser);
 
 // Get recommendations
 router.get('/users/:id/recommendations', getRecommendations);
+
+router.post('/chat/token', generateUserToken);
+router.post('/chat/channel', createChatChannel);
+router.post('/chat/channel/update', updateChannelChatDisabled);
 
 export default router;
