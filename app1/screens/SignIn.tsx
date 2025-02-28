@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,45 +8,50 @@ import {
   Alert,
 } from 'react-native';
 import axios from 'axios';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import Colors from '../constants/Colors';
 import { useAppContext } from '../context/AppContext';
 
-const serverUrl = process.env.SERVER_URL; // replace with your actual server URL
+WebBrowser.maybeCompleteAuthSession();
 
-const mockCornellAuth = async () => {
-  // Simulate API call delay
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  // Simulate successful auth
-  return true;
-};
+const serverUrl = process.env.SERVER_URL; // Ensure this is set, e.g., "http://localhost:3000/"
 
 export default function SignIn() {
   const { setIsAuthenticated, setUserId } = useAppContext();
 
-  const handleSignIn = async () => {
-    try {
-      const success = await mockCornellAuth();
-      if (success) {
-        setIsAuthenticated(true);
-        // Simulate getting the authenticated user's email.
-        const email = 'gac232@cornell.edu';
-        try {
-          // Use axios to check if the user exists.
-          const response = await axios.get(
-            `${serverUrl}users/email/${email}`
-          );
-          // If a user is found (assumes the returned user object has _id)
-          if (response.data && response.data._id) {
-            setUserId(response.data._id);
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    iosClientId: 'YOUR_IOS_GOOGLE_CLIENT_ID', // if needed
+    androidClientId: 'YOUR_ANDROID_GOOGLE_CLIENT_ID', // if needed
+    webClientId: 'YOUR_WEB_GOOGLE_CLIENT_ID', // if needed
+    scopes: ['profile', 'email'],
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success' && response.authentication?.accessToken) {
+      const { accessToken } = response.authentication;
+      // Send accessToken to your backend for verification via your Google auth route
+      axios
+        .post(`${serverUrl}auth/google`, { token: accessToken })
+        .then((res) => {
+          // Assuming your backend returns the authenticated user object with _id
+          if (res.data && res.data.user && res.data.user._id) {
+            setIsAuthenticated(true);
+            setUserId(res.data.user._id);
+          } else {
+            Alert.alert('Error', 'User authentication failed');
           }
-        } catch (error) {
-          // User not found: leave userId empty so that EditProfileScreen shows.
-          console.log('User not found, will prompt to create profile.');
-        }
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to sign in. Please try again.');
+        })
+        .catch((err) => {
+          console.error('Authentication error:', err);
+          Alert.alert('Error', 'Failed to authenticate with Google');
+        });
     }
+  }, [response]);
+
+  const handleSignIn = () => {
+    // Trigger the Google sign in flow
+    promptAsync();
   };
 
   return (
@@ -59,21 +64,18 @@ export default function SignIn() {
           resizeMode="contain"
         />
       </View>
-
       <Text style={styles.title}>Sign In</Text>
-
       <Text style={styles.description}>
-        In order to use this app you must sign in/sign up with your Cornell
-        NetID
+        In order to use this app you must sign in with your Cornell NetID via
+        Google.
       </Text>
-
       <TouchableOpacity style={styles.button} onPress={handleSignIn}>
         <Image
           source={require('../assets/images/cornell-logo.png')}
           style={[styles.cornellLogo, { tintColor: Colors.primary500 }]}
           resizeMode="contain"
         />
-        <Text style={styles.buttonText}>Sign In With Cornell</Text>
+        <Text style={styles.buttonText}>Sign In With Google</Text>
       </TouchableOpacity>
     </View>
   );
