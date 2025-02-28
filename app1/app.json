@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "app1",
-    "slug": "app1",
+    "name": "harbor",
+    "slug": "harbor",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -50,13 +50,13 @@
       [
         "expo-av",
         {
-          "microphonePermission": "Kogyo would like to use your microphone for voice recording."
+          "microphonePermission": "Harbor would like to use your microphone for voice recording."
         }
       ]
     ],
     "extra": {
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "f7cf5a98-f4d7-4db2-92e7-8e5bfc641d5b"
       }
     }
   }
