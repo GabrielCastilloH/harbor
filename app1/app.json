@@ -29,11 +29,17 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "package": "com.gabrielach.harbor"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "scheme": "com.gabrielach.harbor",
     "plugins": [
       [
         "expo-image-picker",
@@ -46,8 +52,12 @@
         {
           "microphonePermission": "Kogyo would like to use your microphone for voice recording."
         }
-      ],
-      "@react-native-google-signin/google-signin"
-    ]
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    }
   }
 }
