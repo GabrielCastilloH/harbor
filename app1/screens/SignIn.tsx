@@ -8,72 +8,110 @@ import {
   Alert,
 } from 'react-native';
 import axios from 'axios';
-import {
-  GoogleSignin,
-  GoogleSigninButton,
-  statusCodes,
-} from '@react-native-google-signin/google-signin';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../constants/Colors';
 import { useAppContext } from '../context/AppContext';
+
+// Ensure we complete the auth session in web browsers
+WebBrowser.maybeCompleteAuthSession();
 
 const serverUrl = process.env.SERVER_URL;
 
 export default function SignIn() {
-  const { setIsAuthenticated, setUserId } = useAppContext();
+  const { setIsAuthenticated, setUserId, setProfile } = useAppContext();
   const [isLoading, setIsLoading] = useState(false);
 
+  // Set up Google authentication request
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: process.env.ANDROID_GOOGLE_CLIENT_ID as string,
+    iosClientId: process.env.IOS_GOOGLE_CLIENT_ID as string,
+    webClientId: process.env.WEB_GOOGLE_CLIENT_ID as string,
+    clientId: process.env.WEB_GOOGLE_CLIENT_ID as string,
+    scopes: ['profile', 'email'],
+  });
+
+  // Handle authentication response
   useEffect(() => {
-    // Configure Google Sign-In
-    GoogleSignin.configure({
-      webClientId: process.env.WEB_GOOGLE_CLIENT_ID,
-      iosClientId: process.env.IOS_GOOGLE_CLIENT_ID,
-      // androidClientId: process.env.ANDROID_GOOGLE_CLIENT_ID as string, // Type assertion to string
-      scopes: ['profile', 'email'],
-    });
-  }, []);
+    handleAuthResponse();
+  }, [response]);
 
-  const handleGoogleSignIn = async () => {
-    try {
-      setIsLoading(true);
-
-      // Check if Google Play Services are available
-      await GoogleSignin.hasPlayServices();
-
-      // Start the sign-in process
-      const userInfo = await GoogleSignin.signIn();
-
-      // Get ID token for server verification
-      const { idToken } = await GoogleSignin.getTokens();
-
-      // Send token to backend
-      const response = await axios.post(`${serverUrl}/auth/google`, {
-        token: idToken,
-      });
-
-      // Process the server response
-      if (response.data && response.data.user && response.data.user._id) {
-        setIsAuthenticated(true);
-        setUserId(response.data.user._id);
-      } else {
-        Alert.alert('Error', 'User authentication failed');
-        await GoogleSignin.signOut();
-      }
-    } catch (error: any) {
-      let errorMessage = 'Authentication failed';
-
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        errorMessage = 'Sign in was cancelled';
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        errorMessage = 'Sign in is already in progress';
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        errorMessage = 'Google Play services not available';
-      }
-
-      console.error('Google Sign-In Error:', error);
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setIsLoading(false);
+  const handleAuthResponse = async () => {
+    // Check if we have a cached user
+    const cachedUser = await getCachedUser();
+    if (cachedUser) {
+      setIsAuthenticated(true);
+      setUserId(cachedUser._id);
+      return;
     }
+
+    // Process new sign-in response
+    if (response?.type === 'success') {
+      setIsLoading(true);
+      try {
+        // Get user info from Google
+        const { accessToken } = response.authentication!;
+        const userInfo = await getUserInfo(accessToken);
+
+        // Send token to backend
+        const serverResponse = await axios.post(`${serverUrl}/auth/google`, {
+          token: accessToken,
+          email: userInfo.email,
+          name: userInfo.name,
+        });
+
+        // Process server response
+        if (
+          serverResponse.data &&
+          serverResponse.data.user &&
+          serverResponse.data.user._id
+        ) {
+          // Cache user data
+          await AsyncStorage.setItem(
+            '@user',
+            JSON.stringify(serverResponse.data.user)
+          );
+
+          // Update app state
+          setIsAuthenticated(true);
+          setUserId(serverResponse.data.user._id);
+          if (serverResponse.data.profile) {
+            setProfile(serverResponse.data.profile);
+          }
+        } else {
+          Alert.alert('Error', 'User authentication failed');
+        }
+      } catch (error) {
+        console.error('Authentication Error:', error);
+        Alert.alert('Error', 'Authentication failed. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const getCachedUser = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('@user');
+      return userData ? JSON.parse(userData) : null;
+    } catch (error) {
+      console.error('Error reading cached user:', error);
+      return null;
+    }
+  };
+
+  const getUserInfo = async (token: any) => {
+    const response = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.json();
+  };
+
+  const handleSignOut = async () => {
+    await AsyncStorage.removeItem('@user');
+    setIsAuthenticated(false);
+    setUserId('');
   };
 
   return (
@@ -95,8 +133,8 @@ export default function SignIn() {
       {/* Custom Button */}
       <TouchableOpacity
         style={styles.button}
-        onPress={handleGoogleSignIn}
-        disabled={isLoading}
+        onPress={() => promptAsync()}
+        disabled={!request || isLoading}
       >
         <Image
           source={require('../assets/images/cornell-logo.png')}
@@ -108,16 +146,12 @@ export default function SignIn() {
         </Text>
       </TouchableOpacity>
 
-      {/* Alternative: Use GoogleSigninButton component */}
-      {/* 
-      <GoogleSigninButton
-        size={GoogleSigninButton.Size.Wide}
-        color={GoogleSigninButton.Color.Light}
-        onPress={handleGoogleSignIn}
-        disabled={isLoading}
-        style={styles.googleButton}
-      />
-      */}
+      <TouchableOpacity
+        style={[styles.button, styles.secondaryButton]}
+        onPress={handleSignOut}
+      >
+        <Text style={styles.secondaryButtonText}>Sign Out</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -170,9 +204,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  googleButton: {
-    width: 240,
-    height: 48,
-    marginTop: 20,
+  secondaryButton: {
+    marginTop: 16,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: Colors.primary500,
+  },
+  secondaryButtonText: {
+    color: Colors.primary500,
+    fontSize: 16,
   },
 });
