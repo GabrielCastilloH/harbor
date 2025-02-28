@@ -1,7 +1,7 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 /android
 /ios
-/app1/node_modules
+node_modules/
 .env
 
 
