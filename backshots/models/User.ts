@@ -1,5 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { getDb } from '../util/database.js';
+
 export class User {
   firstName: string;
   lastName: string;
@@ -15,6 +16,7 @@ export class User {
   studySpot: string;
   hobbies: string;
   swipes: ObjectId[];
+  email?: string; // Added email field
 
   constructor(
     firstName: string,
@@ -31,6 +33,7 @@ export class User {
     studySpot: string,
     hobbies: string,
     swipes: ObjectId[],
+    email?: string // Optional parameter for email
   ) {
     this.firstName = firstName;
     this.lastName = lastName;
@@ -46,6 +49,7 @@ export class User {
     this.studySpot = studySpot;
     this.hobbies = hobbies;
     this.swipes = swipes;
+    this.email = email;
   }
 
   async save() {
@@ -78,10 +82,9 @@ export class User {
   static async updateById(id: ObjectId, updatedData: Partial<User>) {
     const db = getDb();
     try {
-      const result = await db.collection('users').updateOne(
-        { _id: id },
-        { $set: updatedData }
-      );
+      const result = await db
+        .collection('users')
+        .updateOne({ _id: id }, { $set: updatedData });
       if (result.matchedCount === 0) {
         return null;
       }
@@ -91,5 +94,13 @@ export class User {
     }
   }
 
-
+  // Add a new static method to find user by email
+  static async findByEmail(email: string) {
+    const db = getDb();
+    try {
+      return await db.collection('users').findOne({ email: email });
+    } catch (error) {
+      throw error;
+    }
+  }
 }
