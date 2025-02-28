@@ -14,7 +14,16 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.gabrielach.harbor"
+      "bundleIdentifier": "com.gabrielach.harbor",
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.539393094267-90ij57ok6vgi1ra0p5tb23scagreoq9i"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -37,7 +46,8 @@
         {
           "microphonePermission": "Kogyo would like to use your microphone for voice recording."
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ]
   }
 }

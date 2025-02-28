@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,50 +8,72 @@ import {
   Alert,
 } from 'react-native';
 import axios from 'axios';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
+import {
+  GoogleSignin,
+  GoogleSigninButton,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 import Colors from '../constants/Colors';
 import { useAppContext } from '../context/AppContext';
 
-WebBrowser.maybeCompleteAuthSession();
-
-const serverUrl = process.env.SERVER_URL; // Ensure this is set, e.g., "http://localhost:3000/"
+const serverUrl = process.env.SERVER_URL;
 
 export default function SignIn() {
   const { setIsAuthenticated, setUserId } = useAppContext();
-
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    iosClientId: 'YOUR_IOS_GOOGLE_CLIENT_ID', // if needed
-    androidClientId: 'YOUR_ANDROID_GOOGLE_CLIENT_ID', // if needed
-    webClientId: 'YOUR_WEB_GOOGLE_CLIENT_ID', // if needed
-    scopes: ['profile', 'email'],
-  });
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (response?.type === 'success' && response.authentication?.accessToken) {
-      const { accessToken } = response.authentication;
-      // Send accessToken to your backend for verification via your Google auth route
-      axios
-        .post(`${serverUrl}auth/google`, { token: accessToken })
-        .then((res) => {
-          // Assuming your backend returns the authenticated user object with _id
-          if (res.data && res.data.user && res.data.user._id) {
-            setIsAuthenticated(true);
-            setUserId(res.data.user._id);
-          } else {
-            Alert.alert('Error', 'User authentication failed');
-          }
-        })
-        .catch((err) => {
-          console.error('Authentication error:', err);
-          Alert.alert('Error', 'Failed to authenticate with Google');
-        });
-    }
-  }, [response]);
+    // Configure Google Sign-In
+    GoogleSignin.configure({
+      webClientId: process.env.WEB_GOOGLE_CLIENT_ID,
+      iosClientId: process.env.IOS_GOOGLE_CLIENT_ID,
+      // androidClientId: process.env.ANDROID_GOOGLE_CLIENT_ID as string, // Type assertion to string
+      scopes: ['profile', 'email'],
+    });
+  }, []);
 
-  const handleSignIn = () => {
-    // Trigger the Google sign in flow
-    promptAsync();
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true);
+
+      // Check if Google Play Services are available
+      await GoogleSignin.hasPlayServices();
+
+      // Start the sign-in process
+      const userInfo = await GoogleSignin.signIn();
+
+      // Get ID token for server verification
+      const { idToken } = await GoogleSignin.getTokens();
+
+      // Send token to backend
+      const response = await axios.post(`${serverUrl}/auth/google`, {
+        token: idToken,
+      });
+
+      // Process the server response
+      if (response.data && response.data.user && response.data.user._id) {
+        setIsAuthenticated(true);
+        setUserId(response.data.user._id);
+      } else {
+        Alert.alert('Error', 'User authentication failed');
+        await GoogleSignin.signOut();
+      }
+    } catch (error: any) {
+      let errorMessage = 'Authentication failed';
+
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        errorMessage = 'Sign in was cancelled';
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        errorMessage = 'Sign in is already in progress';
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        errorMessage = 'Google Play services not available';
+      }
+
+      console.error('Google Sign-In Error:', error);
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -69,14 +91,33 @@ export default function SignIn() {
         In order to use this app you must sign in with your Cornell NetID via
         Google.
       </Text>
-      <TouchableOpacity style={styles.button} onPress={handleSignIn}>
+
+      {/* Custom Button */}
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleGoogleSignIn}
+        disabled={isLoading}
+      >
         <Image
           source={require('../assets/images/cornell-logo.png')}
           style={[styles.cornellLogo, { tintColor: Colors.primary500 }]}
           resizeMode="contain"
         />
-        <Text style={styles.buttonText}>Sign In With Google</Text>
+        <Text style={styles.buttonText}>
+          {isLoading ? 'Signing In...' : 'Sign In With Google'}
+        </Text>
       </TouchableOpacity>
+
+      {/* Alternative: Use GoogleSigninButton component */}
+      {/* 
+      <GoogleSigninButton
+        size={GoogleSigninButton.Size.Wide}
+        color={GoogleSigninButton.Color.Light}
+        onPress={handleGoogleSignIn}
+        disabled={isLoading}
+        style={styles.googleButton}
+      />
+      */}
     </View>
   );
 }
@@ -128,5 +169,10 @@ const styles = StyleSheet.create({
     color: Colors.primary500,
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  googleButton: {
+    width: 240,
+    height: 48,
+    marginTop: 20,
   },
 });
