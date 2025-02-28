@@ -6,7 +6,10 @@ import { createUser } from './userController.js'; // Adjusted import
 const client = new OAuth2Client('GOOGLE_CLIENT_ID'); // Replace with your actual Client ID
 
 // Google OAuth Token verification handler
-export const authenticateGoogle = async (req: Request, res: Response): Promise<void> => {
+export const authenticateGoogle = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { token } = req.body;
 
   if (!token) {
