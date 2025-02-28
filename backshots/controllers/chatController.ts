@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { StreamChat } from 'stream-chat';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 const API_KEY = process.env.STREAM_API_KEY;
 const API_SECRET = process.env.STREAM_API_SECRET;
