@@ -26,6 +26,20 @@ export default function ChatNavigator() {
 
   // Use state to store the token from the backend.
   const [chatUserToken, setChatUserToken] = useState<string | null>(null);
+  const chatApiKey = process.env.CHAT_API_KEY;
+
+  // Define user object outside of conditional rendering
+  const user = {
+    id: chatUserEmail,
+    name: chatUserName,
+  };
+
+  // Always call hooks at the top level, never conditionally
+  const chatClient = useCreateChatClient({
+    apiKey: chatApiKey,
+    userData: user,
+    tokenOrProvider: chatUserToken || '', // Provide empty string as fallback
+  });
 
   useEffect(() => {
     async function getToken() {
@@ -39,18 +53,6 @@ export default function ChatNavigator() {
     getToken();
   }, [chatUserEmail]);
 
-  // Render a loading screen until the token is fetched.
-  if (!chatUserToken) {
-    return <LoadingScreen />;
-  }
-
-  const user = {
-    id: chatUserEmail,
-    name: chatUserName,
-  };
-
-  const chatApiKey = process.env.CHAT_API_KEY;
-
   const theme: DeepPartial<Theme> = {
     colors: {
       accent_blue: Colors.primary500,
@@ -63,13 +65,8 @@ export default function ChatNavigator() {
     },
   };
 
-  const chatClient = useCreateChatClient({
-    apiKey: chatApiKey,
-    userData: user,
-    tokenOrProvider: chatUserToken,
-  });
-
-  if (!chatClient) {
+  // Render a loading screen until the token is fetched AND client is initialized
+  if (!chatUserToken || !chatClient) {
     return <LoadingScreen />;
   }
 

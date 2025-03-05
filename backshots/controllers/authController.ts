@@ -1,6 +1,7 @@
 import { OAuth2Client } from 'google-auth-library';
 import { Request, Response } from 'express';
 import { getDb } from '../util/database.js';
+import axios from 'axios';
 
 // Use environment variables for client IDs
 const CLIENT_ID = process.env.WEB_GOOGLE_CLIENT_ID;
@@ -20,7 +21,7 @@ export const authenticateGoogle = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { token } = req.body;
+  const { token, email, name } = req.body;
 
   if (!token) {
     res.status(400).json({ error: 'Token is required' });
@@ -28,16 +29,18 @@ export const authenticateGoogle = async (
   }
 
   try {
-    // Verify the ID token with Google
-    const ticket = await client.verifyIdToken({
-      idToken: token,
-      audience: CLIENT_ID,
-    });
+    // Instead of verifying the token directly, use it to get user info from Google API
+    const userInfoResponse = await axios.get(
+      'https://www.googleapis.com/userinfo/v2/me',
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
 
-    const payload = ticket.getPayload();
+    const payload = userInfoResponse.data;
 
     if (!payload || !payload.email) {
-      res.status(400).json({ error: 'Invalid token payload' });
+      res.status(400).json({ error: 'Invalid user info' });
       return;
     }
 
@@ -80,8 +83,20 @@ export const authenticateGoogle = async (
 
     // Respond with the user info for the session
     res.status(200).json({ user });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error verifying Google token:', error);
-    res.status(400).json({ error: 'Invalid token' });
+
+    // Add more detailed error logging
+    if (error.response) {
+      console.error('Google API response:', {
+        status: error.response.status,
+        data: error.response.data,
+      });
+    }
+
+    res.status(400).json({
+      error: 'Invalid token',
+      details: error.message,
+    });
   }
 };

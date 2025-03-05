@@ -6,17 +6,42 @@ import {
   TouchableOpacity,
   Switch,
   Platform,
+  Alert,
 } from 'react-native';
 import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../constants/Colors';
+import { useAppContext } from '../context/AppContext';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
+  const { setIsAuthenticated, setUserId } = useAppContext();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [locationServices, setLocationServices] = useState(true);
+
+  const handleSignOut = async () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Sign Out',
+        onPress: async () => {
+          try {
+            await AsyncStorage.removeItem('@user');
+            setIsAuthenticated(false);
+            setUserId('');
+          } catch (error) {
+            console.error('Error signing out:', error);
+          }
+        },
+      },
+    ]);
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -51,9 +76,12 @@ export default function SettingsScreen() {
           <Ionicons name="document-text" size={20} color={Colors.primary500} />
           <Text style={styles.buttonText}>Terms of Service</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, styles.logoutButton]}>
+        <TouchableOpacity
+          style={[styles.button, styles.logoutButton]}
+          onPress={handleSignOut}
+        >
           <Ionicons name="log-out" size={20} color={Colors.primary500} />
-          <Text style={[styles.buttonText, styles.logoutText]}>Log Out</Text>
+          <Text style={[styles.buttonText, styles.logoutText]}>Sign Out</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
