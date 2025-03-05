@@ -54,6 +54,12 @@ export default function SignIn() {
         const { accessToken } = response.authentication!;
         const userInfo = await getUserInfo(accessToken);
 
+        console.log(
+          'User info from Google:',
+          JSON.stringify(userInfo, null, 2)
+        );
+        console.log('Sending auth request to server:', serverUrl);
+
         // Send token to backend
         const serverResponse = await axios.post(`${serverUrl}/auth/google`, {
           token: accessToken,
@@ -80,11 +86,35 @@ export default function SignIn() {
             setProfile(serverResponse.data.profile);
           }
         } else {
+          console.log('Server response:', serverResponse.data);
           Alert.alert('Error', 'User authentication failed');
         }
       } catch (error) {
         console.error('Authentication Error:', error);
-        Alert.alert('Error', 'Authentication failed. Please try again.');
+
+        // More detailed error logging
+        if (axios.isAxiosError(error)) {
+          console.error('Status code:', error.response?.status);
+          console.error(
+            'Response data:',
+            JSON.stringify(error.response?.data, null, 2)
+          );
+          console.error(
+            'Request config:',
+            JSON.stringify(error.config, null, 2)
+          );
+
+          // Show more specific error message
+          Alert.alert(
+            'Authentication Failed',
+            `Error ${error.response?.status || ''}: ${
+              error.response?.data?.message ||
+              'Please check your connection and try again.'
+            }`
+          );
+        } else {
+          Alert.alert('Error', 'Authentication failed. Please try again.');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -106,12 +136,6 @@ export default function SignIn() {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.json();
-  };
-
-  const handleSignOut = async () => {
-    await AsyncStorage.removeItem('@user');
-    setIsAuthenticated(false);
-    setUserId('');
   };
 
   return (
@@ -144,13 +168,6 @@ export default function SignIn() {
         <Text style={styles.buttonText}>
           {isLoading ? 'Signing In...' : 'Sign In With Google'}
         </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.button, styles.secondaryButton]}
-        onPress={handleSignOut}
-      >
-        <Text style={styles.secondaryButtonText}>Sign Out</Text>
       </TouchableOpacity>
     </View>
   );
@@ -203,15 +220,5 @@ const styles = StyleSheet.create({
     color: Colors.primary500,
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  secondaryButton: {
-    marginTop: 16,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: Colors.primary500,
-  },
-  secondaryButtonText: {
-    color: Colors.primary500,
-    fontSize: 16,
   },
 });
