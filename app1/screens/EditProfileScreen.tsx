@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { Profile } from '../types/App';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { useAppContext } from '../context/AppContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const serverUrl = process.env.SERVER_URL;
 
@@ -45,6 +46,30 @@ export default function EditProfileScreen({
   const { userId, setUserId, setProfile } = useAppContext();
   const [profileData, setProfileData] = useState<Profile>(emptyProfile);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const loadAuthInfo = async () => {
+      if (isAccountSetup) {
+        try {
+          const authInfoString = await AsyncStorage.getItem('@authInfo');
+          if (authInfoString) {
+            const authInfo = JSON.parse(authInfoString);
+            // Pre-populate the form with information from Google
+            setProfileData((prev) => ({
+              ...prev,
+              firstName: authInfo.firstName || '',
+              lastName: authInfo.lastName || '',
+              email: authInfo.email || '',
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading auth info:', error);
+        }
+      }
+    };
+
+    loadAuthInfo();
+  }, [isAccountSetup]);
 
   const handleChange = (
     key: keyof Profile,
@@ -102,15 +127,103 @@ export default function EditProfileScreen({
     try {
       let response;
       if (isAccountSetup) {
-        // Create new user profile
-        response = await axios.post(`${serverUrl}/users`, profileData);
-        if (response.data && response.data.user && response.data.user._id) {
-          setUserId(response.data.user._id);
-          // Store the full user profile in context
-          setProfile(response.data.user);
+        // Get the auth info from AsyncStorage
+        const authInfoString = await AsyncStorage.getItem('@authInfo');
+        if (!authInfoString) {
+          Alert.alert(
+            'Error',
+            'Authentication info not found. Please sign in again.'
+          );
+          return;
+        }
+
+        const authInfo = JSON.parse(authInfoString);
+
+        // Make sure email is included in the profile data
+        const completeProfileData = {
+          ...profileData,
+          email: authInfo.email, // This ensures email is always included
+          swipes: [], // Initialize with empty swipes array
+        };
+
+        // Add additional debugging output
+        console.log('Auth info:', JSON.stringify(authInfo, null, 2));
+        console.log('Server URL:', serverUrl);
+        console.log(
+          'Complete profile data:',
+          JSON.stringify(completeProfileData, null, 2)
+        );
+        console.log('About to send POST request to:', `${serverUrl}/users`);
+
+        try {
+          // Create the new user with complete data including email
+          console.log('Sending axios POST request...');
+
+          // Log request configuration
+          const requestConfig = {
+            url: `${serverUrl}/users`,
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            data: completeProfileData,
+          };
+          console.log(
+            'Request config:',
+            JSON.stringify(requestConfig, null, 2)
+          );
+
+          response = await axios.post(
+            `${serverUrl}/users`,
+            completeProfileData
+          );
+
+          console.log('Response received:', response.status);
+          console.log('Response data:', JSON.stringify(response.data, null, 2));
+
+          if (response.data && response.data.user && response.data.user._id) {
+            // Store user data in AsyncStorage
+            await AsyncStorage.setItem(
+              '@user',
+              JSON.stringify(response.data.user)
+            );
+            // Remove temporary auth info
+            await AsyncStorage.removeItem('@authInfo');
+
+            // Update app state
+            setUserId(response.data.user._id);
+            setProfile(response.data.user);
+          }
+        } catch (error: any) {
+          // Error handling (leave unchanged)
+          console.log('Failed to save profile:', error);
+          // Log detailed error information
+          if (axios.isAxiosError(error)) {
+            console.error('Status:', error.response?.status);
+            console.error(
+              'Response data:',
+              JSON.stringify(error.response?.data, null, 2)
+            );
+          }
+
+          // Attempt to extract error details from the backend response.
+          let errorMessage = 'Failed to save profile';
+          if (error.response && error.response.data) {
+            if (error.response.data.message) {
+              errorMessage = error.response.data.message;
+            }
+            if (error.response.data.errors) {
+              errorMessage += '\n' + error.response.data.errors.join('\n');
+            }
+          } else if (error.message) {
+            errorMessage = error.message;
+          }
+
+          Alert.alert('Error', errorMessage);
         }
       } else {
         // Update existing user profile
+        // (Leave this part unchanged)
         if (!userId) {
           Alert.alert('Error', 'User ID is missing. Please log in again.');
           return;
@@ -123,7 +236,16 @@ export default function EditProfileScreen({
         setProfile(response.data.user);
       }
     } catch (error: any) {
+      // Error handling (leave unchanged)
       console.log('Failed to save profile:', error);
+      // Log detailed error information
+      if (axios.isAxiosError(error)) {
+        console.error('Status:', error.response?.status);
+        console.error(
+          'Response data:',
+          JSON.stringify(error.response?.data, null, 2)
+        );
+      }
 
       // Attempt to extract error details from the backend response.
       let errorMessage = 'Failed to save profile';

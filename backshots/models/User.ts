@@ -1,5 +1,15 @@
 import { ObjectId } from 'mongodb';
 import { getDb } from '../util/database.js';
+import { StreamChat } from 'stream-chat';
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+// Get StreamChat API credentials from env vars
+const API_KEY = process.env.STREAM_API_KEY;
+const API_SECRET = process.env.STREAM_API_SECRET;
+
+// Create StreamChat server client instance
+const serverClient = StreamChat.getInstance(API_KEY || '', API_SECRET || '');
 
 export class User {
   firstName: string;
@@ -16,7 +26,7 @@ export class User {
   studySpot: string;
   hobbies: string;
   swipes: ObjectId[];
-  email?: string; // Added email field
+  email: string; // Added email field
 
   constructor(
     firstName: string,
@@ -33,7 +43,7 @@ export class User {
     studySpot: string,
     hobbies: string,
     swipes: ObjectId[],
-    email?: string // Optional parameter for email
+    email: string // Optional parameter for email
   ) {
     this.firstName = firstName;
     this.lastName = lastName;
@@ -55,7 +65,30 @@ export class User {
   async save() {
     const db = getDb();
     try {
-      return await db.collection('users').insertOne(this);
+      // First save the user to MongoDB
+      const result = await db.collection('users').insertOne(this);
+
+      // If the user has an email, register them in StreamChat as well
+      if (this.email) {
+        try {
+          // Add the user to StreamChat with their email as ID
+          await serverClient.upsertUser({
+            id: this.email,
+            name: `${this.firstName} ${this.lastName}`,
+            role: 'user',
+            // Additional user data that might be useful for chat
+            yearLevel: this.yearLevel,
+            major: this.major,
+          });
+          console.log(`User ${this.email} added to StreamChat`);
+        } catch (streamError) {
+          console.error('Error adding user to StreamChat:', streamError);
+          // Note: We don't throw here to avoid failing the whole operation
+          // if only the StreamChat registration fails
+        }
+      }
+
+      return result;
     } catch (error) {
       throw error;
     }
@@ -85,10 +118,32 @@ export class User {
       const result = await db
         .collection('users')
         .updateOne({ _id: id }, { $set: updatedData });
+
       if (result.matchedCount === 0) {
         return null;
       }
-      return await User.findById(id);
+
+      // Get the updated user
+      const updatedUser = await User.findById(id);
+
+      // If the user has an email and we're updating fields relevant to StreamChat, update StreamChat too
+      if (updatedUser && updatedUser.email) {
+        try {
+          await serverClient.upsertUser({
+            id: updatedUser.email,
+            name: `${updatedUser.firstName} ${updatedUser.lastName}`,
+            role: 'user',
+            yearLevel: updatedUser.yearLevel,
+            major: updatedUser.major,
+          });
+          console.log(`User ${updatedUser.email} updated in StreamChat`);
+        } catch (streamError) {
+          console.error('Error updating user in StreamChat:', streamError);
+          // Continue with the operation even if StreamChat update fails
+        }
+      }
+
+      return updatedUser;
     } catch (error) {
       throw error;
     }

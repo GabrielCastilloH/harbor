@@ -14,6 +14,8 @@ function AppContent() {
   // Once authenticated:
   //  - if a userId exists, the user already exists so show the TabNavigator.
   //  - otherwise, show the EditProfileScreen to set up a new profile.
+
+  console.log('userId:', userId);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>

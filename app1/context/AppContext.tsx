@@ -1,5 +1,5 @@
 import React, { useState, ReactNode } from 'react';
-import { Profile } from '../types/App'; // import your Profile type
+import { Profile } from '../types/App';
 
 interface AppContextType {
   channel: any;
@@ -8,30 +8,11 @@ interface AppContextType {
   setThread: (thread: any) => void;
   isAuthenticated: boolean;
   setIsAuthenticated: (isAuthenticated: boolean) => void;
-  userId: string;
-  setUserId: (userId: string) => void;
-  profile: Profile;
-  setProfile: (profile: Profile) => void;
-  // Removed email and setEmail since we'll store full profile
+  userId: string | null;
+  setUserId: (userId: string | null) => void;
+  profile: Profile | null; // Add this
+  setProfile: (profile: Profile | null) => void; // Add this
 }
-
-const emptyProfile: Profile = {
-  _id: '',
-  email: '',
-  firstName: '',
-  lastName: '',
-  yearLevel: '',
-  age: 0,
-  major: '',
-  images: [],
-  aboutMe: '',
-  yearlyGoal: '',
-  potentialActivities: '',
-  favoriteMedia: '',
-  majorReason: '',
-  studySpot: '',
-  hobbies: '',
-};
 
 const defaultValue: AppContextType = {
   channel: null,
@@ -42,8 +23,8 @@ const defaultValue: AppContextType = {
   setIsAuthenticated: () => {},
   userId: '',
   setUserId: () => {},
-  profile: emptyProfile,
-  setProfile: () => {},
+  profile: null, // Add this
+  setProfile: () => {}, // Add this
 };
 
 export const AppContext = React.createContext<AppContextType>(defaultValue);
@@ -56,8 +37,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [channel, setChannel] = useState<any>(null);
   const [thread, setThread] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userId, setUserId] = useState('');
-  const [profile, setProfile] = useState<Profile>(emptyProfile);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null); // Add this
 
   return (
     <AppContext.Provider
@@ -70,8 +51,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setIsAuthenticated,
         userId,
         setUserId,
-        profile,
-        setProfile,
+        profile, // Add this
+        setProfile, // Add this
       }}
     >
       {children}
