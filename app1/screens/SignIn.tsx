@@ -20,7 +20,7 @@ WebBrowser.maybeCompleteAuthSession();
 const serverUrl = process.env.SERVER_URL;
 
 export default function SignIn() {
-  const { setIsAuthenticated, setUserId, setProfile } = useAppContext();
+  const { setIsAuthenticated, setUserId } = useAppContext();
   const [isLoading, setIsLoading] = useState(false);
 
   // Set up Google authentication request
@@ -68,26 +68,33 @@ export default function SignIn() {
         });
 
         // Process server response
-        if (
-          serverResponse.data &&
-          serverResponse.data.user &&
-          serverResponse.data.user._id
-        ) {
-          // Cache user data
-          await AsyncStorage.setItem(
-            '@user',
-            JSON.stringify(serverResponse.data.user)
-          );
+        if (serverResponse.data) {
+          if (serverResponse.data.user && serverResponse.data.user._id) {
+            // Existing user case
+            // Cache user data
+            await AsyncStorage.setItem(
+              '@user',
+              JSON.stringify(serverResponse.data.user)
+            );
 
-          // Update app state
-          setIsAuthenticated(true);
-          setUserId(serverResponse.data.user._id);
-          if (serverResponse.data.profile) {
-            setProfile(serverResponse.data.profile);
+            // Update app state
+            setIsAuthenticated(true);
+            setUserId(serverResponse.data.user._id);
+          } else if (serverResponse.data.authInfo) {
+            // New user case - authenticated but needs profile setup
+            // Cache just the auth info for profile setup
+            await AsyncStorage.setItem(
+              '@authInfo',
+              JSON.stringify(serverResponse.data.authInfo)
+            );
+
+            setIsAuthenticated(true);
+            // Do NOT set userId since user doesn't exist in DB yet
+            setUserId(null);
+          } else {
+            console.log('Server response:', serverResponse.data);
+            Alert.alert('Error', 'User authentication failed');
           }
-        } else {
-          console.log('Server response:', serverResponse.data);
-          Alert.alert('Error', 'User authentication failed');
         }
       } catch (error) {
         console.error('Authentication Error:', error);

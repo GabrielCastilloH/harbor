@@ -29,7 +29,7 @@ export const authenticateGoogle = async (
   }
 
   try {
-    // Instead of verifying the token directly, use it to get user info from Google API
+    // Verify token with Google API
     const userInfoResponse = await axios.get(
       'https://www.googleapis.com/userinfo/v2/me',
       {
@@ -53,40 +53,27 @@ export const authenticateGoogle = async (
     // Check if user exists
     let user = await getUserByEmail(payload.email);
 
-    if (!user) {
-      // If user doesn't exist, create a new one
-      const db = getDb();
-      const newUser = {
-        email: payload.email,
-        firstName: payload.given_name || '',
-        lastName: payload.family_name || '',
-        yearLevel: '',
-        age: 0,
-        major: '',
-        images: [],
-        aboutMe: '',
-        yearlyGoal: '',
-        potentialActivities: '',
-        favoriteMedia: '',
-        majorReason: '',
-        studySpot: '',
-        hobbies: '',
-        swipes: [],
-      };
-
-      const result = await db.collection('users').insertOne(newUser);
-      user = {
-        ...newUser,
-        _id: result.insertedId,
-      };
+    // Return the user if found, otherwise just return the Google profile info
+    // but DO NOT create a new user record yet
+    if (user) {
+      // User exists, return the full user info
+      res.status(200).json({ user });
+    } else {
+      // User doesn't exist yet, return only the auth info
+      // This allows the frontend to know the user is authenticated
+      // but needs to complete profile setup
+      res.status(200).json({
+        authInfo: {
+          email: payload.email,
+          firstName: payload.given_name || '',
+          lastName: payload.family_name || '',
+          isNewUser: true,
+        },
+      });
     }
-
-    // Respond with the user info for the session
-    res.status(200).json({ user });
   } catch (error: any) {
     console.error('Error verifying Google token:', error);
 
-    // Add more detailed error logging
     if (error.response) {
       console.error('Google API response:', {
         status: error.response.status,

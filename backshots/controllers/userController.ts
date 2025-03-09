@@ -3,48 +3,85 @@ import { User } from '../models/User.js';
 import { ObjectId } from 'mongodb';
 
 export const createUser = async (req: Request, res: Response) => {
-  const {
-    firstName,
-    lastName,
-    yearLevel,
-    age,
-    major,
-    images,
-    aboutMe,
-    yearlyGoal,
-    potentialActivities,
-    favoriteMedia,
-    majorReason,
-    studySpot,
-    hobbies,
-    swipes
-  } = req.body;
-
-  const user = new User(
-    firstName,
-    lastName,
-    yearLevel,
-    age,
-    major,
-    images,
-    aboutMe,
-    yearlyGoal,
-    potentialActivities,
-    favoriteMedia,
-    majorReason,
-    studySpot,
-    hobbies,
-    swipes,
+  console.log(
+    'createUser called with request body:',
+    JSON.stringify(req.body, null, 2)
   );
+  console.log('Request headers:', JSON.stringify(req.headers, null, 2));
+
+  // Check if req.body is undefined or an empty object
+  if (!req.body || Object.keys(req.body).length === 0) {
+    console.error('Request body is undefined or empty');
+  }
 
   try {
-    await user.save();
+    const {
+      firstName,
+      lastName,
+      yearLevel,
+      age,
+      major,
+      images,
+      aboutMe,
+      yearlyGoal,
+      potentialActivities,
+      favoriteMedia,
+      majorReason,
+      studySpot,
+      hobbies,
+      swipes = [], // Default to empty array if not provided
+      email, // Make sure to extract email
+    } = req.body;
+
+    // Validate required fields
+    if (!firstName || !lastName) {
+      return res.status(400).json({
+        message: 'First name and last name are required',
+        receivedBody: req.body,
+      });
+    }
+
+    console.log('Creating user with extracted data:');
+    console.log('firstName:', firstName);
+    console.log('lastName:', lastName);
+    console.log('email:', email);
+
+    const user = new User(
+      firstName,
+      lastName,
+      yearLevel || '',
+      age ? Number(age) : 0,
+      major || '',
+      images || [],
+      aboutMe || '',
+      yearlyGoal || '',
+      potentialActivities || '',
+      favoriteMedia || '',
+      majorReason || '',
+      studySpot || '',
+      hobbies || '',
+      swipes
+        ? Array.isArray(swipes)
+          ? swipes.map((id) => new ObjectId(id.toString()))
+          : []
+        : [],
+      email || '' // Make sure email is always a string
+    );
+
+    console.log('User object created:', JSON.stringify(user, null, 2));
+
+    const result = await user.save();
+    console.log(
+      'User saved to database, result:',
+      JSON.stringify(result, null, 2)
+    );
+
     res.status(201).json({
       message: 'User created successfully',
-      user,
+      user: { ...user, _id: result.insertedId },
     });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to create user' });
+    console.error('Error creating user:', error);
   }
 };
 
