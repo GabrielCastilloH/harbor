@@ -32,17 +32,8 @@ app.use(
 app.use(bodyParser.json()); // for parsing application/json
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Then log the request (after body is parsed)
-const requestLogger = (req: Request, res: Response, next: NextFunction) => {
-  console.log(`${req.method} ${req.url}`);
-  console.log('Headers:', JSON.stringify(req.headers, null, 2));
-  console.log('Body:', JSON.stringify(req.body, null, 2));
-  next();
-};
-app.use(requestLogger);
-
 app.use('/', routes);
-// app.use('/auth', authRoutes); // All auth routes will be prefixed with /auth
+app.use('/auth', authRoutes); // All auth routes will be prefixed with /auth
 
 mongoConnect(() => {
   app.listen(port, () => {
