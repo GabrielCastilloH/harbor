@@ -34,7 +34,6 @@ export const createUser = async (
       majorReason,
       studySpot,
       hobbies,
-      swipes = [], // Default to empty array if not provided
       email, // Make sure to extract email
     } = req.body;
 
@@ -66,11 +65,6 @@ export const createUser = async (
       majorReason || '',
       studySpot || '',
       hobbies || '',
-      swipes
-        ? Array.isArray(swipes)
-          ? swipes.map((id) => new ObjectId(id.toString()))
-          : []
-        : [],
       email || '' // Make sure email is always a string
     );
 

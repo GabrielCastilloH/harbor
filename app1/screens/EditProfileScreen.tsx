@@ -143,7 +143,6 @@ export default function EditProfileScreen({
         const completeProfileData = {
           ...profileData,
           email: authInfo.email, // This ensures email is always included
-          swipes: [], // Initialize with empty swipes array
         };
 
         // Add additional debugging output

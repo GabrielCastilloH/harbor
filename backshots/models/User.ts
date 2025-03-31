@@ -25,7 +25,6 @@ export class User {
   majorReason: string;
   studySpot: string;
   hobbies: string;
-  swipes: ObjectId[];
   email: string; // Added email field
 
   constructor(
@@ -42,7 +41,6 @@ export class User {
     majorReason: string,
     studySpot: string,
     hobbies: string,
-    swipes: ObjectId[],
     email: string // Optional parameter for email
   ) {
     this.firstName = firstName;
@@ -58,7 +56,6 @@ export class User {
     this.majorReason = majorReason;
     this.studySpot = studySpot;
     this.hobbies = hobbies;
-    this.swipes = swipes;
     this.email = email;
   }
 
