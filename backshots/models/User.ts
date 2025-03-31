@@ -62,38 +62,23 @@ export class User {
   async save() {
     const db = getDb();
     try {
-      // First save the user to MongoDB
       const result = await db.collection('users').insertOne(this);
-      console.log('API KEY: ' + API_KEY + ' and SECRET: ' + API_SECRET);
-
-      // Get the MongoDB ObjectId as a string to use as StreamChat ID
       const userId = result.insertedId.toString();
-
-      // If the user has an email, register them in StreamChat as well
-      if (this.email) {
-        try {
-          // Add the user to StreamChat with MongoDB ObjectId as ID
-          await serverClient.upsertUsers([
-            {
-              id: userId,
-              name: `${this.firstName} ${this.lastName}`,
-              email: this.email, // Store email as a field instead of ID
-              role: 'user',
-              // Additional user data that might be useful for chat
-              yearLevel: this.yearLevel,
-              major: this.major,
-            },
-          ]);
-          console.log(
-            `User ${this.email} added to StreamChat with ID: ${userId}`
-          );
-        } catch (streamError) {
-          console.error('Error adding user to StreamChat:', streamError);
-          // Note: We don't throw here to avoid failing the whole operation
-          // if only the StreamChat registration fails
-        }
+      try {
+        // Add the user to StreamChat with MongoDB ObjectId as ID
+        await serverClient.upsertUsers([
+          {
+            id: userId,
+            name: `${this.firstName} ${this.lastName}`,
+            role: 'user',
+          },
+        ]);
+        console.log(
+          `User ${this.email} added to StreamChat with ID: ${userId}`
+        );
+      } catch (streamError) {
+        console.error('Error adding user to StreamChat:', streamError);
       }
-
       return result;
     } catch (error) {
       throw error;
