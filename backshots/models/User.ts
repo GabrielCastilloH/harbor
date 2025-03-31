@@ -64,20 +64,29 @@ export class User {
     try {
       // First save the user to MongoDB
       const result = await db.collection('users').insertOne(this);
+      console.log('API KEY: ' + API_KEY + ' and SECRET: ' + API_SECRET);
+
+      // Get the MongoDB ObjectId as a string to use as StreamChat ID
+      const userId = result.insertedId.toString();
 
       // If the user has an email, register them in StreamChat as well
       if (this.email) {
         try {
-          // Add the user to StreamChat with their email as ID
-          await serverClient.upsertUser({
-            id: this.email,
-            name: `${this.firstName} ${this.lastName}`,
-            role: 'user',
-            // Additional user data that might be useful for chat
-            yearLevel: this.yearLevel,
-            major: this.major,
-          });
-          console.log(`User ${this.email} added to StreamChat`);
+          // Add the user to StreamChat with MongoDB ObjectId as ID
+          await serverClient.upsertUsers([
+            {
+              id: userId,
+              name: `${this.firstName} ${this.lastName}`,
+              email: this.email, // Store email as a field instead of ID
+              role: 'user',
+              // Additional user data that might be useful for chat
+              yearLevel: this.yearLevel,
+              major: this.major,
+            },
+          ]);
+          console.log(
+            `User ${this.email} added to StreamChat with ID: ${userId}`
+          );
         } catch (streamError) {
           console.error('Error adding user to StreamChat:', streamError);
           // Note: We don't throw here to avoid failing the whole operation
@@ -126,14 +135,20 @@ export class User {
       // If the user has an email and we're updating fields relevant to StreamChat, update StreamChat too
       if (updatedUser && updatedUser.email) {
         try {
+          // Use the MongoDB ObjectId string as the StreamChat user ID
+          const userId = id.toString();
+
           await serverClient.upsertUser({
-            id: updatedUser.email,
+            id: userId,
             name: `${updatedUser.firstName} ${updatedUser.lastName}`,
+            email: updatedUser.email, // Store email as a field
             role: 'user',
             yearLevel: updatedUser.yearLevel,
             major: updatedUser.major,
           });
-          console.log(`User ${updatedUser.email} updated in StreamChat`);
+          console.log(
+            `User ${updatedUser.email} updated in StreamChat with ID: ${userId}`
+          );
         } catch (streamError) {
           console.error('Error updating user in StreamChat:', streamError);
           // Continue with the operation even if StreamChat update fails
