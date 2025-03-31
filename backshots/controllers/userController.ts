@@ -2,7 +2,10 @@ import { Request, Response } from 'express';
 import { User } from '../models/User.js';
 import { ObjectId } from 'mongodb';
 
-export const createUser = async (req: Request, res: Response) => {
+export const createUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   console.log(
     'createUser called with request body:',
     JSON.stringify(req.body, null, 2)
@@ -12,6 +15,8 @@ export const createUser = async (req: Request, res: Response) => {
   // Check if req.body is undefined or an empty object
   if (!req.body || Object.keys(req.body).length === 0) {
     console.error('Request body is undefined or empty');
+    res.status(400).json({ message: 'Request body is required' });
+    return;
   }
 
   try {
@@ -35,10 +40,11 @@ export const createUser = async (req: Request, res: Response) => {
 
     // Validate required fields
     if (!firstName || !lastName) {
-      return res.status(400).json({
+      res.status(400).json({
         message: 'First name and last name are required',
         receivedBody: req.body,
       });
+      return;
     }
 
     console.log('Creating user with extracted data:');
@@ -82,6 +88,10 @@ export const createUser = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Error creating user:', error);
+    res.status(500).json({
+      message: 'Failed to create user',
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 };
 
