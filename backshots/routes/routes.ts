@@ -24,11 +24,7 @@ import {
 const router = express.Router();
 
 // POST new user.
-router.post('/users', validateUser, async (req: Request, res: Response) => {
-  const { email, name } = req.body;
-  const user = await createUser(email, name);
-  res.status(200).json({ user });
-});
+router.post('/users', validateUser, createUser);
 
 // GET all users.
 router.get('/users', getAllUsers);
