@@ -3,12 +3,12 @@ import axios from 'axios';
 const serverUrl = process.env.SERVER_URL || 'http://localhost:3000'; // adjust as needed
 console.log('ChatFunctions - Using server URL:', serverUrl);
 
-export async function fetchUserToken(userEmail: string): Promise<string> {
-  console.log('ChatFunctions - fetchUserToken called with email:', userEmail);
+export async function fetchUserToken(userId: string): Promise<string> {
+  console.log('ChatFunctions - fetchUserToken called with userId:', userId);
   console.log('ChatFunctions - Making request to:', `${serverUrl}/chat/token`);
 
   try {
-    const response = await axios.post(`${serverUrl}/chat/token`, { userEmail });
+    const response = await axios.post(`${serverUrl}/chat/token`, { userId });
     console.log('ChatFunctions - Token response:', response.status);
     console.log(
       'ChatFunctions - Token data:',
@@ -41,18 +41,18 @@ export async function fetchUserToken(userEmail: string): Promise<string> {
 }
 
 export async function fetchCreateChatChannel(
-  email1: string,
-  email2: string
+  userId1: string,
+  userId2: string
 ): Promise<any> {
   console.log(
-    'ChatFunctions - Creating chat channel for:',
-    email1,
+    'ChatFunctions - Creating chat channel for users:',
+    userId1,
     'and',
-    email2
+    userId2
   );
   const response = await axios.post(`${serverUrl}/chat/channel`, {
-    email1,
-    email2,
+    userId1,
+    userId2,
   });
   console.log('ChatFunctions - Channel created:', response.data.channel);
   return response.data.channel;

@@ -45,12 +45,14 @@ export default function ChatNavigator() {
 
   // Create a memoized user object to avoid recreating on each render
   const user = useMemo(() => {
-    if (!profile) return { id: 'loading', name: 'Loading' };
+    if (!profile || !userId) return { id: 'loading', name: 'Loading' };
     return {
-      id: profile.email || 'defaultUser@example.com',
-      name: profile.firstName || 'DefaultUser',
+      id: userId, // Use MongoDB ObjectId as the StreamChat user ID
+      name: profile.firstName
+        ? `${profile.firstName} ${profile.lastName || ''}`
+        : 'User',
     };
-  }, [profile]);
+  }, [profile, userId]);
 
   // ALWAYS call this hook at the top level, with a consistent value
   // (empty string if no token yet)
@@ -79,7 +81,7 @@ export default function ChatNavigator() {
         // Check if the response has data directly or within a user property
         if (response.data) {
           // If response contains data directly as the user object
-          if (response.data._id && response.data.email) {
+          if (response.data._id) {
             console.log(
               'ChatNavigator - Profile data received directly:',
               JSON.stringify(response.data, null, 2)
@@ -119,26 +121,26 @@ export default function ChatNavigator() {
     fetchUserProfile();
   }, [userId, serverUrl]);
 
-  // Fetch the token when profile is loaded
+  // Fetch the token when profile is loaded - now using userId
   useEffect(() => {
-    if (!profile || !profile.email) {
-      console.log(
-        'ChatNavigator - No profile or email available, cannot fetch token'
-      );
+    if (!userId) {
+      console.log('ChatNavigator - No userId available, cannot fetch token');
       return;
     }
 
-    console.log('ChatNavigator - Starting token fetch for:', profile.email);
+    console.log('ChatNavigator - Starting token fetch for userId:', userId);
 
     async function getToken() {
       try {
         console.log(
-          'ChatNavigator - Calling fetchUserToken with:',
-          profile.email
+          'ChatNavigator - Calling fetchUserToken with userId:',
+          userId
         );
         console.log('ChatNavigator - API URL:', `${serverUrl}/chat/token`);
 
-        const token = await fetchUserToken(profile.email);
+        // We already checked userId is not null in the parent scope, but TypeScript
+        // needs the assertion here to be certain
+        const token = await fetchUserToken(userId as string);
         console.log(
           'ChatNavigator - Token received:',
           token ? 'Token exists' : 'No token'
@@ -157,7 +159,7 @@ export default function ChatNavigator() {
     }
 
     getToken();
-  }, [profile, serverUrl]);
+  }, [userId, serverUrl]);
 
   // Log state changes
   useEffect(() => {
