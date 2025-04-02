@@ -14,6 +14,69 @@ if (!API_KEY || !API_SECRET) {
 
 const serverClient = StreamChat.getInstance(API_KEY, API_SECRET);
 
+// Function to upsert a user in StreamChat
+export const upsertUserToStreamChat = async (
+  userId: string,
+  firstName: string,
+  lastName: string
+) => {
+  try {
+    await serverClient.upsertUsers([
+      {
+        id: userId,
+        name: `${firstName} ${lastName}`,
+        role: 'user',
+      },
+    ]);
+    console.log(`User added/updated in StreamChat with ID: ${userId}`);
+    return true;
+  } catch (streamError) {
+    console.error('Error adding/updating user in StreamChat:', streamError);
+    return false;
+  }
+};
+
+// Function to create a chat channel between two users
+export const createChannelBetweenUsers = async (
+  userId1: string,
+  userId2: string
+) => {
+  try {
+    // Verify both users exist
+    const user1 = await User.findById(new ObjectId(userId1));
+    const user2 = await User.findById(new ObjectId(userId2));
+
+    if (!user1 || !user2) {
+      throw new Error('One or both users not found');
+    }
+
+    // Create a unique channel ID by sorting and joining the user IDs
+    const channelId = [userId1, userId2].sort().join('-');
+
+    // Create the channel with user IDs as members
+    const channel = serverClient.channel('messaging', channelId, {
+      name: `Chat between ${user1.firstName} and ${user2.firstName}`,
+      members: [userId1, userId2],
+      chatDisabled: false,
+      created_by_id: 'system',
+    });
+
+    await channel.create();
+
+    // Add a system message to notify users they've matched
+    await channel.sendMessage({
+      text: `You've matched! Start chatting now.`,
+      user_id: 'system',
+    });
+
+    console.log(`Channel created between ${userId1} and ${userId2}`);
+    return channel;
+  } catch (error) {
+    console.error('Error creating channel:', error);
+    throw error;
+  }
+};
+
 export const generateUserToken = async (req: Request, res: Response) => {
   try {
     const { userId } = req.body;
@@ -46,28 +109,12 @@ export const createChatChannel = async (req: Request, res: Response) => {
       return;
     }
 
-    // Verify both users exist
-    const user1 = await User.findById(new ObjectId(userId1));
-    const user2 = await User.findById(new ObjectId(userId2));
-
-    if (!user1 || !user2) {
-      res.status(404).json({ error: 'One or both users not found' });
-      return;
+    try {
+      const channel = await createChannelBetweenUsers(userId1, userId2);
+      res.json({ channel });
+    } catch (error) {
+      res.status(404).json({ error: 'Failed to create channel' });
     }
-
-    // Create a unique channel ID by sorting and joining the user IDs
-    const channelId = [userId1, userId2].sort().join('-');
-
-    // Create the channel with user IDs as members
-    const channel = serverClient.channel('messaging', channelId, {
-      name: `Chat between ${user1.firstName} and ${user2.firstName}`,
-      members: [userId1, userId2],
-      chatDisabled: false,
-      created_by_id: 'system',
-    });
-
-    await channel.create();
-    res.json({ channel });
   } catch (error) {
     console.error('Error creating channel:', error);
     res.status(500).json({ error: 'Failed to create channel' });

@@ -25,6 +25,20 @@ export class Swipe {
     }
   }
 
+  // Add the findOne static method to find a specific swipe
+  static async findOne(query: {
+    swiperId: ObjectId;
+    swipedId: ObjectId;
+    direction: string;
+  }) {
+    const db = getDb();
+    try {
+      return await db.collection('swipes').findOne(query);
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Returns a count of swipes made by the given user in the past 24 hours.
   static async countSwipesInPast24Hours(userId: ObjectId) {
     const db = getDb();
