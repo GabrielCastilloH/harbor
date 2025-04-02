@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import { Swipe } from '../models/Swipe.js';
+import { createChannelBetweenUsers } from './chatController.js';
 
 // Creates a new swipe record.
 export const createSwipe = async (req: Request, res: Response) => {
@@ -20,9 +21,39 @@ export const createSwipe = async (req: Request, res: Response) => {
       direction
     );
     await swipe.save();
+
+    // Check if there's a match when direction is 'right'
+    if (direction === 'right') {
+      // Check if the other user has already swiped right on this user
+      const matchingSwipe = await Swipe.findOne({
+        swiperId: new ObjectId(swipedId),
+        swipedId: new ObjectId(swiperId),
+        direction: 'right',
+      });
+
+      // If there's a match, create a chat channel
+      if (matchingSwipe) {
+        try {
+          // Use the chat controller to create a channel between the matched users
+          await createChannelBetweenUsers(swiperId, swipedId);
+
+          res.status(201).json({
+            message: 'Match! Swipe recorded and chat channel created',
+            swipe,
+            match: true,
+          });
+          return;
+        } catch (channelError) {
+          console.error('Error creating match channel:', channelError);
+          // Continue even if channel creation fails
+        }
+      }
+    }
+
     res.status(201).json({
       message: 'Swipe recorded successfully',
       swipe,
+      match: direction === 'right' ? false : null,
     });
   } catch (error: any) {
     res.status(500).json({

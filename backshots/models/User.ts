@@ -1,15 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { getDb } from '../util/database.js';
-import { StreamChat } from 'stream-chat';
-import * as dotenv from 'dotenv';
-dotenv.config();
-
-// Get StreamChat API credentials from env vars
-const API_KEY = process.env.STREAM_API_KEY;
-const API_SECRET = process.env.STREAM_API_SECRET;
-
-// Create StreamChat server client instance
-const serverClient = StreamChat.getInstance(API_KEY || '', API_SECRET || '');
+import { upsertUserToStreamChat } from '../controllers/chatController.js';
 
 export class User {
   firstName: string;
@@ -64,21 +55,10 @@ export class User {
     try {
       const result = await db.collection('users').insertOne(this);
       const userId = result.insertedId.toString();
-      try {
-        // Add the user to StreamChat with MongoDB ObjectId as ID
-        await serverClient.upsertUsers([
-          {
-            id: userId,
-            name: `${this.firstName} ${this.lastName}`,
-            role: 'user',
-          },
-        ]);
-        console.log(
-          `User ${this.email} added to StreamChat with ID: ${userId}`
-        );
-      } catch (streamError) {
-        console.error('Error adding user to StreamChat:', streamError);
-      }
+
+      // Add the user to StreamChat using the dedicated function in chatController
+      await upsertUserToStreamChat(userId, this.firstName, this.lastName);
+
       return result;
     } catch (error) {
       throw error;
@@ -117,27 +97,15 @@ export class User {
       // Get the updated user
       const updatedUser = await User.findById(id);
 
-      // If the user has an email and we're updating fields relevant to StreamChat, update StreamChat too
-      if (updatedUser && updatedUser.email) {
-        try {
-          // Use the MongoDB ObjectId string as the StreamChat user ID
-          const userId = id.toString();
-
-          await serverClient.upsertUser({
-            id: userId,
-            name: `${updatedUser.firstName} ${updatedUser.lastName}`,
-            email: updatedUser.email, // Store email as a field
-            role: 'user',
-            yearLevel: updatedUser.yearLevel,
-            major: updatedUser.major,
-          });
-          console.log(
-            `User ${updatedUser.email} updated in StreamChat with ID: ${userId}`
-          );
-        } catch (streamError) {
-          console.error('Error updating user in StreamChat:', streamError);
-          // Continue with the operation even if StreamChat update fails
-        }
+      // If the user exists and we're updating fields relevant to StreamChat, update StreamChat too
+      if (updatedUser) {
+        const userId = id.toString();
+        // Update user in StreamChat using the chatController function
+        await upsertUserToStreamChat(
+          userId,
+          updatedUser.firstName,
+          updatedUser.lastName
+        );
       }
 
       return updatedUser;
