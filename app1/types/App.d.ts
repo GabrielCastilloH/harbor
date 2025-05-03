@@ -14,7 +14,7 @@ export type Profile = {
   majorReason: string; // "My major is _, because:"
   studySpot: string; // "My favorite study spot is:"
   hobbies: string; // "Some of my hobbies are:"
-}
+};
 
 export interface CardViewProps {
   profile: Profile;
