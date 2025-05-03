@@ -5,21 +5,29 @@ import axios from "axios";
 const serverUrl = process.env.SERVER_URL || "http://localhost:3000";
 
 /**
- * Convert an image URI to base64 format
+ * Convert an image URI to base64 format with aggressive compression
  */
-export async function imageToBase64(uri: string): Promise<string> {
+export async function imageToBase64(
+  uri: string,
+  quality = 0.5
+): Promise<string> {
   try {
-    // First compress the image to reduce size
+    console.log(`Compressing image with quality ${quality}...`);
+
+    // First compress the image to reduce size - more aggressive settings
     const manipResult = await ImageManipulator.manipulateAsync(
       uri,
-      [{ resize: { width: 800 } }], // Resize to reasonable dimensions
-      { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+      [{ resize: { width: 500 } }], // Reduced from 800 to 500
+      { compress: quality, format: ImageManipulator.SaveFormat.JPEG }
     );
 
     // Convert to base64
     const base64 = await FileSystem.readAsStringAsync(manipResult.uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
+
+    // Log the size of the base64 string to debug
+    console.log(`Base64 string length: ${base64.length} characters`);
 
     return base64;
   } catch (error) {
@@ -29,36 +37,86 @@ export async function imageToBase64(uri: string): Promise<string> {
 }
 
 /**
- * Upload an image to the server and get its file ID.
- * This function ensures the image data is a valid base64 string by
- * stripping off any data URL prefixes if they exist.
+ * Upload an image to the server with retry logic for large images
  */
 export async function uploadImageToServer(
   userId: string,
   imageUri: string
 ): Promise<string> {
-  try {
-    let base64: string;
-    // If imageUri already contains a data URL prefix, strip it off.
-    if (imageUri.startsWith("data:")) {
-      base64 = imageUri.replace(/^data:image\/\w+;base64,/, "");
-    } else {
-      base64 = await imageToBase64(imageUri);
+  let quality = 0.5; // Start with medium quality
+  const minQuality = 0.1; // Don't go below this quality
+
+  while (quality >= minQuality) {
+    try {
+      let base64: string;
+
+      // If imageUri already contains a data URL prefix, strip it off
+      if (imageUri.startsWith("data:")) {
+        console.log("Image is already in base64 format, stripping prefix...");
+        base64 = imageUri.replace(/^data:image\/\w+;base64,/, "");
+      } else {
+        console.log(`Converting image to base64 with quality ${quality}...`);
+        base64 = await imageToBase64(imageUri, quality);
+      }
+
+      console.log(`Sending image to server (${base64.length} chars)...`);
+
+      // Create request data for logging
+      const requestData = {
+        userId,
+        contentType: "image/jpeg",
+        // Don't log the full base64 string to avoid console overload
+        imageData: `[base64 string of length ${base64.length}]`,
+      };
+
+      console.log(
+        "Upload request:",
+        JSON.stringify(
+          {
+            url: `${serverUrl}/images/upload`,
+            method: "POST",
+            data: requestData,
+          },
+          null,
+          2
+        )
+      );
+
+      // Send actual data to server
+      const response = await axios.post(`${serverUrl}/images/upload`, {
+        userId,
+        imageData: base64,
+        contentType: "image/jpeg",
+      });
+
+      console.log("Upload response:", response.status);
+
+      // Return the file ID
+      return response.data.fileId;
+    } catch (error: any) {
+      console.error("Error uploading image:", error);
+
+      // If it's a 413 error and we still have room to reduce quality, try again
+      if (axios.isAxiosError(error) && error.response?.status === 413) {
+        console.log(
+          `413 error, reducing quality from ${quality} to ${quality - 0.1}...`
+        );
+        quality -= 0.1;
+
+        if (quality >= minQuality) {
+          console.log("Retrying with lower quality...");
+          continue;
+        }
+      }
+
+      // Either it's not a 413 error or we've reached minimum quality
+      throw error;
     }
-
-    // Send to server
-    const response = await axios.post(`${serverUrl}/images/upload`, {
-      userId,
-      imageData: base64,
-      contentType: "image/jpeg",
-    });
-
-    // Return the file ID
-    return response.data.fileId;
-  } catch (error) {
-    console.error("Error uploading image:", error);
-    throw error;
   }
+
+  throw new Error(
+    "Failed to upload image - size still too large after maximum compression"
+  );
 }
 
 /**

@@ -1,10 +1,10 @@
-import express from 'express';
-import bodyParser from 'body-parser';
-import routes from './routes/routes.js';
-import authRoutes from './routes/authRoutes.js';
-import { mongoConnect } from './util/database.js';
-import * as dotenv from 'dotenv';
-import { Request, Response, NextFunction } from 'express';
+import express from "express";
+import bodyParser from "body-parser";
+import routes from "./routes/routes.js";
+import authRoutes from "./routes/authRoutes.js";
+import { mongoConnect } from "./util/database.js";
+import * as dotenv from "dotenv";
+import { Request, Response, NextFunction } from "express";
 
 dotenv.config();
 
@@ -19,7 +19,7 @@ app.use(
     next: express.NextFunction
   ) => {
     console.error(err.stack);
-    res.status(500).send('Something broke!');
+    res.status(500).send("Something broke!");
   }
 );
 
@@ -32,8 +32,11 @@ app.use(
 app.use(bodyParser.json()); // for parsing application/json
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.use('/', routes);
-app.use('/auth', authRoutes); // All auth routes will be prefixed with /auth
+app.use("/", routes);
+app.use("/auth", authRoutes); // All auth routes will be prefixed with /auth
+
+app.use(bodyParser.json({ limit: "50mb" }));
+app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
 
 mongoConnect(() => {
   app.listen(port, () => {
