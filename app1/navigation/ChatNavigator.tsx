@@ -1,22 +1,22 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
-import ChatList from '../screens/ChatList';
-import ChatScreen from '../screens/ChatScreen';
-import LoadingScreen from '../screens/LoadingScreen';
-import Colors from '../constants/Colors';
+import React, { useState, useEffect, useMemo } from "react";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import axios from "axios";
+import ChatList from "../screens/ChatList";
+import ChatScreen from "../screens/ChatScreen";
+import LoadingScreen from "../screens/LoadingScreen";
+import Colors from "../constants/Colors";
 import {
   OverlayProvider,
   Chat,
   useCreateChatClient,
   DeepPartial,
   Theme,
-} from 'stream-chat-expo';
-import ProfileScreen from '../screens/ProfileScreen';
-import { fetchUserToken } from '../networking/ChatFunctions';
-import { useAppContext } from '../context/AppContext';
+} from "stream-chat-expo";
+import ProfileScreen from "../screens/ProfileScreen";
+import { fetchUserToken } from "../networking/ChatFunctions";
+import { useAppContext } from "../context/AppContext";
 
 const Stack = createNativeStackNavigator();
 
@@ -28,7 +28,7 @@ const theme: DeepPartial<Theme> = {
     bg_gradient_start: Colors.primary100,
     bg_gradient_end: Colors.primary100,
     grey_whisper: Colors.primary100,
-    transparent: 'transparent',
+    transparent: "transparent",
     light_blue: Colors.primary100,
   },
 };
@@ -45,12 +45,12 @@ export default function ChatNavigator() {
 
   // Create a memoized user object to avoid recreating on each render
   const user = useMemo(() => {
-    if (!profile || !userId) return { id: 'loading', name: 'Loading' };
+    if (!profile || !userId) return { id: "loading", name: "Loading" };
     return {
       id: userId, // Use MongoDB ObjectId as the StreamChat user ID
       name: profile.firstName
-        ? `${profile.firstName} ${profile.lastName || ''}`
-        : 'User',
+        ? `${profile.firstName} ${profile.lastName || ""}`
+        : "User",
     };
   }, [profile, userId]);
 
@@ -59,7 +59,7 @@ export default function ChatNavigator() {
   const chatClient = useCreateChatClient({
     apiKey: chatApiKey,
     userData: user,
-    tokenOrProvider: chatUserToken || '',
+    tokenOrProvider: chatUserToken || "",
   });
 
   // Fetch user profile data
@@ -67,7 +67,7 @@ export default function ChatNavigator() {
     const fetchUserProfile = async () => {
       if (!userId) {
         console.log(
-          'ChatNavigator - No userId available, cannot fetch profile'
+          "ChatNavigator - No userId available, cannot fetch profile"
         );
         return;
       }
@@ -76,14 +76,14 @@ export default function ChatNavigator() {
       try {
         console.log(`ChatNavigator - Fetching profile for userId: ${userId}`);
         const response = await axios.get(`${serverUrl}/users/${userId}`);
-        console.log('ChatNavigator - Profile fetch response:', response.status);
+        console.log("ChatNavigator - Profile fetch response:", response.status);
 
         // Check if the response has data directly or within a user property
         if (response.data) {
           // If response contains data directly as the user object
           if (response.data._id) {
             console.log(
-              'ChatNavigator - Profile data received directly:',
+              "ChatNavigator - Profile data received directly:",
               JSON.stringify(response.data, null, 2)
             );
             setProfile(response.data);
@@ -91,25 +91,25 @@ export default function ChatNavigator() {
           // If response contains data in the user property
           else if (response.data.user && response.data.user._id) {
             console.log(
-              'ChatNavigator - Profile data received in user property:',
+              "ChatNavigator - Profile data received in user property:",
               JSON.stringify(response.data.user, null, 2)
             );
             setProfile(response.data.user);
           } else {
             console.error(
-              'ChatNavigator - Invalid profile data format:',
+              "ChatNavigator - Invalid profile data format:",
               response.data
             );
           }
         } else {
-          console.error('ChatNavigator - No data in response:', response);
+          console.error("ChatNavigator - No data in response:", response);
         }
       } catch (error) {
-        console.error('ChatNavigator - Failed to fetch user profile:', error);
+        console.error("ChatNavigator - Failed to fetch user profile:", error);
         if (axios.isAxiosError(error)) {
-          console.error('ChatNavigator - Status:', error.response?.status);
+          console.error("ChatNavigator - Status:", error.response?.status);
           console.error(
-            'ChatNavigator - Response data:',
+            "ChatNavigator - Response data:",
             JSON.stringify(error.response?.data, null, 2)
           );
         }
@@ -124,34 +124,34 @@ export default function ChatNavigator() {
   // Fetch the token when profile is loaded - now using userId
   useEffect(() => {
     if (!userId) {
-      console.log('ChatNavigator - No userId available, cannot fetch token');
+      console.log("ChatNavigator - No userId available, cannot fetch token");
       return;
     }
 
-    console.log('ChatNavigator - Starting token fetch for userId:', userId);
+    console.log("ChatNavigator - Starting token fetch for userId:", userId);
 
     async function getToken() {
       try {
         console.log(
-          'ChatNavigator - Calling fetchUserToken with userId:',
+          "ChatNavigator - Calling fetchUserToken with userId:",
           userId
         );
-        console.log('ChatNavigator - API URL:', `${serverUrl}/chat/token`);
+        console.log("ChatNavigator - API URL:", `${serverUrl}/chat/token`);
 
         // We already checked userId is not null in the parent scope, but TypeScript
         // needs the assertion here to be certain
         const token = await fetchUserToken(userId as string);
         console.log(
-          'ChatNavigator - Token received:',
-          token ? 'Token exists' : 'No token'
+          "ChatNavigator - Token received:",
+          token ? "Token exists" : "No token"
         );
         setChatUserToken(token);
       } catch (error: unknown) {
-        console.error('ChatNavigator - Failed to fetch chat token:', error);
+        console.error("ChatNavigator - Failed to fetch chat token:", error);
         if (axios.isAxiosError(error)) {
-          console.error('ChatNavigator - Status:', error.response?.status);
+          console.error("ChatNavigator - Status:", error.response?.status);
           console.error(
-            'ChatNavigator - Response data:',
+            "ChatNavigator - Response data:",
             JSON.stringify(error.response?.data, null, 2)
           );
         }
@@ -164,30 +164,30 @@ export default function ChatNavigator() {
   // Log state changes
   useEffect(() => {
     console.log(
-      'ChatNavigator - Token updated:',
-      chatUserToken ? 'Has token' : 'No token'
+      "ChatNavigator - Token updated:",
+      chatUserToken ? "Has token" : "No token"
     );
   }, [chatUserToken]);
 
   useEffect(() => {
-    console.log('ChatNavigator - Client updated:', !!chatClient);
+    console.log("ChatNavigator - Client updated:", !!chatClient);
   }, [chatClient]);
 
   // Conditionally render loading or chat UI
   if (isLoadingProfile || !profile) {
-    console.log('ChatNavigator - Waiting for profile to load');
+    console.log("ChatNavigator - Waiting for profile to load");
     return <LoadingScreen />;
   }
 
   if (!chatUserToken || !chatClient) {
     console.log(
-      'ChatNavigator - Showing LoadingScreen because:',
-      !chatUserToken ? 'No token' : 'No client'
+      "ChatNavigator - Showing LoadingScreen because:",
+      !chatUserToken ? "No token" : "No client"
     );
     return <LoadingScreen />;
   }
 
-  console.log('ChatNavigator - Rendering chat UI');
+  console.log("ChatNavigator - Rendering chat UI");
   return (
     <OverlayProvider value={{ style: theme }}>
       <Chat client={chatClient}>
@@ -201,18 +201,18 @@ export default function ChatNavigator() {
             name="Chats"
             component={ChatList}
             options={{
-              title: 'Chats',
-              headerTitleAlign: 'center',
+              title: "Chats",
+              headerTitleAlign: "center",
             }}
           />
           <Stack.Screen
             name="ChatScreen"
             component={ChatScreen}
             options={({ navigation }) => ({
-              headerTitle: 'Messages',
+              headerTitle: "Messages",
               headerRight: () => (
                 <TouchableOpacity
-                  onPress={() => navigation.navigate('ProfileScreen')}
+                  onPress={() => navigation.navigate("ProfileScreen")}
                 >
                   <Ionicons name="person" size={24} color={Colors.primary500} />
                 </TouchableOpacity>
@@ -223,7 +223,7 @@ export default function ChatNavigator() {
             name="ProfileScreen"
             component={ProfileScreen}
             options={{
-              headerTitle: 'Profile',
+              headerTitle: "Profile",
             }}
           />
         </Stack.Navigator>
