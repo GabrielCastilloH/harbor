@@ -1,5 +1,11 @@
 Welcome to Harbor!
 
+How to run:
+Go to mongodb.com and make sure your ip address is allowed.
+Connect to the database using mongo compass
+npm start on the backend
+npx expo start on the front end.
+
 TODOS:
 
 - Setup streamchat:
