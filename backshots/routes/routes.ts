@@ -48,7 +48,6 @@ router.get('/swipes/:userId', getSwipesByUser);
 // Get recommendations
 router.get('/users/:id/recommendations', getRecommendations);
 
-// Chat routes
 router.post('/chat/token', generateUserToken);
 router.post('/chat/channel', createChatChannel);
 router.post('/chat/channel/update', updateChannelChatDisabled);
