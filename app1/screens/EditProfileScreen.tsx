@@ -15,6 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { useAppContext } from '../context/AppContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { uploadImageToServer, getImageSource } from '../util/imageUtils';
 
 const serverUrl = process.env.SERVER_URL;
 
@@ -139,86 +140,58 @@ export default function EditProfileScreen({
 
         const authInfo = JSON.parse(authInfoString);
 
-        // Make sure email is included in the profile data
-        const completeProfileData = {
+        // Process images - convert URIs to fileIds after user is created
+        // We'll do this after the user is created and we have the userId
+
+        // Create the user first with empty images array
+        const userDataWithoutImages = {
           ...profileData,
-          email: authInfo.email, // This ensures email is always included
+          images: [], // Start with empty array, we'll add images after user creation
+          email: authInfo.email,
         };
 
-        // Add additional debugging output
-        console.log('Auth info:', JSON.stringify(authInfo, null, 2));
-        console.log('Server URL:', serverUrl);
-        console.log(
-          'Complete profile data:',
-          JSON.stringify(completeProfileData, null, 2)
+        response = await axios.post(
+          `${serverUrl}/users`,
+          userDataWithoutImages
         );
-        console.log('About to send POST request to:', `${serverUrl}/users`);
 
-        try {
-          // Create the new user with complete data including email
-          console.log('Sending axios POST request...');
+        if (response.data && response.data.user && response.data.user._id) {
+          const newUserId = response.data.user._id;
 
-          // Log request configuration
-          const requestConfig = {
-            url: `${serverUrl}/users`,
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            data: completeProfileData,
-          };
-          console.log(
-            'Request config:',
-            JSON.stringify(requestConfig, null, 2)
-          );
-
-          response = await axios.post(
-            `${serverUrl}/users`,
-            completeProfileData
-          );
-
-          console.log('Response received:', response.status);
-          console.log('Response data:', JSON.stringify(response.data, null, 2));
-
-          if (response.data && response.data.user && response.data.user._id) {
-            // Store user data in AsyncStorage
-            await AsyncStorage.setItem(
-              '@user',
-              JSON.stringify(response.data.user)
-            );
-            // Remove temporary auth info
-            await AsyncStorage.removeItem('@authInfo');
-
-            // Update app state
-            setUserId(response.data.user._id);
-            setProfile(response.data.user);
-          }
-        } catch (error: any) {
-          // Error handling (leave unchanged)
-          console.log('Failed to save profile:', error);
-          // Log detailed error information
-          if (axios.isAxiosError(error)) {
-            console.error('Status:', error.response?.status);
-            console.error(
-              'Response data:',
-              JSON.stringify(error.response?.data, null, 2)
-            );
-          }
-
-          // Attempt to extract error details from the backend response.
-          let errorMessage = 'Failed to save profile';
-          if (error.response && error.response.data) {
-            if (error.response.data.message) {
-              errorMessage = error.response.data.message;
+          // Now upload each image and get fileIds
+          const imageFileIds = [];
+          for (const imageUri of profileData.images) {
+            if (imageUri) {
+              try {
+                const fileId = await uploadImageToServer(newUserId, imageUri);
+                imageFileIds.push(fileId);
+              } catch (imgError) {
+                console.error('Error uploading image:', imgError);
+                // Continue with other images if one fails
+              }
             }
-            if (error.response.data.errors) {
-              errorMessage += '\n' + error.response.data.errors.join('\n');
-            }
-          } else if (error.message) {
-            errorMessage = error.message;
           }
 
-          Alert.alert('Error', errorMessage);
+          // Update the user with image IDs
+          if (imageFileIds.length > 0) {
+            await axios.post(`${serverUrl}/users/${newUserId}`, {
+              images: imageFileIds,
+            });
+
+            // Update the response data with the image IDs
+            response.data.user.images = imageFileIds;
+          }
+
+          // Store user data in AsyncStorage
+          await AsyncStorage.setItem(
+            '@user',
+            JSON.stringify(response.data.user)
+          );
+          await AsyncStorage.removeItem('@authInfo');
+
+          // Update app state
+          setUserId(response.data.user._id);
+          setProfile(response.data.user);
         }
       } else {
         // Update existing user profile
@@ -273,15 +246,40 @@ export default function EditProfileScreen({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.7,
     });
 
     if (!result.canceled) {
       if (result.assets && result.assets.length > 0) {
-        setProfileData({
-          ...profileData,
-          images: [...profileData.images, result.assets[0].uri],
-        });
+        try {
+          setLoading(true);
+
+          // If we're updating an existing profile
+          if (userId) {
+            // Upload and get fileId
+            const fileId = await uploadImageToServer(
+              userId,
+              result.assets[0].uri
+            );
+
+            // Store the fileId instead of the URI
+            setProfileData({
+              ...profileData,
+              images: [...profileData.images, fileId],
+            });
+          } else {
+            // For new profile setup, we'll temporarily store the URI and upload when profile is created
+            setProfileData({
+              ...profileData,
+              images: [...profileData.images, result.assets[0].uri],
+            });
+          }
+        } catch (error) {
+          console.error('Error processing image:', error);
+          Alert.alert('Error', 'Failed to process the image');
+        } finally {
+          setLoading(false);
+        }
       }
     }
   };
@@ -414,7 +412,15 @@ export default function EditProfileScreen({
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {profileData.images.map((image, index) => (
             <View key={index} style={styles.imageContainer}>
-              <Image source={{ uri: image }} style={styles.image} />
+              <Image
+                source={
+                  // Check if it's a URI string (for new images) or an ID (for stored images)
+                  image.startsWith('file:') || image.startsWith('data:')
+                    ? { uri: image }
+                    : getImageSource(image)
+                }
+                style={styles.image}
+              />
               <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => removeImage(index)}

@@ -53,7 +53,10 @@ export default React.forwardRef(function AnimatedStack(
   );
 
   // Wrap postSwipe in a helper that handles errors asynchronously.
-  const postSwipe = async (direction: 'left' | 'right', swipedProfile: Profile) => {
+  const postSwipe = async (
+    direction: 'left' | 'right',
+    swipedProfile: Profile
+  ) => {
     try {
       await axios.post(`${serverUrl}/swipes`, {
         swiperId: userId,
@@ -116,10 +119,7 @@ export default React.forwardRef(function AnimatedStack(
   const combinedGestures = Gesture.Race(panGesture, tapGesture);
 
   const cardStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { rotate: rotate.value },
-    ],
+    transform: [{ translateX: translateX.value }, { rotate: rotate.value }],
   }));
 
   const nextCardStyle = useAnimatedStyle(() => ({
@@ -146,12 +146,16 @@ export default React.forwardRef(function AnimatedStack(
 
   // Add methods to trigger swipes via ref
   const swipeLeft = () => {
-    translateX.value = withSpring(-hiddenTranslateX, {}, () => runOnJS(setCurrentIndex)(currentIndex + 1));
+    translateX.value = withSpring(-hiddenTranslateX, {}, () =>
+      runOnJS(setCurrentIndex)(currentIndex + 1)
+    );
     runOnJS(handleSwipe)('left', currentProfile);
   };
 
   const swipeRight = () => {
-    translateX.value = withSpring(hiddenTranslateX, {}, () => runOnJS(setCurrentIndex)(currentIndex + 1));
+    translateX.value = withSpring(hiddenTranslateX, {}, () =>
+      runOnJS(setCurrentIndex)(currentIndex + 1)
+    );
     runOnJS(handleSwipe)('right', currentProfile);
   };
 

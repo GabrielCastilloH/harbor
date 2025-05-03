@@ -20,6 +20,11 @@ import {
   createChatChannel,
   updateChannelChatDisabled,
 } from '../controllers/chatController.js';
+import {
+  uploadImage,
+  getImage,
+  deleteImage,
+} from '../controllers/imageController.js';
 
 const router = express.Router();
 
@@ -47,5 +52,10 @@ router.get('/users/:id/recommendations', getRecommendations);
 router.post('/chat/token', generateUserToken);
 router.post('/chat/channel', createChatChannel);
 router.post('/chat/channel/update', updateChannelChatDisabled);
+
+// Add image routes
+router.post('/images/upload', uploadImage);
+router.get('/images/:id', getImage);
+router.delete('/images/delete', deleteImage);
 
 export default router;

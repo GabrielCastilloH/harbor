@@ -1,11 +1,18 @@
-import React from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  Animated,
+  Image,
+  TouchableOpacity,
+} from 'react-native';
 import Colors from '../constants/Colors';
 import { Profile } from '../types/App';
 import BasicInfoView from './BasicInfoView';
 import AcademicView from './AcademicView';
 import PersonalView from './PersonalView';
 import PageIndicator from './PageIndicator';
+import { getImageSource } from '../util/imageUtils';
 
 type CardProps = {
   profile: Profile;
@@ -24,6 +31,15 @@ export default function Card({
   currentView,
   setCurrentView,
 }: CardProps) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Handle cycling through profile images
+  const nextImage = () => {
+    if (profile.images && profile.images.length > 0) {
+      setCurrentImageIndex((prev) => (prev + 1) % profile.images.length);
+    }
+  };
+
   return (
     <Animated.View
       style={[
@@ -41,6 +57,17 @@ export default function Card({
           <AcademicView profile={profile} />
         ) : (
           <PersonalView profile={profile} />
+        )}
+
+        {/* Display the current image from the profile's images array */}
+        {profile.images && profile.images.length > 0 && (
+          <TouchableOpacity onPress={nextImage} style={styles.imageContainer}>
+            <Image
+              source={getImageSource(profile.images[currentImageIndex])}
+              style={styles.image}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
         )}
       </View>
     </Animated.View>
@@ -70,5 +97,17 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     padding: 24,
+  },
+  imageContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  image: {
+    width: 200,
+    height: 200,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: Colors.primary500,
   },
 });
