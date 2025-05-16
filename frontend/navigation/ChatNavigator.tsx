@@ -41,7 +41,7 @@ export default function ChatNavigator() {
 
   // Define these states at the top level - always need to be declared
   const [chatUserToken, setChatUserToken] = useState<string | null>(null);
-  const chatApiKey = process.env.STREAM_API_KEY || process.env.CHAT_API_KEY;
+  const chatApiKey = process.env.STREAM_API_KEY || process.env.STREAM_API_KEY;
 
   // Create a memoized user object to avoid recreating on each render
   const user = useMemo(() => {
