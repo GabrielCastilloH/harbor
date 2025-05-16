@@ -28,7 +28,7 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Chat"
+        name="Chats"
         component={ChatNavigator}
         options={{
           headerShown: false,
@@ -38,7 +38,7 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="SettingsStack"
+        name="Settings"
         component={SettingsStack}
         options={{
           headerShown: false,
