@@ -1,66 +1,121 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Modal, Pressable, Dimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
-import { Profile } from '../types/App';
-import PageIndicator from '../components/PageIndicator';
-import BasicInfoView from '../components/BasicInfoView';
-import AcademicView from '../components/AcademicView';
-import PersonalView from '../components/PersonalView';
-import { mockProfiles } from '../constants/Data';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Image,
+  Modal,
+  Pressable,
+  Dimensions,
+  ActivityIndicator,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import Colors from "../constants/Colors";
+import { Profile } from "../types/App";
+import PageIndicator from "../components/PageIndicator";
+import BasicInfoView from "../components/BasicInfoView";
+import AcademicView from "../components/AcademicView";
+import PersonalView from "../components/PersonalView";
+import axios from "axios";
+import { useRoute, RouteProp } from "@react-navigation/native";
 
-const mockProfile = mockProfiles[0];
-const windowWidth = Dimensions.get('window').width;
+type ProfileScreenParams = {
+  ProfileScreen: {
+    userId: string;
+  };
+};
+
+const serverUrl = process.env.SERVER_URL;
+const windowWidth = Dimensions.get("window").width;
 
 export default function ProfileScreen() {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const route = useRoute<RouteProp<ProfileScreenParams, "ProfileScreen">>();
+  const userId = route.params?.userId;
 
-  // Mock photos array - replace with actual photos from your profile
-  const photos = [
-    'https://picsum.photos/200',
-    'https://picsum.photos/201',
-    'https://picsum.photos/202',
-    'https://picsum.photos/203',
-    'https://picsum.photos/204',
-  ];
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await axios.get(`${serverUrl}/users/${userId}`);
+        if (response.data) {
+          setProfile(response.data.user || response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [userId]);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary500} />
+      </View>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>No profile data available</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.scrollView}>
-      <ScrollView horizontal style={styles.photoScroll} showsHorizontalScrollIndicator={false}>
-        {photos.map((photo, index) => (
-          <Pressable 
-            key={index} 
+      <ScrollView
+        horizontal
+        style={styles.photoScroll}
+        showsHorizontalScrollIndicator={false}
+      >
+        {profile.images.map((photo, index) => (
+          <Pressable
+            key={index}
             onPress={() => {
               setSelectedPhoto(photo);
               setModalVisible(true);
             }}
           >
-            <Image 
-              source={{ uri: photo }} 
-              style={styles.thumbnail} 
-            />
+            <Image source={{ uri: photo }} style={styles.thumbnail} />
           </Pressable>
         ))}
       </ScrollView>
-      <BasicInfoView profile={mockProfile} />
-      <Modal visible={modalVisible} transparent={true} onRequestClose={() => setModalVisible(false)}>
-        <Pressable 
+      <BasicInfoView profile={profile} />
+      <Modal
+        visible={modalVisible}
+        transparent={true}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <Pressable
           style={styles.modalBackground}
           onPress={() => setModalVisible(false)}
         >
           {selectedPhoto && (
-            <Image 
-              source={{ uri: selectedPhoto }} 
-              style={styles.fullImage} 
+            <Image
+              source={{ uri: selectedPhoto }}
+              style={styles.fullImage}
               resizeMode="contain"
             />
           )}
         </Pressable>
       </Modal>
 
-      <AcademicView profile={mockProfile} />
-      <PersonalView profile={mockProfile} />
+      <AcademicView profile={profile} />
+      <PersonalView profile={profile} />
     </ScrollView>
   );
 }
@@ -83,12 +138,18 @@ const styles = StyleSheet.create({
   },
   modalBackground: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.9)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   fullImage: {
     width: windowWidth,
     height: windowWidth,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: Colors.secondary100,
   },
 });
