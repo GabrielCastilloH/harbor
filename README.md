@@ -1,20 +1,63 @@
-Welcome to Harbor!
+# 🌊 Harbor
 
-How to run:
-Go to mongodb.com and make sure your ip address is allowed.
-Connect to the database using mongo compass
-npm start on the backend
-npx expo start on the front end.
+A unique dating app that focuses on meaningful connections through progressive photo reveal and limited daily interactions.
 
-TODOS:
+## 🚀 Getting Started
 
-- Setup streamchat:
-  - backend: add users to streamchat when they are created (DONE)
-  - backend: make sure route to fetch a users token given their id works (DONE)
-- Create new chat everytime there's a match. (DONE)
-- Make sure you can only talk to one person at a time (you match with your most recent swipe that isn't in a convo also not over a week old)
-- only three swipes a day (make this number easy to change)
-- Add screen to see blurring pictures functionality
-- Make sure only authenticated users can access certain routes.
-- Setup the slowly unblurring photos and photo reveal functionality.
-- If you finish this we're done with the free version next step is to add payments using revenuecat.
+### Prerequisites
+
+- Node.js (v18 or higher)
+- MongoDB account
+- Xcode for iOS development
+- npm or yarn package manager
+
+### Backend Setup
+
+1. Configure MongoDB:
+
+   - Visit [MongoDB Atlas](https://mongodb.com)
+   - Add your IP address to the allowlist
+   - (Optional) Connect using MongoDB Compass for database monitoring
+
+2. Install and Run Backend:
+   ```bash
+   cd backend
+   npm install
+   npm start
+   ```
+
+### Frontend Setup
+
+1. Install Dependencies and Run:
+   ```bash
+   cd frontend
+   npm install
+   npx expo run:ios
+   ```
+
+## 🛠 Development Status
+
+### Completed Features ✅
+
+- StreamChat Integration
+  - User creation and token generation
+  - Backend route for user token fetching
+- Match-based chat creation
+- One-to-one conversation limit
+
+### In Progress 🚧
+
+- [ ] Implement three swipes per day limit (configurable)
+- [ ] Add photo blurring preview screen
+- [ ] Implement authentication route protection
+- [ ] Setup progressive photo unblurring
+- [ ] Integrate RevenueCat for payment processing
+
+## 🔜 Future Enhancements (not MVP)
+
+- Premium features through RevenueCat integration
+- Enhanced matching algorithms
+- Additional privacy features
+- Profile customization options
+
+Built with ❤️ using React Native, Expo, and MongoDB
