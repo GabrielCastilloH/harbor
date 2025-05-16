@@ -1,10 +1,10 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'react-native';
-import HomeScreen from '../screens/HomeScreen';
-import SettingsStack from './SettingsStack';
-import ChatNavigator from './ChatNavigator';
-import Colors from '../constants/Colors';
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "react-native";
+import HomeScreen from "../screens/HomeScreen";
+import SettingsStack from "./SettingsStack";
+import ChatNavigator from "./ChatNavigator";
+import Colors from "../constants/Colors";
 
 const Tab = createBottomTabNavigator();
 
@@ -18,7 +18,7 @@ export default function TabNavigator() {
       }}
     >
       <Tab.Screen
-        name="Home"
+        name="HomeTab"
         component={HomeScreen}
         options={{
           headerShown: false,
@@ -28,9 +28,10 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Chats"
+        name="ChatsTab"
         component={ChatNavigator}
         options={{
+          title: "Chats",
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
@@ -38,9 +39,10 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Settings"
+        name="SettingsTab"
         component={SettingsStack}
         options={{
+          title: "Settings",
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings" size={size} color={color} />
