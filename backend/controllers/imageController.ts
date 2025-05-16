@@ -7,7 +7,11 @@ import {
 } from "../util/gridFS.js";
 import { User } from "../models/User.js";
 
-// Upload an image and associate with a user
+/**
+ * Uploads image and links to user
+ * @param req Contains userId, imageData, contentType
+ * @param res Returns fileId or error
+ */
 export const uploadImage = async (
   req: Request,
   res: Response
@@ -20,18 +24,13 @@ export const uploadImage = async (
       return;
     }
 
-    // Remove potential "data:image/jpeg;base64," prefix if present
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
 
-    // Generate unique filename
     const filename = `user-${userId}-${Date.now()}`;
 
-    // Store the file
     const fileId = await storeFileFromBase64(base64Data, filename, contentType);
 
-    // For temporary IDs during profile creation, don't try to update user
     if (userId.startsWith("temp_")) {
-      // Just return the file ID without updating a user record
       res.status(201).json({
         message: "Image uploaded successfully",
         fileId: fileId.toString(),
@@ -39,10 +38,9 @@ export const uploadImage = async (
       return;
     }
 
-    // Verify userId is a valid ObjectId
     let objectId;
     try {
-      objectId = new ObjectId(userId);
+      objectId = ObjectId.createFromHexString(userId);
     } catch (error) {
       res.status(400).json({
         message: "Invalid user ID format",
@@ -51,14 +49,12 @@ export const uploadImage = async (
       return;
     }
 
-    // Update user's image reference (append to existing images array)
     const user = await User.findById(objectId);
     if (!user) {
       res.status(404).json({ message: "User not found" });
       return;
     }
 
-    // Add the file ID to user's images array
     await User.updateById(objectId, {
       images: [...(user.images || []), fileId.toString()],
     });
@@ -76,7 +72,11 @@ export const uploadImage = async (
   }
 };
 
-// Get a specific image by ID
+/**
+ * Retrieves image by ID
+ * @param req Contains image id in params
+ * @param res Returns base64 image data
+ */
 export const getImage = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -86,7 +86,9 @@ export const getImage = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { base64, contentType } = await getFileAsBase64(new ObjectId(id));
+    const { base64, contentType } = await getFileAsBase64(
+      ObjectId.createFromHexString(id)
+    );
 
     res.status(200).json({
       imageData: `data:${contentType};base64,${base64}`,
@@ -100,7 +102,11 @@ export const getImage = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Delete an image
+/**
+ * Removes image and updates user
+ * @param req Contains userId and imageId
+ * @param res Returns success or error
+ */
 export const deleteImage = async (
   req: Request,
   res: Response
@@ -113,16 +119,16 @@ export const deleteImage = async (
       return;
     }
 
-    // Delete the file
-    await deleteFile(new ObjectId(imageId));
+    await deleteFile(ObjectId.createFromHexString(imageId));
 
-    // Update user's image array to remove the deleted image
-    const user = await User.findById(new ObjectId(userId));
+    const user = await User.findById(ObjectId.createFromHexString(userId));
     if (user) {
       const updatedImages: string[] = user.images.filter(
         (img: string) => img !== imageId
       );
-      await User.updateById(new ObjectId(userId), { images: updatedImages });
+      await User.updateById(ObjectId.createFromHexString(userId), {
+        images: updatedImages,
+      });
     }
 
     res.status(200).json({ message: "Image deleted successfully" });

@@ -2,7 +2,13 @@ import { GridFSBucket, ObjectId } from "mongodb";
 import { getDb } from "./database.js";
 import { Readable } from "stream";
 
-// Store a file in GridFS from a base64 string
+/**
+ * Stores base64 data as file in GridFS
+ * @param base64Data File content as base64 string
+ * @param filename Name for stored file
+ * @param contentType MIME type of file
+ * @returns ID of stored file
+ */
 export async function storeFileFromBase64(
   base64Data: string,
   filename: string,
@@ -36,7 +42,12 @@ export async function storeFileFromBase64(
   });
 }
 
-// Retrieve a file as base64 string
+/**
+ * Retrieves file as base64 string
+ * @param fileId GridFS file ID
+ * @returns Object with base64 content and MIME type
+ * @throws If file not found
+ */
 export async function getFileAsBase64(
   fileId: ObjectId
 ): Promise<{ base64: string; contentType: string }> {
@@ -64,13 +75,21 @@ export async function getFileAsBase64(
   });
 }
 
-// List all files
+/**
+ * Gets all files in GridFS
+ * @returns Array of file documents
+ */
 export async function listFiles() {
   const db = getDb();
   return db.collection("fs.files").find({}).toArray();
 }
 
-// Delete a file
+/**
+ * Removes file from GridFS
+ * @param fileId ID of file to delete
+ * @returns Success status
+ * @throws If deletion fails
+ */
 export async function deleteFile(fileId: ObjectId): Promise<boolean> {
   const db = getDb();
   const bucket = new GridFSBucket(db);
