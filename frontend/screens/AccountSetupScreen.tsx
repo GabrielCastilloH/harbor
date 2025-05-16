@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Alert } from "react-native";
 import { Profile } from "../types/App";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { uploadImageToServer } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 
@@ -26,66 +27,86 @@ const emptyProfile: Profile = {
   hobbies: "",
 };
 
-export default function EditProfileScreen() {
-  const { userId, setProfile } = useAppContext();
+export default function AccountSetupScreen() {
+  const { setUserId, setProfile } = useAppContext();
   const [profileData, setProfileData] = useState<Profile>(emptyProfile);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const loadAuthInfo = async () => {
+      try {
+        const authInfoString = await AsyncStorage.getItem("@authInfo");
+        if (authInfoString) {
+          const authInfo = JSON.parse(authInfoString);
+          // Pre-populate the form with information from Google
+          setProfileData((prev) => ({
+            ...prev,
+            firstName: authInfo.firstName || "",
+            lastName: authInfo.lastName || "",
+            email: authInfo.email || "",
+          }));
+        }
+      } catch (error) {
+        console.error("Error loading auth info:", error);
+      }
+    };
+
+    loadAuthInfo();
+  }, []);
 
   const handleSave = async () => {
     setLoading(true);
     try {
-      if (!userId) {
-        Alert.alert("Error", "User ID is missing. Please log in again.");
+      console.log("Starting profile save...");
+      console.log("Current image array length:", profileData.images.length);
+
+      // Get the auth info from AsyncStorage
+      const authInfoString = await AsyncStorage.getItem("@authInfo");
+      if (!authInfoString) {
+        Alert.alert(
+          "Error",
+          "Authentication info not found. Please sign in again."
+        );
         setLoading(false);
         return;
       }
 
-      // Check if there are any local image URIs that need to be uploaded
-      const updatedImages = [...profileData.images];
-      let hasChanges = false;
+      const authInfo = JSON.parse(authInfoString);
+      console.log("Creating new user with auth info:", authInfo.email);
 
-      console.log("Checking for local images to upload...");
-      for (let i = 0; i < updatedImages.length; i++) {
-        const img = updatedImages[i];
-        if (img && (img.startsWith("file:") || img.startsWith("data:"))) {
-          console.log(`Found local image at index ${i}, uploading...`);
-          try {
-            const fileId = await uploadImageToServer(userId, img);
-            console.log(`Local image uploaded, received fileId: ${fileId}`);
-            updatedImages[i] = fileId;
-            hasChanges = true;
-          } catch (error) {
-            console.error("Error uploading image during update:", error);
-          }
+      // STEP 1: Upload all images first and collect their fileIds
+      const imageFileIds = [];
+      for (let i = 0; i < profileData.images.length; i++) {
+        const imageUri = profileData.images[i];
+        if (imageUri) {
+          // For pre-upload, use a temporary ID
+          const tempUserId = "temp_" + new Date().getTime();
+          const fileId = await uploadImageToServer(tempUserId, imageUri);
+          imageFileIds.push(fileId);
         }
       }
 
-      // If we processed any local images, update the profileData
-      if (hasChanges) {
-        console.log(
-          "Updating profileData with processed images count:",
-          updatedImages.length
-        );
-        setProfileData((prev) => ({ ...prev, images: updatedImages }));
-      }
-
-      // Create final data to send to server
-      const finalProfileData = {
+      // STEP 2: Now create the user WITH the image IDs
+      const userData = {
         ...profileData,
-        images: updatedImages,
+        images: imageFileIds, // Include the file IDs we just uploaded
+        email: authInfo.email,
       };
 
-      console.log("Sending profile update to server...");
-      console.log("Final images array length:", finalProfileData.images.length);
+      const response = await axios.post(`${serverUrl}/users`, userData);
 
-      const response = await axios.post(
-        `${serverUrl}/users/${userId}`,
-        finalProfileData
-      );
-      console.log("Profile update response status:", response.status);
+      if (response.data && response.data.user && response.data.user._id) {
+        const newUserId = response.data.user._id;
+        console.log("User created with ID:", newUserId);
 
-      // Store the updated full user profile in context
-      setProfile(response.data.user);
+        // Store user data in AsyncStorage
+        await AsyncStorage.setItem("@user", JSON.stringify(response.data.user));
+        await AsyncStorage.removeItem("@authInfo");
+
+        // Update app state
+        setUserId(response.data.user._id);
+        setProfile(response.data.user);
+      }
 
       Alert.alert("Success", "Profile saved successfully!");
     } catch (error: any) {
@@ -142,6 +163,7 @@ export default function EditProfileScreen() {
       profileData={profileData}
       onProfileChange={setProfileData}
       loading={loading}
+      isAccountSetup={true}
       onSave={handleSave}
     />
   );
