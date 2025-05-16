@@ -1,11 +1,11 @@
-import React from 'react';
-import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
-import TabNavigator from './navigation/TabNavigator';
-import EditProfileScreen from './screens/EditProfileScreen';
-import SignIn from './screens/SignIn';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AppProvider, useAppContext } from './context/AppContext';
+import React from "react";
+import { StatusBar } from "expo-status-bar";
+import { NavigationContainer } from "@react-navigation/native";
+import TabNavigator from "./navigation/TabNavigator";
+import SignIn from "./screens/SignIn";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { AppProvider, useAppContext } from "./context/AppContext";
+import AccountSetupScreen from "./screens/AccountSetupScreen";
 
 function AppContent() {
   const { isAuthenticated, userId } = useAppContext();
@@ -13,9 +13,9 @@ function AppContent() {
   // If not signed in, show SignIn.
   // Once authenticated:
   //  - if a userId exists, the user already exists so show the TabNavigator.
-  //  - otherwise, show the EditProfileScreen to set up a new profile.
+  //  - otherwise, show the AccountSetupScreen to set up a new profile.
 
-  console.log('userId:', userId);
+  console.log("userId:", userId);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
@@ -25,7 +25,7 @@ function AppContent() {
         ) : userId ? (
           <TabNavigator />
         ) : (
-          <EditProfileScreen isAccountSetup />
+          <AccountSetupScreen />
         )}
       </NavigationContainer>
     </GestureHandlerRootView>

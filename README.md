@@ -44,6 +44,7 @@ A unique dating app that focuses on meaningful connections through progressive p
   - Backend route for user token fetching
 - Match-based chat creation
 - One-to-one conversation limit
+- Fixed signup bug.
 
 ### In Progress 🚧
 
@@ -52,6 +53,7 @@ A unique dating app that focuses on meaningful connections through progressive p
 - [ ] Implement authentication route protection
 - [ ] Setup progressive photo unblurring
 - [ ] Integrate RevenueCat for payment processing
+- [ ] Uncomment code to make sure onlly @cornell.edu allowed.
 
 ## 🔜 Future Enhancements (not MVP)
 

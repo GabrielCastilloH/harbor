@@ -23,13 +23,7 @@ app.use(
   }
 );
 
-// Middleware to parse JSON bodies
-// app.use(express.json());
-// Or if you're using body-parser:
-// app.use(bodyParser.json());
-
-// Parse JSON first
-app.use(bodyParser.json()); // for parsing application/json
+app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use("/", routes);
