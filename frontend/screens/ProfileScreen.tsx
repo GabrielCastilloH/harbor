@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   Modal,
   Pressable,
   Dimensions,
@@ -17,6 +16,7 @@ import PageIndicator from "../components/PageIndicator";
 import BasicInfoView from "../components/BasicInfoView";
 import AcademicView from "../components/AcademicView";
 import PersonalView from "../components/PersonalView";
+import CachedImage from "../components/CachedImage";
 import axios from "axios";
 import { useRoute, RouteProp } from "@react-navigation/native";
 
@@ -82,15 +82,15 @@ export default function ProfileScreen() {
         style={styles.photoScroll}
         showsHorizontalScrollIndicator={false}
       >
-        {profile.images.map((photo, index) => (
+        {profile.images.map((fileId, index) => (
           <Pressable
             key={index}
             onPress={() => {
-              setSelectedPhoto(photo);
+              setSelectedPhoto(fileId);
               setModalVisible(true);
             }}
           >
-            <Image source={{ uri: photo }} style={styles.thumbnail} />
+            <CachedImage fileId={fileId} style={styles.thumbnail} />
           </Pressable>
         ))}
       </ScrollView>
@@ -105,8 +105,8 @@ export default function ProfileScreen() {
           onPress={() => setModalVisible(false)}
         >
           {selectedPhoto && (
-            <Image
-              source={{ uri: selectedPhoto }}
+            <CachedImage
+              fileId={selectedPhoto}
               style={styles.fullImage}
               resizeMode="contain"
             />
