@@ -55,16 +55,14 @@ export const authenticateGoogle = async (
       return;
     }
 
-    if (!payload.email.endsWith("@cornell.edu")) {
-      res.status(403).json({ error: "Only Cornell students can sign up" });
-      return;
-    }
+    // TODO: Uncomment this when going to production.
+    // if (!payload.email.endsWith("@cornell.edu")) {
+    //   res.status(403).json({ error: "Only Cornell students can sign up" });
+    //   return;
+    // }
 
-    // Check if user exists
     let user = await getUserByEmail(payload.email);
 
-    // Return the user if found, otherwise just return the Google profile info
-    // but DO NOT create a new user record yet
     if (user) {
       // User exists, return the full user info
       res.status(200).json({ user });
