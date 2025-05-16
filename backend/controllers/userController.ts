@@ -1,21 +1,18 @@
-import { Request, Response } from 'express';
-import { User } from '../models/User.js';
-import { ObjectId } from 'mongodb';
+import { Request, Response } from "express";
+import { User } from "../models/User.js";
+import { ObjectId } from "mongodb";
 
+/**
+ * Creates new user profile
+ * @param req Contains user profile data
+ * @param res Returns created user with ID
+ */
 export const createUser = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  console.log(
-    'createUser called with request body:',
-    JSON.stringify(req.body, null, 2)
-  );
-  console.log('Request headers:', JSON.stringify(req.headers, null, 2));
-
-  // Check if req.body is undefined or an empty object
   if (!req.body || Object.keys(req.body).length === 0) {
-    console.error('Request body is undefined or empty');
-    res.status(400).json({ message: 'Request body is required' });
+    res.status(400).json({ message: "Request body is required" });
     return;
   }
 
@@ -34,114 +31,117 @@ export const createUser = async (
       majorReason,
       studySpot,
       hobbies,
-      email, // Make sure to extract email
+      email,
     } = req.body;
 
-    // Validate required fields
     if (!firstName || !lastName) {
       res.status(400).json({
-        message: 'First name and last name are required',
+        message: "First name and last name are required",
         receivedBody: req.body,
       });
       return;
     }
 
-    console.log('Creating user with extracted data:');
-    console.log('firstName:', firstName);
-    console.log('lastName:', lastName);
-    console.log('email:', email);
-
     const user = new User(
       firstName,
       lastName,
-      yearLevel || '',
+      yearLevel || "",
       age ? Number(age) : 0,
-      major || '',
+      major || "",
       images || [],
-      aboutMe || '',
-      yearlyGoal || '',
-      potentialActivities || '',
-      favoriteMedia || '',
-      majorReason || '',
-      studySpot || '',
-      hobbies || '',
-      email || '' // Make sure email is always a string
+      aboutMe || "",
+      yearlyGoal || "",
+      potentialActivities || "",
+      favoriteMedia || "",
+      majorReason || "",
+      studySpot || "",
+      hobbies || "",
+      email || ""
     );
-
-    console.log('User object created:', JSON.stringify(user, null, 2));
 
     const result = await user.save();
-    console.log(
-      'User saved to database, result:',
-      JSON.stringify(result, null, 2)
-    );
 
     res.status(201).json({
-      message: 'User created successfully',
+      message: "User created successfully",
       user: { ...user, _id: result.insertedId },
     });
   } catch (error) {
-    console.error('Error creating user:', error);
+    console.error("Error creating user:", error);
     res.status(500).json({
-      message: 'Failed to create user',
+      message: "Failed to create user",
       error: error instanceof Error ? error.message : String(error),
     });
   }
 };
 
-// Get all users.
+/**
+ * Retrieves all users
+ * @param req Express request
+ * @param res Returns array of users
+ */
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await User.fetchAll();
     res.status(200).json(users);
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch users' });
+    res.status(500).json({ message: "Failed to fetch users" });
   }
 };
 
-// Get user by ID
+/**
+ * Fetches user by ID
+ * @param req Contains user ID in params
+ * @param res Returns user data
+ */
 export const getUserById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!id) {
-      res.status(400).json({ message: 'User ID is required' });
+      res.status(400).json({ message: "User ID is required" });
       return;
     }
-    const user = await User.findById(new ObjectId(id));
+    const user = await User.findById(ObjectId.createFromHexString(id));
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
+      res.status(404).json({ message: "User not found" });
       return;
     }
     res.status(200).json(user);
   } catch (error: any) {
     res.status(500).json({
-      message: 'Failed to fetch user',
+      message: "Failed to fetch user",
       error: error.message || error,
     });
   }
 };
 
-// Update user data by ID.
+/**
+ * Updates user profile
+ * @param req Contains user ID in params and update data in body
+ * @param res Returns updated user data
+ */
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!id) {
-      res.status(400).json({ message: 'User ID is required' });
+      res.status(400).json({ message: "User ID is required" });
       return;
     }
     const updatedData = req.body;
-    const updatedUser = await User.updateById(new ObjectId(id), updatedData);
+    const updatedUser = await User.updateById(
+      ObjectId.createFromHexString(id),
+      updatedData
+    );
     if (!updatedUser) {
-      res.status(404).json({ message: 'User not found' });
+      res.status(404).json({ message: "User not found" });
       return;
     }
     res.status(200).json({
-      message: 'User updated successfully',
+      message: "User updated successfully",
       user: updatedUser,
     });
   } catch (error: any) {
     res.status(500).json({
-      message: 'Failed to update user',
+      message: "Failed to update user",
       error: error.message || error,
     });
   }
