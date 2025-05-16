@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,29 +7,142 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import React from 'react';
+import axios from 'axios';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../constants/Colors';
 import { useAppContext } from '../context/AppContext';
 
-const mockCornellAuth = async () => {
-  // Simulate API call delay
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  // Simulate successful auth
-  return true;
-};
+// Ensure we complete the auth session in web browsers
+WebBrowser.maybeCompleteAuthSession();
+
+const serverUrl = process.env.SERVER_URL;
 
 export default function SignIn() {
-  const { setIsAuthenticated } = useAppContext();
+  const { setIsAuthenticated, setUserId } = useAppContext();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSignIn = async () => {
-    try {
-      const success = await mockCornellAuth();
-      if (success) {
-        setIsAuthenticated(true);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to sign in. Please try again.');
+  // Set up Google authentication request
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: process.env.ANDROID_GOOGLE_CLIENT_ID as string,
+    iosClientId: process.env.IOS_GOOGLE_CLIENT_ID as string,
+    webClientId: process.env.WEB_GOOGLE_CLIENT_ID as string,
+    clientId: process.env.WEB_GOOGLE_CLIENT_ID as string,
+    scopes: ['profile', 'email'],
+  });
+
+  // Handle authentication response
+  useEffect(() => {
+    handleAuthResponse();
+  }, [response]);
+
+  const handleAuthResponse = async () => {
+    // Check if we have a cached user
+    const cachedUser = await getCachedUser();
+    if (cachedUser) {
+      setIsAuthenticated(true);
+      setUserId(cachedUser._id);
+      return;
     }
+
+    // Process new sign-in response
+    if (response?.type === 'success') {
+      setIsLoading(true);
+      try {
+        // Get user info from Google
+        const { accessToken } = response.authentication!;
+        const userInfo = await getUserInfo(accessToken);
+
+        console.log(
+          'User info from Google:',
+          JSON.stringify(userInfo, null, 2)
+        );
+        console.log('Sending auth request to server:', serverUrl);
+
+        // Send token to backend
+        const serverResponse = await axios.post(`${serverUrl}/auth/google`, {
+          token: accessToken,
+          email: userInfo.email,
+          name: userInfo.name,
+        });
+
+        // Process server response
+        if (serverResponse.data) {
+          if (serverResponse.data.user && serverResponse.data.user._id) {
+            // Existing user case
+            // Cache user data
+            await AsyncStorage.setItem(
+              '@user',
+              JSON.stringify(serverResponse.data.user)
+            );
+
+            // Update app state
+            setIsAuthenticated(true);
+            setUserId(serverResponse.data.user._id);
+          } else if (serverResponse.data.authInfo) {
+            // New user case - authenticated but needs profile setup
+            // Cache just the auth info for profile setup
+            await AsyncStorage.setItem(
+              '@authInfo',
+              JSON.stringify(serverResponse.data.authInfo)
+            );
+
+            setIsAuthenticated(true);
+            // Do NOT set userId since user doesn't exist in DB yet
+            setUserId(null);
+          } else {
+            console.log('Server response:', serverResponse.data);
+            Alert.alert('Error', 'User authentication failed');
+          }
+        }
+      } catch (error) {
+        console.error('Authentication Error:', error);
+
+        // More detailed error logging
+        if (axios.isAxiosError(error)) {
+          console.error('Status code:', error.response?.status);
+          console.error(
+            'Response data:',
+            JSON.stringify(error.response?.data, null, 2)
+          );
+          console.error(
+            'Request config:',
+            JSON.stringify(error.config, null, 2)
+          );
+
+          // Show more specific error message
+          Alert.alert(
+            'Authentication Failed',
+            `Error ${error.response?.status || ''}: ${
+              error.response?.data?.message ||
+              'Please check your connection and try again.'
+            }`
+          );
+        } else {
+          Alert.alert('Error', 'Authentication failed. Please try again.');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const getCachedUser = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('@user');
+      return userData ? JSON.parse(userData) : null;
+    } catch (error) {
+      console.error('Error reading cached user:', error);
+      return null;
+    }
+  };
+
+  const getUserInfo = async (token: any) => {
+    const response = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.json();
   };
 
   return (
@@ -41,21 +155,26 @@ export default function SignIn() {
           resizeMode="contain"
         />
       </View>
-
       <Text style={styles.title}>Sign In</Text>
-
       <Text style={styles.description}>
-        In order to use this app you must sign in/sign up with your Cornell
-        NetID
+        In order to use this app you must sign in with your Cornell NetID via
+        Google.
       </Text>
 
-      <TouchableOpacity style={styles.button} onPress={handleSignIn}>
+      {/* Custom Button */}
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => promptAsync()}
+        disabled={!request || isLoading}
+      >
         <Image
           source={require('../assets/images/cornell-logo.png')}
           style={[styles.cornellLogo, { tintColor: Colors.primary500 }]}
           resizeMode="contain"
         />
-        <Text style={styles.buttonText}>Sign In With Cornell</Text>
+        <Text style={styles.buttonText}>
+          {isLoading ? 'Signing In...' : 'Sign In With Google'}
+        </Text>
       </TouchableOpacity>
     </View>
   );

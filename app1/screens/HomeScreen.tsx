@@ -1,3 +1,4 @@
+//// filepath: /Users/gabrielcastillo/Developer/AppDevelopment/app1/app1/screens/HomeScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -5,40 +6,54 @@ import {
   Image,
   TouchableOpacity,
   GestureResponderEvent,
+  ActivityIndicator,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Colors from '../constants/Colors';
-import { mockProfiles } from '../constants/Data';
 import AnimatedStack from '../components/AnimatedStack';
 import MatchModal from './MatchModal';
 import { Profile } from '../types/App';
-import SocketService, { MatchEvent, SOCKET_URL } from '../util/SocketService';
+import axios from 'axios';
+import { useAppContext } from '../context/AppContext';
+
+const serverUrl = process.env.SERVER_URL;
 
 export default function HomeScreen() {
+  const { userId } = useAppContext();
+  const [recommendations, setRecommendations] = useState<Profile[]>([]);
+  const [loadingRecommendations, setLoadingRecommendations] =
+    useState<boolean>(false);
   const [isNoPressed, setIsNoPressed] = useState(false);
   const [isYesPressed, setIsYesPressed] = useState(false);
   const [touchStart, setTouchStart] = useState({ x: 0, y: 0 });
-  const [showMatch, setShowMatch] = useState(true);
-  const [matchedProfile, setMatchedProfile] = useState<Profile | null>(mockProfiles[1]); // Set initial profile
+  const [showMatch, setShowMatch] = useState(false);
+  const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
   const stackRef = React.useRef<{
     swipeLeft: () => void;
     swipeRight: () => void;
   }>(null);
 
-  // useEffect(() => {
-  //   const socketService = SocketService.getInstance();
-  //   socketService.connect(SOCKET_URL);
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      if (!userId) return;
+      setLoadingRecommendations(true);
+      try {
+        const response = await axios.get(
+          `${serverUrl}/users/${userId}/recommendations`
+        );
+        if (response.data && response.data.recommendations) {
+          setRecommendations(response.data.recommendations);
+        }
+      } catch (error) {
+        console.log('Error fetching recommendations:', error);
+      } finally {
+        setLoadingRecommendations(false);
+      }
+    };
 
-  //   socketService.onMatch((matchData) => {
-  //     setMatchedProfile(matchData.matchedProfile);
-  //     setShowMatch(true);
-  //   });
-
-  //   return () => {
-  //     socketService.disconnect();
-  //   };
-  // }, []);
+    fetchRecommendations();
+  }, [userId]);
 
   const handleTouchStart = (event: GestureResponderEvent) => {
     setTouchStart({
@@ -63,6 +78,14 @@ export default function HomeScreen() {
     setIsYesPressed(false);
   };
 
+  if (loadingRecommendations) {
+    return (
+      <GestureHandlerRootView style={styles.container}>
+        <ActivityIndicator size="large" color={Colors.primary500} />
+      </GestureHandlerRootView>
+    );
+  }
+
   return (
     <GestureHandlerRootView style={styles.container}>
       <View style={styles.headerContainer}>
@@ -76,7 +99,7 @@ export default function HomeScreen() {
       <View style={styles.cardsContainer}>
         <AnimatedStack
           ref={stackRef}
-          data={mockProfiles}
+          data={recommendations}
           onSwipeRight={(profile) => console.log('Swiped right:', profile)}
           onSwipeLeft={(profile) => console.log('Swiped left:', profile)}
         />
@@ -94,7 +117,6 @@ export default function HomeScreen() {
           }}
           onPressOut={(event) => handleTouchEnd(event, true)}
         >
-
           <Image
             source={require('../assets/images/shipwreck.png')}
             style={{
@@ -129,7 +151,7 @@ export default function HomeScreen() {
         visible={showMatch}
         onClose={() => setShowMatch(false)}
         matchedProfile={matchedProfile}
-        currentProfile={mockProfiles[0]}
+        currentProfile={recommendations[0] || null} 
       />
     </GestureHandlerRootView>
   );
