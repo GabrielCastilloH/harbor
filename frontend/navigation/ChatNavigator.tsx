@@ -14,11 +14,56 @@ import {
   DeepPartial,
   Theme,
 } from "stream-chat-expo";
+import { NavigationProp } from "@react-navigation/native";
 import ProfileScreen from "../screens/ProfileScreen";
 import { fetchUserToken } from "../networking/ChatFunctions";
 import { useAppContext } from "../context/AppContext";
 
-const Stack = createNativeStackNavigator();
+type RootStackParamList = {
+  Chats: undefined;
+  ChatScreen: undefined;
+  ProfileScreen: { userId: string };
+};
+
+type NavigationProps = NavigationProp<RootStackParamList>;
+
+interface HeaderRightButtonProps {
+  navigation: NavigationProps;
+}
+
+interface ChatScreenWithHeaderProps {
+  navigation: NavigationProps;
+}
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// Create a separate component for the header right button
+function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
+  const { channel, userId } = useAppContext();
+  const otherMembers = channel?.state?.members || {};
+  const otherUserId = Object.keys(otherMembers).find((key) => key !== userId);
+
+  return (
+    <TouchableOpacity
+      onPress={() => {
+        if (otherUserId) {
+          navigation.navigate("ProfileScreen", { userId: otherUserId });
+        }
+      }}
+    >
+      <Ionicons name="person" size={24} color={Colors.primary500} />
+    </TouchableOpacity>
+  );
+}
+
+// Create a separate component for the ChatScreen with navigation
+function ChatScreenWithHeader({ navigation }: ChatScreenWithHeaderProps) {
+  return (
+    <>
+      <ChatScreen />
+    </>
+  );
+}
 
 // Create a theme outside the component to avoid recreation
 const theme: DeepPartial<Theme> = {
@@ -47,7 +92,7 @@ export default function ChatNavigator() {
   const user = useMemo(() => {
     if (!profile || !userId) return { id: "loading", name: "Loading" };
     return {
-      id: userId, // Use MongoDB ObjectId as the StreamChat user ID
+      id: userId,
       name: profile.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
         : "User",
@@ -55,7 +100,6 @@ export default function ChatNavigator() {
   }, [profile, userId]);
 
   // ALWAYS call this hook at the top level, with a consistent value
-  // (empty string if no token yet)
   const chatClient = useCreateChatClient({
     apiKey: chatApiKey,
     userData: user,
@@ -207,16 +251,10 @@ export default function ChatNavigator() {
           />
           <Stack.Screen
             name="ChatScreen"
-            component={ChatScreen}
+            component={ChatScreenWithHeader}
             options={({ navigation }) => ({
               headerTitle: "Messages",
-              headerRight: () => (
-                <TouchableOpacity
-                  onPress={() => navigation.navigate("ProfileScreen")}
-                >
-                  <Ionicons name="person" size={24} color={Colors.primary500} />
-                </TouchableOpacity>
-              ),
+              headerRight: () => <HeaderRightButton navigation={navigation} />,
             })}
           />
           <Stack.Screen
