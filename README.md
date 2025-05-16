@@ -48,6 +48,8 @@ A unique dating app that focuses on meaningful connections through progressive p
 
 ### In Progress 🚧
 
+- [ ] Actually add user info to the top right corner of chats.
+- [ ] Add pre-filled data in user settings and add name of the other person individual chats.
 - [ ] Implement three swipes per day limit (configurable)
 - [ ] Add photo blurring preview screen
 - [ ] Implement authentication route protection
