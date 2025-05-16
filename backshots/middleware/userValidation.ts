@@ -1,0 +1,100 @@
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { ValidationChain, validationResult, body } from 'express-validator';
+
+const validations: ValidationChain[] = [
+  body('firstName')
+    .trim()
+    .notEmpty()
+    .withMessage('First name is required'),
+
+  body('lastName')
+    .trim()
+    .notEmpty()
+    .withMessage('Last name is required'),
+
+  body('yearLevel')
+    .trim()
+    .notEmpty()
+    .withMessage('Year level is required'),
+
+  body('age')
+    .isInt({ min: 17 })
+    .withMessage('Age must be at least 17'),
+
+  body('major')
+    .trim()
+    .notEmpty()
+    .withMessage('Major is required'),
+
+  body('images')
+    .isArray()
+    .withMessage('Images must be an array')
+    .custom((images: any[]) => {
+      if (images.length < 3 || images.length > 6) {
+        throw new Error('Images array must contain between 3 and 6 items');
+      }
+      return true;
+    }),
+
+  body('aboutMe')
+    .trim()
+    .notEmpty()
+    .withMessage('About me is required'),
+
+  body('yearlyGoal')
+    .trim()
+    .notEmpty()
+    .withMessage('Yearly goal is required'),
+
+  body('potentialActivities')
+    .trim()
+    .notEmpty()
+    .withMessage('Potential activities is required'),
+
+  body('favoriteMedia')
+    .trim()
+    .notEmpty()
+    .withMessage('Favorite media is required'),
+
+  body('majorReason')
+    .trim()
+    .notEmpty()
+    .withMessage('Major reason is required'),
+
+  body('studySpot')
+    .trim()
+    .notEmpty()
+    .withMessage('Study spot is required'),
+
+  body('hobbies')
+    .trim()
+    .notEmpty()
+    .withMessage('Hobbies are required'),
+
+  // Since swipes will be managed in a separate collection, we either remove these fields or validate an optional swipes array.
+  body('swipes')
+    .optional()
+    .isArray()
+    .withMessage('Swipes must be an array'),
+];
+
+const validateResults: RequestHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.status(400).json({
+      success: false,
+      errors: errors.array(),
+    });
+    return;
+  }
+  next();
+};
+
+export const validateUser = [
+  ...validations,
+  validateResults,
+] as RequestHandler[];

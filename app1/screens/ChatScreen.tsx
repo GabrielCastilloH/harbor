@@ -1,10 +1,10 @@
-import { SafeAreaView, Text } from 'react-native'
-import React from 'react'
+import { SafeAreaView, Text } from 'react-native';
+import React from 'react';
 import { Channel, MessageInput, MessageList } from 'stream-chat-expo';
 import { useAppContext } from '../context/AppContext';
 
 export default function ChatScreen() {
-    const { channel } = useAppContext();
+  const { channel } = useAppContext();
 
   if (!channel) {
     return (
