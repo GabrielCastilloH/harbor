@@ -37,6 +37,13 @@ const emptyProfile: Profile = {
   hobbies: "",
 };
 
+const truncateForLog = (str: string): string => {
+  if (!str) return "";
+  return str.length > 6
+    ? `${str.substring(0, 3)}...${str.substring(str.length - 3)}`
+    : str;
+};
+
 interface EditProfileScreenProps {
   isAccountSetup?: boolean;
 }
@@ -128,7 +135,7 @@ export default function EditProfileScreen({
     setLoading(true);
     try {
       console.log("Starting profile save...");
-      console.log("Current image array:", JSON.stringify(profileData.images));
+      console.log("Current image array length:", profileData.images.length);
 
       let response;
       if (isAccountSetup) {
@@ -148,33 +155,14 @@ export default function EditProfileScreen({
 
         // STEP 1: Upload all images first and collect their fileIds
         const imageFileIds = [];
-        console.log(
-          `Processing ${profileData.images.length} images before user creation...`
-        );
-
         for (let i = 0; i < profileData.images.length; i++) {
           const imageUri = profileData.images[i];
           if (imageUri) {
-            try {
-              console.log(
-                `Preprocessing image ${i + 1}/${profileData.images.length}...`
-              );
-              // For pre-upload, use a temporary ID - we'll update these once we have the real user ID
-              const tempUserId = "temp_" + new Date().getTime();
-              const fileId = await uploadImageToServer(tempUserId, imageUri);
-              console.log(
-                `Image ${i + 1} uploaded with temp ID, fileId:`,
-                fileId
-              );
-              imageFileIds.push(fileId);
-            } catch (imgError) {
-              console.error(`Error uploading image ${i + 1}:`, imgError);
-            }
+            // For pre-upload, use a temporary ID
+            const tempUserId = "temp_" + new Date().getTime();
+            const fileId = await uploadImageToServer(tempUserId, imageUri);
+            imageFileIds.push(fileId);
           }
-        }
-
-        if (imageFileIds.length < 3) {
-          throw new Error("At least 3 images must be successfully uploaded");
         }
 
         // STEP 2: Now create the user WITH the image IDs
@@ -184,16 +172,7 @@ export default function EditProfileScreen({
           email: authInfo.email,
         };
 
-        console.log(
-          "Creating user with images included. Request body:",
-          JSON.stringify(userData, null, 2)
-        );
-
         response = await axios.post(`${serverUrl}/users`, userData);
-        console.log(
-          "User creation response:",
-          JSON.stringify(response.data, null, 2)
-        );
 
         if (response.data && response.data.user && response.data.user._id) {
           const newUserId = response.data.user._id;
@@ -241,8 +220,8 @@ export default function EditProfileScreen({
         // If we processed any local images, update the profileData
         if (hasChanges) {
           console.log(
-            "Updating profileData with processed images:",
-            updatedImages
+            "Updating profileData with processed images count:",
+            updatedImages.length
           );
           setProfileData((prev) => ({ ...prev, images: updatedImages }));
         }
@@ -255,22 +234,15 @@ export default function EditProfileScreen({
 
         console.log("Sending profile update to server...");
         console.log(
-          "Final images array:",
-          JSON.stringify(finalProfileData.images)
-        );
-        console.log(
-          "Update request body:",
-          JSON.stringify(finalProfileData, null, 2)
+          "Final images array length:",
+          finalProfileData.images.length
         );
 
         response = await axios.post(
           `${serverUrl}/users/${userId}`,
           finalProfileData
         );
-        console.log(
-          "Profile update response:",
-          JSON.stringify(response.data, null, 2)
-        );
+        console.log("Profile update response status:", response.status);
 
         // Store the updated full user profile in context
         setProfile(response.data.user);
@@ -283,22 +255,22 @@ export default function EditProfileScreen({
       // Log detailed error information
       if (axios.isAxiosError(error)) {
         console.error("Status:", error.response?.status);
-        console.error(
-          "Response data:",
-          JSON.stringify(error.response?.data, null, 2)
-        );
-        console.error(
-          "Request config:",
-          JSON.stringify(
-            {
-              url: error.config?.url,
-              method: error.config?.method,
-              data: error.config?.data || "{}",
-            },
-            null,
-            2
-          )
-        );
+
+        if (error.response?.data) {
+          const errorData =
+            typeof error.response.data === "object"
+              ? JSON.stringify(error.response.data).substring(0, 200) + "..."
+              : String(error.response.data).substring(0, 200) + "...";
+          console.error("Response data (truncated):", errorData);
+        }
+
+        if (error.config?.url) {
+          console.error("Request URL:", error.config.url);
+        }
+
+        if (error.config?.method) {
+          console.error("Request method:", error.config.method);
+        }
       }
 
       // Attempt to extract error details from the backend response.
@@ -349,10 +321,12 @@ export default function EditProfileScreen({
       if (result.assets && result.assets.length > 0) {
         try {
           setLoading(true);
-          console.log(
-            "Selected image URI:",
-            result.assets[0].uri.substring(0, 50) + "..."
-          );
+          const imageUri = result.assets[0].uri;
+          const truncatedUri = imageUri.startsWith("file:")
+            ? `file:...${truncateForLog(imageUri.substring(5))}`
+            : truncateForLog(imageUri);
+
+          console.log("Selected image URI:", truncatedUri);
 
           // For both new profiles and updates, store the URI temporarily
           // We'll process them all when saving
