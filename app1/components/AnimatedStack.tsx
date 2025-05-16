@@ -1,3 +1,4 @@
+//// filepath: /Users/gabrielcastillo/Developer/AppDevelopment/app1/app1/components/AnimatedStack.tsx
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, useWindowDimensions, Text } from 'react-native';
 import Animated, {
@@ -9,11 +10,14 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import axios from 'axios';
 import Card from './Card';
 import { Profile } from '../types/App';
+import { useAppContext } from '../context/AppContext';
 
 const ROTATION = 60;
 const SWIPE_VELOCITY = 800;
+const serverUrl = process.env.SERVER_URL; // Ensure this is configured correctly
 
 // Add new prop types
 type AnimatedStackProps = {
@@ -30,6 +34,7 @@ export default React.forwardRef(function AnimatedStack(
   { data, onSwipeRight, onSwipeLeft }: AnimatedStackProps,
   ref
 ) {
+  const { userId } = useAppContext();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [nextIndex, setNextIndex] = useState(currentIndex + 1);
   const [currentCardView, setCurrentCardView] = useState(0);
@@ -47,6 +52,32 @@ export default React.forwardRef(function AnimatedStack(
       'deg'
   );
 
+  // Wrap postSwipe in a helper that handles errors asynchronously.
+  const postSwipe = async (
+    direction: 'left' | 'right',
+    swipedProfile: Profile
+  ) => {
+    try {
+      await axios.post(`${serverUrl}/swipes`, {
+        swiperId: userId,
+        swipedId: swipedProfile._id, // ensure _id exists in your Profile type
+        direction,
+      });
+    } catch (error) {
+      console.log('Error posting swipe:', error);
+    }
+  };
+
+  // A helper to handle both posting swipe data and calling any callback.
+  const handleSwipe = (direction: 'left' | 'right', profile: Profile) => {
+    postSwipe(direction, profile);
+    if (direction === 'right' && onSwipeRight) {
+      onSwipeRight(profile);
+    } else if (direction === 'left' && onSwipeLeft) {
+      onSwipeLeft(profile);
+    }
+  };
+
   const panGesture = Gesture.Pan()
     .onChange((event) => {
       translateX.value += event.changeX;
@@ -57,14 +88,15 @@ export default React.forwardRef(function AnimatedStack(
         return;
       }
 
+      const swipeDirection = event.velocityX > 0 ? 'right' : 'left';
       translateX.value = withSpring(
         hiddenTranslateX * Math.sign(event.velocityX),
         {},
         () => runOnJS(setCurrentIndex)(currentIndex + 1)
       );
 
-      const onSwipe = event.velocityX > 0 ? onSwipeRight : onSwipeLeft;
-      onSwipe && runOnJS(onSwipe)(currentProfile);
+      // Wrap asynchronous backend logic on the JS thread.
+      runOnJS(handleSwipe)(swipeDirection, currentProfile);
     });
 
   // Add tap gesture for card view navigation
@@ -87,14 +119,7 @@ export default React.forwardRef(function AnimatedStack(
   const combinedGestures = Gesture.Race(panGesture, tapGesture);
 
   const cardStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateX: translateX.value,
-      },
-      {
-        rotate: rotate.value,
-      },
-    ],
+    transform: [{ translateX: translateX.value }, { rotate: rotate.value }],
   }));
 
   const nextCardStyle = useAnimatedStyle(() => ({
@@ -119,19 +144,19 @@ export default React.forwardRef(function AnimatedStack(
     setNextIndex(currentIndex + 1);
   }, [currentIndex, translateX]);
 
-  // Add methods to trigger swipes
+  // Add methods to trigger swipes via ref
   const swipeLeft = () => {
     translateX.value = withSpring(-hiddenTranslateX, {}, () =>
       runOnJS(setCurrentIndex)(currentIndex + 1)
     );
-    onSwipeLeft && runOnJS(onSwipeLeft)(currentProfile);
+    runOnJS(handleSwipe)('left', currentProfile);
   };
 
   const swipeRight = () => {
     translateX.value = withSpring(hiddenTranslateX, {}, () =>
       runOnJS(setCurrentIndex)(currentIndex + 1)
     );
-    onSwipeRight && runOnJS(onSwipeRight)(currentProfile);
+    runOnJS(handleSwipe)('right', currentProfile);
   };
 
   // Expose methods via ref
