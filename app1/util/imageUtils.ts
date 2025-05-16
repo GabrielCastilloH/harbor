@@ -26,8 +26,15 @@ export async function imageToBase64(
       encoding: FileSystem.EncodingType.Base64,
     });
 
-    // Log the size of the base64 string to debug
-    console.log(`Base64 string length: ${base64.length} characters`);
+    // Log a truncated version of the base64 string
+    const truncatedBase64 =
+      base64.length > 6
+        ? `${base64.substring(0, 3)}...${base64.substring(base64.length - 3)}`
+        : base64;
+
+    console.log(
+      `Base64 string length: ${base64.length} characters (${truncatedBase64})`
+    );
 
     return base64;
   } catch (error) {
@@ -59,14 +66,22 @@ export async function uploadImageToServer(
         base64 = await imageToBase64(imageUri, quality);
       }
 
-      console.log(`Sending image to server (${base64.length} chars)...`);
+      // Truncate the base64 string for logging
+      const truncatedBase64 =
+        base64.length > 6
+          ? `${base64.substring(0, 3)}...${base64.substring(base64.length - 3)}`
+          : base64;
+
+      console.log(
+        `Sending image to server (${base64.length} chars, sample: ${truncatedBase64})...`
+      );
 
       // Create request data for logging
       const requestData = {
         userId,
         contentType: "image/jpeg",
-        // Don't log the full base64 string to avoid console overload
-        imageData: `[base64 string of length ${base64.length}]`,
+        // Show truncated base64 string in logs
+        imageData: `[base64 string of length ${base64.length}, sample: ${truncatedBase64}]`,
       };
 
       console.log(
