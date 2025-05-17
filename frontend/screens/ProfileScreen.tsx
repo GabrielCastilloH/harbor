@@ -21,7 +21,7 @@ import CachedImage from "../components/CachedImage";
 import axios from "axios";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
-import { fetchUpdateChannelChatDisabled } from "../networking/ChatFunctions";
+import { fetchUpdateChannelChatStatus } from "../networking/ChatFunctions";
 
 type ProfileScreenParams = {
   ProfileScreen: {

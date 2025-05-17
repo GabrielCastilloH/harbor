@@ -15,15 +15,15 @@ export default function ChatScreen() {
     );
   }
 
-  const isDisabled = channel.data?.disabled;
+  const isFrozen = channel.data?.frozen;
 
   return (
     <Channel channel={channel}>
       <MessageList />
-      {isDisabled ? (
+      {isFrozen ? (
         <View style={styles.disabledContainer}>
           <Text style={styles.disabledText}>
-            This chat has been disabled because one of the users unmatched.
+            This chat has been frozen because one of the users unmatched.
           </Text>
         </View>
       ) : (

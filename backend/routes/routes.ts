@@ -19,7 +19,7 @@ import { getRecommendations } from "../controllers/algoDaddy.js";
 import {
   generateUserToken,
   createChatChannel,
-  updateChannelChatDisabled,
+  updateChannelChatStatus,
 } from "../controllers/chatController.js";
 import {
   uploadImage,
@@ -52,7 +52,7 @@ router.get("/users/:id/recommendations", getRecommendations);
 // Chat routes
 router.post("/chat/token", generateUserToken);
 router.post("/chat/channel", createChatChannel);
-router.post("/chat/channel/update", updateChannelChatDisabled);
+router.post("/chat/channel/update", updateChannelChatStatus);
 
 // Add image routes
 router.post("/images/upload", uploadImage);
