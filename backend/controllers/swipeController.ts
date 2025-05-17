@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { ObjectId } from "mongodb";
 import { Swipe } from "../models/Swipe.js";
 import { createChannelBetweenUsers } from "./chatController.js";
+import { User } from "../models/User.js";
+import { getDb } from "../util/database.js";
 
 /**
  * Records swipe and creates chat on match
@@ -19,6 +21,37 @@ export const createSwipe = async (req: Request, res: Response) => {
   }
 
   try {
+    // Check if either user is already matched
+    const swiperUser = await User.findById(
+      ObjectId.createFromHexString(swiperId)
+    );
+    const swipedUser = await User.findById(
+      ObjectId.createFromHexString(swipedId)
+    );
+
+    if (!swiperUser || !swipedUser) {
+      res.status(404).json({ message: "One or both users not found" });
+      return;
+    }
+
+    // If either user is already matched, record the swipe but don't create a match
+    if (swiperUser.currentMatch || swipedUser.currentMatch) {
+      const swipe = new Swipe(
+        ObjectId.createFromHexString(swiperId),
+        ObjectId.createFromHexString(swipedId),
+        direction
+      );
+      await swipe.save();
+
+      res.status(201).json({
+        message:
+          "Swipe recorded successfully (one or both users already matched)",
+        swipe,
+        match: false,
+      });
+      return;
+    }
+
     const swipe = new Swipe(
       ObjectId.createFromHexString(swiperId),
       ObjectId.createFromHexString(swipedId),
@@ -35,6 +68,26 @@ export const createSwipe = async (req: Request, res: Response) => {
 
       if (matchingSwipe) {
         try {
+          // Update both users' match status
+          const db = getDb();
+          await db.collection("users").updateOne(
+            { _id: ObjectId.createFromHexString(swiperId) },
+            {
+              $set: {
+                currentMatch: ObjectId.createFromHexString(swipedId),
+              },
+            }
+          );
+
+          await db.collection("users").updateOne(
+            { _id: ObjectId.createFromHexString(swipedId) },
+            {
+              $set: {
+                currentMatch: ObjectId.createFromHexString(swiperId),
+              },
+            }
+          );
+
           await createChannelBetweenUsers(swiperId, swipedId);
           res.status(201).json({
             message: "Match! Swipe recorded and chat channel created",
