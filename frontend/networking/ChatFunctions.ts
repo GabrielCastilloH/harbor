@@ -58,20 +58,20 @@ export async function fetchCreateChatChannel(
   return response.data.channel;
 }
 
-export async function fetchUpdateChannelChatDisabled(
+export async function fetchUpdateChannelChatStatus(
   channelId: string,
-  disable: boolean
+  freeze: boolean
 ): Promise<any> {
   console.log(
     "ChatFunctions - Updating channel:",
     channelId,
-    "disabled:",
-    disable
+    "frozen:",
+    freeze
   );
   try {
     const response = await axios.post(`${serverUrl}/chat/channel/update`, {
       channelId,
-      disable,
+      freeze,
     });
     console.log("ChatFunctions - Channel updated:", response.data.channel);
     return response.data.channel;
