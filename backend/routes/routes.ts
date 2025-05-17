@@ -12,6 +12,7 @@ import {
   getAllUsers,
   getUserById,
   updateUser,
+  unmatchUser,
 } from "../controllers/userController.js";
 
 import { getRecommendations } from "../controllers/algoDaddy.js";
@@ -57,5 +58,8 @@ router.post("/chat/channel/update", updateChannelChatDisabled);
 router.post("/images/upload", uploadImage);
 router.get("/images/:id", getImage);
 router.delete("/images/delete", deleteImage);
+
+// Add unmatch route
+router.post("/users/:userId/unmatch", unmatchUser);
 
 export default router;

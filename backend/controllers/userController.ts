@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { User } from "../models/User.js";
 import { ObjectId } from "mongodb";
+import { getDb } from "../util/database.js";
 
 /**
  * Creates new user profile
@@ -142,6 +143,75 @@ export const updateUser = async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(500).json({
       message: "Failed to update user",
+      error: error.message || error,
+    });
+  }
+};
+
+/**
+ * Unmatches a user from their current match
+ * @param req Contains userId
+ * @param res Returns updated user
+ */
+export const unmatchUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    res.status(400).json({ message: "User ID is required" });
+    return;
+  }
+
+  try {
+    const db = getDb();
+    const user = await User.findById(ObjectId.createFromHexString(userId));
+
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    if (!user.currentMatch) {
+      res.status(400).json({ message: "User is not currently matched" });
+      return;
+    }
+
+    // Get the matched user
+    const matchedUser = await User.findById(user.currentMatch);
+
+    if (!matchedUser) {
+      res.status(404).json({ message: "Matched user not found" });
+      return;
+    }
+
+    // Update both users to be available again
+    await db.collection("users").updateOne(
+      { _id: ObjectId.createFromHexString(userId) },
+      {
+        $set: {
+          currentMatch: null,
+        },
+      }
+    );
+
+    await db.collection("users").updateOne(
+      { _id: user.currentMatch },
+      {
+        $set: {
+          currentMatch: null,
+        },
+      }
+    );
+
+    res.status(200).json({
+      message: "Users unmatched successfully",
+      user: { ...user, currentMatch: null },
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      message: "Failed to unmatch users",
       error: error.message || error,
     });
   }

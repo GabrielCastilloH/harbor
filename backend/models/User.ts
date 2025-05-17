@@ -18,6 +18,7 @@ export class User {
   studySpot: string;
   hobbies: string;
   email: string;
+  currentMatch: ObjectId | null;
 
   /**
    * Creates a new user instance
@@ -66,6 +67,7 @@ export class User {
     this.studySpot = studySpot;
     this.hobbies = hobbies;
     this.email = email;
+    this.currentMatch = null;
   }
 
   /**
