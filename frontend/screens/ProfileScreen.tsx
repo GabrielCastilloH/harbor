@@ -102,11 +102,8 @@ export default function ProfileScreen() {
               // Call unmatch endpoint which handles both chat disabling and user unmatching
               await axios.post(`${serverUrl}/users/${currentUserId}/unmatch`);
 
-              // Navigate back to chat list and clear the stack
-              navigation.reset({
-                index: 0,
-                routes: [{ name: "Chats" as never }],
-              });
+              navigation.goBack();
+              navigation.goBack();
             } catch (error) {
               console.error("Error unmatching:", error);
               Alert.alert(
