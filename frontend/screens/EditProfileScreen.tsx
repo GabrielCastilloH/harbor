@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Alert } from "react-native";
 import { Profile } from "../types/App";
 import axios from "axios";
@@ -27,9 +27,38 @@ const emptyProfile: Profile = {
 };
 
 export default function EditProfileScreen() {
-  const { userId, setProfile } = useAppContext();
-  const [profileData, setProfileData] = useState<Profile>(emptyProfile);
+  const { userId, setProfile, profile: contextProfile } = useAppContext();
+  const [profileData, setProfileData] = useState<Profile>(
+    contextProfile || emptyProfile
+  );
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!userId) {
+        Alert.alert("Error", "User ID is missing. Please log in again.");
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const response = await axios.get(`${serverUrl}/users/${userId}`);
+        const userData = response.data.user || response.data;
+        setProfileData(userData);
+        setProfile(userData);
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+        Alert.alert("Error", "Failed to load profile data. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Only fetch if we don't have profile data in context
+    if (!contextProfile && userId) {
+      fetchUserProfile();
+    }
+  }, [userId, contextProfile, setProfile]);
 
   const handleSave = async () => {
     setLoading(true);
