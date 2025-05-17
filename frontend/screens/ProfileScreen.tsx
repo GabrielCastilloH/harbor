@@ -84,7 +84,7 @@ export default function ProfileScreen() {
   }, [navigation, userId, currentUserId]);
 
   const handleUnmatch = async () => {
-    if (!userId || !currentUserId || !channel) return;
+    if (!userId || !currentUserId) return;
 
     Alert.alert(
       "Unmatch",
@@ -99,14 +99,14 @@ export default function ProfileScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // 1. Call unmatch endpoint
+              // Call unmatch endpoint which handles both chat disabling and user unmatching
               await axios.post(`${serverUrl}/users/${currentUserId}/unmatch`);
 
-              // 2. Disable the chat channel
-              await fetchUpdateChannelChatDisabled(channel.id, true);
-
-              // 3. Navigate back to chat list
-              navigation.navigate("Chats" as never);
+              // Navigate back to chat list and clear the stack
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "Chats" as never }],
+              });
             } catch (error) {
               console.error("Error unmatching:", error);
               Alert.alert(
