@@ -203,13 +203,13 @@ export const unmatchUser = async (
     const channelId = [userId, matchedUser._id.toString()].sort().join("-");
 
     try {
-      // 1. Disable the chat channel
+      // 1. Freeze the chat channel
       const channel = serverClient.channel("messaging", channelId);
-      await channel.update({ disabled: true });
+      await channel.update({ frozen: true });
 
-      // Send system message about channel being disabled
+      // Send system message about channel being frozen
       await channel.sendMessage({
-        text: "This chat has been disabled because one of the users unmatched.",
+        text: "This chat has been frozen because one of the users unmatched.",
         user_id: "system",
       });
 
