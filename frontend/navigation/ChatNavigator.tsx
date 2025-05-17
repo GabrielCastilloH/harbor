@@ -42,6 +42,12 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
   const { channel, userId } = useAppContext();
   const otherMembers = channel?.state?.members || {};
   const otherUserId = Object.keys(otherMembers).find((key) => key !== userId);
+  const isDisabled = channel?.data?.disabled;
+
+  // Don't show the profile button if channel is disabled
+  if (isDisabled) {
+    return null;
+  }
 
   return (
     <TouchableOpacity
