@@ -132,30 +132,27 @@ export const createChatChannel = async (req: Request, res: Response) => {
 };
 
 /**
- * Updates chat disabled status for channel
- * @param req Request with channelId and disable flag in body
+ * Updates chat frozen status for channel
+ * @param req Request with channelId and freeze flag in body
  * @param res Response with updated channel or error
  */
-export const updateChannelChatDisabled = async (
-  req: Request,
-  res: Response
-) => {
+export const updateChannelChatStatus = async (req: Request, res: Response) => {
   try {
-    const { channelId, disable } = req.body;
-    if (!channelId || disable === undefined) {
-      res.status(400).json({ error: "Missing channelId or disable flag" });
+    const { channelId, freeze } = req.body;
+    if (!channelId || freeze === undefined) {
+      res.status(400).json({ error: "Missing channelId or freeze flag" });
       return;
     }
 
     const channel = serverClient.channel("messaging", channelId);
 
-    // Use the correct Stream API call for disabling
-    await channel.update({ disabled: disable });
+    // Use the correct Stream API call for freezing
+    await channel.update({ frozen: freeze });
 
-    // Send a system message about the channel being disabled
-    if (disable) {
+    // Send a system message about the channel being frozen
+    if (freeze) {
       await channel.sendMessage({
-        text: "This chat has been disabled because one of the users unmatched.",
+        text: "This chat has been frozen because one of the users unmatched.",
         user_id: "system",
       });
     }
