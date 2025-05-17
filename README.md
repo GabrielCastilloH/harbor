@@ -43,23 +43,28 @@ A unique dating app that focuses on meaningful connections through progressive p
   - User creation and token generation
   - Backend route for user token fetching
 - Match-based chat creation
-- One-to-one conversation limit
 - Fixed signup bug.
 - Actually add user info to the top right corner of chats.
+- Add pre-filled data in user settings and add name of the other person individual chats.
 
 ### In Progress 🚧
 
-- [ ] Add pre-filled data in user settings and add name of the other person individual chats.
-- [ ] Implement three swipes per day limit (configurable)
+- [ ] Make sure you get the matched! screen when matching
+- [ ] Be able to match with multiple people but only create a chat with one.
+      The other ones are matched with after you finish your current conversation
+      (add a button for this in ProfileScreen) one at a time.
+- [ ] Implement three swipes per day limit
 - [ ] Add photo blurring preview screen
 - [ ] Implement authentication route protection
 - [ ] Setup progressive photo unblurring
-- [ ] Integrate RevenueCat for payment processing
+- [ ] Force users to use a square picture in the image picker.
+- [ ] Make the images higher quality.
+- [ ] Integrate Stripe for payment processing
+- [ ] Premium features through Stripe integration
 - [ ] Uncomment code to make sure onlly @cornell.edu allowed.
 
 ## 🔜 Future Enhancements (not MVP)
 
-- Premium features through RevenueCat integration
 - Enhanced matching algorithms
 - Additional privacy features
 - Profile customization options
