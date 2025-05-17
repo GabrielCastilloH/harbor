@@ -148,9 +148,21 @@ export const updateChannelChatDisabled = async (
     }
 
     const channel = serverClient.channel("messaging", channelId);
-    await channel.update({ chatDisabled: disable });
+
+    // Use the correct Stream API call for disabling
+    await channel.update({ disabled: disable });
+
+    // Send a system message about the channel being disabled
+    if (disable) {
+      await channel.sendMessage({
+        text: "This chat has been disabled because one of the users unmatched.",
+        user_id: "system",
+      });
+    }
+
     res.json({ channel });
   } catch (error) {
+    console.error("Error updating channel:", error);
     res.status(500).json({ error: "Failed to update channel" });
   }
 };
