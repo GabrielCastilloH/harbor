@@ -2,6 +2,19 @@ import { Request, Response } from "express";
 import { User } from "../models/User.js";
 import { ObjectId } from "mongodb";
 import { getDb } from "../util/database.js";
+import { StreamChat } from "stream-chat";
+import * as dotenv from "dotenv";
+
+dotenv.config();
+
+const API_KEY = process.env.STREAM_API_KEY;
+const API_SECRET = process.env.STREAM_API_SECRET;
+
+if (!API_KEY || !API_SECRET) {
+  throw new Error("Missing Stream API credentials");
+}
+
+const serverClient = StreamChat.getInstance(API_KEY, API_SECRET);
 
 /**
  * Creates new user profile
@@ -186,29 +199,47 @@ export const unmatchUser = async (
       return;
     }
 
-    // Update both users to be available again
-    await db.collection("users").updateOne(
-      { _id: ObjectId.createFromHexString(userId) },
-      {
-        $set: {
-          currentMatch: null,
-        },
-      }
-    );
+    // Create channel ID (sorted to ensure consistency)
+    const channelId = [userId, matchedUser._id.toString()].sort().join("-");
 
-    await db.collection("users").updateOne(
-      { _id: user.currentMatch },
-      {
-        $set: {
-          currentMatch: null,
-        },
-      }
-    );
+    try {
+      // 1. Disable the chat channel
+      const channel = serverClient.channel("messaging", channelId);
+      await channel.update({ disabled: true });
 
-    res.status(200).json({
-      message: "Users unmatched successfully",
-      user: { ...user, currentMatch: null },
-    });
+      // Send system message about channel being disabled
+      await channel.sendMessage({
+        text: "This chat has been disabled because one of the users unmatched.",
+        user_id: "system",
+      });
+
+      // 2. Update both users to be available again
+      await db.collection("users").updateOne(
+        { _id: ObjectId.createFromHexString(userId) },
+        {
+          $set: {
+            currentMatch: null,
+          },
+        }
+      );
+
+      await db.collection("users").updateOne(
+        { _id: user.currentMatch },
+        {
+          $set: {
+            currentMatch: null,
+          },
+        }
+      );
+
+      res.status(200).json({
+        message: "Users unmatched successfully",
+        user: { ...user, currentMatch: null },
+      });
+    } catch (error) {
+      console.error("Error during unmatch process:", error);
+      throw error;
+    }
   } catch (error: any) {
     res.status(500).json({
       message: "Failed to unmatch users",
