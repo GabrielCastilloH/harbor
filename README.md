@@ -45,10 +45,10 @@ A unique dating app that focuses on meaningful connections through progressive p
 - Match-based chat creation
 - One-to-one conversation limit
 - Fixed signup bug.
+- Actually add user info to the top right corner of chats.
 
 ### In Progress 🚧
 
-- [ ] Actually add user info to the top right corner of chats.
 - [ ] Add pre-filled data in user settings and add name of the other person individual chats.
 - [ ] Implement three swipes per day limit (configurable)
 - [ ] Add photo blurring preview screen
