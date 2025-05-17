@@ -8,6 +8,7 @@ import {
   Pressable,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
@@ -18,7 +19,9 @@ import AcademicView from "../components/AcademicView";
 import PersonalView from "../components/PersonalView";
 import CachedImage from "../components/CachedImage";
 import axios from "axios";
-import { useRoute, RouteProp } from "@react-navigation/native";
+import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
+import { useAppContext } from "../context/AppContext";
+import { fetchUpdateChannelChatDisabled } from "../networking/ChatFunctions";
 
 type ProfileScreenParams = {
   ProfileScreen: {
@@ -35,6 +38,8 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const route = useRoute<RouteProp<ProfileScreenParams, "ProfileScreen">>();
+  const navigation = useNavigation();
+  const { userId: currentUserId, channel } = useAppContext();
   const userId = route.params?.userId;
 
   useEffect(() => {
@@ -58,6 +63,62 @@ export default function ProfileScreen() {
 
     fetchProfile();
   }, [userId]);
+
+  // Set up the unmatch button in the header
+  useEffect(() => {
+    if (userId === currentUserId) return; // Don't show unmatch button on own profile
+
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          onPress={() => handleUnmatch()}
+          style={({ pressed }) => [
+            styles.unmatchButton,
+            pressed && styles.unmatchButtonPressed,
+          ]}
+        >
+          <Text style={styles.unmatchButtonText}>Unmatch</Text>
+        </Pressable>
+      ),
+    });
+  }, [navigation, userId, currentUserId]);
+
+  const handleUnmatch = async () => {
+    if (!userId || !currentUserId || !channel) return;
+
+    Alert.alert(
+      "Unmatch",
+      "Are you sure you want to unmatch? This will disable the chat and you won't be able to match again.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Unmatch",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // 1. Call unmatch endpoint
+              await axios.post(`${serverUrl}/users/${currentUserId}/unmatch`);
+
+              // 2. Disable the chat channel
+              await fetchUpdateChannelChatDisabled(channel.id, true);
+
+              // 3. Navigate back to chat list
+              navigation.navigate("Chats" as never);
+            } catch (error) {
+              console.error("Error unmatching:", error);
+              Alert.alert(
+                "Error",
+                "Failed to unmatch. Please try again later."
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (loading) {
     return (
@@ -151,5 +212,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: Colors.secondary100,
+  },
+  unmatchButton: {
+    marginRight: 15,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.primary500,
+  },
+  unmatchButtonPressed: {
+    opacity: 0.7,
+  },
+  unmatchButtonText: {
+    color: Colors.secondary100,
+    fontWeight: "bold",
   },
 });
