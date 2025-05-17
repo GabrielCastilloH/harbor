@@ -1,18 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   StyleSheet,
   Animated,
   Image,
   TouchableOpacity,
-} from 'react-native';
-import Colors from '../constants/Colors';
-import { Profile } from '../types/App';
-import BasicInfoView from './BasicInfoView';
-import AcademicView from './AcademicView';
-import PersonalView from './PersonalView';
-import PageIndicator from './PageIndicator';
-import { getImageSource } from '../util/imageUtils';
+} from "react-native";
+import Colors from "../constants/Colors";
+import { Profile } from "../types/App";
+import BasicInfoView from "./BasicInfoView";
+import AcademicView from "./AcademicView";
+import PersonalView from "./PersonalView";
+import PageIndicator from "./PageIndicator";
+import { getImageSource } from "../util/imageUtils";
 
 type CardProps = {
   profile: Profile;
@@ -58,17 +58,6 @@ export default function Card({
         ) : (
           <PersonalView profile={profile} />
         )}
-
-        {/* Display the current image from the profile's images array */}
-        {profile.images && profile.images.length > 0 && (
-          <TouchableOpacity onPress={nextImage} style={styles.imageContainer}>
-            <Image
-              source={getImageSource(profile.images[currentImageIndex])}
-              style={styles.image}
-              resizeMode="cover"
-            />
-          </TouchableOpacity>
-        )}
       </View>
     </Animated.View>
   );
@@ -76,31 +65,31 @@ export default function Card({
 
 const styles = StyleSheet.create({
   cardStyle: {
-    position: 'absolute',
-    width: '92%',
-    height: '92%',
+    position: "absolute",
+    width: "92%",
+    height: "92%",
     backgroundColor: Colors.secondary100,
     borderRadius: 24,
-    marginHorizontal: '4%',
+    marginHorizontal: "4%",
     marginVertical: 20,
     borderWidth: 3,
     borderColor: `${Colors.primary500}50`,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   gradient: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     top: 0,
-    height: '100%',
+    height: "100%",
   },
   contentContainer: {
     flex: 1,
     padding: 24,
   },
   imageContainer: {
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
     marginTop: 10,
   },
   image: {
