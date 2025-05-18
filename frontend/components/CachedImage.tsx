@@ -1,83 +1,68 @@
 import React, { useState, useEffect } from "react";
 import {
   Image,
-  ImageProps,
+  ImageStyle,
+  StyleSheet,
   ActivityIndicator,
   View,
-  StyleSheet,
 } from "react-native";
 import axios from "axios";
-import * as FileSystem from "expo-file-system";
+import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
 
-const serverUrl = process.env.SERVER_URL;
-
-interface CachedImageProps extends Omit<ImageProps, "source"> {
+interface CachedImageProps {
   fileId: string;
+  style?: ImageStyle;
+  resizeMode?: "cover" | "contain" | "stretch" | "center";
 }
+
+const serverUrl = process.env.SERVER_URL;
 
 export default function CachedImage({
   fileId,
   style,
-  ...props
+  resizeMode = "cover",
 }: CachedImageProps) {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { userId } = useAppContext();
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadImage = async () => {
-      if (!fileId) {
-        setLoading(false);
-        return;
-      }
-
+    const fetchImage = async () => {
       try {
-        // Check if image is cached
-        const cacheFile = `${FileSystem.cacheDirectory}${fileId}.jpg`;
-        const metadata = await FileSystem.getInfoAsync(cacheFile);
+        setLoading(true);
+        const response = await axios.get(
+          `${serverUrl}/images/${fileId}?requestingUserId=${userId}`,
+          { responseType: "json" }
+        );
 
-        if (metadata.exists) {
-          // Use cached image
-          setImageUri(`file://${cacheFile}`);
-          setLoading(false);
-        } else {
-          // Fetch image from backend
-          const response = await axios.get(`${serverUrl}/images/${fileId}`);
-          const imageData = response.data.imageData;
-
-          // Save to cache
-          await FileSystem.writeAsStringAsync(
-            cacheFile,
-            imageData.split(",")[1],
-            {
-              encoding: FileSystem.EncodingType.Base64,
-            }
-          );
-
-          if (isMounted) {
-            setImageUri(`file://${cacheFile}`);
-            setLoading(false);
-          }
+        if (isMounted && response.data.imageData) {
+          setImageUri(response.data.imageData);
         }
       } catch (error) {
-        console.error("Error loading image:", error);
-        setLoading(false);
+        console.error("Error fetching image:", error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    loadImage();
+    if (fileId) {
+      fetchImage();
+    }
 
     return () => {
       isMounted = false;
     };
-  }, [fileId]);
+  }, [fileId, userId]);
 
   if (loading) {
     return (
       <View style={[styles.loadingContainer, style]}>
-        <ActivityIndicator color={Colors.primary500} />
+        <ActivityIndicator size="small" color={Colors.primary500} />
       </View>
     );
   }
@@ -88,28 +73,30 @@ export default function CachedImage({
         <Image
           source={require("../assets/images/placeholder.png")}
           style={[styles.placeholderImage, style]}
+          resizeMode={resizeMode}
         />
       </View>
     );
   }
 
-  return <Image source={{ uri: imageUri }} style={style} {...props} />;
+  return (
+    <Image source={{ uri: imageUri }} style={style} resizeMode={resizeMode} />
+  );
 }
 
 const styles = StyleSheet.create({
   loadingContainer: {
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.primary100,
+    backgroundColor: Colors.secondary200,
   },
   errorContainer: {
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.primary100,
+    backgroundColor: Colors.secondary200,
   },
   placeholderImage: {
     width: "100%",
     height: "100%",
-    resizeMode: "cover",
   },
 });
