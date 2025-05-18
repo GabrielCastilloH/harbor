@@ -1,5 +1,12 @@
-import { SafeAreaView, Text, View, StyleSheet } from "react-native";
-import React, { useEffect } from "react";
+import {
+  SafeAreaView,
+  Text,
+  View,
+  StyleSheet,
+  Modal,
+  Pressable,
+} from "react-native";
+import React, { useEffect, useState } from "react";
 import { Channel, MessageInput, MessageList } from "stream-chat-expo";
 import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
@@ -10,6 +17,34 @@ const serverUrl = process.env.SERVER_URL;
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
+  const [showWarning, setShowWarning] = useState(false);
+  const [isChatFrozen, setIsChatFrozen] = useState(false);
+
+  const handleWarningResponse = async (agreed: boolean) => {
+    try {
+      const matchId = channel?.data?.matchId;
+      if (!matchId) return;
+
+      const response = await axios.post(`${serverUrl}/blur/warning-response`, {
+        userId,
+        matchId,
+        agreed,
+      });
+
+      if (agreed) {
+        // If both users have agreed, unfreeze the chat
+        if (response.data.bothAgreed) {
+          setIsChatFrozen(false);
+        }
+      } else {
+        // If user chose to unmatch, keep chat frozen
+        setIsChatFrozen(true);
+      }
+      setShowWarning(false);
+    } catch (error) {
+      console.error("Error handling warning response:", error);
+    }
+  };
 
   useEffect(() => {
     if (!channel) return;
@@ -49,10 +84,18 @@ export default function ChatScreen() {
               userId,
               otherUserId,
             });
-            await axios.post(`${serverUrl}/blur/update`, {
+            const response = await axios.post(`${serverUrl}/blur/update`, {
               userId: userId,
               matchedUserId: otherUserId,
             });
+
+            // Handle warning state
+            if (response.data.shouldShowWarning) {
+              setShowWarning(true);
+              setIsChatFrozen(true);
+            } else if (response.data.bothAgreed) {
+              setIsChatFrozen(false);
+            }
           }
         } catch (error) {
           console.error(
@@ -83,21 +126,50 @@ export default function ChatScreen() {
     );
   }
 
-  const isFrozen = channel.data?.frozen;
-
   return (
-    <Channel channel={channel}>
-      <MessageList />
-      {isFrozen ? (
-        <View style={styles.disabledContainer}>
-          <Text style={styles.disabledText}>
-            This chat has been frozen because one of the users unmatched.
-          </Text>
+    <>
+      <Channel channel={channel}>
+        <MessageList />
+        {isChatFrozen || channel.data?.frozen ? (
+          <View style={styles.disabledContainer}>
+            <Text style={styles.disabledText}>
+              {channel.data?.frozen
+                ? "This chat has been frozen because one of the users unmatched."
+                : "Chat is paused until both users respond to the warning."}
+            </Text>
+          </View>
+        ) : (
+          <MessageInput />
+        )}
+      </Channel>
+
+      <Modal visible={showWarning} transparent={true} animationType="fade">
+        <View style={styles.warningModalBackground}>
+          <View style={styles.warningModalContent}>
+            <Text style={styles.warningTitle}>Photos Will Be Revealed</Text>
+            <Text style={styles.warningText}>
+              You've exchanged enough messages that your photos will start
+              becoming clearer. This is your last chance to unmatch while
+              remaining anonymous.
+            </Text>
+            <View style={styles.warningButtons}>
+              <Pressable
+                style={[styles.warningButton, styles.unmatchButton]}
+                onPress={() => handleWarningResponse(false)}
+              >
+                <Text style={styles.warningButtonText}>Unmatch</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.warningButton, styles.continueButton]}
+                onPress={() => handleWarningResponse(true)}
+              >
+                <Text style={styles.warningButtonText}>Continue</Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
-      ) : (
-        <MessageInput />
-      )}
-    </Channel>
+      </Modal>
+    </>
   );
 }
 
@@ -112,5 +184,50 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: Colors.primary500,
     fontStyle: "italic",
+  },
+  warningModalBackground: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  warningModalContent: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 20,
+    width: "80%",
+    alignItems: "center",
+  },
+  warningTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: Colors.primary500,
+  },
+  warningText: {
+    textAlign: "center",
+    marginBottom: 20,
+    color: Colors.black,
+  },
+  warningButtons: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+  },
+  warningButton: {
+    padding: 10,
+    borderRadius: 10,
+    width: "45%",
+  },
+  unmatchButton: {
+    backgroundColor: Colors.red,
+  },
+  continueButton: {
+    backgroundColor: Colors.primary500,
+  },
+  warningButtonText: {
+    color: "white",
+    textAlign: "center",
+    fontWeight: "bold",
   },
 });
