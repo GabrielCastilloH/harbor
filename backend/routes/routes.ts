@@ -30,6 +30,12 @@ import {
   updateBlurLevelForMessage,
   getBlurLevel,
 } from "../controllers/blurController.js";
+import {
+  createMatch,
+  getActiveMatches,
+  unmatchUsers,
+  updateMatchChannel,
+} from "../controllers/matchController.js";
 
 const router = express.Router();
 
@@ -69,5 +75,11 @@ router.post("/users/:userId/unmatch", unmatchUser);
 // Add blur level routes
 router.post("/blur/update", updateBlurLevelForMessage);
 router.get("/blur/:userId/:matchedUserId", getBlurLevel);
+
+// Match routes
+router.post("/matches", createMatch);
+router.get("/matches/user/:userId", getActiveMatches);
+router.post("/matches/:matchId/unmatch", unmatchUsers);
+router.post("/matches/:matchId/channel", updateMatchChannel);
 
 export default router;

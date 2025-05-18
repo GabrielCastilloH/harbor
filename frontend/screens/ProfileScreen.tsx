@@ -21,10 +21,12 @@ import CachedImage from "../components/CachedImage";
 import axios from "axios";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
+import { unmatch } from "../networking/MatchService";
 
 type ProfileScreenParams = {
   ProfileScreen: {
     userId: string;
+    matchId: string;
   };
 };
 
@@ -41,6 +43,7 @@ export default function ProfileScreen() {
   const navigation = useNavigation();
   const { userId: currentUserId } = useAppContext();
   const userId = route.params?.userId;
+  const matchId = route.params?.matchId;
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -88,22 +91,23 @@ export default function ProfileScreen() {
     if (userId === currentUserId) return;
 
     navigation.setOptions({
-      headerRight: () => (
-        <Pressable
-          onPress={() => handleUnmatch()}
-          style={({ pressed }) => [
-            styles.unmatchButton,
-            pressed && styles.unmatchButtonPressed,
-          ]}
-        >
-          <Text style={styles.unmatchButtonText}>Unmatch</Text>
-        </Pressable>
-      ),
+      headerRight: () =>
+        matchId ? (
+          <Pressable
+            onPress={() => handleUnmatch()}
+            style={({ pressed }) => [
+              styles.unmatchButton,
+              pressed && styles.unmatchButtonPressed,
+            ]}
+          >
+            <Text style={styles.unmatchButtonText}>Unmatch</Text>
+          </Pressable>
+        ) : null,
     });
-  }, [navigation, userId, currentUserId]);
+  }, [navigation, userId, currentUserId, matchId]);
 
   const handleUnmatch = async () => {
-    if (!userId || !currentUserId) return;
+    if (!userId || !currentUserId || !matchId) return;
 
     Alert.alert(
       "Unmatch",
@@ -118,7 +122,7 @@ export default function ProfileScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await axios.post(`${serverUrl}/users/${currentUserId}/unmatch`);
+              await unmatch(currentUserId, matchId);
               navigation.goBack();
               navigation.goBack();
             } catch (error) {
