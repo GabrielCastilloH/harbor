@@ -26,6 +26,10 @@ import {
   getImage,
   deleteImage,
 } from "../controllers/imageController.js";
+import {
+  updateBlurLevelForMessage,
+  getBlurLevel,
+} from "../controllers/blurController.js";
 
 const router = express.Router();
 
@@ -61,5 +65,9 @@ router.delete("/images/delete", deleteImage);
 
 // Add unmatch route
 router.post("/users/:userId/unmatch", unmatchUser);
+
+// Add blur level routes
+router.post("/blur/update", updateBlurLevelForMessage);
+router.get("/blur/:userId/:matchedUserId", getBlurLevel);
 
 export default router;
