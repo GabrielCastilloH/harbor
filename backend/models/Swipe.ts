@@ -30,12 +30,16 @@ export class Swipe {
   static async createIndexes() {
     const db = getDb();
     try {
+      // Create unique index to prevent exact same swipes (same user, same direction)
       await db
         .collection("swipes")
         .createIndex(
           { swiperId: 1, swipedId: 1, direction: 1 },
           { unique: true }
         );
+
+      // Create index for faster swipe lookups
+      await db.collection("swipes").createIndex({ swiperId: 1, swipedId: 1 });
     } catch (error) {
       console.error("Error creating swipe indexes:", error);
     }
@@ -64,40 +68,20 @@ export class Swipe {
   async save() {
     const db = getDb();
     try {
-      // Use updateOne with upsert for atomic operation
-      const result = await db.collection("swipes").updateOne(
-        {
-          swiperId: this.swiperId,
-          swipedId: this.swipedId,
-          direction: this.direction,
-        },
-        {
-          $setOnInsert: {
-            swiperId: this.swiperId,
-            swipedId: this.swipedId,
-            direction: this.direction,
-          },
-        },
-        { upsert: true }
-      );
-
-      return {
-        acknowledged: true,
-        matchedCount: result.matchedCount,
-        modifiedCount: result.modifiedCount,
-        upsertedCount: result.upsertedCount,
-        upsertedId: result.upsertedId,
-      };
+      // Insert new swipe, the unique index will prevent duplicates of exact same swipe
+      return await db.collection("swipes").insertOne({
+        swiperId: this.swiperId,
+        swipedId: this.swipedId,
+        direction: this.direction,
+        createdAt: new Date(),
+      });
     } catch (error) {
       if ((error as any).code === 11000) {
-        // Duplicate key error - swipe already exists
+        // Duplicate key error - exact same swipe already exists
         console.log("Duplicate swipe prevented");
         return {
           acknowledged: true,
-          matchedCount: 1,
-          modifiedCount: 0,
-          upsertedCount: 0,
-          upsertedId: null,
+          insertedId: null,
         };
       }
       throw error;

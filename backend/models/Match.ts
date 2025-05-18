@@ -10,7 +10,9 @@ export interface IMatch {
   isActive: boolean;
   channelId?: string;
   blurPercentage: number;
-  hasShownWarning: boolean;
+  warningShown: boolean;
+  user1Agreed: boolean;
+  user2Agreed: boolean;
 }
 
 export class Match {
@@ -22,7 +24,9 @@ export class Match {
     public isActive: boolean = true,
     public channelId?: string,
     public blurPercentage: number = 100,
-    public hasShownWarning: boolean = false
+    public warningShown: boolean = false,
+    public user1Agreed: boolean = false,
+    public user2Agreed: boolean = false
   ) {}
 
   async save() {
@@ -127,7 +131,7 @@ export class Match {
     user1Id: ObjectId,
     user2Id: ObjectId,
     blurPercentage: number,
-    hasShownWarning: boolean
+    warningShown: boolean
   ) {
     const db = getDb();
     try {
@@ -142,7 +146,51 @@ export class Match {
         {
           $set: {
             blurPercentage,
-            hasShownWarning,
+            warningShown,
+          },
+        }
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async updateWarningAgreement(
+    matchId: ObjectId,
+    userId: ObjectId,
+    agreed: boolean
+  ) {
+    const db = getDb();
+    try {
+      const match = await this.findById(matchId);
+      if (!match) throw new Error("Match not found");
+
+      const isUser1 = match.user1Id.equals(userId);
+      const updateField = isUser1 ? "user1Agreed" : "user2Agreed";
+
+      return await db
+        .collection("matches")
+        .updateOne({ _id: matchId }, { $set: { [updateField]: agreed } });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async bothUsersAgreed(matchId: ObjectId): Promise<boolean> {
+    const match = await this.findById(matchId);
+    return match ? match.user1Agreed && match.user2Agreed : false;
+  }
+
+  static async resetWarningAgreements(matchId: ObjectId) {
+    const db = getDb();
+    try {
+      return await db.collection("matches").updateOne(
+        { _id: matchId },
+        {
+          $set: {
+            user1Agreed: false,
+            user2Agreed: false,
+            warningShown: false,
           },
         }
       );
