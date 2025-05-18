@@ -65,13 +65,21 @@ export class Swipe {
     const db = getDb();
     try {
       // Use updateOne with upsert for atomic operation
-      const result = await db
-        .collection("swipes")
-        .updateOne(
-          { swiperId: this.swiperId, swipedId: this.swipedId },
-          { $set: { direction: this.direction } },
-          { upsert: true }
-        );
+      const result = await db.collection("swipes").updateOne(
+        {
+          swiperId: this.swiperId,
+          swipedId: this.swipedId,
+          direction: this.direction,
+        },
+        {
+          $setOnInsert: {
+            swiperId: this.swiperId,
+            swipedId: this.swipedId,
+            direction: this.direction,
+          },
+        },
+        { upsert: true }
+      );
 
       return {
         acknowledged: true,
