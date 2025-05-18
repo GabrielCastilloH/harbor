@@ -44,12 +44,14 @@ export const upsertUserToStreamChat = async (
  * Creates a chat channel between two users
  * @param userId1 - First user's MongoDB ID
  * @param userId2 - Second user's MongoDB ID
+ * @param matchId - Match ID to associate with the channel
  * @returns Created StreamChat channel
  * @throws If users not found or channel creation fails
  */
 export const createChannelBetweenUsers = async (
   userId1: string,
-  userId2: string
+  userId2: string,
+  matchId: string
 ) => {
   try {
     const user1 = await User.findById(ObjectId.createFromHexString(userId1));
@@ -66,6 +68,7 @@ export const createChannelBetweenUsers = async (
       members: [userId1, userId2],
       chatDisabled: false,
       created_by_id: "system",
+      matchId: matchId,
     });
 
     await channel.create();
@@ -114,14 +117,18 @@ export const generateUserToken = async (req: Request, res: Response) => {
  */
 export const createChatChannel = async (req: Request, res: Response) => {
   try {
-    const { userId1, userId2 } = req.body;
+    const { userId1, userId2, matchId } = req.body;
     if (!userId1 || !userId2) {
       res.status(400).json({ error: "Missing userId1 or userId2" });
       return;
     }
 
     try {
-      const channel = await createChannelBetweenUsers(userId1, userId2);
+      const channel = await createChannelBetweenUsers(
+        userId1,
+        userId2,
+        matchId || ""
+      );
       res.json({ channel });
     } catch (error) {
       res.status(404).json({ error: "Failed to create channel" });

@@ -1,5 +1,6 @@
 import { MongoClient, Db } from "mongodb";
 import environment from "./environment.js";
+import { Swipe } from "../models/Swipe.js";
 
 let _db: Db | undefined;
 
@@ -13,6 +14,8 @@ const mongoConnect = async (callback: () => void): Promise<void> => {
   try {
     const client = await MongoClient.connect(MONGODB_URI);
     _db = client.db("harbor");
+    // Initialize indexes
+    await Swipe.createIndexes();
     callback();
   } catch (err) {
     console.error("Failed to connect to MongoDB", err);
