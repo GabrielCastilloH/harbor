@@ -7,7 +7,7 @@ import {
   deleteFile,
 } from "../util/gridFS.js";
 import { User } from "../models/User.js";
-import { BlurLevel } from "../models/BlurLevel.js";
+import { Match } from "../models/Match.js";
 
 /**
  * Uploads image and links to user
@@ -119,12 +119,12 @@ export const getImage = async (req: Request, res: Response): Promise<void> => {
     let blurAmount = 100; // Default to maximum blur
     const imageOwner = await User.findByImageId(id);
     if (imageOwner) {
-      const blurLevel = await BlurLevel.findByUserPair(
+      const match = await Match.findByUsers(
         ObjectId.createFromHexString(requestingUserId),
         imageOwner._id
       );
-      if (blurLevel) {
-        blurAmount = blurLevel.blurPercentage;
+      if (match) {
+        blurAmount = match.blurPercentage || 100;
       }
     }
 
