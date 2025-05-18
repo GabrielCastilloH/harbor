@@ -29,8 +29,8 @@ export const createSwipe = async (req: Request, res: Response) => {
       direction,
     });
 
-    const swiperIdObj = new ObjectId(swiperId);
-    const swipedIdObj = new ObjectId(swipedId);
+    const swiperIdObj = ObjectId.createFromHexString(swiperId);
+    const swipedIdObj = ObjectId.createFromHexString(swipedId);
 
     // Get the swiper's user data to check premium status and current matches
     const swiperUser = await User.findById(swiperIdObj);
