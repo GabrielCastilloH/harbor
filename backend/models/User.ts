@@ -194,12 +194,23 @@ export class User {
   }
 
   static async addMatch(userId: ObjectId, matchId: ObjectId) {
+    console.log("Adding match to user:", {
+      userId: userId.toString(),
+      matchId: matchId.toString(),
+    });
     const db = getDb();
     try {
-      return await db
+      const result = await db
         .collection("users")
         .updateOne({ _id: userId }, { $addToSet: { currentMatches: matchId } });
+      console.log("Add match result:", {
+        userId: userId.toString(),
+        matchId: matchId.toString(),
+        modifiedCount: result.modifiedCount,
+      });
+      return result;
     } catch (error) {
+      console.error("Error adding match to user:", error);
       throw error;
     }
   }

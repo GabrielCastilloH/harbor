@@ -49,10 +49,13 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
   return (
     <TouchableOpacity
       onPress={() => {
+        console.log("otherUserId", otherUserId);
+        console.log("matchId", matchId);
         if (otherUserId && matchId) {
+          console.log("RUNNING!");
           navigation.navigate("ProfileScreen", {
             userId: otherUserId,
-            matchId,
+            matchId: matchId,
           });
         }
       }}
