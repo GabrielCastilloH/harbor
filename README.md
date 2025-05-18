@@ -51,7 +51,8 @@ A unique dating app that focuses on meaningful connections through progressive p
 
 ### In Progress 🚧
 
-- [ ] Add photo blurring preview screen
+- [ ] Add photo blurring preview screen:
+- [ ] Make it so that you can't send more than 3 messages in a row (need to wait for the other person to send a message).
 - [ ] Implement authentication route protection
 - [ ] Setup progressive photo unblurring
 - [ ] Force users to use a square picture in the image picker.
