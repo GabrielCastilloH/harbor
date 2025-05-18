@@ -42,6 +42,12 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
   const { channel, userId } = useAppContext();
   const otherMembers = channel?.state?.members || {};
   const otherUserId = Object.keys(otherMembers).find((key) => key !== userId);
+  const isFrozen = channel?.data?.frozen;
+
+  // Don't show the profile button if channel is frozen
+  if (isFrozen) {
+    return null;
+  }
 
   return (
     <TouchableOpacity
@@ -93,9 +99,7 @@ export default function ChatNavigator() {
     if (!profile || !userId) return { id: "loading", name: "Loading" };
     return {
       id: userId,
-      name: profile.firstName
-        ? `${profile.firstName} ${profile.lastName || ""}`
-        : "User",
+      name: profile.firstName || "User",
     };
   }, [profile, userId]);
 
