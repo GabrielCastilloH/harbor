@@ -31,7 +31,7 @@ export const updateBlurLevelForMessage = async (
 
     const messageCount = match.messageCount;
     let newBlurPercentage = match.blurPercentage || INITIAL_BLUR;
-    let hasShownWarning = match.hasShownWarning || false;
+    let warningShown = match.warningShown || false;
     let shouldShowWarning = false;
 
     // Calculate new blur percentage based on message count
@@ -41,10 +41,10 @@ export const updateBlurLevelForMessage = async (
         INITIAL_BLUR - messageCount * INITIAL_UNBLUR_RATE
       );
     } else {
-      if (!hasShownWarning && newBlurPercentage > 50) {
+      if (!warningShown && newBlurPercentage > 50) {
         shouldShowWarning = true;
-        hasShownWarning = true;
-      } else if (hasShownWarning) {
+        warningShown = true;
+      } else if (match.user1Agreed && match.user2Agreed) {
         const extraMessages = messageCount - MESSAGES_UNTIL_WARNING;
         newBlurPercentage = Math.max(
           0,
@@ -57,17 +57,51 @@ export const updateBlurLevelForMessage = async (
       userIdObj,
       matchedUserIdObj,
       newBlurPercentage,
-      hasShownWarning
+      warningShown
     );
 
     res.status(200).json({
       blurPercentage: newBlurPercentage,
       shouldShowWarning,
-      hasShownWarning,
+      warningShown,
+      bothAgreed: match.user1Agreed && match.user2Agreed,
       messageCount,
     });
   } catch (error) {
     console.error("Error updating blur level:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const handleWarningResponse = async (req: Request, res: Response) => {
+  try {
+    const { userId, matchId, agreed } = req.body;
+
+    if (!userId || !matchId || agreed === undefined) {
+      res.status(400).json({ message: "Missing required parameters" });
+      return;
+    }
+
+    const userIdObj = new ObjectId(userId);
+    const matchIdObj = new ObjectId(matchId);
+
+    if (agreed) {
+      await Match.updateWarningAgreement(matchIdObj, userIdObj, true);
+      const bothAgreed = await Match.bothUsersAgreed(matchIdObj);
+
+      res.status(200).json({
+        message: "Warning response recorded",
+        bothAgreed,
+      });
+    } else {
+      // If user chooses to unmatch, deactivate the match
+      await Match.deactivateMatch(matchIdObj);
+      res.status(200).json({
+        message: "Users unmatched successfully",
+      });
+    }
+  } catch (error) {
+    console.error("Error handling warning response:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -90,15 +124,17 @@ export const getBlurLevel = async (req: Request, res: Response) => {
     if (!match) {
       res.status(200).json({
         blurPercentage: INITIAL_BLUR,
-        hasShownWarning: false,
+        warningShown: false,
         messageCount: 0,
+        bothAgreed: false,
       });
       return;
     }
 
     res.status(200).json({
       blurPercentage: match.blurPercentage || INITIAL_BLUR,
-      hasShownWarning: match.hasShownWarning || false,
+      warningShown: match.warningShown || false,
+      bothAgreed: match.user1Agreed && match.user2Agreed,
       messageCount: match.messageCount,
     });
   } catch (error) {
