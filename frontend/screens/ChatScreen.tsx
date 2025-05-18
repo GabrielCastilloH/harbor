@@ -19,6 +19,7 @@ export default function ChatScreen() {
   const { channel, userId } = useAppContext();
   const [showWarning, setShowWarning] = useState(false);
   const [isChatFrozen, setIsChatFrozen] = useState(false);
+  const [userAgreed, setUserAgreed] = useState(false);
 
   // Check warning state when component mounts
   useEffect(() => {
@@ -35,12 +36,20 @@ export default function ChatScreen() {
           const response = await axios.get(
             `${serverUrl}/blur/${userId}/${otherUserId}`
           );
-          const { warningShown, bothAgreed } = response.data;
+          const {
+            warningShown,
+            bothAgreed,
+            user1Agreed,
+            user2Agreed,
+            user1Id,
+          } = response.data;
 
           // Show warning and freeze chat if warning was shown but not both agreed
           if (warningShown && !bothAgreed) {
-            setShowWarning(true);
+            setShowWarning(!user1Agreed && !user2Agreed);
             setIsChatFrozen(true);
+            // Check if current user has agreed
+            setUserAgreed(userId === user1Id ? user1Agreed : user2Agreed);
           }
         } catch (error) {
           console.error("Error checking warning state:", error);
@@ -63,8 +72,10 @@ export default function ChatScreen() {
       });
 
       if (agreed) {
-        // If both users have agreed, unfreeze the chat
+        setUserAgreed(true);
+        // Only hide warning and unfreeze chat if both users have agreed
         if (response.data.bothAgreed) {
+          setShowWarning(false);
           setIsChatFrozen(false);
         }
       } else {
@@ -166,6 +177,8 @@ export default function ChatScreen() {
             <Text style={styles.disabledText}>
               {channel.data?.frozen
                 ? "This chat has been frozen because one of the users unmatched."
+                : userAgreed
+                ? "Waiting for the other person to continue the chat..."
                 : "Chat is paused until both users agree to continue."}
             </Text>
           </View>
