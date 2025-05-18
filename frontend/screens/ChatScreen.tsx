@@ -20,6 +20,37 @@ export default function ChatScreen() {
   const [showWarning, setShowWarning] = useState(false);
   const [isChatFrozen, setIsChatFrozen] = useState(false);
 
+  // Check warning state when component mounts
+  useEffect(() => {
+    const checkWarningState = async () => {
+      if (!channel || !userId) return;
+
+      const otherMembers = channel.state?.members || {};
+      const otherUserId = Object.keys(otherMembers).find(
+        (key) => key !== userId
+      );
+
+      if (otherUserId) {
+        try {
+          const response = await axios.get(
+            `${serverUrl}/blur/${userId}/${otherUserId}`
+          );
+          const { warningShown, bothAgreed } = response.data;
+
+          // Show warning and freeze chat if warning was shown but not both agreed
+          if (warningShown && !bothAgreed) {
+            setShowWarning(true);
+            setIsChatFrozen(true);
+          }
+        } catch (error) {
+          console.error("Error checking warning state:", error);
+        }
+      }
+    };
+
+    checkWarningState();
+  }, [channel, userId]);
+
   const handleWarningResponse = async (agreed: boolean) => {
     try {
       const matchId = channel?.data?.matchId;
@@ -135,7 +166,7 @@ export default function ChatScreen() {
             <Text style={styles.disabledText}>
               {channel.data?.frozen
                 ? "This chat has been frozen because one of the users unmatched."
-                : "Chat is paused until both users respond to the warning."}
+                : "Chat is paused until both users agree to continue."}
             </Text>
           </View>
         ) : (
