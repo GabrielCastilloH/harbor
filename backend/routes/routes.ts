@@ -29,6 +29,7 @@ import {
 import {
   updateBlurLevelForMessage,
   getBlurLevel,
+  handleWarningResponse,
 } from "../controllers/blurController.js";
 import {
   createMatch,
@@ -76,6 +77,7 @@ router.post("/users/:userId/unmatch", unmatchUser);
 // Add blur level routes
 router.post("/blur/update", updateBlurLevelForMessage);
 router.get("/blur/:userId/:matchedUserId", getBlurLevel);
+router.post("/blur/warning-response", handleWarningResponse);
 
 // Match routes
 router.post("/matches", createMatch);
