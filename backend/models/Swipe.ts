@@ -32,7 +32,10 @@ export class Swipe {
     try {
       await db
         .collection("swipes")
-        .createIndex({ swiperId: 1, swipedId: 1 }, { unique: true });
+        .createIndex(
+          { swiperId: 1, swipedId: 1, direction: 1 },
+          { unique: true }
+        );
     } catch (error) {
       console.error("Error creating swipe indexes:", error);
     }
@@ -61,36 +64,25 @@ export class Swipe {
   async save() {
     const db = getDb();
     try {
-      // Check for existing swipe
-      const existingSwipe = await Swipe.findExistingSwipe(
-        this.swiperId,
-        this.swipedId
-      );
+      // Use updateOne with upsert for atomic operation
+      const result = await db
+        .collection("swipes")
+        .updateOne(
+          { swiperId: this.swiperId, swipedId: this.swipedId },
+          { $set: { direction: this.direction } },
+          { upsert: true }
+        );
 
-      if (existingSwipe) {
-        // Update existing swipe if direction changed
-        if (existingSwipe.direction !== this.direction) {
-          return await db
-            .collection("swipes")
-            .updateOne(
-              { swiperId: this.swiperId, swipedId: this.swipedId },
-              { $set: { direction: this.direction } }
-            );
-        }
-        return {
-          acknowledged: true,
-          matchedCount: 1,
-          modifiedCount: 0,
-          upsertedCount: 0,
-          upsertedId: null,
-        };
-      }
-
-      // Create new swipe if none exists
-      return await db.collection("swipes").insertOne(this);
+      return {
+        acknowledged: true,
+        matchedCount: result.matchedCount,
+        modifiedCount: result.modifiedCount,
+        upsertedCount: result.upsertedCount,
+        upsertedId: result.upsertedId,
+      };
     } catch (error) {
       if ((error as any).code === 11000) {
-        // Duplicate key error
+        // Duplicate key error - swipe already exists
         console.log("Duplicate swipe prevented");
         return {
           acknowledged: true,
