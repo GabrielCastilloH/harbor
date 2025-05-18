@@ -3,6 +3,7 @@ import { StreamChat } from "stream-chat";
 import * as dotenv from "dotenv";
 import { ObjectId } from "mongodb";
 import { User } from "../models/User.js";
+import { Match } from "../models/Match.js";
 dotenv.config();
 
 const API_KEY = process.env.STREAM_API_KEY;
@@ -168,5 +169,42 @@ export const updateChannelChatStatus = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error updating channel:", error);
     res.status(500).json({ error: "Failed to update channel" });
+  }
+};
+
+/**
+ * Updates message count for a channel
+ * @param req Request with channelId in body
+ * @param res Response with updated count or error
+ */
+export const updateMessageCount = async (req: Request, res: Response) => {
+  try {
+    const { channelId } = req.body;
+    if (!channelId) {
+      res.status(400).json({ error: "Missing channelId" });
+      return;
+    }
+
+    const channel = serverClient.channel("messaging", channelId);
+    const [userId1, userId2] = channelId.split("-");
+
+    // Find the match between these users
+    const match = await Match.findByUsers(
+      ObjectId.createFromHexString(userId1),
+      ObjectId.createFromHexString(userId2)
+    );
+
+    if (!match) {
+      res.status(404).json({ error: "Match not found" });
+      return;
+    }
+
+    // Increment message count
+    await Match.incrementMessageCount(match._id!);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error updating message count:", error);
+    res.status(500).json({ error: "Failed to update message count" });
   }
 };
