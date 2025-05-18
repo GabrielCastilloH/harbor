@@ -171,4 +171,19 @@ export class User {
       throw error;
     }
   }
+
+  /**
+   * Finds user by image ID
+   * @param {string} imageId - Image ID to search for
+   * @returns {Promise<User | null>} User or null if not found
+   * @throws {Error} If database operation fails
+   */
+  static async findByImageId(imageId: string) {
+    const db = getDb();
+    try {
+      return await db.collection("users").findOne({ images: imageId });
+    } catch (error) {
+      throw error;
+    }
+  }
 }
