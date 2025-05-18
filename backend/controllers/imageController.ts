@@ -40,7 +40,7 @@ export const uploadImage = async (
 
     let objectId;
     try {
-      objectId = new ObjectId(userId);
+      objectId = ObjectId.createFromHexString(userId);
     } catch (error: any) {
       res.status(400).json({
         message: "Invalid user ID format",
@@ -87,7 +87,7 @@ export const getImage = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const imageId = new ObjectId(id);
+    const imageId = ObjectId.createFromHexString(id);
     const { base64, contentType } = await getFileAsBase64(imageId);
 
     // If no requesting user, return unblurred image
@@ -99,7 +99,9 @@ export const getImage = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Get the image owner's ID from the filename pattern user-{userId}-timestamp
-    const files = await User.findById(new ObjectId(requestingUserId));
+    const files = await User.findById(
+      ObjectId.createFromHexString(requestingUserId)
+    );
     if (!files) {
       res.status(404).json({ message: "User not found" });
       return;
@@ -118,7 +120,7 @@ export const getImage = async (req: Request, res: Response): Promise<void> => {
     const imageOwner = await User.findByImageId(id);
     if (imageOwner) {
       const blurLevel = await BlurLevel.findByUserPair(
-        new ObjectId(requestingUserId),
+        ObjectId.createFromHexString(requestingUserId),
         imageOwner._id
       );
       if (blurLevel) {
@@ -170,14 +172,14 @@ export const deleteImage = async (
       return;
     }
 
-    await deleteFile(new ObjectId(imageId));
+    await deleteFile(ObjectId.createFromHexString(imageId));
 
-    const user = await User.findById(new ObjectId(userId));
+    const user = await User.findById(ObjectId.createFromHexString(userId));
     if (user) {
       const updatedImages = user.images.filter(
         (img: string) => img !== imageId
       );
-      await User.updateById(new ObjectId(userId), {
+      await User.updateById(ObjectId.createFromHexString(userId), {
         images: updatedImages,
       });
     }
