@@ -5,6 +5,7 @@ import { createChannelBetweenUsers } from "./chatController.js";
 import { User } from "../models/User.js";
 import { getDb } from "../util/database.js";
 import { Match } from "../models/Match.js";
+import { socketIo } from "../index.js";
 
 /**
  * Records swipe and creates chat on match
@@ -32,8 +33,10 @@ export const createSwipe = async (req: Request, res: Response) => {
     const swipedIdObj = new ObjectId(swipedId);
 
     // Check if users can add more matches
-    const canSwiperMatch = await User.canAddMatch(swiperIdObj);
-    const canSwipedMatch = await User.canAddMatch(swipedIdObj);
+    const [canSwiperMatch, canSwipedMatch] = await Promise.all([
+      User.canAddMatch(swiperIdObj),
+      User.canAddMatch(swipedIdObj),
+    ]);
 
     console.log("Can users match:", {
       canSwiperMatch,
@@ -112,6 +115,19 @@ export const createSwipe = async (req: Request, res: Response) => {
 
           // Update match with channel ID
           await Match.updateChannelId(matchResult.insertedId, channelId);
+
+          // Get the matched user's profile to send in the match event
+          const matchedUser = await User.findById(swipedIdObj);
+
+          // Emit match event to both users
+          if (matchedUser) {
+            socketIo.to(swiperId).emit("match", {
+              matchedProfile: matchedUser,
+            });
+            socketIo.to(swipedId).emit("match", {
+              matchedProfile: await User.findById(swiperIdObj),
+            });
+          }
 
           console.log("Match process completed successfully");
 

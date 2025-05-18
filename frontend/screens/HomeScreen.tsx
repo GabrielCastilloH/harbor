@@ -16,6 +16,7 @@ import MatchModal from "./MatchModal";
 import { Profile } from "../types/App";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
+import SocketService from "../util/SocketService";
 
 const serverUrl = process.env.SERVER_URL;
 
@@ -35,6 +36,28 @@ export default function HomeScreen() {
     swipeLeft: () => void;
     swipeRight: () => void;
   }>(null);
+
+  // Initialize socket connection
+  useEffect(() => {
+    if (!userId) return;
+
+    const socketService = SocketService.getInstance();
+    socketService.connect();
+
+    // Authenticate with the socket server
+    socketService.authenticate(userId);
+
+    // Set up match event handler
+    socketService.onMatch((matchData) => {
+      setMatchedProfile(matchData.matchedProfile);
+      setShowMatch(true);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      socketService.disconnect();
+    };
+  }, [userId]);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
