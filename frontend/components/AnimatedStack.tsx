@@ -1,6 +1,6 @@
 //// filepath: /Users/gabrielcastillo/Developer/AppDevelopment/app1/app1/components/AnimatedStack.tsx
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, useWindowDimensions, Text } from 'react-native';
+import React, { useState, useEffect, useCallback } from "react";
+import { View, StyleSheet, useWindowDimensions, Text } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -8,12 +8,12 @@ import Animated, {
   interpolate,
   withSpring,
   runOnJS,
-} from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import axios from 'axios';
-import Card from './Card';
-import { Profile } from '../types/App';
-import { useAppContext } from '../context/AppContext';
+} from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import axios from "axios";
+import Card from "./Card";
+import { Profile } from "../types/App";
+import { useAppContext } from "../context/AppContext";
 
 const ROTATION = 60;
 const SWIPE_VELOCITY = 800;
@@ -49,34 +49,42 @@ export default React.forwardRef(function AnimatedStack(
   const rotate = useDerivedValue(
     () =>
       interpolate(translateX.value, [0, hiddenTranslateX], [0, ROTATION]) +
-      'deg'
+      "deg"
   );
 
-  // Wrap postSwipe in a helper that handles errors asynchronously.
-  const postSwipe = async (
-    direction: 'left' | 'right',
-    swipedProfile: Profile
-  ) => {
-    try {
-      await axios.post(`${serverUrl}/swipes`, {
-        swiperId: userId,
-        swipedId: swipedProfile._id, // ensure _id exists in your Profile type
-        direction,
-      });
-    } catch (error) {
-      console.log('Error posting swipe:', error);
-    }
-  };
-
   // A helper to handle both posting swipe data and calling any callback.
-  const handleSwipe = (direction: 'left' | 'right', profile: Profile) => {
-    postSwipe(direction, profile);
-    if (direction === 'right' && onSwipeRight) {
-      onSwipeRight(profile);
-    } else if (direction === 'left' && onSwipeLeft) {
-      onSwipeLeft(profile);
-    }
-  };
+  const handleSwipe = useCallback(
+    async (direction: "left" | "right", profile: Profile) => {
+      // Use a local variable to track if this swipe was already processed
+      const swipeKey = `${profile._id}-${direction}`;
+      if ((window as any).lastSwipeKey === swipeKey) {
+        console.log("Preventing duplicate swipe");
+        return;
+      }
+      (window as any).lastSwipeKey = swipeKey;
+
+      try {
+        const response = await axios.post(`${serverUrl}/swipes`, {
+          swiperId: userId,
+          swipedId: profile._id,
+          direction,
+        });
+
+        if (direction === "right" && onSwipeRight) {
+          onSwipeRight(profile);
+        } else if (direction === "left" && onSwipeLeft) {
+          onSwipeLeft(profile);
+        }
+      } catch (error) {
+        console.log("Error posting swipe:", error);
+        // Clear the swipe key on error so it can be retried
+        if ((window as any).lastSwipeKey === swipeKey) {
+          delete (window as any).lastSwipeKey;
+        }
+      }
+    },
+    [userId, onSwipeRight, onSwipeLeft]
+  );
 
   const panGesture = Gesture.Pan()
     .onChange((event) => {
@@ -88,7 +96,7 @@ export default React.forwardRef(function AnimatedStack(
         return;
       }
 
-      const swipeDirection = event.velocityX > 0 ? 'right' : 'left';
+      const swipeDirection = event.velocityX > 0 ? "right" : "left";
       translateX.value = withSpring(
         hiddenTranslateX * Math.sign(event.velocityX),
         {},
@@ -149,14 +157,14 @@ export default React.forwardRef(function AnimatedStack(
     translateX.value = withSpring(-hiddenTranslateX, {}, () =>
       runOnJS(setCurrentIndex)(currentIndex + 1)
     );
-    runOnJS(handleSwipe)('left', currentProfile);
+    runOnJS(handleSwipe)("left", currentProfile);
   };
 
   const swipeRight = () => {
     translateX.value = withSpring(hiddenTranslateX, {}, () =>
       runOnJS(setCurrentIndex)(currentIndex + 1)
     );
-    runOnJS(handleSwipe)('right', currentProfile);
+    runOnJS(handleSwipe)("right", currentProfile);
   };
 
   // Expose methods via ref
@@ -218,36 +226,36 @@ export default React.forwardRef(function AnimatedStack(
 
 const styles = StyleSheet.create({
   root: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     flex: 1,
-    width: '100%',
+    width: "100%",
   },
   animatedCard: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
   nextCardContainer: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   noMoreCardsContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 16,
   },
   noMoreCardsTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 8,
   },
   noMoreCardsText: {
     fontSize: 16,
-    textAlign: 'center',
-    color: '#666',
+    textAlign: "center",
+    color: "#666",
   },
 });
