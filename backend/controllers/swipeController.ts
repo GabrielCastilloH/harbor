@@ -32,6 +32,23 @@ export const createSwipe = async (req: Request, res: Response) => {
     const swiperIdObj = new ObjectId(swiperId);
     const swipedIdObj = new ObjectId(swipedId);
 
+    // Get the swiper's user data to check premium status and current matches
+    const swiperUser = await User.findById(swiperIdObj);
+    if (!swiperUser) {
+      res.status(404).json({ message: "Swiper user not found" });
+      return;
+    }
+
+    // If user is not premium and already has a match, prevent the swipe
+    if (!swiperUser.isPremium && swiperUser.currentMatches?.length > 0) {
+      res.status(403).json({
+        message:
+          "Non-premium users cannot swipe while they have an active match",
+        canSwipe: false,
+      });
+      return;
+    }
+
     // Check if users can add more matches
     const [canSwiperMatch, canSwipedMatch] = await Promise.all([
       User.canAddMatch(swiperIdObj),
