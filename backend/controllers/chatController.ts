@@ -62,7 +62,7 @@ export const createChannelBetweenUsers = async (
     const channelId = [userId1, userId2].sort().join("-");
 
     const channel = serverClient.channel("messaging", channelId, {
-      name: user2.firstName,
+      name: `${user1.firstName} and ${user2.firstName}`,
       members: [userId1, userId2],
       chatDisabled: false,
       created_by_id: "system",
