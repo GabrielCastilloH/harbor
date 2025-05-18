@@ -24,22 +24,17 @@ export class Swipe {
   }
 
   /**
-   * Creates a unique index on swiperId and swipedId
+   * Creates a unique index on swiperId and swipedId combination
    * @returns {Promise<void>}
    */
   static async createIndexes() {
     const db = getDb();
     try {
-      // Create unique index to prevent exact same swipes (same user, same direction)
+      // Create unique index on the combination of swiperId and swipedId
+      // This allows two swipes between users (A→B and B→A) but prevents duplicates of the same direction
       await db
         .collection("swipes")
-        .createIndex(
-          { swiperId: 1, swipedId: 1, direction: 1 },
-          { unique: true }
-        );
-
-      // Create index for faster swipe lookups
-      await db.collection("swipes").createIndex({ swiperId: 1, swipedId: 1 });
+        .createIndex({ swiperId: 1, swipedId: 1 }, { unique: true });
     } catch (error) {
       console.error("Error creating swipe indexes:", error);
     }
@@ -62,28 +57,26 @@ export class Swipe {
 
   /**
    * Saves the swipe to the database or updates existing one
-   * @returns {Promise<InsertOneResult>} Result of the database operation
+   * @returns {Promise<UpdateResult>} Result of the database operation
    * @throws {Error} If database operation fails
    */
   async save() {
     const db = getDb();
     try {
-      // Insert new swipe, the unique index will prevent duplicates of exact same swipe
-      return await db.collection("swipes").insertOne({
-        swiperId: this.swiperId,
-        swipedId: this.swipedId,
-        direction: this.direction,
-        createdAt: new Date(),
-      });
+      // Use updateOne with upsert to ensure only one swipe exists for this specific direction
+      return await db.collection("swipes").updateOne(
+        {
+          swiperId: this.swiperId,
+          swipedId: this.swipedId,
+        },
+        {
+          $set: {
+            direction: this.direction,
+          },
+        },
+        { upsert: true }
+      );
     } catch (error) {
-      if ((error as any).code === 11000) {
-        // Duplicate key error - exact same swipe already exists
-        console.log("Duplicate swipe prevented");
-        return {
-          acknowledged: true,
-          insertedId: null,
-        };
-      }
       throw error;
     }
   }

@@ -34,23 +34,23 @@ export const updateBlurLevelForMessage = async (
     let warningShown = match.warningShown || false;
     let shouldShowWarning = false;
 
-    // Calculate new blur percentage based on message count
+    // Calculate new blur percentage based on message count and warning state
     if (messageCount <= MESSAGES_UNTIL_WARNING) {
       newBlurPercentage = Math.max(
         50,
         INITIAL_BLUR - messageCount * INITIAL_UNBLUR_RATE
       );
-    } else {
-      if (!warningShown && newBlurPercentage > 50) {
-        shouldShowWarning = true;
-        warningShown = true;
-      } else if (match.user1Agreed && match.user2Agreed) {
-        const extraMessages = messageCount - MESSAGES_UNTIL_WARNING;
-        newBlurPercentage = Math.max(
-          0,
-          50 - extraMessages * POST_WARNING_UNBLUR_RATE
-        );
-      }
+    } else if (!warningShown && newBlurPercentage > 50) {
+      shouldShowWarning = true;
+      warningShown = true;
+      // Reset any previous agreements when showing new warning
+      await Match.resetWarningAgreements(match._id!);
+    } else if (match.user1Agreed && match.user2Agreed) {
+      const extraMessages = messageCount - MESSAGES_UNTIL_WARNING;
+      newBlurPercentage = Math.max(
+        0,
+        50 - extraMessages * POST_WARNING_UNBLUR_RATE
+      );
     }
 
     await Match.updateBlurLevel(
