@@ -9,6 +9,8 @@ export interface IMatch {
   matchDate: Date;
   isActive: boolean;
   channelId?: string;
+  blurPercentage: number;
+  hasShownWarning: boolean;
 }
 
 export class Match {
@@ -18,7 +20,9 @@ export class Match {
     public messageCount: number = 0,
     public matchDate: Date = new Date(),
     public isActive: boolean = true,
-    public channelId?: string
+    public channelId?: string,
+    public blurPercentage: number = 100,
+    public hasShownWarning: boolean = false
   ) {}
 
   async save() {
@@ -114,6 +118,34 @@ export class Match {
       return await db
         .collection("matches")
         .updateOne({ _id: matchId }, { $set: { channelId } });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async updateBlurLevel(
+    user1Id: ObjectId,
+    user2Id: ObjectId,
+    blurPercentage: number,
+    hasShownWarning: boolean
+  ) {
+    const db = getDb();
+    try {
+      return await db.collection("matches").updateOne(
+        {
+          $or: [
+            { user1Id, user2Id },
+            { user1Id: user2Id, user2Id: user1Id },
+          ],
+          isActive: true,
+        },
+        {
+          $set: {
+            blurPercentage,
+            hasShownWarning,
+          },
+        }
+      );
     } catch (error) {
       throw error;
     }

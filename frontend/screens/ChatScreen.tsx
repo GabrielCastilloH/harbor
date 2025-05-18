@@ -4,9 +4,12 @@ import { Channel, MessageInput, MessageList } from "stream-chat-expo";
 import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
 import { updateMessageCount } from "../networking/ChatFunctions";
+import axios from "axios";
+
+const serverUrl = process.env.SERVER_URL;
 
 export default function ChatScreen() {
-  const { channel } = useAppContext();
+  const { channel, userId } = useAppContext();
 
   useEffect(() => {
     if (!channel) return;
@@ -17,7 +20,7 @@ export default function ChatScreen() {
     });
 
     // Set up message listener
-    const handleNewMessage = (event: any) => {
+    const handleNewMessage = async (event: any) => {
       console.log("ChatScreen - New message received:", {
         messageId: event?.message?.id,
         matchId: channel.data?.matchId,
@@ -26,10 +29,37 @@ export default function ChatScreen() {
 
       const matchId = channel.data?.matchId;
       if (matchId) {
-        console.log("ChatScreen - Updating message count for match:", matchId);
-        updateMessageCount(matchId).catch((error) => {
-          console.error("ChatScreen - Failed to update message count:", error);
-        });
+        try {
+          // First increment the message count
+          console.log(
+            "ChatScreen - Updating message count for match:",
+            matchId
+          );
+          await updateMessageCount(matchId);
+
+          // Get the other user's ID from the channel members
+          const otherMembers = channel.state?.members || {};
+          const otherUserId = Object.keys(otherMembers).find(
+            (key) => key !== userId
+          );
+
+          if (otherUserId) {
+            // Then update the blur level
+            console.log("ChatScreen - Updating blur level for users:", {
+              userId,
+              otherUserId,
+            });
+            await axios.post(`${serverUrl}/blur/update`, {
+              userId: userId,
+              matchedUserId: otherUserId,
+            });
+          }
+        } catch (error) {
+          console.error(
+            "ChatScreen - Failed to update message count or blur level:",
+            error
+          );
+        }
       } else {
         console.warn("ChatScreen - Match ID is missing from channel data");
       }
@@ -43,7 +73,7 @@ export default function ChatScreen() {
       console.log("ChatScreen - Cleaning up message listener");
       channel.off("message.new", handleNewMessage);
     };
-  }, [channel]);
+  }, [channel, userId]);
 
   if (!channel) {
     return (
