@@ -99,9 +99,7 @@ export default function ChatNavigator() {
     if (!profile || !userId) return { id: "loading", name: "Loading" };
     return {
       id: userId,
-      name: profile.firstName
-        ? `${profile.firstName} ${profile.lastName || ""}`
-        : "User",
+      name: profile.firstName || "User",
     };
   }, [profile, userId]);
 
