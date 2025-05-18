@@ -46,14 +46,11 @@ A unique dating app that focuses on meaningful connections through progressive p
 - Fixed signup bug.
 - Actually add user info to the top right corner of chats.
 - Add pre-filled data in user settings and add name of the other person individual chats.
+- Make sure you get the matched! screen when matching
+- Only able to talk to one person at a time.
 
 ### In Progress 🚧
 
-- [ ] Make sure you get the matched! screen when matching
-- [ ] Be able to match with multiple people but only create a chat with one.
-      The other ones are matched with after you finish your current conversation
-      (add a button for this in ProfileScreen) one at a time.
-- [ ] Implement three swipes per day limit
 - [ ] Add photo blurring preview screen
 - [ ] Implement authentication route protection
 - [ ] Setup progressive photo unblurring
@@ -61,6 +58,7 @@ A unique dating app that focuses on meaningful connections through progressive p
 - [ ] Make the images higher quality.
 - [ ] Integrate Stripe for payment processing
 - [ ] Premium features through Stripe integration
+- [ ] Change number to only allow three swipes per day.
 - [ ] Uncomment code to make sure onlly @cornell.edu allowed.
 
 ## 🔜 Future Enhancements (not MVP)
