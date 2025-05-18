@@ -1,20 +1,21 @@
 import { Request, Response } from "express";
 import { ObjectId } from "mongodb";
 import { BlurLevel } from "../models/BlurLevel.js";
+import { Match } from "../models/Match.js";
 
 const INITIAL_BLUR = 100;
-const MESSAGES_UNTIL_WARNING = 5;
-const INITIAL_UNBLUR_RATE = 10;
-const POST_WARNING_UNBLUR_RATE = 20;
+const MESSAGES_UNTIL_WARNING = 40;
+const INITIAL_UNBLUR_RATE = 1.25;
+const POST_WARNING_UNBLUR_RATE = 5;
 
 export const updateBlurLevelForMessage = async (
   req: Request,
   res: Response
 ) => {
   try {
-    const { userId, matchedUserId, messageCount } = req.body;
+    const { userId, matchedUserId } = req.body;
 
-    if (!userId || !matchedUserId || messageCount === undefined) {
+    if (!userId || !matchedUserId) {
       res.status(400).json({ message: "Missing required parameters" });
       return;
     }
@@ -22,6 +23,17 @@ export const updateBlurLevelForMessage = async (
     const userIdObj = new ObjectId(userId);
     const matchedUserIdObj = new ObjectId(matchedUserId);
 
+    // Get the match and increment message count
+    const match = await Match.findByUsers(userIdObj, matchedUserIdObj);
+    if (!match) {
+      res.status(404).json({ message: "Match not found" });
+      return;
+    }
+
+    await Match.incrementMessageCount(match._id!);
+    const messageCount = match.messageCount + 1; // Add 1 for the current message
+
+    // Get or create blur level
     let blurLevel = await BlurLevel.findByUserPair(userIdObj, matchedUserIdObj);
     let newBlurPercentage = INITIAL_BLUR;
     let hasShownWarning = false;
@@ -35,6 +47,7 @@ export const updateBlurLevelForMessage = async (
       await newBlurLevel.save();
     }
 
+    // Calculate new blur percentage
     if (messageCount <= MESSAGES_UNTIL_WARNING) {
       newBlurPercentage = Math.max(
         50,
@@ -64,6 +77,7 @@ export const updateBlurLevelForMessage = async (
       blurPercentage: newBlurPercentage,
       shouldShowWarning,
       hasShownWarning,
+      messageCount,
     });
   } catch (error) {
     console.error("Error updating blur level:", error);
@@ -83,21 +97,28 @@ export const getBlurLevel = async (req: Request, res: Response) => {
     const userIdObj = new ObjectId(userId);
     const matchedUserIdObj = new ObjectId(matchedUserId);
 
+    // Get match to include message count in response
+    const match = await Match.findByUsers(userIdObj, matchedUserIdObj);
+    const messageCount = match ? match.messageCount : 0;
+
     const blurLevel = await BlurLevel.findByUserPair(
       userIdObj,
       matchedUserIdObj
     );
 
     if (!blurLevel) {
-      res
-        .status(200)
-        .json({ blurPercentage: INITIAL_BLUR, hasShownWarning: false });
+      res.status(200).json({
+        blurPercentage: INITIAL_BLUR,
+        hasShownWarning: false,
+        messageCount,
+      });
       return;
     }
 
     res.status(200).json({
       blurPercentage: blurLevel.blurPercentage,
       hasShownWarning: blurLevel.hasShownWarning,
+      messageCount,
     });
   } catch (error) {
     console.error("Error getting blur level:", error);
