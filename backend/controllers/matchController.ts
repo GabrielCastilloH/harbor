@@ -17,8 +17,8 @@ export const createMatch = async (req: Request, res: Response) => {
       user2Id,
     });
 
-    const user1IdObj = new ObjectId(user1Id);
-    const user2IdObj = new ObjectId(user2Id);
+    const user1IdObj = ObjectId.createFromHexString(user1Id);
+    const user2IdObj = ObjectId.createFromHexString(user2Id);
 
     // Check if users already have this match in their currentMatches array
     const [user1, user2] = await Promise.all([
@@ -110,7 +110,7 @@ export const getActiveMatches = async (req: Request, res: Response) => {
       return;
     }
 
-    const userIdObj = new ObjectId(userId);
+    const userIdObj = ObjectId.createFromHexString(userId);
     const matches = await Match.findActiveMatchesByUser(userIdObj);
 
     res.status(200).json({ matches });
@@ -129,7 +129,7 @@ export const unmatchUsers = async (req: Request, res: Response) => {
       return;
     }
 
-    const matchIdObj = new ObjectId(matchId);
+    const matchIdObj = ObjectId.createFromHexString(matchId);
     const match = await Match.findById(matchIdObj);
 
     if (!match) {
@@ -161,7 +161,10 @@ export const updateMatchChannel = async (req: Request, res: Response) => {
       return;
     }
 
-    await Match.updateChannelId(new ObjectId(matchId), channelId);
+    await Match.updateChannelId(
+      ObjectId.createFromHexString(matchId),
+      channelId
+    );
     res.status(200).json({ message: "Match channel updated successfully" });
   } catch (error) {
     console.error("Error updating match channel:", error);

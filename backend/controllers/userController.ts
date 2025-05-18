@@ -180,8 +180,8 @@ export const unmatchUser = async (
   }
 
   try {
-    const userIdObj = new ObjectId(userId);
-    const matchIdObj = new ObjectId(matchId);
+    const userIdObj = ObjectId.createFromHexString(userId);
+    const matchIdObj = ObjectId.createFromHexString(matchId);
 
     // Get the match details
     const match = await Match.findById(matchIdObj);
