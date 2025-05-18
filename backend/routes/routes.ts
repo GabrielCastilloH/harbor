@@ -35,6 +35,7 @@ import {
   getActiveMatches,
   unmatchUsers,
   updateMatchChannel,
+  incrementMatchMessages,
 } from "../controllers/matchController.js";
 
 const router = express.Router();
@@ -81,5 +82,6 @@ router.post("/matches", createMatch);
 router.get("/matches/user/:userId", getActiveMatches);
 router.post("/matches/:matchId/unmatch", unmatchUsers);
 router.post("/matches/:matchId/channel", updateMatchChannel);
+router.post("/matches/:matchId/messages", incrementMatchMessages);
 
 export default router;

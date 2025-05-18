@@ -171,3 +171,32 @@ export const updateMatchChannel = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+export const incrementMatchMessages = async (req: Request, res: Response) => {
+  try {
+    const { matchId } = req.params;
+    console.log("Incrementing message count for match:", matchId);
+
+    if (!matchId) {
+      res.status(400).json({ message: "Match ID is required" });
+      return;
+    }
+
+    const matchIdObj = ObjectId.createFromHexString(matchId);
+    const match = await Match.findById(matchIdObj);
+
+    if (!match) {
+      console.log("Match not found:", matchId);
+      res.status(404).json({ message: "Match not found" });
+      return;
+    }
+
+    console.log("Found match, incrementing message count");
+    await Match.incrementMessageCount(matchIdObj);
+
+    res.status(200).json({ message: "Message count incremented successfully" });
+  } catch (error) {
+    console.error("Error incrementing message count:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

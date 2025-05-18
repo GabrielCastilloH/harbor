@@ -11,10 +11,27 @@ export default function ChatScreen() {
   useEffect(() => {
     if (!channel) return;
 
+    console.log("ChatScreen - Setting up message listener for channel:", {
+      id: channel.id,
+      matchId: channel.data?.matchId,
+    });
+
     // Set up message listener
-    const handleNewMessage = () => {
-      if (channel.id) {
-        updateMessageCount(channel.id).catch(console.error);
+    const handleNewMessage = (event: any) => {
+      console.log("ChatScreen - New message received:", {
+        messageId: event?.message?.id,
+        matchId: channel.data?.matchId,
+        userId: event?.user?.id,
+      });
+
+      const matchId = channel.data?.matchId;
+      if (matchId) {
+        console.log("ChatScreen - Updating message count for match:", matchId);
+        updateMessageCount(matchId).catch((error) => {
+          console.error("ChatScreen - Failed to update message count:", error);
+        });
+      } else {
+        console.warn("ChatScreen - Match ID is missing from channel data");
       }
     };
 
@@ -23,6 +40,7 @@ export default function ChatScreen() {
 
     // Cleanup listener on unmount
     return () => {
+      console.log("ChatScreen - Cleaning up message listener");
       channel.off("message.new", handleNewMessage);
     };
   }, [channel]);
