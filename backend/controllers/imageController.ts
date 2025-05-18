@@ -1,11 +1,13 @@
 import { Request, Response } from "express";
 import { ObjectId } from "mongodb";
+import sharp from "sharp";
 import {
   storeFileFromBase64,
   getFileAsBase64,
   deleteFile,
 } from "../util/gridFS.js";
 import { User } from "../models/User.js";
+import { BlurLevel } from "../models/BlurLevel.js";
 
 /**
  * Uploads image and links to user
@@ -25,9 +27,7 @@ export const uploadImage = async (
     }
 
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
-
     const filename = `user-${userId}-${Date.now()}`;
-
     const fileId = await storeFileFromBase64(base64Data, filename, contentType);
 
     if (userId.startsWith("temp_")) {
@@ -40,11 +40,11 @@ export const uploadImage = async (
 
     let objectId;
     try {
-      objectId = ObjectId.createFromHexString(userId);
-    } catch (error) {
+      objectId = new ObjectId(userId);
+    } catch (error: any) {
       res.status(400).json({
         message: "Invalid user ID format",
-        error: "User ID must be a valid MongoDB ObjectId",
+        error: error.message,
       });
       return;
     }
@@ -67,7 +67,7 @@ export const uploadImage = async (
     console.error("Error uploading image:", error);
     res.status(500).json({
       message: "Failed to upload image",
-      error: error.message || error,
+      error: error.message,
     });
   }
 };
@@ -80,15 +80,66 @@ export const uploadImage = async (
 export const getImage = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const requestingUserId = req.query.requestingUserId as string;
 
     if (!id) {
       res.status(400).json({ message: "Image ID is required" });
       return;
     }
 
-    const { base64, contentType } = await getFileAsBase64(
-      ObjectId.createFromHexString(id)
-    );
+    const imageId = new ObjectId(id);
+    const { base64, contentType } = await getFileAsBase64(imageId);
+
+    // If no requesting user, return unblurred image
+    if (!requestingUserId) {
+      res.status(200).json({
+        imageData: `data:${contentType};base64,${base64}`,
+      });
+      return;
+    }
+
+    // Get the image owner's ID from the filename pattern user-{userId}-timestamp
+    const files = await User.findById(new ObjectId(requestingUserId));
+    if (!files) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    // If requesting user owns the image, return unblurred
+    if (files.images.includes(id)) {
+      res.status(200).json({
+        imageData: `data:${contentType};base64,${base64}`,
+      });
+      return;
+    }
+
+    // Get blur level for the requesting user
+    let blurAmount = 100; // Default to maximum blur
+    const imageOwner = await User.findByImageId(id);
+    if (imageOwner) {
+      const blurLevel = await BlurLevel.findByUserPair(
+        new ObjectId(requestingUserId),
+        imageOwner._id
+      );
+      if (blurLevel) {
+        blurAmount = blurLevel.blurPercentage;
+      }
+    }
+
+    // Apply blur if needed
+    if (blurAmount > 0) {
+      const imageBuffer = Buffer.from(base64, "base64");
+      const processedImage = await sharp(imageBuffer)
+        .blur(blurAmount / 5)
+        .toBuffer();
+
+      res.status(200).json({
+        imageData: `data:${contentType};base64,${processedImage.toString(
+          "base64"
+        )}`,
+      });
+      return;
+    }
 
     res.status(200).json({
       imageData: `data:${contentType};base64,${base64}`,
@@ -97,7 +148,7 @@ export const getImage = async (req: Request, res: Response): Promise<void> => {
     console.error("Error retrieving image:", error);
     res.status(500).json({
       message: "Failed to retrieve image",
-      error: error.message || error,
+      error: error.message,
     });
   }
 };
@@ -119,14 +170,14 @@ export const deleteImage = async (
       return;
     }
 
-    await deleteFile(ObjectId.createFromHexString(imageId));
+    await deleteFile(new ObjectId(imageId));
 
-    const user = await User.findById(ObjectId.createFromHexString(userId));
+    const user = await User.findById(new ObjectId(userId));
     if (user) {
-      const updatedImages: string[] = user.images.filter(
+      const updatedImages = user.images.filter(
         (img: string) => img !== imageId
       );
-      await User.updateById(ObjectId.createFromHexString(userId), {
+      await User.updateById(new ObjectId(userId), {
         images: updatedImages,
       });
     }
@@ -136,7 +187,7 @@ export const deleteImage = async (
     console.error("Error deleting image:", error);
     res.status(500).json({
       message: "Failed to delete image",
-      error: error.message || error,
+      error: error.message,
     });
   }
 };
