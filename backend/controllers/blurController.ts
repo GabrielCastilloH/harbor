@@ -3,9 +3,9 @@ import { ObjectId } from "mongodb";
 import { BlurLevel } from "../models/BlurLevel.js";
 
 const INITIAL_BLUR = 100;
-const MESSAGES_UNTIL_WARNING = 40;
-const INITIAL_UNBLUR_RATE = 1.25;
-const POST_WARNING_UNBLUR_RATE = 5;
+const MESSAGES_UNTIL_WARNING = 5;
+const INITIAL_UNBLUR_RATE = 10;
+const POST_WARNING_UNBLUR_RATE = 20;
 
 export const updateBlurLevelForMessage = async (
   req: Request,
