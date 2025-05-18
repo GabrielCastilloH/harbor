@@ -24,15 +24,82 @@ export class Swipe {
   }
 
   /**
-   * Saves the swipe to the database
-   * @returns {Promise<InsertOneResult>} Result of the database insertion
+   * Creates a unique index on swiperId and swipedId
+   * @returns {Promise<void>}
+   */
+  static async createIndexes() {
+    const db = getDb();
+    try {
+      await db
+        .collection("swipes")
+        .createIndex({ swiperId: 1, swipedId: 1 }, { unique: true });
+    } catch (error) {
+      console.error("Error creating swipe indexes:", error);
+    }
+  }
+
+  /**
+   * Checks if a swipe already exists between two users
+   * @param {ObjectId} swiperId - ID of the user who made the swipe
+   * @param {ObjectId} swipedId - ID of the user who was swiped on
+   * @returns {Promise<Swipe | null>} Existing swipe or null
+   */
+  static async findExistingSwipe(swiperId: ObjectId, swipedId: ObjectId) {
+    const db = getDb();
+    try {
+      return await db.collection("swipes").findOne({ swiperId, swipedId });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Saves the swipe to the database or updates existing one
+   * @returns {Promise<InsertOneResult>} Result of the database operation
    * @throws {Error} If database operation fails
    */
   async save() {
     const db = getDb();
     try {
+      // Check for existing swipe
+      const existingSwipe = await Swipe.findExistingSwipe(
+        this.swiperId,
+        this.swipedId
+      );
+
+      if (existingSwipe) {
+        // Update existing swipe if direction changed
+        if (existingSwipe.direction !== this.direction) {
+          return await db
+            .collection("swipes")
+            .updateOne(
+              { swiperId: this.swiperId, swipedId: this.swipedId },
+              { $set: { direction: this.direction } }
+            );
+        }
+        return {
+          acknowledged: true,
+          matchedCount: 1,
+          modifiedCount: 0,
+          upsertedCount: 0,
+          upsertedId: null,
+        };
+      }
+
+      // Create new swipe if none exists
       return await db.collection("swipes").insertOne(this);
     } catch (error) {
+      if ((error as any).code === 11000) {
+        // Duplicate key error
+        console.log("Duplicate swipe prevented");
+        return {
+          acknowledged: true,
+          matchedCount: 1,
+          modifiedCount: 0,
+          upsertedCount: 0,
+          upsertedId: null,
+        };
+      }
       throw error;
     }
   }

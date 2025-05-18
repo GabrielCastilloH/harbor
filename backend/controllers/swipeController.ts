@@ -22,12 +22,23 @@ export const createSwipe = async (req: Request, res: Response) => {
   }
 
   try {
+    console.log("Processing swipe:", {
+      swiperId,
+      swipedId,
+      direction,
+    });
+
     const swiperIdObj = new ObjectId(swiperId);
     const swipedIdObj = new ObjectId(swipedId);
 
     // Check if users can add more matches
     const canSwiperMatch = await User.canAddMatch(swiperIdObj);
     const canSwipedMatch = await User.canAddMatch(swipedIdObj);
+
+    console.log("Can users match:", {
+      canSwiperMatch,
+      canSwipedMatch,
+    });
 
     if (!canSwiperMatch || !canSwipedMatch) {
       const swipe = new Swipe(swiperIdObj, swipedIdObj, direction);
@@ -45,17 +56,45 @@ export const createSwipe = async (req: Request, res: Response) => {
     await swipe.save();
 
     if (direction === "right") {
+      console.log("Right swipe, checking for matching swipe");
       const matchingSwipe = await Swipe.findOne({
         swiperId: swipedIdObj,
         swipedId: swiperIdObj,
         direction: "right",
       });
 
+      console.log("Matching swipe found:", !!matchingSwipe);
+
       if (matchingSwipe) {
         try {
+          // Check if a match already exists between these users
+          const existingMatch = await Match.findByUsers(
+            swiperIdObj,
+            swipedIdObj
+          );
+
+          if (existingMatch) {
+            console.log("Match already exists:", {
+              matchId: existingMatch._id.toString(),
+            });
+            // If match exists, just return it
+            res.status(201).json({
+              message: "Match already exists",
+              swipe,
+              match: true,
+              matchId: existingMatch._id,
+            });
+            return;
+          }
+
+          console.log("Creating new match between users");
           // Create new match
           const match = new Match(swiperIdObj, swipedIdObj);
           const matchResult = await match.save();
+
+          console.log("New match created:", {
+            matchId: matchResult.insertedId.toString(),
+          });
 
           // Add match reference to both users
           await Promise.all([
@@ -63,8 +102,18 @@ export const createSwipe = async (req: Request, res: Response) => {
             User.addMatch(swipedIdObj, matchResult.insertedId),
           ]);
 
-          // Create chat channel
-          await createChannelBetweenUsers(swiperId, swipedId);
+          // Create chat channel with matchId in the data
+          const channelId = [swiperId, swipedId].sort().join("-");
+          const channel = await createChannelBetweenUsers(
+            swiperId,
+            swipedId,
+            matchResult.insertedId.toString()
+          );
+
+          // Update match with channel ID
+          await Match.updateChannelId(matchResult.insertedId, channelId);
+
+          console.log("Match process completed successfully");
 
           res.status(201).json({
             message: "Match! Swipe recorded and chat channel created",
@@ -86,6 +135,7 @@ export const createSwipe = async (req: Request, res: Response) => {
       match: direction === "right" ? false : null,
     });
   } catch (error: any) {
+    console.error("Error in createSwipe:", error);
     res.status(500).json({
       message: "Failed to record swipe",
       error: error.message || error,
