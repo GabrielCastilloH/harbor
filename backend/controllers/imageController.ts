@@ -74,7 +74,7 @@ export const uploadImage = async (
 
 /**
  * Retrieves image by ID
- * @param req Contains image id in params
+ * @param req Contains image id in params and requestingUserId in query
  * @param res Returns base64 image data
  */
 export const getImage = async (req: Request, res: Response): Promise<void> => {
@@ -82,53 +82,59 @@ export const getImage = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const requestingUserId = req.query.requestingUserId as string;
 
-    if (!id) {
-      res.status(400).json({ message: "Image ID is required" });
+    if (!id || !requestingUserId) {
+      res
+        .status(400)
+        .json({ message: "Image ID and requesting user ID are required" });
       return;
     }
 
     const imageId = ObjectId.createFromHexString(id);
-    const { base64, contentType } = await getFileAsBase64(imageId);
+    const requestingUserObjectId =
+      ObjectId.createFromHexString(requestingUserId);
 
-    // If no requesting user, return unblurred image
-    if (!requestingUserId) {
-      res.status(200).json({
-        imageData: `data:${contentType};base64,${base64}`,
-      });
-      return;
-    }
-
-    // Get the image owner's ID from the filename pattern user-{userId}-timestamp
-    const files = await User.findById(
-      ObjectId.createFromHexString(requestingUserId)
-    );
-    if (!files) {
-      res.status(404).json({ message: "User not found" });
+    // Get the image owner
+    const imageOwner = await User.findByImageId(id);
+    if (!imageOwner) {
+      res.status(404).json({ message: "Image not found" });
       return;
     }
 
     // If requesting user owns the image, return unblurred
-    if (files.images.includes(id)) {
+    const requestingUser = await User.findById(requestingUserObjectId);
+    if (!requestingUser) {
+      res.status(404).json({ message: "Requesting user not found" });
+      return;
+    }
+
+    const { base64, contentType } = await getFileAsBase64(imageId);
+
+    // If requesting user owns the image, return unblurred
+    if (requestingUser.images.includes(id)) {
       res.status(200).json({
         imageData: `data:${contentType};base64,${base64}`,
       });
       return;
     }
 
-    // Get blur level for the requesting user
-    let blurAmount = 100; // Default to maximum blur
-    const imageOwner = await User.findByImageId(id);
-    if (imageOwner) {
-      const match = await Match.findByUsers(
-        ObjectId.createFromHexString(requestingUserId),
-        imageOwner._id
-      );
-      if (match) {
-        blurAmount = match.blurPercentage || 100;
-      }
+    // Check if users are matched and get blur level
+    const match = await Match.findByUsers(
+      requestingUserObjectId,
+      imageOwner._id
+    );
+
+    // If users are not matched or match is not active, return 403
+    if (!match || !match.isActive) {
+      res
+        .status(403)
+        .json({ message: "Access denied - Users are not matched" });
+      return;
     }
 
-    // Apply blur if needed
+    // Get blur level
+    const blurAmount = match.blurPercentage || 100;
+
+    // If blur level is not 0, apply blur
     if (blurAmount > 0) {
       const imageBuffer = Buffer.from(base64, "base64");
       const processedImage = await sharp(imageBuffer)
@@ -143,6 +149,7 @@ export const getImage = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // If blur level is 0, return unblurred image
     res.status(200).json({
       imageData: `data:${contentType};base64,${base64}`,
     });
