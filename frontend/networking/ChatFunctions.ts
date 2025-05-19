@@ -80,3 +80,20 @@ export async function fetchUpdateChannelChatStatus(
     throw new Error("Failed to update chat channel status");
   }
 }
+
+export async function updateMessageCount(matchId: string): Promise<void> {
+  console.log("ChatFunctions - Updating message count for match:", matchId);
+  try {
+    const response = await axios.post(
+      `${serverUrl}/matches/${matchId}/messages`
+    );
+    console.log("ChatFunctions - Message count updated:", response.data);
+  } catch (error) {
+    console.error("ChatFunctions - Error updating message count:", error);
+    if (axios.isAxiosError(error)) {
+      console.error("ChatFunctions - Error status:", error.response?.status);
+      console.error("ChatFunctions - Error data:", error.response?.data);
+    }
+    throw new Error("Failed to update message count");
+  }
+}

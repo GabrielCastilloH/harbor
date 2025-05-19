@@ -16,6 +16,7 @@ import MatchModal from "./MatchModal";
 import { Profile } from "../types/App";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
+import SocketService from "../util/SocketService";
 
 const serverUrl = process.env.SERVER_URL;
 
@@ -31,10 +32,36 @@ export default function HomeScreen() {
   const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
+  const [swipeInProgress, setSwipeInProgress] = useState(false);
+  const [lastSwipedProfile, setLastSwipedProfile] = useState<string | null>(
+    null
+  );
   const stackRef = React.useRef<{
     swipeLeft: () => void;
     swipeRight: () => void;
   }>(null);
+
+  // Initialize socket connection
+  useEffect(() => {
+    if (!userId) return;
+
+    const socketService = SocketService.getInstance();
+    socketService.connect();
+
+    // Authenticate with the socket server
+    socketService.authenticate(userId);
+
+    // Set up match event handler
+    socketService.onMatch((matchData) => {
+      setMatchedProfile(matchData.matchedProfile);
+      setShowMatch(true);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      socketService.disconnect();
+    };
+  }, [userId]);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -100,7 +127,15 @@ export default function HomeScreen() {
   };
 
   const handleSwipeRight = async (profile: Profile) => {
+    // Prevent duplicate swipes on the same profile or while a swipe is in progress
+    if (swipeInProgress || lastSwipedProfile === profile._id) {
+      return;
+    }
+
     try {
+      setSwipeInProgress(true);
+      setLastSwipedProfile(profile._id);
+
       const response = await axios.post(`${serverUrl}/swipes`, {
         swiperId: userId,
         swipedId: profile._id,
@@ -124,10 +159,24 @@ export default function HomeScreen() {
       }
     } catch (error) {
       console.error("Error handling right swipe:", error);
+    } finally {
+      // Reset swipe flags after a short delay
+      setTimeout(() => {
+        setSwipeInProgress(false);
+        setLastSwipedProfile(null);
+      }, 1000);
     }
   };
 
   const handleSwipeLeft = (profile: Profile) => {
+    // Prevent duplicate swipes while a swipe is in progress
+    if (swipeInProgress || lastSwipedProfile === profile._id) {
+      return;
+    }
+
+    setSwipeInProgress(true);
+    setLastSwipedProfile(profile._id);
+
     // Update current profile to the next one
     const currentIndex = recommendations.findIndex(
       (p) => p._id === profile._id
@@ -137,6 +186,12 @@ export default function HomeScreen() {
     } else {
       setCurrentProfile(null);
     }
+
+    // Reset swipe flags after a short delay
+    setTimeout(() => {
+      setSwipeInProgress(false);
+      setLastSwipedProfile(null);
+    }, 1000);
   };
 
   if (loadingRecommendations) {

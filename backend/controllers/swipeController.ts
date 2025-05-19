@@ -4,6 +4,8 @@ import { Swipe } from "../models/Swipe.js";
 import { createChannelBetweenUsers } from "./chatController.js";
 import { User } from "../models/User.js";
 import { getDb } from "../util/database.js";
+import { Match } from "../models/Match.js";
+import { socketIo } from "../index.js";
 
 /**
  * Records swipe and creates chat on match
@@ -21,82 +23,141 @@ export const createSwipe = async (req: Request, res: Response) => {
   }
 
   try {
-    // Check if either user is already matched
-    const swiperUser = await User.findById(
-      ObjectId.createFromHexString(swiperId)
-    );
-    const swipedUser = await User.findById(
-      ObjectId.createFromHexString(swipedId)
-    );
+    console.log("Processing swipe:", {
+      swiperId,
+      swipedId,
+      direction,
+    });
 
-    if (!swiperUser || !swipedUser) {
-      res.status(404).json({ message: "One or both users not found" });
+    const swiperIdObj = ObjectId.createFromHexString(swiperId);
+    const swipedIdObj = ObjectId.createFromHexString(swipedId);
+
+    // Get the swiper's user data to check premium status and current matches
+    const swiperUser = await User.findById(swiperIdObj);
+    if (!swiperUser) {
+      res.status(404).json({ message: "Swiper user not found" });
       return;
     }
 
-    // If either user is already matched, record the swipe but don't create a match
-    if (swiperUser.currentMatch || swipedUser.currentMatch) {
-      const swipe = new Swipe(
-        ObjectId.createFromHexString(swiperId),
-        ObjectId.createFromHexString(swipedId),
-        direction
-      );
+    // If user is not premium and already has a match, prevent the swipe
+    if (!swiperUser.isPremium && swiperUser.currentMatches?.length > 0) {
+      res.status(403).json({
+        message:
+          "Non-premium users cannot swipe while they have an active match",
+        canSwipe: false,
+      });
+      return;
+    }
+
+    // Check if users can add more matches
+    const [canSwiperMatch, canSwipedMatch] = await Promise.all([
+      User.canAddMatch(swiperIdObj),
+      User.canAddMatch(swipedIdObj),
+    ]);
+
+    console.log("Can users match:", {
+      canSwiperMatch,
+      canSwipedMatch,
+    });
+
+    if (!canSwiperMatch || !canSwipedMatch) {
+      const swipe = new Swipe(swiperIdObj, swipedIdObj, direction);
       await swipe.save();
 
       res.status(201).json({
-        message:
-          "Swipe recorded successfully (one or both users already matched)",
+        message: "Swipe recorded (one or both users cannot add more matches)",
         swipe,
         match: false,
       });
       return;
     }
 
-    const swipe = new Swipe(
-      ObjectId.createFromHexString(swiperId),
-      ObjectId.createFromHexString(swipedId),
-      direction
-    );
+    const swipe = new Swipe(swiperIdObj, swipedIdObj, direction);
     await swipe.save();
 
     if (direction === "right") {
+      console.log("Right swipe, checking for matching swipe");
       const matchingSwipe = await Swipe.findOne({
-        swiperId: ObjectId.createFromHexString(swipedId),
-        swipedId: ObjectId.createFromHexString(swiperId),
+        swiperId: swipedIdObj,
+        swipedId: swiperIdObj,
         direction: "right",
       });
 
+      console.log("Matching swipe found:", !!matchingSwipe);
+
       if (matchingSwipe) {
         try {
-          // Update both users' match status
-          const db = getDb();
-          await db.collection("users").updateOne(
-            { _id: ObjectId.createFromHexString(swiperId) },
-            {
-              $set: {
-                currentMatch: ObjectId.createFromHexString(swipedId),
-              },
-            }
+          // Check if a match already exists between these users
+          const existingMatch = await Match.findByUsers(
+            swiperIdObj,
+            swipedIdObj
           );
 
-          await db.collection("users").updateOne(
-            { _id: ObjectId.createFromHexString(swipedId) },
-            {
-              $set: {
-                currentMatch: ObjectId.createFromHexString(swiperId),
-              },
-            }
+          if (existingMatch) {
+            console.log("Match already exists:", {
+              matchId: existingMatch._id.toString(),
+            });
+            // If match exists, just return it
+            res.status(201).json({
+              message: "Match already exists",
+              swipe,
+              match: true,
+              matchId: existingMatch._id,
+            });
+            return;
+          }
+
+          console.log("Creating new match between users");
+          // Create new match
+          const match = new Match(swiperIdObj, swipedIdObj);
+          const matchResult = await match.save();
+
+          console.log("New match created:", {
+            matchId: matchResult.insertedId.toString(),
+          });
+
+          // Add match reference to both users
+          await Promise.all([
+            User.addMatch(swiperIdObj, matchResult.insertedId),
+            User.addMatch(swipedIdObj, matchResult.insertedId),
+          ]);
+
+          // Create chat channel with matchId in the data
+          const channelId = [swiperId, swipedId].sort().join("-");
+          const channel = await createChannelBetweenUsers(
+            swiperId,
+            swipedId,
+            matchResult.insertedId.toString()
           );
 
-          await createChannelBetweenUsers(swiperId, swipedId);
+          // Update match with channel ID
+          await Match.updateChannelId(matchResult.insertedId, channelId);
+
+          // Get the matched user's profile to send in the match event
+          const matchedUser = await User.findById(swipedIdObj);
+
+          // Emit match event to both users
+          if (matchedUser) {
+            socketIo.to(swiperId).emit("match", {
+              matchedProfile: matchedUser,
+            });
+            socketIo.to(swipedId).emit("match", {
+              matchedProfile: await User.findById(swiperIdObj),
+            });
+          }
+
+          console.log("Match process completed successfully");
+
           res.status(201).json({
             message: "Match! Swipe recorded and chat channel created",
             swipe,
             match: true,
+            matchId: matchResult.insertedId,
           });
           return;
-        } catch (channelError) {
-          console.error("Error creating match channel:", channelError);
+        } catch (error) {
+          console.error("Error creating match:", error);
+          throw error;
         }
       }
     }
@@ -107,6 +168,7 @@ export const createSwipe = async (req: Request, res: Response) => {
       match: direction === "right" ? false : null,
     });
   } catch (error: any) {
+    console.error("Error in createSwipe:", error);
     res.status(500).json({
       message: "Failed to record swipe",
       error: error.message || error,

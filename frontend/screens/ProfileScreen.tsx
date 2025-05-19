@@ -21,11 +21,12 @@ import CachedImage from "../components/CachedImage";
 import axios from "axios";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
-import { fetchUpdateChannelChatStatus } from "../networking/ChatFunctions";
+import { unmatch } from "../networking/MatchService";
 
 type ProfileScreenParams = {
   ProfileScreen: {
     userId: string;
+    matchId: string;
   };
 };
 
@@ -37,10 +38,12 @@ export default function ProfileScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showBlurWarning, setShowBlurWarning] = useState(false);
   const route = useRoute<RouteProp<ProfileScreenParams, "ProfileScreen">>();
   const navigation = useNavigation();
-  const { userId: currentUserId, channel } = useAppContext();
+  const { userId: currentUserId } = useAppContext();
   const userId = route.params?.userId;
+  const matchId = route.params?.matchId;
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -64,27 +67,47 @@ export default function ProfileScreen() {
     fetchProfile();
   }, [userId]);
 
-  // Set up the unmatch button in the header
+  // Check for blur warning
   useEffect(() => {
-    if (userId === currentUserId) return; // Don't show unmatch button on own profile
+    const checkBlurWarning = async () => {
+      if (!userId || !currentUserId || userId === currentUserId) return;
+
+      try {
+        const response = await axios.get(
+          `${serverUrl}/blur/${currentUserId}/${userId}`
+        );
+        if (response.data.shouldShowWarning) {
+          setShowBlurWarning(true);
+        }
+      } catch (error) {
+        console.error("Error checking blur warning:", error);
+      }
+    };
+
+    checkBlurWarning();
+  }, [userId, currentUserId]);
+
+  useEffect(() => {
+    if (userId === currentUserId) return;
 
     navigation.setOptions({
-      headerRight: () => (
-        <Pressable
-          onPress={() => handleUnmatch()}
-          style={({ pressed }) => [
-            styles.unmatchButton,
-            pressed && styles.unmatchButtonPressed,
-          ]}
-        >
-          <Text style={styles.unmatchButtonText}>Unmatch</Text>
-        </Pressable>
-      ),
+      headerRight: () =>
+        matchId ? (
+          <Pressable
+            onPress={() => handleUnmatch()}
+            style={({ pressed }) => [
+              styles.unmatchButton,
+              pressed && styles.unmatchButtonPressed,
+            ]}
+          >
+            <Text style={styles.unmatchButtonText}>Unmatch</Text>
+          </Pressable>
+        ) : null,
     });
-  }, [navigation, userId, currentUserId]);
+  }, [navigation, userId, currentUserId, matchId]);
 
   const handleUnmatch = async () => {
-    if (!userId || !currentUserId) return;
+    if (!userId || !currentUserId || !matchId) return;
 
     Alert.alert(
       "Unmatch",
@@ -99,9 +122,7 @@ export default function ProfileScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // Call unmatch endpoint which handles both chat disabling and user unmatching
-              await axios.post(`${serverUrl}/users/${currentUserId}/unmatch`);
-
+              await unmatch(currentUserId, matchId);
               navigation.goBack();
               navigation.goBack();
             } catch (error) {
@@ -153,6 +174,8 @@ export default function ProfileScreen() {
         ))}
       </ScrollView>
       <BasicInfoView profile={profile} />
+
+      {/* Image Modal */}
       <Modal
         visible={modalVisible}
         transparent={true}
@@ -170,6 +193,34 @@ export default function ProfileScreen() {
             />
           )}
         </Pressable>
+      </Modal>
+
+      {/* Blur Warning Modal */}
+      <Modal visible={showBlurWarning} transparent={true} animationType="fade">
+        <View style={styles.warningModalBackground}>
+          <View style={styles.warningModalContent}>
+            <Text style={styles.warningTitle}>Photos Will Be Revealed</Text>
+            <Text style={styles.warningText}>
+              You've exchanged enough messages that your photos will start
+              becoming clearer. This is your last chance to unmatch while
+              remaining anonymous.
+            </Text>
+            <View style={styles.warningButtons}>
+              <Pressable
+                style={[styles.warningButton, styles.unmatchButton]}
+                onPress={handleUnmatch}
+              >
+                <Text style={styles.warningButtonText}>Unmatch</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.warningButton, styles.continueButton]}
+                onPress={() => setShowBlurWarning(false)}
+              >
+                <Text style={styles.warningButtonText}>Continue</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       <AcademicView profile={profile} />
@@ -222,5 +273,52 @@ const styles = StyleSheet.create({
   unmatchButtonText: {
     color: Colors.secondary100,
     fontWeight: "bold",
+  },
+  warningModalBackground: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  warningModalContent: {
+    backgroundColor: Colors.secondary100,
+    borderRadius: 16,
+    padding: 24,
+    width: "100%",
+    maxWidth: 400,
+  },
+  warningTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: Colors.primary500,
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  warningText: {
+    fontSize: 16,
+    color: Colors.primary500,
+    marginBottom: 24,
+    textAlign: "center",
+    lineHeight: 24,
+  },
+  warningButtons: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+  },
+  warningButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    minWidth: 120,
+  },
+  continueButton: {
+    backgroundColor: Colors.primary500,
+  },
+  warningButtonText: {
+    color: Colors.secondary100,
+    fontWeight: "bold",
+    textAlign: "center",
+    fontSize: 16,
   },
 });

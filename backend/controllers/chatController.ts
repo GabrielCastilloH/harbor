@@ -3,6 +3,7 @@ import { StreamChat } from "stream-chat";
 import * as dotenv from "dotenv";
 import { ObjectId } from "mongodb";
 import { User } from "../models/User.js";
+import { Match } from "../models/Match.js";
 dotenv.config();
 
 const API_KEY = process.env.STREAM_API_KEY;
@@ -44,12 +45,14 @@ export const upsertUserToStreamChat = async (
  * Creates a chat channel between two users
  * @param userId1 - First user's MongoDB ID
  * @param userId2 - Second user's MongoDB ID
+ * @param matchId - Match ID to associate with the channel
  * @returns Created StreamChat channel
  * @throws If users not found or channel creation fails
  */
 export const createChannelBetweenUsers = async (
   userId1: string,
-  userId2: string
+  userId2: string,
+  matchId: string
 ) => {
   try {
     const user1 = await User.findById(ObjectId.createFromHexString(userId1));
@@ -66,6 +69,7 @@ export const createChannelBetweenUsers = async (
       members: [userId1, userId2],
       chatDisabled: false,
       created_by_id: "system",
+      matchId: matchId,
     });
 
     await channel.create();
@@ -114,14 +118,18 @@ export const generateUserToken = async (req: Request, res: Response) => {
  */
 export const createChatChannel = async (req: Request, res: Response) => {
   try {
-    const { userId1, userId2 } = req.body;
+    const { userId1, userId2, matchId } = req.body;
     if (!userId1 || !userId2) {
       res.status(400).json({ error: "Missing userId1 or userId2" });
       return;
     }
 
     try {
-      const channel = await createChannelBetweenUsers(userId1, userId2);
+      const channel = await createChannelBetweenUsers(
+        userId1,
+        userId2,
+        matchId || ""
+      );
       res.json({ channel });
     } catch (error) {
       res.status(404).json({ error: "Failed to create channel" });
@@ -161,5 +169,67 @@ export const updateChannelChatStatus = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error updating channel:", error);
     res.status(500).json({ error: "Failed to update channel" });
+  }
+};
+
+/**
+ * Updates message count for a channel
+ * @param req Request with channelId in body
+ * @param res Response with updated count or error
+ */
+export const updateMessageCount = async (req: Request, res: Response) => {
+  console.log(
+    "chatController - Received message count update request:",
+    req.body
+  );
+
+  try {
+    const { channelId } = req.body;
+    if (!channelId) {
+      console.log("chatController - Missing channelId in request");
+      res.status(400).json({ error: "Missing channelId" });
+      return;
+    }
+
+    console.log("chatController - Processing channel:", channelId);
+    const channel = serverClient.channel("messaging", channelId);
+    const [userId1, userId2] = channelId.split("-");
+
+    console.log("chatController - Extracted user IDs:", { userId1, userId2 });
+
+    // Find the match between these users
+    const match = await Match.findByUsers(
+      ObjectId.createFromHexString(userId1),
+      ObjectId.createFromHexString(userId2)
+    );
+
+    if (!match) {
+      console.log("chatController - No match found for users:", {
+        userId1,
+        userId2,
+      });
+      res.status(404).json({ error: "Match not found" });
+      return;
+    }
+
+    console.log("chatController - Found match:", match._id?.toString());
+
+    // Increment message count
+    await Match.incrementMessageCount(match._id!);
+    console.log(
+      "chatController - Successfully incremented message count for match:",
+      match._id?.toString()
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("chatController - Error updating message count:", error);
+    if (error instanceof Error) {
+      console.error("chatController - Error details:", {
+        message: error.message,
+        stack: error.stack,
+      });
+    }
+    res.status(500).json({ error: "Failed to update message count" });
   }
 };
