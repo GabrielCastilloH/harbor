@@ -48,14 +48,16 @@ A unique dating app that focuses on meaningful connections through progressive p
 - Add pre-filled data in user settings and add name of the other person individual chats.
 - Make sure you get the matched! screen when matching
 - Only able to talk to one person at a time.
+- Add photo blurring preview screen.
+- Setup progressive photo unblurring
 
 ### In Progress 🚧
 
-- [ ] Add photo blurring preview screen
 - [ ] Implement authentication route protection
-- [ ] Setup progressive photo unblurring
 - [ ] Force users to use a square picture in the image picker.
 - [ ] Make the images higher quality.
+- [ ] Fix the weird swiping delay on home screen.
+  - [ ] Add a refresh button in the home screen.
 - [ ] Integrate Stripe for payment processing
 - [ ] Premium features through Stripe integration
 - [ ] Change number to only allow three swipes per day.

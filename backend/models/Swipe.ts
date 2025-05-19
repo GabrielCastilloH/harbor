@@ -24,14 +24,58 @@ export class Swipe {
   }
 
   /**
-   * Saves the swipe to the database
-   * @returns {Promise<InsertOneResult>} Result of the database insertion
+   * Creates a unique index on swiperId and swipedId combination
+   * @returns {Promise<void>}
+   */
+  static async createIndexes() {
+    const db = getDb();
+    try {
+      // Create unique index on the combination of swiperId and swipedId
+      // This allows two swipes between users (A→B and B→A) but prevents duplicates of the same direction
+      await db
+        .collection("swipes")
+        .createIndex({ swiperId: 1, swipedId: 1 }, { unique: true });
+    } catch (error) {
+      console.error("Error creating swipe indexes:", error);
+    }
+  }
+
+  /**
+   * Checks if a swipe already exists between two users
+   * @param {ObjectId} swiperId - ID of the user who made the swipe
+   * @param {ObjectId} swipedId - ID of the user who was swiped on
+   * @returns {Promise<Swipe | null>} Existing swipe or null
+   */
+  static async findExistingSwipe(swiperId: ObjectId, swipedId: ObjectId) {
+    const db = getDb();
+    try {
+      return await db.collection("swipes").findOne({ swiperId, swipedId });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Saves the swipe to the database or updates existing one
+   * @returns {Promise<UpdateResult>} Result of the database operation
    * @throws {Error} If database operation fails
    */
   async save() {
     const db = getDb();
     try {
-      return await db.collection("swipes").insertOne(this);
+      // Use updateOne with upsert to ensure only one swipe exists for this specific direction
+      return await db.collection("swipes").updateOne(
+        {
+          swiperId: this.swiperId,
+          swipedId: this.swipedId,
+        },
+        {
+          $set: {
+            direction: this.direction,
+          },
+        },
+        { upsert: true }
+      );
     } catch (error) {
       throw error;
     }
