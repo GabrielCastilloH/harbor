@@ -102,8 +102,8 @@ export default function ProfileForm({
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.7,
+      aspect: [1, 1],
+      quality: 0.9,
     });
 
     console.log(
