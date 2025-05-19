@@ -3,6 +3,7 @@ import { User } from "../models/User.js";
 import { ObjectId } from "mongodb";
 import { getDb } from "../util/database.js";
 import { StreamChat } from "stream-chat";
+import { Match } from "../models/Match.js";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -162,45 +163,41 @@ export const updateUser = async (req: Request, res: Response) => {
 };
 
 /**
- * Unmatches a user from their current match
- * @param req Contains userId
- * @param res Returns updated user
+ * Unmatches a user from their match
+ * @param req Contains userId and matchId
+ * @param res Returns success message
  */
 export const unmatchUser = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   const { userId } = req.params;
+  const { matchId } = req.body;
 
-  if (!userId) {
-    res.status(400).json({ message: "User ID is required" });
+  if (!userId || !matchId) {
+    res.status(400).json({ message: "User ID and Match ID are required" });
     return;
   }
 
   try {
-    const db = getDb();
-    const user = await User.findById(ObjectId.createFromHexString(userId));
+    const userIdObj = ObjectId.createFromHexString(userId);
+    const matchIdObj = ObjectId.createFromHexString(matchId);
 
-    if (!user) {
-      res.status(404).json({ message: "User not found" });
+    // Get the match details
+    const match = await Match.findById(matchIdObj);
+    if (!match) {
+      res.status(404).json({ message: "Match not found" });
       return;
     }
 
-    if (!user.currentMatch) {
-      res.status(400).json({ message: "User is not currently matched" });
-      return;
-    }
-
-    // Get the matched user
-    const matchedUser = await User.findById(user.currentMatch);
-
-    if (!matchedUser) {
-      res.status(404).json({ message: "Matched user not found" });
-      return;
-    }
+    // Get the other user's ID
+    const otherUserId = match.user1Id.equals(userIdObj)
+      ? match.user2Id
+      : match.user1Id;
 
     // Create channel ID (sorted to ensure consistency)
-    const channelId = [userId, matchedUser._id.toString()].sort().join("-");
+    const channelId =
+      match.channelId || [userId, otherUserId.toString()].sort().join("-");
 
     try {
       // 1. Freeze the chat channel
@@ -213,28 +210,15 @@ export const unmatchUser = async (
         user_id: "system",
       });
 
-      // 2. Update both users to be available again
-      await db.collection("users").updateOne(
-        { _id: ObjectId.createFromHexString(userId) },
-        {
-          $set: {
-            currentMatch: null,
-          },
-        }
-      );
-
-      await db.collection("users").updateOne(
-        { _id: user.currentMatch },
-        {
-          $set: {
-            currentMatch: null,
-          },
-        }
-      );
+      // 2. Deactivate match and remove from both users
+      await Promise.all([
+        Match.deactivateMatch(matchIdObj),
+        User.removeMatch(userIdObj, matchIdObj),
+        User.removeMatch(otherUserId, matchIdObj),
+      ]);
 
       res.status(200).json({
         message: "Users unmatched successfully",
-        user: { ...user, currentMatch: null },
       });
     } catch (error) {
       console.error("Error during unmatch process:", error);
