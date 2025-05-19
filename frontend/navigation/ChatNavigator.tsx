@@ -18,12 +18,8 @@ import { NavigationProp } from "@react-navigation/native";
 import ProfileScreen from "../screens/ProfileScreen";
 import { fetchUserToken } from "../networking/ChatFunctions";
 import { useAppContext } from "../context/AppContext";
-
-type RootStackParamList = {
-  Chats: undefined;
-  ChatScreen: undefined;
-  ProfileScreen: { userId: string };
-};
+import { RootStackParamList } from "../types/navigation";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 type NavigationProps = NavigationProp<RootStackParamList>;
 
@@ -43,6 +39,7 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
   const otherMembers = channel?.state?.members || {};
   const otherUserId = Object.keys(otherMembers).find((key) => key !== userId);
   const isFrozen = channel?.data?.frozen;
+  const matchId = channel?.data?.matchId;
 
   // Don't show the profile button if channel is frozen
   if (isFrozen) {
@@ -52,8 +49,14 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
   return (
     <TouchableOpacity
       onPress={() => {
-        if (otherUserId) {
-          navigation.navigate("ProfileScreen", { userId: otherUserId });
+        console.log("otherUserId", otherUserId);
+        console.log("matchId", matchId);
+        if (otherUserId && matchId) {
+          console.log("RUNNING!");
+          navigation.navigate("ProfileScreen", {
+            userId: otherUserId,
+            matchId: matchId,
+          });
         }
       }}
     >
