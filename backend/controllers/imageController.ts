@@ -10,6 +10,23 @@ import { User } from "../models/User.js";
 import { Match } from "../models/Match.js";
 
 /**
+ * Ensures an image is square by cropping it if necessary
+ * @param imageBuffer The buffer containing the image data
+ * @returns Promise<Buffer> The processed (and possibly cropped) image buffer
+ */
+async function ensureSquareImage(imageBuffer: Buffer): Promise<Buffer> {
+  const metadata = await sharp(imageBuffer).metadata();
+  const size = Math.min(metadata.width || 0, metadata.height || 0);
+
+  return sharp(imageBuffer)
+    .resize(size, size, {
+      fit: "cover",
+      position: "center",
+    })
+    .toBuffer();
+}
+
+/**
  * Uploads image and links to user
  * @param req Contains userId, imageData, contentType
  * @param res Returns fileId or error
@@ -27,8 +44,18 @@ export const uploadImage = async (
     }
 
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
+    const imageBuffer = Buffer.from(base64Data, "base64");
+
+    // Process image to ensure it's square
+    const processedImageBuffer = await ensureSquareImage(imageBuffer);
+    const processedBase64 = processedImageBuffer.toString("base64");
+
     const filename = `user-${userId}-${Date.now()}`;
-    const fileId = await storeFileFromBase64(base64Data, filename, contentType);
+    const fileId = await storeFileFromBase64(
+      processedBase64,
+      filename,
+      contentType
+    );
 
     if (userId.startsWith("temp_")) {
       res.status(201).json({
