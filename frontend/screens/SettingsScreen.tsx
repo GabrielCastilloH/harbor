@@ -7,36 +7,38 @@ import {
   Switch,
   Platform,
   Alert,
-} from 'react-native';
-import React, { useState } from 'react';
-import { useNavigation } from '@react-navigation/native';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Colors from '../constants/Colors';
-import { useAppContext } from '../context/AppContext';
+} from "react-native";
+import React, { useState } from "react";
+import { useNavigation } from "@react-navigation/native";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Colors from "../constants/Colors";
+import { useAppContext } from "../context/AppContext";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
-  const { setIsAuthenticated, setUserId } = useAppContext();
+  const { setIsAuthenticated, setUserId, setAuthToken } = useAppContext();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [locationServices, setLocationServices] = useState(true);
 
   const handleSignOut = async () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
       {
-        text: 'Cancel',
-        style: 'cancel',
+        text: "Cancel",
+        style: "cancel",
       },
       {
-        text: 'Sign Out',
+        text: "Sign Out",
         onPress: async () => {
           try {
-            await AsyncStorage.removeItem('@user');
+            await AsyncStorage.removeItem("@user");
+            await AsyncStorage.removeItem("@authToken");
             setIsAuthenticated(false);
-            setUserId('');
+            setUserId("");
+            setAuthToken(null);
           } catch (error) {
-            console.error('Error signing out:', error);
+            console.error("Error signing out:", error);
           }
         },
       },
@@ -59,7 +61,7 @@ export default function SettingsScreen() {
         </View>
         <TouchableOpacity
           style={styles.profileButton}
-          onPress={() => navigation.navigate('Profile' as never)}
+          onPress={() => navigation.navigate("Profile" as never)}
         >
           <Ionicons name="person-circle" size={24} color={Colors.primary500} />
           <Text style={styles.profileButtonText}>Edit Profile</Text>
@@ -94,16 +96,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.secondary100,
   },
   profileButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.primary100,
     padding: 15,
     marginTop: 10,
     borderRadius: 10,
-    justifyContent: 'center',
+    justifyContent: "center",
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: {
           width: 0,
           height: 2,
@@ -119,7 +121,7 @@ const styles = StyleSheet.create({
   profileButtonText: {
     color: Colors.primary500,
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginLeft: 10,
   },
   section: {
@@ -127,14 +129,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.primary500,
     marginBottom: 10,
   },
   setting: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 15,
   },
   settingText: {
@@ -142,8 +144,8 @@ const styles = StyleSheet.create({
     color: Colors.primary500,
   },
   button: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 15,
     backgroundColor: Colors.secondary200,
     borderRadius: 8,
@@ -159,7 +161,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: {
           width: 0,
           height: 2,
@@ -174,6 +176,6 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: Colors.primary500,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 });
