@@ -51,17 +51,16 @@ A unique dating app that focuses on meaningful connections through progressive p
 - Add photo blurring preview screen.
 - Setup progressive photo unblurring
 - Implement authentication route protection
+- Force users to use a square picture in the image picker.
+- Make the images higher quality.
 
 ### In Progress 🚧
 
-- [ ] Force users to use a square picture in the image picker.
-- [ ] Make the images higher quality.
-- [ ] Fix the weird swiping delay on home screen.
-  - [ ] Add a refresh button in the home screen.
 - [ ] Integrate Stripe for payment processing
 - [ ] Premium features through Stripe integration
 - [ ] Change number to only allow three swipes per day.
 - [ ] Uncomment code to make sure onlly @cornell.edu allowed.
+- [ ] Fix the weird swiping delay on home screen. (if possible lol)
 
 ## 🔜 Future Enhancements (not MVP)
 
