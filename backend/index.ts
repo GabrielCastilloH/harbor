@@ -1,7 +1,6 @@
 import express from "express";
 import bodyParser from "body-parser";
 import routes from "./routes/routes.js";
-import authRoutes from "./routes/authRoutes.js";
 import { mongoConnect } from "./util/database.js";
 import * as dotenv from "dotenv";
 import { Request, Response, NextFunction } from "express";
@@ -13,21 +12,23 @@ import { initializeSocket } from "./socket/socketHandler.js";
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
+const server = createServer(app);
+const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: process.env.CLIENT_URL,
     methods: ["GET", "POST"],
   },
 });
 
-// Initialize socket handling
+// Export io instance for use in other files
+export const socketIo = io;
+
+// Initialize socket.io
 initializeSocket(io);
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Error handling middleware
@@ -37,14 +38,12 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 });
 
 // Routes
-app.use("/auth", authRoutes);
 app.use("/", routes);
 
-// Export io instance for use in other files
-export const socketIo = io;
-
+// Connect to MongoDB and start server
 mongoConnect(() => {
-  httpServer.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+  const port = process.env.PORT || 3000;
+  server.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
   });
 });

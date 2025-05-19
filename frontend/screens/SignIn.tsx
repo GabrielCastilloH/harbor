@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,13 +6,13 @@ import {
   Image,
   TouchableOpacity,
   Alert,
-} from 'react-native';
-import axios from 'axios';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Colors from '../constants/Colors';
-import { useAppContext } from '../context/AppContext';
+} from "react-native";
+import axios from "axios";
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Colors from "../constants/Colors";
+import { useAppContext } from "../context/AppContext";
 
 // Ensure we complete the auth session in web browsers
 WebBrowser.maybeCompleteAuthSession();
@@ -20,7 +20,7 @@ WebBrowser.maybeCompleteAuthSession();
 const serverUrl = process.env.SERVER_URL;
 
 export default function SignIn() {
-  const { setIsAuthenticated, setUserId } = useAppContext();
+  const { setIsAuthenticated, setUserId, setAuthToken } = useAppContext();
   const [isLoading, setIsLoading] = useState(false);
 
   // Set up Google authentication request
@@ -29,7 +29,7 @@ export default function SignIn() {
     iosClientId: process.env.IOS_GOOGLE_CLIENT_ID as string,
     webClientId: process.env.WEB_GOOGLE_CLIENT_ID as string,
     clientId: process.env.WEB_GOOGLE_CLIENT_ID as string,
-    scopes: ['profile', 'email'],
+    scopes: ["profile", "email"],
   });
 
   // Handle authentication response
@@ -38,16 +38,21 @@ export default function SignIn() {
   }, [response]);
 
   const handleAuthResponse = async () => {
-    // Check if we have a cached user
-    const cachedUser = await getCachedUser();
-    if (cachedUser) {
+    // Check if we have a cached user and token
+    const [cachedUser, cachedToken] = await Promise.all([
+      getCachedUser(),
+      AsyncStorage.getItem("@authToken"),
+    ]);
+
+    if (cachedUser && cachedToken) {
+      setAuthToken(cachedToken);
       setIsAuthenticated(true);
       setUserId(cachedUser._id);
       return;
     }
 
     // Process new sign-in response
-    if (response?.type === 'success') {
+    if (response?.type === "success") {
       setIsLoading(true);
       try {
         // Get user info from Google
@@ -55,10 +60,10 @@ export default function SignIn() {
         const userInfo = await getUserInfo(accessToken);
 
         console.log(
-          'User info from Google:',
+          "User info from Google:",
           JSON.stringify(userInfo, null, 2)
         );
-        console.log('Sending auth request to server:', serverUrl);
+        console.log("Sending auth request to server:", serverUrl);
 
         // Send token to backend
         const serverResponse = await axios.post(`${serverUrl}/auth/google`, {
@@ -69,11 +74,15 @@ export default function SignIn() {
 
         // Process server response
         if (serverResponse.data) {
+          // Store the auth token
+          await AsyncStorage.setItem("@authToken", accessToken);
+          setAuthToken(accessToken);
+
           if (serverResponse.data.user && serverResponse.data.user._id) {
             // Existing user case
             // Cache user data
             await AsyncStorage.setItem(
-              '@user',
+              "@user",
               JSON.stringify(serverResponse.data.user)
             );
 
@@ -84,7 +93,7 @@ export default function SignIn() {
             // New user case - authenticated but needs profile setup
             // Cache just the auth info for profile setup
             await AsyncStorage.setItem(
-              '@authInfo',
+              "@authInfo",
               JSON.stringify(serverResponse.data.authInfo)
             );
 
@@ -92,35 +101,35 @@ export default function SignIn() {
             // Do NOT set userId since user doesn't exist in DB yet
             setUserId(null);
           } else {
-            console.log('Server response:', serverResponse.data);
-            Alert.alert('Error', 'User authentication failed');
+            console.log("Server response:", serverResponse.data);
+            Alert.alert("Error", "User authentication failed");
           }
         }
       } catch (error) {
-        console.error('Authentication Error:', error);
+        console.error("Authentication Error:", error);
 
         // More detailed error logging
         if (axios.isAxiosError(error)) {
-          console.error('Status code:', error.response?.status);
+          console.error("Status code:", error.response?.status);
           console.error(
-            'Response data:',
+            "Response data:",
             JSON.stringify(error.response?.data, null, 2)
           );
           console.error(
-            'Request config:',
+            "Request config:",
             JSON.stringify(error.config, null, 2)
           );
 
           // Show more specific error message
           Alert.alert(
-            'Authentication Failed',
-            `Error ${error.response?.status || ''}: ${
+            "Authentication Failed",
+            `Error ${error.response?.status || ""}: ${
               error.response?.data?.message ||
-              'Please check your connection and try again.'
+              "Please check your connection and try again."
             }`
           );
         } else {
-          Alert.alert('Error', 'Authentication failed. Please try again.');
+          Alert.alert("Error", "Authentication failed. Please try again.");
         }
       } finally {
         setIsLoading(false);
@@ -130,16 +139,16 @@ export default function SignIn() {
 
   const getCachedUser = async () => {
     try {
-      const userData = await AsyncStorage.getItem('@user');
+      const userData = await AsyncStorage.getItem("@user");
       return userData ? JSON.parse(userData) : null;
     } catch (error) {
-      console.error('Error reading cached user:', error);
+      console.error("Error reading cached user:", error);
       return null;
     }
   };
 
   const getUserInfo = async (token: any) => {
-    const response = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+    const response = await fetch("https://www.googleapis.com/userinfo/v2/me", {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.json();
@@ -150,7 +159,7 @@ export default function SignIn() {
       <View style={styles.logoContainer}>
         <Image
           tintColor={Colors.primary500}
-          source={require('../assets/logo.png')}
+          source={require("../assets/logo.png")}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -168,12 +177,12 @@ export default function SignIn() {
         disabled={!request || isLoading}
       >
         <Image
-          source={require('../assets/images/cornell-logo.png')}
+          source={require("../assets/images/cornell-logo.png")}
           style={[styles.cornellLogo, { tintColor: Colors.primary500 }]}
           resizeMode="contain"
         />
         <Text style={styles.buttonText}>
-          {isLoading ? 'Signing In...' : 'Sign In With Google'}
+          {isLoading ? "Signing In..." : "Sign In With Google"}
         </Text>
       </TouchableOpacity>
     </View>
@@ -184,13 +193,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.secondary100,
-    alignItems: 'center',
+    alignItems: "center",
     padding: 20,
   },
   logoContainer: {
     height: 120,
     marginTop: 150,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   logo: {
     width: 150,
@@ -198,7 +207,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.primary500,
     marginTop: 40,
     marginBottom: 20,
@@ -206,17 +215,17 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 16,
     color: Colors.primary500,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 40,
     paddingHorizontal: 20,
   },
   button: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: Colors.primary100,
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   cornellLogo: {
     width: 30,
@@ -226,6 +235,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: Colors.primary500,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 });

@@ -2,6 +2,8 @@ import express from "express";
 import { Request, Response, NextFunction } from "express";
 import { validateUser } from "../middleware/userValidation.js";
 import { validateSwipe } from "../middleware/swipeValidation.js";
+import { verifyGoogleAuth } from "../middleware/authMiddleware.js";
+import { authenticateGoogle } from "../controllers/authController.js";
 import {
   createSwipe,
   countRecentSwipes,
@@ -14,7 +16,6 @@ import {
   updateUser,
   unmatchUser,
 } from "../controllers/userController.js";
-
 import { getRecommendations } from "../controllers/algoDaddy.js";
 import {
   generateUserToken,
@@ -41,49 +42,59 @@ import {
 
 const router = express.Router();
 
+// Public auth route
+router.post("/auth/google", authenticateGoogle);
+
+// Protected routes
+const protectedRouter = express.Router();
+protectedRouter.use(verifyGoogleAuth);
+
 // POST new user.
-router.post("/users", validateUser, createUser);
+protectedRouter.post("/users", validateUser, createUser);
 
 // GET all users.
-router.get("/users", getAllUsers);
+protectedRouter.get("/users", getAllUsers);
 
 // GET a specific user by ID
-router.get("/users/:id", getUserById);
+protectedRouter.get("/users/:id", getUserById);
 
 // POST update a new user.
-router.post("/users/:id", updateUser);
+protectedRouter.post("/users/:id", updateUser);
 
 // Swipe routes.
-router.post("/swipes", validateSwipe, createSwipe);
-router.get("/swipes/:userId/count", countRecentSwipes);
-router.get("/swipes/:userId", getSwipesByUser);
+protectedRouter.post("/swipes", validateSwipe, createSwipe);
+protectedRouter.get("/swipes/:userId/count", countRecentSwipes);
+protectedRouter.get("/swipes/:userId", getSwipesByUser);
 
 // Get recommendations
-router.get("/users/:id/recommendations", getRecommendations);
+protectedRouter.get("/users/:id/recommendations", getRecommendations);
 
 // Chat routes
-router.post("/chat/token", generateUserToken);
-router.post("/chat/channel", createChatChannel);
-router.post("/chat/channel/update", updateChannelChatStatus);
+protectedRouter.post("/chat/token", generateUserToken);
+protectedRouter.post("/chat/channel", createChatChannel);
+protectedRouter.post("/chat/channel/update", updateChannelChatStatus);
 
 // Add image routes
-router.post("/images/upload", uploadImage);
-router.get("/images/:id", getImage);
-router.delete("/images/delete", deleteImage);
+protectedRouter.post("/images/upload", uploadImage);
+protectedRouter.get("/images/:id", getImage);
+protectedRouter.delete("/images/delete", deleteImage);
 
 // Add unmatch route
-router.post("/users/:userId/unmatch", unmatchUser);
+protectedRouter.post("/users/:userId/unmatch", unmatchUser);
 
 // Add blur level routes
-router.post("/blur/update", updateBlurLevelForMessage);
-router.get("/blur/:userId/:matchedUserId", getBlurLevel);
-router.post("/blur/warning-response", handleWarningResponse);
+protectedRouter.post("/blur/update", updateBlurLevelForMessage);
+protectedRouter.get("/blur/:userId/:matchedUserId", getBlurLevel);
+protectedRouter.post("/blur/warning-response", handleWarningResponse);
 
 // Match routes
-router.post("/matches", createMatch);
-router.get("/matches/user/:userId", getActiveMatches);
-router.post("/matches/:matchId/unmatch", unmatchUsers);
-router.post("/matches/:matchId/channel", updateMatchChannel);
-router.post("/matches/:matchId/messages", incrementMatchMessages);
+protectedRouter.post("/matches", createMatch);
+protectedRouter.get("/matches/user/:userId", getActiveMatches);
+protectedRouter.post("/matches/:matchId/unmatch", unmatchUsers);
+protectedRouter.post("/matches/:matchId/channel", updateMatchChannel);
+protectedRouter.post("/matches/:matchId/messages", incrementMatchMessages);
+
+// Use the protected routes
+router.use("/", protectedRouter);
 
 export default router;
