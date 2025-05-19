@@ -5,19 +5,19 @@ import axios from "axios";
 const serverUrl = process.env.SERVER_URL || "http://localhost:3000";
 
 /**
- * Convert an image URI to base64 format with aggressive compression
+ * Convert an image URI to base64 format with compression
  */
 export async function imageToBase64(
   uri: string,
-  quality = 0.5
+  quality = 0.8
 ): Promise<string> {
   try {
     console.log(`Compressing image with quality ${quality}...`);
 
-    // First compress the image to reduce size - more aggressive settings
+    // Compress the image while maintaining good quality
     const manipResult = await ImageManipulator.manipulateAsync(
       uri,
-      [{ resize: { width: 500 } }], // Reduced from 800 to 500
+      [{ resize: { width: 1200 } }], // Increased from 500 to 1200
       { compress: quality, format: ImageManipulator.SaveFormat.JPEG }
     );
 
