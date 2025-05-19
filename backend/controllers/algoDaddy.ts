@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { ObjectId } from "mongodb";
 import { getDb } from "../util/database.js";
 import { Swipe } from "../models/Swipe.js";
+import { User } from "../models/User.js";
 
 const RECOMMENDED_COUNT = 3;
 const DAILY_SWIPES = 100; // Change this constant to adjust the maximum allowed daily swipes.
@@ -18,15 +19,11 @@ export const getRecommendations = async (
     }
     const currentUserId = new ObjectId(id);
 
-    // Check if the requesting user is already matched
-    const db = getDb();
-    const currentUser = await db
-      .collection("users")
-      .findOne({ _id: currentUserId });
-
-    if (currentUser?.currentMatch) {
+    // Check if the user can add more matches
+    const canAddMatch = await User.canAddMatch(currentUserId);
+    if (!canAddMatch) {
       res.status(200).json({
-        message: "User is already matched",
+        message: "User cannot add more matches",
         recommendations: [],
       });
       return;
@@ -43,7 +40,7 @@ export const getRecommendations = async (
     }
 
     // Fetch all swipe records by the current user.
-    const swipes = await db
+    const swipes = await getDb()
       .collection("swipes")
       .find({ swiperId: currentUserId })
       .toArray();
@@ -51,15 +48,23 @@ export const getRecommendations = async (
     // Extract the swiped user IDs.
     const swipedIds = swipes.map((swipe) => swipe.swipedId);
 
+    // Get current user to check if they're premium
+    const currentUser = await User.findById(currentUserId);
+    if (!currentUser) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
     // Use an aggregation pipeline to randomly sample recommended users,
     // excluding the current user, those already swiped, and those who are matched
-    const recommendedUsers = await db
+    const recommendedUsers = await getDb()
       .collection("users")
       .aggregate([
         {
           $match: {
             _id: { $nin: [currentUserId, ...swipedIds] },
-            currentMatch: null, // Only show available users
+            // For non-premium users, only show users with no matches
+            ...(currentUser.isPremium ? {} : { currentMatches: { $size: 0 } }),
           },
         },
         { $sample: { size: RECOMMENDED_COUNT } },

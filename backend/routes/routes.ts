@@ -26,6 +26,18 @@ import {
   getImage,
   deleteImage,
 } from "../controllers/imageController.js";
+import {
+  updateBlurLevelForMessage,
+  getBlurLevel,
+  handleWarningResponse,
+} from "../controllers/blurController.js";
+import {
+  createMatch,
+  getActiveMatches,
+  unmatchUsers,
+  updateMatchChannel,
+  incrementMatchMessages,
+} from "../controllers/matchController.js";
 
 const router = express.Router();
 
@@ -61,5 +73,17 @@ router.delete("/images/delete", deleteImage);
 
 // Add unmatch route
 router.post("/users/:userId/unmatch", unmatchUser);
+
+// Add blur level routes
+router.post("/blur/update", updateBlurLevelForMessage);
+router.get("/blur/:userId/:matchedUserId", getBlurLevel);
+router.post("/blur/warning-response", handleWarningResponse);
+
+// Match routes
+router.post("/matches", createMatch);
+router.get("/matches/user/:userId", getActiveMatches);
+router.post("/matches/:matchId/unmatch", unmatchUsers);
+router.post("/matches/:matchId/channel", updateMatchChannel);
+router.post("/matches/:matchId/messages", incrementMatchMessages);
 
 export default router;
