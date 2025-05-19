@@ -1,6 +1,7 @@
 import React, { useState, ReactNode, useEffect } from "react";
 import { Profile } from "../types/App";
 import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface AppContextType {
   channel: any;
@@ -15,6 +16,7 @@ interface AppContextType {
   setProfile: (profile: Profile | null) => void;
   authToken: string | null;
   setAuthToken: (token: string | null) => void;
+  isInitialized: boolean;
 }
 
 const defaultValue: AppContextType = {
@@ -30,6 +32,7 @@ const defaultValue: AppContextType = {
   setProfile: () => {},
   authToken: null,
   setAuthToken: () => {},
+  isInitialized: false,
 };
 
 export const AppContext = React.createContext<AppContextType>(defaultValue);
@@ -45,6 +48,33 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize app state from AsyncStorage
+  useEffect(() => {
+    const initializeAppState = async () => {
+      try {
+        const [storedToken, storedUser] = await Promise.all([
+          AsyncStorage.getItem("@authToken"),
+          AsyncStorage.getItem("@user"),
+        ]);
+
+        if (storedToken && storedUser) {
+          const userData = JSON.parse(storedUser);
+          setAuthToken(storedToken);
+          setIsAuthenticated(true);
+          setUserId(userData._id);
+          setProfile(userData);
+        }
+      } catch (error) {
+        console.error("Error initializing app state:", error);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+
+    initializeAppState();
+  }, []);
 
   // Set up axios interceptor for auth token
   useEffect(() => {
@@ -80,6 +110,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setProfile,
         authToken,
         setAuthToken,
+        isInitialized,
       }}
     >
       {children}
