@@ -6,13 +6,13 @@ import {
   Image,
   TouchableOpacity,
   GestureResponderEvent,
-  ActivityIndicator,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import Colors from "../constants/Colors";
 import AnimatedStack from "../components/AnimatedStack";
 import MatchModal from "./MatchModal";
+import LoadingScreen from "../components/LoadingScreen";
 import { Profile } from "../types/App";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
@@ -25,6 +25,7 @@ export default function HomeScreen() {
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] =
     useState<boolean>(false);
+  const [loadingProfile, setLoadingProfile] = useState<boolean>(true);
   const [isNoPressed, setIsNoPressed] = useState(false);
   const [isYesPressed, setIsYesPressed] = useState(false);
   const [touchStart, setTouchStart] = useState({ x: 0, y: 0 });
@@ -66,6 +67,7 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!userId) return;
+      setLoadingProfile(true);
       try {
         const response = await axios.get(`${serverUrl}/users/${userId}`);
         if (response.data) {
@@ -73,6 +75,8 @@ export default function HomeScreen() {
         }
       } catch (error) {
         console.error("Error fetching user profile:", error);
+      } finally {
+        setLoadingProfile(false);
       }
     };
 
@@ -194,12 +198,8 @@ export default function HomeScreen() {
     }, 1000);
   };
 
-  if (loadingRecommendations) {
-    return (
-      <GestureHandlerRootView style={styles.container}>
-        <ActivityIndicator size="large" color={Colors.primary500} />
-      </GestureHandlerRootView>
-    );
+  if (loadingProfile || loadingRecommendations) {
+    return <LoadingScreen loadingText="Loading your Harbor" />;
   }
 
   return (
