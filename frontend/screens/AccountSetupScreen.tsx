@@ -6,6 +6,7 @@ import { useAppContext } from "../context/AppContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { uploadImageToServer } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
+import LoadingScreen from "../components/LoadingScreen";
 
 const serverUrl = process.env.SERVER_URL;
 
@@ -157,6 +158,10 @@ export default function AccountSetupScreen() {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return <LoadingScreen loadingText="Creating your profile" />;
+  }
 
   return (
     <ProfileForm
