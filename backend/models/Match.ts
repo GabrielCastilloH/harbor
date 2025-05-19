@@ -48,10 +48,6 @@ export class Match {
   }
 
   static async findByUsers(user1Id: ObjectId, user2Id: ObjectId) {
-    console.log("RUNNING findByUsers with:", {
-      user1Id: user1Id.toString(),
-      user2Id: user2Id.toString(),
-    });
     const db = getDb();
     try {
       const match = await db.collection("matches").findOne({
@@ -61,17 +57,6 @@ export class Match {
         ],
         isActive: true,
       });
-      console.log(
-        "findByUsers result:",
-        match
-          ? {
-              _id: match._id.toString(),
-              user1Id: match.user1Id.toString(),
-              user2Id: match.user2Id.toString(),
-              isActive: match.isActive,
-            }
-          : "No match found"
-      );
       return match;
     } catch (error) {
       console.error("Error in findByUsers:", error);

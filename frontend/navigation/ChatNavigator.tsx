@@ -49,10 +49,7 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
   return (
     <TouchableOpacity
       onPress={() => {
-        console.log("otherUserId", otherUserId);
-        console.log("matchId", matchId);
         if (otherUserId && matchId) {
-          console.log("RUNNING!");
           navigation.navigate("ProfileScreen", {
             userId: otherUserId,
             matchId: matchId,
@@ -125,26 +122,16 @@ export default function ChatNavigator() {
 
       setIsLoadingProfile(true);
       try {
-        console.log(`ChatNavigator - Fetching profile for userId: ${userId}`);
         const response = await axios.get(`${serverUrl}/users/${userId}`);
-        console.log("ChatNavigator - Profile fetch response:", response.status);
 
         // Check if the response has data directly or within a user property
         if (response.data) {
           // If response contains data directly as the user object
           if (response.data._id) {
-            console.log(
-              "ChatNavigator - Profile data received directly:",
-              JSON.stringify(response.data, null, 2)
-            );
             setProfile(response.data);
           }
           // If response contains data in the user property
           else if (response.data.user && response.data.user._id) {
-            console.log(
-              "ChatNavigator - Profile data received in user property:",
-              JSON.stringify(response.data.user, null, 2)
-            );
             setProfile(response.data.user);
           } else {
             console.error(
@@ -175,27 +162,13 @@ export default function ChatNavigator() {
   // Fetch the token when profile is loaded - now using userId
   useEffect(() => {
     if (!userId) {
-      console.log("ChatNavigator - No userId available, cannot fetch token");
+      console.warn("ChatNavigator - Token fetch failed: No userId available");
       return;
     }
 
-    console.log("ChatNavigator - Starting token fetch for userId:", userId);
-
     async function getToken() {
       try {
-        console.log(
-          "ChatNavigator - Calling fetchUserToken with userId:",
-          userId
-        );
-        console.log("ChatNavigator - API URL:", `${serverUrl}/chat/token`);
-
-        // We already checked userId is not null in the parent scope, but TypeScript
-        // needs the assertion here to be certain
         const token = await fetchUserToken(userId as string);
-        console.log(
-          "ChatNavigator - Token received:",
-          token ? "Token exists" : "No token"
-        );
         setChatUserToken(token);
       } catch (error: unknown) {
         console.error("ChatNavigator - Failed to fetch chat token:", error);
