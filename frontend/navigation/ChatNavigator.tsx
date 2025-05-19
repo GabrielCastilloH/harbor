@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import ChatList from "../screens/ChatList";
 import ChatScreen from "../screens/ChatScreen";
-import LoadingScreen from "../screens/LoadingScreen";
+import LoadingScreen from "../components/LoadingScreen";
 import Colors from "../constants/Colors";
 import {
   OverlayProvider,
@@ -200,7 +200,7 @@ export default function ChatNavigator() {
   // Conditionally render loading or chat UI
   if (isLoadingProfile || !profile) {
     console.log("ChatNavigator - Waiting for profile to load");
-    return <LoadingScreen />;
+    return <LoadingScreen loadingText="Loading..." />;
   }
 
   if (!chatUserToken || !chatClient) {
@@ -208,7 +208,7 @@ export default function ChatNavigator() {
       "ChatNavigator - Showing LoadingScreen because:",
       !chatUserToken ? "No token" : "No client"
     );
-    return <LoadingScreen />;
+    return <LoadingScreen loadingText="Loading..." />;
   }
 
   console.log("ChatNavigator - Rendering chat UI");
