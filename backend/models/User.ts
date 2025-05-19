@@ -18,7 +18,8 @@ export class User {
   studySpot: string;
   hobbies: string;
   email: string;
-  currentMatch: ObjectId | null;
+  currentMatches: ObjectId[];
+  isPremium: boolean;
 
   /**
    * Creates a new user instance
@@ -36,6 +37,8 @@ export class User {
    * @param {string} studySpot - Preferred study location
    * @param {string} hobbies - User's interests
    * @param {string} email - User's email address
+   * @param {ObjectId[]} currentMatches - Array of current matches
+   * @param {boolean} isPremium - Whether the user is premium
    */
   constructor(
     firstName: string,
@@ -51,7 +54,9 @@ export class User {
     majorReason: string,
     studySpot: string,
     hobbies: string,
-    email: string
+    email: string,
+    currentMatches: ObjectId[] = [],
+    isPremium: boolean = false
   ) {
     this.firstName = firstName;
     this.lastName = lastName;
@@ -67,7 +72,8 @@ export class User {
     this.studySpot = studySpot;
     this.hobbies = hobbies;
     this.email = email;
-    this.currentMatch = null;
+    this.currentMatches = currentMatches;
+    this.isPremium = isPremium;
   }
 
   /**
@@ -167,6 +173,70 @@ export class User {
     const db = getDb();
     try {
       return await db.collection("users").findOne({ email: email });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Finds user by image ID
+   * @param {string} imageId - Image ID to search for
+   * @returns {Promise<User | null>} User or null if not found
+   * @throws {Error} If database operation fails
+   */
+  static async findByImageId(imageId: string) {
+    const db = getDb();
+    try {
+      return await db.collection("users").findOne({ images: imageId });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async addMatch(userId: ObjectId, matchId: ObjectId) {
+    console.log("Adding match to user:", {
+      userId: userId.toString(),
+      matchId: matchId.toString(),
+    });
+    const db = getDb();
+    try {
+      const result = await db
+        .collection("users")
+        .updateOne({ _id: userId }, { $addToSet: { currentMatches: matchId } });
+      console.log("Add match result:", {
+        userId: userId.toString(),
+        matchId: matchId.toString(),
+        modifiedCount: result.modifiedCount,
+      });
+      return result;
+    } catch (error) {
+      console.error("Error adding match to user:", error);
+      throw error;
+    }
+  }
+
+  static async removeMatch(userId: ObjectId, matchId: ObjectId) {
+    const db = getDb();
+    try {
+      return await db.collection("users").updateOne({ _id: userId }, {
+        $pull: { currentMatches: matchId },
+      } as any);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async canAddMatch(userId: ObjectId): Promise<boolean> {
+    const db = getDb();
+    try {
+      const user = await db.collection("users").findOne({ _id: userId });
+      if (!user) return false;
+
+      // Premium users can have unlimited matches
+      if (user.isPremium) return true;
+
+      // Free users can only have one match
+      return !user.currentMatches || user.currentMatches.length === 0;
     } catch (error) {
       throw error;
     }
