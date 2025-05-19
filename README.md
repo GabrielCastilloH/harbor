@@ -50,10 +50,10 @@ A unique dating app that focuses on meaningful connections through progressive p
 - Only able to talk to one person at a time.
 - Add photo blurring preview screen.
 - Setup progressive photo unblurring
+- Implement authentication route protection
 
 ### In Progress 🚧
 
-- [ ] Implement authentication route protection
 - [ ] Force users to use a square picture in the image picker.
 - [ ] Make the images higher quality.
 - [ ] Fix the weird swiping delay on home screen.
