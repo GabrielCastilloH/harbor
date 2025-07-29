@@ -12,6 +12,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import * as ImagePicker from "expo-image-picker";
@@ -23,6 +24,7 @@ interface ProfileFormProps {
   loading?: boolean;
   isAccountSetup?: boolean;
   onSave: () => void;
+  onLogout?: () => void;
 }
 
 const truncateForLog = (str: string): string => {
@@ -38,6 +40,7 @@ export default function ProfileForm({
   loading = false,
   isAccountSetup = false,
   onSave,
+  onLogout,
 }: ProfileFormProps) {
   const handleChange = (
     key: keyof Profile,
@@ -155,9 +158,20 @@ export default function ProfileForm({
           ]}
         >
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {isAccountSetup ? "Setup your Account" : "Personal Information"}
-            </Text>
+            <View style={styles.headerContainer}>
+              {isAccountSetup && onLogout && (
+                <TouchableOpacity style={styles.backButton} onPress={onLogout}>
+                  <Ionicons
+                    name="chevron-back"
+                    size={24}
+                    color={Colors.primary500}
+                  />
+                </TouchableOpacity>
+              )}
+              <Text style={styles.sectionTitle}>
+                {isAccountSetup ? "Setup your Account" : "Personal Information"}
+              </Text>
+            </View>
 
             <Text style={styles.label}>First Name</Text>
             <TextInput
@@ -308,6 +322,17 @@ const styles = StyleSheet.create({
   accountSetupContainer: {
     paddingTop: 60,
   },
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  backButton: {
+    marginRight: 10,
+    padding: 5,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   section: {
     paddingHorizontal: 20,
   },
@@ -315,7 +340,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
     color: Colors.primary500,
-    marginBottom: 10,
+    textAlignVertical: "center",
   },
   label: {
     fontSize: 16,
