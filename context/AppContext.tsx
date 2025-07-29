@@ -62,7 +62,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           const userData = JSON.parse(storedUser);
           setAuthToken(storedToken);
           setIsAuthenticated(true);
-          setUserId(userData._id);
+          setUserId(userData.uid);
           setProfile(userData);
         }
       } catch (error) {

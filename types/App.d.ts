@@ -1,4 +1,5 @@
 export type Profile = {
+  uid?: string; // Firebase UID
   email: string;
   firstName: string;
   lastName: string;
