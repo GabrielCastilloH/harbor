@@ -2,11 +2,11 @@ import React, { useState, useEffect, useMemo } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import axios from "axios";
 import ChatList from "../screens/ChatList";
 import ChatScreen from "../screens/ChatScreen";
 import LoadingScreen from "../components/LoadingScreen";
 import Colors from "../constants/Colors";
+import { FirebaseService } from "../networking/FirebaseService";
 import {
   OverlayProvider,
   Chat,
@@ -88,7 +88,6 @@ export default function ChatNavigator() {
   const { userId } = useAppContext();
   const [profile, setProfile] = useState<any>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-  const serverUrl = process.env.SERVER_URL;
 
   // Define these states at the top level - always need to be declared
   const [chatUserToken, setChatUserToken] = useState<string | null>(null);
@@ -122,21 +121,21 @@ export default function ChatNavigator() {
 
       setIsLoadingProfile(true);
       try {
-        const response = await axios.get(`${serverUrl}/users/${userId}`);
+        const response = await FirebaseService.getUserById(userId);
 
         // Check if the response has data directly or within a user property
-        if (response.data) {
+        if (response) {
           // If response contains data directly as the user object
-          if (response.data._id) {
-            setProfile(response.data);
+          if (response._id) {
+            setProfile(response);
           }
           // If response contains data in the user property
-          else if (response.data.user && response.data.user._id) {
-            setProfile(response.data.user);
+          else if (response.user && response.user._id) {
+            setProfile(response.user);
           } else {
             console.error(
               "ChatNavigator - Invalid profile data format:",
-              response.data
+              response
             );
           }
         } else {
@@ -144,20 +143,13 @@ export default function ChatNavigator() {
         }
       } catch (error) {
         console.error("ChatNavigator - Failed to fetch user profile:", error);
-        if (axios.isAxiosError(error)) {
-          console.error("ChatNavigator - Status:", error.response?.status);
-          console.error(
-            "ChatNavigator - Response data:",
-            JSON.stringify(error.response?.data, null, 2)
-          );
-        }
       } finally {
         setIsLoadingProfile(false);
       }
     };
 
     fetchUserProfile();
-  }, [userId, serverUrl]);
+  }, [userId]);
 
   // Fetch the token when profile is loaded - now using userId
   useEffect(() => {
@@ -172,18 +164,11 @@ export default function ChatNavigator() {
         setChatUserToken(token);
       } catch (error: unknown) {
         console.error("ChatNavigator - Failed to fetch chat token:", error);
-        if (axios.isAxiosError(error)) {
-          console.error("ChatNavigator - Status:", error.response?.status);
-          console.error(
-            "ChatNavigator - Response data:",
-            JSON.stringify(error.response?.data, null, 2)
-          );
-        }
       }
     }
 
     getToken();
-  }, [userId, serverUrl]);
+  }, [userId]);
 
   // Log state changes
   useEffect(() => {

@@ -11,9 +11,7 @@ import { Channel, MessageInput, MessageList } from "stream-chat-expo";
 import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
 import { updateMessageCount } from "../networking/ChatFunctions";
-import axios from "axios";
-
-const serverUrl = process.env.SERVER_URL;
+import { FirebaseService } from "../networking/FirebaseService";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
@@ -33,8 +31,9 @@ export default function ChatScreen() {
 
       if (otherUserId) {
         try {
-          const response = await axios.get(
-            `${serverUrl}/blur/${userId}/${otherUserId}`
+          const response = await FirebaseService.getBlurLevel(
+            userId,
+            otherUserId
           );
           const {
             warningShown,
@@ -42,7 +41,7 @@ export default function ChatScreen() {
             user1Agreed,
             user2Agreed,
             user1Id,
-          } = response.data;
+          } = response;
 
           // Show warning and freeze chat if warning was shown but not both agreed
           if (warningShown && !bothAgreed) {
@@ -63,13 +62,13 @@ export default function ChatScreen() {
   const handleWarningResponse = async (agreed: boolean) => {
     try {
       const matchId = channel?.data?.matchId;
-      if (!matchId) return;
+      if (!matchId || !userId) return;
 
-      const response = await axios.post(`${serverUrl}/blur/warning-response`, {
-        userId,
+      const response = await FirebaseService.handleWarningResponse(
         matchId,
-        agreed,
-      });
+        userId,
+        agreed
+      );
 
       if (agreed) {
         setUserAgreed(true);
@@ -120,16 +119,16 @@ export default function ChatScreen() {
             (key) => key !== userId
           );
 
-          if (otherUserId) {
+          if (otherUserId && userId) {
             // Then update the blur level
             console.log("ChatScreen - Updating blur level for users:", {
               userId,
               otherUserId,
             });
-            const response = await axios.post(`${serverUrl}/blur/update`, {
-              userId: userId,
-              matchedUserId: otherUserId,
-            });
+            const response = await FirebaseService.updateBlurLevelForMessage(
+              userId,
+              otherUserId
+            );
 
             // Handle warning state
             if (response.data.shouldShowWarning) {

@@ -14,11 +14,9 @@ import AnimatedStack from "../components/AnimatedStack";
 import MatchModal from "./MatchModal";
 import LoadingScreen from "../components/LoadingScreen";
 import { Profile } from "../types/App";
-import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import SocketService from "../util/SocketService";
-
-const serverUrl = process.env.SERVER_URL;
+import { FirebaseService } from "../networking/FirebaseService";
 
 export default function HomeScreen() {
   const { userId } = useAppContext();
@@ -69,9 +67,9 @@ export default function HomeScreen() {
       if (!userId) return;
       setLoadingProfile(true);
       try {
-        const response = await axios.get(`${serverUrl}/users/${userId}`);
-        if (response.data) {
-          setUserProfile(response.data.user || response.data);
+        const response = await FirebaseService.getUserById(userId);
+        if (response) {
+          setUserProfile(response.user || response);
         }
       } catch (error) {
         console.error("Error fetching user profile:", error);
@@ -88,13 +86,11 @@ export default function HomeScreen() {
       if (!userId) return;
       setLoadingRecommendations(true);
       try {
-        const response = await axios.get(
-          `${serverUrl}/users/${userId}/recommendations`
-        );
-        if (response.data && response.data.recommendations) {
-          setRecommendations(response.data.recommendations);
-          if (response.data.recommendations.length > 0) {
-            setCurrentProfile(response.data.recommendations[0]);
+        const response = await FirebaseService.getRecommendations(userId);
+        if (response && response.recommendations) {
+          setRecommendations(response.recommendations);
+          if (response.recommendations.length > 0) {
+            setCurrentProfile(response.recommendations[0]);
           }
         }
       } catch (error) {
@@ -136,15 +132,17 @@ export default function HomeScreen() {
       return;
     }
 
+    if (!userId) return;
+
     try {
       setSwipeInProgress(true);
       setLastSwipedProfile(profile._id);
 
-      const response = await axios.post(`${serverUrl}/swipes`, {
-        swiperId: userId,
-        swipedId: profile._id,
-        direction: "right",
-      });
+      const response = await FirebaseService.createSwipe(
+        userId,
+        profile._id,
+        "right"
+      );
 
       // If it's a match, show the match modal
       if (response.data.match) {
