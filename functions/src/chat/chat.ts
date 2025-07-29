@@ -40,6 +40,62 @@ async function getStreamClient(): Promise<StreamChat> {
 }
 
 /**
+ * Exposes Stream API key to frontend
+ */
+export const getStreamApiKey = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest) => {
+    try {
+      console.log("getStreamApiKey function called");
+
+      if (!request.auth) {
+        console.log("getStreamApiKey - User not authenticated");
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      // Get Stream API key from Secret Manager
+      const [streamApiKeyVersion] = await secretManager.accessSecretVersion({
+        name: "projects/harbor-ch/secrets/STREAM_API_KEY/versions/latest",
+      });
+
+      const apiKey = streamApiKeyVersion.payload?.data?.toString() || "";
+
+      if (!apiKey) {
+        throw new functions.https.HttpsError(
+          "internal",
+          "Stream API key not found"
+        );
+      }
+
+      console.log("getStreamApiKey - API key retrieved successfully");
+      return { apiKey };
+    } catch (error: any) {
+      console.error("getStreamApiKey - Error:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to get Stream API key"
+      );
+    }
+  }
+);
+
+/**
  * Generates Stream Chat token for authenticated user
  */
 export const generateUserToken = functions.https.onCall(
@@ -349,6 +405,7 @@ export const updateMessageCount = functions.https.onCall(
 export const chatFunctions = {
   generateUserToken,
   generateToken,
+  getStreamApiKey,
   createChatChannel,
   createChannel: createChatChannel, // Alias for client-side call
   updateChannelChatStatus,

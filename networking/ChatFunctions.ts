@@ -5,6 +5,22 @@ import { logToNtfy } from "../util/debugUtils";
 const functions = getFunctions(app, "us-central1");
 
 export class ChatFunctions {
+  static async getStreamApiKey() {
+    console.log("ChatFunctions - getStreamApiKey called");
+
+    try {
+      const getStreamApiKey = httpsCallable(functions, "chat-getStreamApiKey");
+      const result = await getStreamApiKey();
+      const data = result.data as { apiKey: string };
+
+      console.log("ChatFunctions - API Key retrieved");
+      return data.apiKey;
+    } catch (error: any) {
+      console.error("ChatFunctions - Error getting API key:", error);
+      throw error;
+    }
+  }
+
   static async generateToken(userId: string) {
     console.log("ChatFunctions - generateToken called with:", userId);
     await logToNtfy(
