@@ -144,11 +144,7 @@ export const getActiveMatches = functions.https.onRequest(async (req, res) => {
       return;
     }
 
-    const matchesSnapshot = await db
-      .collection("matches")
-      .where("isActive", "==", true)
-      .where(admin.firestore.FieldPath.documentId(), "in", [])
-      .get();
+    // Get user's current matches
 
     // Get user's current matches
     const userDoc = await db.collection("users").doc(id).get();
@@ -358,12 +354,6 @@ export const incrementMatchMessages = functions.https.onRequest(
  * @returns Promise<FirebaseFirestore.QueryDocumentSnapshot | null> Match document or null
  */
 async function findMatchByUsers(user1Id: string, user2Id: string) {
-  const matchesSnapshot = await db
-    .collection("matches")
-    .where("isActive", "==", true)
-    .where(admin.firestore.FieldPath.documentId(), "in", [])
-    .get();
-
   // Check both possible combinations
   const match1 = await db
     .collection("matches")
