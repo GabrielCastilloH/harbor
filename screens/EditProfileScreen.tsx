@@ -7,13 +7,11 @@ import {
   Platform,
 } from "react-native";
 import { Profile } from "../types/App";
-import axios from "axios";
 import { useAppContext } from "../context/AppContext";
 import { uploadImageToServer } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 import Colors from "../constants/Colors";
-
-const serverUrl = process.env.SERVER_URL;
+import { FirebaseService } from "../networking/FirebaseService";
 
 const emptyProfile: Profile = {
   _id: "",
@@ -54,8 +52,8 @@ export default function EditProfileScreen() {
 
       setLoading(true);
       try {
-        const response = await axios.get(`${serverUrl}/users/${userId}`);
-        const userData = response.data.user || response.data;
+        const response = await FirebaseService.getUserById(userId);
+        const userData = response.user || response;
         setProfileData(userData);
         setProfile(userData);
       } catch (error) {
@@ -127,8 +125,8 @@ export default function EditProfileScreen() {
       console.log("Sending profile update to server...");
       console.log("Final images array length:", finalProfileData.images.length);
 
-      const response = await axios.post(
-        `${serverUrl}/users/${userId}`,
+      const response = await FirebaseService.updateUser(
+        userId,
         finalProfileData
       );
       console.log("Profile update response status:", response.status);
@@ -140,43 +138,10 @@ export default function EditProfileScreen() {
     } catch (error: any) {
       // Error handling
       console.error("Failed to save profile:", error);
-      // Log detailed error information
-      if (axios.isAxiosError(error)) {
-        console.error("Status:", error.response?.status);
 
-        if (error.response?.data) {
-          const errorData =
-            typeof error.response.data === "object"
-              ? JSON.stringify(error.response.data).substring(0, 200) + "..."
-              : String(error.response.data).substring(0, 200) + "...";
-          console.error("Response data (truncated):", errorData);
-        }
-
-        if (error.config?.url) {
-          console.error("Request URL:", error.config.url);
-        }
-
-        if (error.config?.method) {
-          console.error("Request method:", error.config.method);
-        }
-      }
-
-      // Attempt to extract error details from the backend response.
+      // Attempt to extract error details from the response.
       let errorMessage = "Failed to save profile";
-      if (error.response && error.response.data) {
-        if (error.response.data.message) {
-          errorMessage = error.response.data.message;
-        }
-        if (error.response.data.errors) {
-          const errorsArray = error.response.data.errors;
-          if (Array.isArray(errorsArray)) {
-            errorMessage +=
-              "\n" + errorsArray.map((e) => e.msg || e).join("\n");
-          } else {
-            errorMessage += "\n" + JSON.stringify(errorsArray);
-          }
-        }
-      } else if (error.message) {
+      if (error.message) {
         errorMessage = error.message;
       }
 
