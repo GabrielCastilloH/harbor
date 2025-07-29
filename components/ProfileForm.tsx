@@ -148,7 +148,12 @@ export default function ProfileForm({
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView style={styles.container}>
+        <ScrollView
+          style={[
+            styles.container,
+            isAccountSetup && styles.accountSetupContainer,
+          ]}
+        >
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
               {isAccountSetup ? "Setup your Account" : "Personal Information"}
@@ -299,6 +304,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.secondary100,
+  },
+  accountSetupContainer: {
+    paddingTop: 60,
   },
   section: {
     paddingHorizontal: 20,
