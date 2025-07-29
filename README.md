@@ -7,31 +7,56 @@ A unique dating app that focuses on meaningful connections through progressive p
 ### Prerequisites
 
 - Node.js (v18 or higher)
-- MongoDB account
+- Firebase project
+- Google Cloud project (for Secret Manager)
 - Xcode for iOS development
 - npm or yarn package manager
 
-### Backend Setup
+### Firebase Setup
 
-1. Configure MongoDB:
+1. **Create Firebase Project:**
 
-   - Visit [MongoDB Atlas](https://mongodb.com)
-   - Add your IP address to the allowlist
-   - (Optional) Connect using MongoDB Compass for database monitoring
+   - Visit [Firebase Console](https://console.firebase.google.com)
+   - Create a new project
+   - Enable Firestore, Storage, and Functions
 
-2. Install and Run Backend:
+2. **Set up Google Secret Manager:**
+
+   - Go to [Google Cloud Console](https://console.cloud.google.com)
+   - Navigate to Secret Manager
+   - Create secrets for `STREAM_API_KEY` and `STREAM_API_SECRET`
+
+3. **Configure Firebase Functions:**
+
    ```bash
-   cd backend
+   npm install -g firebase-tools
+   firebase login
+   firebase init functions
+   ```
+
+4. **Deploy Functions:**
+   ```bash
+   cd functions
    npm install
-   npm start
+   npm run build
+   firebase deploy --only functions
    ```
 
 ### Frontend Setup
 
-1. Install Dependencies and Run:
+1. **Install Dependencies:**
+
    ```bash
-   cd frontend
    npm install
+   ```
+
+2. **Configure Environment Variables:**
+
+   - Add your Firebase config to `firebaseConfig.ts`
+   - Set up Google Sign-In credentials
+
+3. **Run the App:**
+   ```bash
    npx expo run:ios
    ```
 
@@ -68,4 +93,4 @@ A unique dating app that focuses on meaningful connections through progressive p
 - Additional privacy features
 - Profile customization options
 
-Built with ❤️ using React Native, Expo, and MongoDB
+Built with ❤️ using React Native, Expo, and Firebase
