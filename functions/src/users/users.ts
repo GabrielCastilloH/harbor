@@ -1,8 +1,63 @@
 import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { CallableRequest } from "firebase-functions/v2/https";
+import { StreamChat } from "stream-chat";
+import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 
 const db = admin.firestore();
+const secretManager = new SecretManagerServiceClient();
+
+let streamClient: StreamChat | null = null;
+
+/**
+ * Initialize Stream Chat client with secrets from Google Secret Manager
+ */
+async function getStreamClient(): Promise<StreamChat> {
+  if (streamClient) return streamClient;
+
+  try {
+    // Get Stream API credentials from Secret Manager
+    const [streamApiKeyVersion] = await secretManager.accessSecretVersion({
+      name: "projects/harbor-ch/secrets/STREAM_API_KEY/versions/latest",
+    });
+    const [streamApiSecretVersion] = await secretManager.accessSecretVersion({
+      name: "projects/harbor-ch/secrets/STREAM_API_SECRET/versions/latest",
+    });
+
+    const apiKey = streamApiKeyVersion.payload?.data?.toString() || "";
+    const apiSecret = streamApiSecretVersion.payload?.data?.toString() || "";
+
+    if (!apiKey || !apiSecret) {
+      throw new Error("Missing Stream API credentials");
+    }
+
+    streamClient = StreamChat.getInstance(apiKey, apiSecret);
+    return streamClient;
+  } catch (error) {
+    console.error("Error getting Stream client:", error);
+    throw error;
+  }
+}
+
+/**
+ * Creates a user in Stream Chat
+ */
+async function createStreamUser(userId: string, firstName: string) {
+  try {
+    const serverClient = await getStreamClient();
+
+    // Create user in Stream Chat with just the first name
+    await serverClient.upsertUser({
+      id: userId,
+      name: firstName,
+    });
+
+    console.log(`Stream Chat user created: ${userId} with name: ${firstName}`);
+  } catch (error) {
+    console.error("Error creating Stream Chat user:", error);
+    // Don't throw error here as we don't want to fail the entire user creation
+  }
+}
 
 interface CreateUserData {
   firstName: string;
@@ -54,7 +109,10 @@ export const createUser = functions.https.onCall(
   },
   async (request: CallableRequest<CreateUserData>) => {
     try {
+      console.log("createUser function called with:", request.data);
+
       if (!request.auth) {
+        console.log("createUser - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -62,73 +120,65 @@ export const createUser = functions.https.onCall(
       }
 
       const userData = request.data;
+      const { email, firstName, lastName } = userData;
 
-      if (!userData || Object.keys(userData).length === 0) {
+      if (!email || !firstName || !lastName) {
+        console.log("createUser - Missing required fields:", {
+          email,
+          firstName,
+          lastName,
+        });
         throw new functions.https.HttpsError(
           "invalid-argument",
-          "Request data is required"
+          "Email, firstName, and lastName are required"
         );
       }
 
-      const {
-        firstName,
-        lastName,
-        yearLevel,
-        age,
-        major,
-        images,
-        aboutMe,
-        yearlyGoal,
-        potentialActivities,
-        favoriteMedia,
-        majorReason,
-        studySpot,
-        hobbies,
-        email,
-      } = userData;
+      console.log("createUser - Creating user with email:", email);
 
-      if (!firstName || !lastName || !email) {
+      // Check if user already exists
+      const existingUser = await db.collection("users").doc(email).get();
+      if (existingUser.exists) {
+        console.log("createUser - User already exists:", email);
         throw new functions.https.HttpsError(
-          "invalid-argument",
-          "First name, last name, and email are required"
+          "already-exists",
+          "User already exists"
         );
       }
 
+      // Create new user data
       const newUserData = {
-        firstName,
-        lastName,
-        yearLevel: yearLevel || "",
-        age: age ? Number(age) : 0,
-        major: major || "",
-        images: images || [],
-        aboutMe: aboutMe || "",
-        yearlyGoal: yearlyGoal || "",
-        potentialActivities: potentialActivities || "",
-        favoriteMedia: favoriteMedia || "",
-        majorReason: majorReason || "",
-        studySpot: studySpot || "",
-        hobbies: hobbies || "",
-        email,
-        currentMatches: [],
-        isPremium: false,
+        _id: email,
+        ...userData,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        currentMatches: [],
+        isPremium: false,
       };
+
+      console.log("createUser - Saving user to Firestore:", email);
 
       // Use email as document ID for easy lookup
       await db.collection("users").doc(email).set(newUserData);
 
+      console.log(
+        "createUser - User saved to Firestore, creating Stream Chat user"
+      );
+
+      // Create a corresponding user in Stream Chat
+      await createStreamUser(email, firstName);
+
+      console.log("createUser - User creation completed successfully:", email);
+
       return {
         message: "User created successfully",
-        user: { ...newUserData, _id: email },
+        user: newUserData,
       };
     } catch (error: any) {
-      console.error("Error creating user:", error);
-
+      console.error("createUser - Error:", error);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-
       throw new functions.https.HttpsError("internal", "Failed to create user");
     }
   }
