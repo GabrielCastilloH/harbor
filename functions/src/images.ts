@@ -129,7 +129,6 @@ export const getImage = functions.https.onRequest(async (req, res) => {
       return;
     }
 
-    const imageOwner = usersSnapshot.docs[0].data();
     const imageOwnerId = usersSnapshot.docs[0].id;
 
     // If requesting user owns the image, return unblurred
