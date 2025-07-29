@@ -5,6 +5,7 @@ import {
   getAuth,
   signInWithCredential,
   GoogleAuthProvider,
+  signOut,
 } from "firebase/auth";
 import { auth, db } from "../firebaseConfig";
 import NetInfo from "@react-native-community/netinfo";
@@ -86,7 +87,16 @@ export default function GoogleSignInButton({
           "Please check your internet connection and try again."
         );
       } else if (error.code === "SIGN_IN_CANCELLED") {
-        // User cancelled sign-in, no need to show error
+        // User cancelled sign-in - ensure we're completely signed out
+        try {
+          await GoogleSignin.signOut();
+          await signOut(auth);
+        } catch (signOutError) {
+          console.log(
+            "Error during sign out after cancellation:",
+            signOutError
+          );
+        }
         return;
       } else {
         onError(error);
