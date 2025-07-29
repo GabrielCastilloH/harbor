@@ -42,6 +42,16 @@ export default function ProfileForm({
   onSave,
   onLogout,
 }: ProfileFormProps) {
+  const [isReady, setIsReady] = React.useState(false);
+
+  React.useEffect(() => {
+    // Small delay to ensure SafeAreaView is properly initialized
+    const timer = setTimeout(() => {
+      setIsReady(true);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
   const handleChange = (
     key: keyof Profile,
     value: string | number | string[]
@@ -137,7 +147,7 @@ export default function ProfileForm({
     handleChange("images", newImages);
   };
 
-  if (loading) {
+  if (loading || !isReady) {
     return (
       <View style={styles.loadingContainer}>
         <Text>Loading profile...</Text>
@@ -146,12 +156,16 @@ export default function ProfileForm({
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView style={[styles.container]}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.section}>
             <View style={styles.headerContainer}>
               {isAccountSetup && onLogout && (
