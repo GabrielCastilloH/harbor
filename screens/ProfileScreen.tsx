@@ -20,10 +20,10 @@ import BasicInfoView from "../components/BasicInfoView";
 import AcademicView from "../components/AcademicView";
 import PersonalView from "../components/PersonalView";
 import { getImageSource } from "../util/imageUtils";
-import axios from "axios";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
 import { unmatch } from "../networking/MatchService";
+import { FirebaseService } from "../networking/FirebaseService";
 
 type ProfileScreenParams = {
   ProfileScreen: {
@@ -55,9 +55,9 @@ export default function ProfileScreen() {
       }
 
       try {
-        const response = await axios.get(`${serverUrl}/users/${userId}`);
-        if (response.data) {
-          setProfile(response.data.user || response.data);
+        const response = await FirebaseService.getUserById(userId);
+        if (response) {
+          setProfile(response.user || response);
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -75,10 +75,11 @@ export default function ProfileScreen() {
       if (!userId || !currentUserId || userId === currentUserId) return;
 
       try {
-        const response = await axios.get(
-          `${serverUrl}/blur/${currentUserId}/${userId}`
+        const response = await FirebaseService.getBlurLevel(
+          currentUserId,
+          userId
         );
-        if (response.data.shouldShowWarning) {
+        if (response.shouldShowWarning) {
           setShowBlurWarning(true);
         }
       } catch (error) {
@@ -142,26 +143,22 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary500} />
-        </View>
-      </SafeAreaView>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary500} />
+      </View>
     );
   }
 
   if (!profile) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text>No profile data available</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.loadingContainer}>
+        <Text>No profile data available</Text>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={{ flex: 1 }}>
       <ScrollView style={styles.scrollView}>
         <ScrollView
           horizontal
@@ -242,10 +239,6 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.secondary100,
-  },
   scrollView: {
     flex: 1,
     backgroundColor: Colors.secondary100,
@@ -275,6 +268,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: Colors.secondary100,
   },
   unmatchButton: {
     marginRight: 15,
