@@ -174,6 +174,7 @@ export const createUser = functions.https.onCall(
 
       const userData = request.data;
       const { email, firstName, lastName } = userData;
+      const firebaseUid = request.auth.uid;
 
       await logToNtfy(
         "createUser - Extracted user data: " +
@@ -181,6 +182,7 @@ export const createUser = functions.https.onCall(
             email,
             firstName,
             lastName,
+            firebaseUid,
           })
       );
 
@@ -199,34 +201,46 @@ export const createUser = functions.https.onCall(
         );
       }
 
-      await logToNtfy("createUser - Creating user with email: " + email);
+      await logToNtfy("createUser - Creating user with UID: " + firebaseUid);
       await logToNtfy("createUser - First name for Stream Chat: " + firstName);
 
-      // Check if user already exists
-      const existingUser = await db.collection("users").doc(email).get();
+      // Check if user already exists by Firebase UID
+      const existingUser = await db.collection("users").doc(firebaseUid).get();
       if (existingUser.exists) {
-        console.log("createUser - User already exists:", email);
+        console.log("createUser - User already exists:", firebaseUid);
         throw new functions.https.HttpsError(
           "already-exists",
           "User already exists"
         );
       }
 
-      // Create new user data
+      // Create new user data using Firebase UID as document ID
       const newUserData = {
-        _id: email,
-        uid: request.auth.uid, // Store the Firebase Auth UID for reference
-        ...userData,
+        uid: firebaseUid, // Store the Firebase Auth UID as the primary identifier
+        email: email, // Store email as a field
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        yearLevel: userData.yearLevel,
+        age: userData.age,
+        major: userData.major,
+        images: userData.images,
+        aboutMe: userData.aboutMe,
+        yearlyGoal: userData.yearlyGoal,
+        potentialActivities: userData.potentialActivities,
+        favoriteMedia: userData.favoriteMedia,
+        majorReason: userData.majorReason,
+        studySpot: userData.studySpot,
+        hobbies: userData.hobbies,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         currentMatches: [],
         isPremium: false,
       };
 
-      console.log("createUser - Saving user to Firestore:", email);
+      console.log("createUser - Saving user to Firestore:", firebaseUid);
 
-      // Use email as document ID for easy lookup
-      await db.collection("users").doc(email).set(newUserData);
+      // Use Firebase UID as document ID for easy lookup
+      await db.collection("users").doc(firebaseUid).set(newUserData);
 
       await logToNtfy(
         "createUser - User saved to Firestore, creating Stream Chat user"
@@ -234,21 +248,21 @@ export const createUser = functions.https.onCall(
       await logToNtfy(
         "createUser - About to call createStreamUser with: " +
           JSON.stringify({
-            email,
+            firebaseUid,
             firstName,
           })
       );
 
-      // Create a corresponding user in Stream Chat
+      // Create a corresponding user in Stream Chat using Firebase UID
       await logToNtfy("createUser - CALLING createStreamUser NOW");
-      await createStreamUser(email, firstName);
+      await createStreamUser(firebaseUid, firstName);
       await logToNtfy("createUser - createStreamUser CALL COMPLETED");
 
       await logToNtfy(
-        "createUser - Stream Chat user creation completed for: " + email
+        "createUser - Stream Chat user creation completed for: " + firebaseUid
       );
       await logToNtfy(
-        "createUser - User creation completed successfully: " + email
+        "createUser - User creation completed successfully: " + firebaseUid
       );
 
       return {
@@ -304,7 +318,7 @@ export const getAllUsers = functions.https.onCall(
 );
 
 /**
- * Fetches user by ID (email)
+ * Fetches user by ID (Firebase UID)
  */
 export const getUserById = functions.https.onCall(
   {
@@ -342,26 +356,26 @@ export const getUserById = functions.https.onCall(
       await logToNtfy(`getUserById - Fetching user with ID: ${id}`);
       console.log("getUserById - Fetching user with ID:", id);
 
-      // Try to find user by email first (document ID)
+      // Try to find user by Firebase UID first (document ID)
       let userDoc = await db.collection("users").doc(id).get();
 
-      // If not found by email, try to find by UID
+      // If not found by UID, try to find by email (for backward compatibility)
       if (!userDoc.exists) {
         await logToNtfy(
-          `getUserById - User not found by email, trying UID lookup for: ${id}`
+          `getUserById - User not found by UID, trying email lookup for: ${id}`
         );
-        console.log("getUserById - User not found by email, trying UID lookup");
+        console.log("getUserById - User not found by UID, trying email lookup");
         const usersSnapshot = await db
           .collection("users")
-          .where("uid", "==", id)
+          .where("email", "==", id)
           .limit(1)
           .get();
         if (!usersSnapshot.empty) {
           userDoc = usersSnapshot.docs[0];
-          await logToNtfy(`getUserById - User found by UID: ${id}`);
+          await logToNtfy(`getUserById - User found by email: ${id}`);
         }
       } else {
-        await logToNtfy(`getUserById - User found by email: ${id}`);
+        await logToNtfy(`getUserById - User found by UID: ${id}`);
       }
 
       if (!userDoc.exists) {

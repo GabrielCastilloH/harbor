@@ -13,7 +13,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
 const emptyProfile: Profile = {
-  _id: "",
   email: "",
   firstName: "",
   lastName: "",
@@ -137,13 +136,12 @@ export default function AccountSetupScreen() {
       );
 
       // STEP 3: Update app state
-      // Use email as user ID since that's how the user was stored in Firestore
-      const userEmail = currentUser.email || "";
-      setUserId(userEmail);
+      // Use Firebase UID as user ID since that's how the user is stored in Firestore
+      const firebaseUid = currentUser.uid;
+      setUserId(firebaseUid);
       setProfile({
         ...profileData,
-        _id: userEmail,
-        email: userEmail,
+        email: currentUser.email || "",
         images: imageFileIds,
       });
 
