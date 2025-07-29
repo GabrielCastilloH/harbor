@@ -6,6 +6,13 @@ import SignIn from "./screens/SignIn";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import AccountSetupScreen from "./screens/AccountSetupScreen";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+
+// Configure Google Sign-In
+GoogleSignin.configure({
+  webClientId:
+    "838717009645-sd8ije9crjfkn8ged999d0lnj2n9msnf.apps.googleusercontent.com",
+});
 
 function AppContent() {
   const { isAuthenticated, userId } = useAppContext();

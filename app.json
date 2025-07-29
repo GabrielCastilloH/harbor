@@ -15,11 +15,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gabrielach.harbor",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
-              "com.googleusercontent.apps.539393094267-90ij57ok6vgi1ra0p5tb23scagreoq9i"
+              "com.googleusercontent.apps.838717009645-961tv8m765fpj2dk96ecg2epv13igjdu"
             ]
           }
         ]
@@ -34,7 +35,8 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
-      "package": "com.gabrielach.harbor"
+      "package": "com.gabrielach.harbor",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
