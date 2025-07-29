@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Alert, ActivityIndicator, View } from "react-native";
+import {
+  Alert,
+  ActivityIndicator,
+  View,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { Profile } from "../types/App";
 import axios from "axios";
 import { useAppContext } from "../context/AppContext";
@@ -181,11 +187,16 @@ export default function EditProfileScreen() {
   };
 
   return (
-    <ProfileForm
-      profileData={profileData}
-      onProfileChange={setProfileData}
-      loading={loading}
-      onSave={handleSave}
-    />
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ProfileForm
+        profileData={profileData}
+        onProfileChange={setProfileData}
+        loading={loading}
+        onSave={handleSave}
+      />
+    </KeyboardAvoidingView>
   );
 }

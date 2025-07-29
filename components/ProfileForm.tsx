@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
@@ -141,143 +143,162 @@ export default function ProfileForm({
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.section}>
-        <Text
-          style={[
-            styles.sectionTitle,
-            { marginTop: isAccountSetup ? 100 : 15 },
-          ]}
-        >
-          {isAccountSetup ? "Setup your Account" : "Personal Information"}
-        </Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView style={styles.container}>
+        <View style={styles.section}>
+          <Text
+            style={[
+              styles.sectionTitle,
+              { marginTop: isAccountSetup ? 100 : 15 },
+            ]}
+          >
+            {isAccountSetup ? "Setup your Account" : "Personal Information"}
+          </Text>
 
-        <Text style={styles.label}>First Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="First Name"
-          value={profileData.firstName}
-          onChangeText={(text) => handleChange("firstName", text)}
-        />
+          <Text style={styles.label}>First Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="First Name"
+            value={profileData.firstName}
+            onChangeText={(text) => handleChange("firstName", text)}
+          />
 
-        <Text style={styles.label}>Last Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Last Name"
-          value={profileData.lastName}
-          onChangeText={(text) => handleChange("lastName", text)}
-        />
+          <Text style={styles.label}>Last Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Last Name"
+            value={profileData.lastName}
+            onChangeText={(text) => handleChange("lastName", text)}
+          />
 
-        <Text style={styles.label}>Age</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Age"
-          value={profileData.age ? profileData.age.toString() : ""}
-          onChangeText={(text) => handleChange("age", Number(text))}
-          keyboardType="numeric"
-        />
+          <Text style={styles.label}>Age</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Age"
+            value={profileData.age ? profileData.age.toString() : ""}
+            onChangeText={(text) => handleChange("age", Number(text))}
+            keyboardType="numeric"
+          />
 
-        <Text style={styles.label}>Year Level</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Year Level"
-          value={profileData.yearLevel}
-          onChangeText={(text) => handleChange("yearLevel", text)}
-        />
+          <Text style={styles.label}>Year Level</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Year Level"
+            value={profileData.yearLevel}
+            onChangeText={(text) => handleChange("yearLevel", text)}
+          />
 
-        <Text style={styles.label}>Major</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Major"
-          value={profileData.major}
-          onChangeText={(text) => handleChange("major", text)}
-        />
+          <Text style={styles.label}>Major</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Major"
+            value={profileData.major}
+            onChangeText={(text) => handleChange("major", text)}
+          />
 
-        <Text style={styles.label}>About Me</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Tell us about yourself..."
-          value={profileData.aboutMe}
-          onChangeText={(text) => handleChange("aboutMe", text)}
-        />
+          <Text style={styles.label}>About Me</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Tell us about yourself..."
+            value={profileData.aboutMe}
+            onChangeText={(text) => handleChange("aboutMe", text)}
+            multiline
+            numberOfLines={3}
+          />
 
-        <Text style={styles.label}>This year, I really want to</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="This year, I want to..."
-          value={profileData.yearlyGoal}
-          onChangeText={(text) => handleChange("yearlyGoal", text)}
-        />
+          <Text style={styles.label}>This year, I really want to</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="This year, I want to..."
+            value={profileData.yearlyGoal}
+            onChangeText={(text) => handleChange("yearlyGoal", text)}
+            multiline
+            numberOfLines={3}
+          />
 
-        <Text style={styles.label}>Together we could</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="We could..."
-          value={profileData.potentialActivities}
-          onChangeText={(text) => handleChange("potentialActivities", text)}
-        />
+          <Text style={styles.label}>Together we could</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="We could..."
+            value={profileData.potentialActivities}
+            onChangeText={(text) => handleChange("potentialActivities", text)}
+            multiline
+            numberOfLines={3}
+          />
 
-        <Text style={styles.label}>I chose my major because...</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="I chose my major because..."
-          value={profileData.majorReason}
-          onChangeText={(text) => handleChange("majorReason", text)}
-        />
+          <Text style={styles.label}>I chose my major because...</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="I chose my major because..."
+            value={profileData.majorReason}
+            onChangeText={(text) => handleChange("majorReason", text)}
+            multiline
+            numberOfLines={3}
+          />
 
-        <Text style={styles.label}>My favorite study spot is</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="My favorite study spot is..."
-          value={profileData.studySpot}
-          onChangeText={(text) => handleChange("studySpot", text)}
-        />
+          <Text style={styles.label}>My favorite study spot is</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="My favorite study spot is..."
+            value={profileData.studySpot}
+            onChangeText={(text) => handleChange("studySpot", text)}
+            multiline
+            numberOfLines={3}
+          />
 
-        <Text style={styles.label}>Some of my hobbies are</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="In my free time, I like to..."
-          value={profileData.hobbies}
-          onChangeText={(text) => handleChange("hobbies", text)}
-        />
+          <Text style={styles.label}>Some of my hobbies are</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="In my free time, I like to..."
+            value={profileData.hobbies}
+            onChangeText={(text) => handleChange("hobbies", text)}
+            multiline
+            numberOfLines={3}
+          />
 
-        <Text style={styles.label}>Favorite book, movie or song</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="My favorite book/movie/song is..."
-          value={profileData.favoriteMedia}
-          onChangeText={(text) => handleChange("favoriteMedia", text)}
-        />
-      </View>
+          <Text style={styles.label}>Favorite book, movie or song</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="My favorite book/movie/song is..."
+            value={profileData.favoriteMedia}
+            onChangeText={(text) => handleChange("favoriteMedia", text)}
+            multiline
+            numberOfLines={3}
+          />
+        </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Profile Images</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {profileData.images.map((image, index) => (
-            <View key={index} style={styles.imageContainer}>
-              {image.startsWith("file:") || image.startsWith("data:") ? (
-                <Image source={{ uri: image }} style={styles.image} />
-              ) : (
-                <CachedImage fileId={image} style={styles.image} />
-              )}
-              <TouchableOpacity
-                style={styles.removeButton}
-                onPress={() => removeImage(index)}
-              >
-                <Text style={styles.removeButtonText}>X</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-          <TouchableOpacity style={styles.addButton} onPress={pickImage}>
-            <Text style={styles.addButtonText}>+</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Profile Images</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {profileData.images.map((image, index) => (
+              <View key={index} style={styles.imageContainer}>
+                {image.startsWith("file:") || image.startsWith("data:") ? (
+                  <Image source={{ uri: image }} style={styles.image} />
+                ) : (
+                  <CachedImage fileId={image} style={styles.image} />
+                )}
+                <TouchableOpacity
+                  style={styles.removeButton}
+                  onPress={() => removeImage(index)}
+                >
+                  <Text style={styles.removeButtonText}>X</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+            <TouchableOpacity style={styles.addButton} onPress={pickImage}>
+              <Text style={styles.addButtonText}>+</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleSaveClick}>
-        <Text style={styles.saveButtonText}>Save</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSaveClick}>
+          <Text style={styles.saveButtonText}>Save</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

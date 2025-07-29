@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Alert } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform } from "react-native";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
 import { auth } from "../firebaseConfig";
@@ -125,11 +125,16 @@ export default function AccountSetupScreen() {
   }
 
   return (
-    <ProfileForm
-      profileData={profileData}
-      onProfileChange={setProfileData}
-      onSave={handleSave}
-      isAccountSetup={true}
-    />
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ProfileForm
+        profileData={profileData}
+        onProfileChange={setProfileData}
+        onSave={handleSave}
+        isAccountSetup={true}
+      />
+    </KeyboardAvoidingView>
   );
 }
