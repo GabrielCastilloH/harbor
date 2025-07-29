@@ -1,6 +1,5 @@
 import React, { useState, ReactNode, useEffect } from "react";
 import { Profile } from "../types/App";
-import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface AppContextType {
@@ -76,24 +75,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     initializeAppState();
   }, []);
 
-  // Set up axios interceptor for auth token
-  useEffect(() => {
-    const interceptor = axios.interceptors.request.use(
-      (config) => {
-        if (authToken) {
-          config.headers.Authorization = `Bearer ${authToken}`;
-        }
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
-
-    return () => {
-      axios.interceptors.request.eject(interceptor);
-    };
-  }, [authToken]);
+  // Firebase Functions don't need axios interceptors since they use direct HTTP calls
 
   return (
     <AppContext.Provider
