@@ -7,17 +7,15 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
-import axios from "axios";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
+import { FirebaseService } from "../networking/FirebaseService";
 
 // Ensure we complete the auth session in web browsers
 WebBrowser.maybeCompleteAuthSession();
-
-const serverUrl = process.env.SERVER_URL;
 
 export default function SignIn() {
   const { setIsAuthenticated, setUserId, setAuthToken } = useAppContext();
@@ -63,14 +61,14 @@ export default function SignIn() {
           "User info from Google:",
           JSON.stringify(userInfo, null, 2)
         );
-        console.log("Sending auth request to server:", serverUrl);
+        console.log("Sending auth request to Firebase Functions");
 
-        // Send token to backend
-        const serverResponse = await axios.post(`${serverUrl}/auth/google`, {
-          token: accessToken,
-          email: userInfo.email,
-          name: userInfo.name,
-        });
+        // Send token to Firebase Functions
+        const serverResponse = await FirebaseService.verifyGoogleAuth(
+          accessToken,
+          userInfo.email,
+          userInfo.name
+        );
 
         // Process server response
         if (serverResponse.data) {
@@ -109,28 +107,13 @@ export default function SignIn() {
         console.error("Authentication Error:", error);
 
         // More detailed error logging
-        if (axios.isAxiosError(error)) {
-          console.error("Status code:", error.response?.status);
-          console.error(
-            "Response data:",
-            JSON.stringify(error.response?.data, null, 2)
-          );
-          console.error(
-            "Request config:",
-            JSON.stringify(error.config, null, 2)
-          );
+        console.error("Authentication error:", error);
 
-          // Show more specific error message
-          Alert.alert(
-            "Authentication Failed",
-            `Error ${error.response?.status || ""}: ${
-              error.response?.data?.message ||
-              "Please check your connection and try again."
-            }`
-          );
-        } else {
-          Alert.alert("Error", "Authentication failed. Please try again.");
-        }
+        // Show error message
+        Alert.alert(
+          "Authentication Failed",
+          "Please check your connection and try again."
+        );
       } finally {
         setIsLoading(false);
       }
