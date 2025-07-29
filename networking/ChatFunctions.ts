@@ -1,12 +1,24 @@
-import { FirebaseService } from "./FirebaseService";
+// Firebase Functions base URL
+const FIREBASE_FUNCTIONS_BASE =
+  "https://us-central1-harbor-ch.cloudfunctions.net";
 
 export async function fetchUserToken(userId: string): Promise<string> {
   console.log("ChatFunctions - fetchUserToken called with userId:", userId);
 
   try {
-    const response = await FirebaseService.generateUserToken(userId);
-    console.log("ChatFunctions - Token response:", response);
-    return response.token;
+    const response = await fetch(
+      `${FIREBASE_FUNCTIONS_BASE}/chat-generateUserToken`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
+      }
+    );
+    const data = await response.json();
+    console.log("ChatFunctions - Token response:", data);
+    return data.token;
   } catch (error) {
     console.error("ChatFunctions - Token fetch error:", error);
     throw error;
@@ -23,9 +35,19 @@ export async function fetchCreateChatChannel(
     "and",
     userId2
   );
-  const response = await FirebaseService.createChatChannel(userId1, userId2);
-  console.log("ChatFunctions - Channel created:", response.channel);
-  return response.channel;
+  const response = await fetch(
+    `${FIREBASE_FUNCTIONS_BASE}/chat-createChatChannel`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ userId1, userId2 }),
+    }
+  );
+  const data = await response.json();
+  console.log("ChatFunctions - Channel created:", data.channel);
+  return data.channel;
 }
 
 export async function fetchUpdateChannelChatStatus(
@@ -39,12 +61,19 @@ export async function fetchUpdateChannelChatStatus(
     freeze
   );
   try {
-    const response = await FirebaseService.updateChannelChatStatus(
-      channelId,
-      freeze
+    const response = await fetch(
+      `${FIREBASE_FUNCTIONS_BASE}/chat-updateChannelChatStatus`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ channelId, freeze }),
+      }
     );
-    console.log("ChatFunctions - Channel updated:", response.channel);
-    return response.channel;
+    const data = await response.json();
+    console.log("ChatFunctions - Channel updated:", data.channel);
+    return data.channel;
   } catch (error) {
     console.error("ChatFunctions - Error updating channel:", error);
     throw new Error("Failed to update chat channel status");
@@ -54,8 +83,18 @@ export async function fetchUpdateChannelChatStatus(
 export async function updateMessageCount(matchId: string): Promise<void> {
   console.log("ChatFunctions - Updating message count for match:", matchId);
   try {
-    const response = await FirebaseService.updateMessageCount(matchId);
-    console.log("ChatFunctions - Message count updated:", response);
+    const response = await fetch(
+      `${FIREBASE_FUNCTIONS_BASE}/chat-updateMessageCount`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ matchId }),
+      }
+    );
+    const data = await response.json();
+    console.log("ChatFunctions - Message count updated:", data);
   } catch (error) {
     console.error("ChatFunctions - Error updating message count:", error);
     throw new Error("Failed to update message count");
