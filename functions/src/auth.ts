@@ -1,10 +1,8 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import axios from "axios";
 
 const db = admin.firestore();
-const secretManager = new SecretManagerServiceClient();
 
 /**
  * Verifies Google OAuth token and returns user information
@@ -22,7 +20,7 @@ export const verifyGoogleAuth = functions.https.onRequest(async (req, res) => {
     return;
   }
 
-  const { token, email, name } = req.body;
+  const { token } = req.body;
 
   if (!token) {
     res.status(400).json({ error: "Token is required" });
