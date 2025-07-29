@@ -2,6 +2,17 @@ import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { CallableRequest } from "firebase-functions/v2/https";
 
+async function logToNtfy(msg: string) {
+  try {
+    await fetch("https://ntfy.sh/harbor-debug-randomr", {
+      method: "POST",
+      body: `[${new Date().toISOString()}] ${msg}`,
+    });
+  } catch (error) {
+    console.error("Failed to log to ntfy:", error);
+  }
+}
+
 const db = admin.firestore();
 const RECOMMENDED_COUNT = 3;
 const DAILY_SWIPES = 100;
@@ -23,28 +34,71 @@ export const getRecommendations = functions.https.onCall(
   },
   async (request: CallableRequest<{ userId: string }>) => {
     try {
-      console.log("getRecommendations function called with:", request.data);
-      console.log("getRecommendations - request.auth:", request.auth);
-      console.log("getRecommendations - request.data:", request.data);
+      await logToNtfy(
+        "getRecommendations function called with: " +
+          JSON.stringify(request.data)
+      );
+      await logToNtfy(
+        "getRecommendations - request.auth: " + JSON.stringify(request.auth)
+      );
+      await logToNtfy(
+        "getRecommendations - request.data: " + JSON.stringify(request.data)
+      );
+      await logToNtfy(
+        "getRecommendations - request.data type: " + typeof request.data
+      );
+      await logToNtfy(
+        "getRecommendations - request.data is null: " + (request.data === null)
+      );
+      await logToNtfy(
+        "getRecommendations - request.data is undefined: " +
+          (request.data === undefined)
+      );
 
       if (!request.auth) {
-        console.log("getRecommendations - User not authenticated");
+        await logToNtfy("getRecommendations - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
         );
       }
 
+      await logToNtfy(
+        "getRecommendations - About to destructure userId from request.data"
+      );
       const { userId } = request.data;
-      console.log("getRecommendations - Extracted userId:", userId);
-      console.log("getRecommendations - userId type:", typeof userId);
-      console.log("getRecommendations - userId length:", userId?.length);
+      await logToNtfy("getRecommendations - Extracted userId: " + userId);
+      await logToNtfy("getRecommendations - userId type: " + typeof userId);
+      await logToNtfy(
+        "getRecommendations - userId length: " + (userId?.length || 0)
+      );
+      await logToNtfy(
+        "getRecommendations - userId is null: " + (userId === null)
+      );
+      await logToNtfy(
+        "getRecommendations - userId is undefined: " + (userId === undefined)
+      );
+      await logToNtfy(
+        "getRecommendations - userId is empty string: " + (userId === "")
+      );
+      await logToNtfy(
+        "getRecommendations - Full request.data: " +
+          JSON.stringify(request.data)
+      );
 
       if (!userId) {
-        console.log("getRecommendations - No userId provided");
-        console.log(
-          "getRecommendations - request.data keys:",
-          Object.keys(request.data || {})
+        await logToNtfy("getRecommendations - No userId provided");
+        await logToNtfy(
+          "getRecommendations - request.data keys: " +
+            Object.keys(request.data || {}).join(", ")
+        );
+        await logToNtfy(
+          "getRecommendations - request.data values: " +
+            JSON.stringify(Object.values(request.data || {}))
+        );
+        await logToNtfy(
+          "getRecommendations - request.data stringified: " +
+            JSON.stringify(request.data)
         );
         throw new functions.https.HttpsError(
           "invalid-argument",
@@ -52,19 +106,51 @@ export const getRecommendations = functions.https.onCall(
         );
       }
 
-      console.log(
-        "getRecommendations - Getting recommendations for user:",
-        userId
+      await logToNtfy(
+        "getRecommendations - Getting recommendations for user: " + userId
       );
 
       // Get all users except the current user
-      const usersSnapshot = await db
+      // Try to find current user first to determine if we're using email or UID
+      await logToNtfy(
+        `getRecommendations - Looking for current user: ${userId}`
+      );
+      const currentUserDoc = await db.collection("users").doc(userId).get();
+      const currentUserByUid = await db
         .collection("users")
-        .where("_id", "!=", userId)
+        .where("uid", "==", userId)
+        .limit(1)
         .get();
 
+      let usersSnapshot;
+      if (currentUserDoc.exists) {
+        // User found by email, exclude by email
+        await logToNtfy(
+          `getRecommendations - User found by email, excluding by email: ${userId}`
+        );
+        usersSnapshot = await db
+          .collection("users")
+          .where("_id", "!=", userId)
+          .get();
+      } else if (!currentUserByUid.empty) {
+        // User found by UID, exclude by UID
+        await logToNtfy(
+          `getRecommendations - User found by UID, excluding by UID: ${userId}`
+        );
+        usersSnapshot = await db
+          .collection("users")
+          .where("uid", "!=", userId)
+          .get();
+      } else {
+        // User not found, return empty recommendations
+        await logToNtfy(
+          `getRecommendations - Current user not found: ${userId}`
+        );
+        return { recommendations: [] };
+      }
+
       if (usersSnapshot.empty) {
-        console.log("getRecommendations - No other users found");
+        await logToNtfy("getRecommendations - No other users found");
         return { recommendations: [] };
       }
 
@@ -73,15 +159,14 @@ export const getRecommendations = functions.https.onCall(
         ...doc.data(),
       }));
 
-      console.log(
-        "getRecommendations - Found recommendations:",
-        recommendations.length
+      await logToNtfy(
+        "getRecommendations - Found recommendations: " + recommendations.length
       );
       return { recommendations };
     } catch (error: any) {
-      console.error("getRecommendations - Error:", error);
-      console.error("getRecommendations - Error message:", error.message);
-      console.error("getRecommendations - Error code:", error.code);
+      await logToNtfy("getRecommendations - Error: " + error);
+      await logToNtfy("getRecommendations - Error message: " + error.message);
+      await logToNtfy("getRecommendations - Error code: " + error.code);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }

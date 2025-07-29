@@ -1,5 +1,7 @@
 import { auth, db } from "../firebaseConfig";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { UserService } from "../networking/UserService";
+import { logToNtfy } from "./debugUtils";
 
 /**
  * Check if user exists in your database
@@ -28,22 +30,32 @@ export const createUserProfile = async (userData: {
   [key: string]: any;
 }) => {
   try {
+    await logToNtfy(`createUserProfile - Starting to create user profile`);
+    await logToNtfy(
+      `createUserProfile - User data: ${JSON.stringify(userData)}`
+    );
+
     const currentUser = auth.currentUser;
     if (!currentUser) {
+      await logToNtfy(`createUserProfile - No authenticated user found`);
       throw new Error("No authenticated user found");
     }
 
-    // Create user document in Firestore
-    await setDoc(doc(db, "users", currentUser.uid), {
-      ...userData,
-      uid: currentUser.uid,
-      photoURL: currentUser.photoURL,
-      createdAt: serverTimestamp(),
-      lastLoginAt: serverTimestamp(),
-    });
+    await logToNtfy(`createUserProfile - About to call UserService.createUser`);
+
+    // Call the Firebase Function instead of directly writing to Firestore
+    const result = await UserService.createUser(userData);
+
+    await logToNtfy(
+      `createUserProfile - UserService.createUser completed successfully`
+    );
+    await logToNtfy(`createUserProfile - Result: ${JSON.stringify(result)}`);
 
     return { success: true };
   } catch (error) {
+    await logToNtfy(
+      `createUserProfile - Error creating user profile: ${error}`
+    );
     console.error("Error creating user profile:", error);
     throw error;
   }
