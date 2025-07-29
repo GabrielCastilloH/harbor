@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, Alert, StyleSheet } from "react-native";
+import { View, Text, Pressable, Alert, StyleSheet, Image } from "react-native";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import {
   getAuth,
@@ -10,6 +10,7 @@ import { auth, db } from "../firebaseConfig";
 import NetInfo from "@react-native-community/netinfo";
 import { doc, getDoc } from "firebase/firestore";
 import { checkUserExists } from "../util/userBackend";
+import Colors from "../constants/Colors";
 
 interface GoogleSignInButtonProps {
   onUserExists: (userData: any) => void; // Callback for existing users
@@ -18,6 +19,7 @@ interface GoogleSignInButtonProps {
   buttonText?: string;
   buttonStyle?: any;
   textStyle?: any;
+  showCornellLogo?: boolean;
 }
 
 export default function GoogleSignInButton({
@@ -27,6 +29,7 @@ export default function GoogleSignInButton({
   buttonText = "Continue with Google",
   buttonStyle,
   textStyle,
+  showCornellLogo = false,
 }: GoogleSignInButtonProps) {
   const handleGoogleSignIn = async () => {
     try {
@@ -97,6 +100,13 @@ export default function GoogleSignInButton({
         onPress={handleGoogleSignIn}
         style={[styles.button, buttonStyle]}
       >
+        {showCornellLogo && (
+          <Image
+            source={require("../assets/images/cornell-logo.png")}
+            style={[styles.cornellLogo, { tintColor: Colors.primary500 }]}
+            resizeMode="contain"
+          />
+        )}
         <Text style={[styles.buttonText, textStyle]}>{buttonText}</Text>
       </Pressable>
     </View>
@@ -114,10 +124,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
+    flexDirection: "row",
   },
   buttonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  cornellLogo: {
+    width: 30,
+    height: 30,
+    marginRight: 10,
   },
 });
