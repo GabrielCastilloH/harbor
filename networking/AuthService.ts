@@ -1,22 +1,26 @@
-// Firebase Functions base URL
-const FIREBASE_FUNCTIONS_BASE =
-  "https://us-central1-harbor-ch.cloudfunctions.net";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import app from "../firebaseConfig";
 
-/**
- * Auth Service - Handles authentication-related API calls
- */
+const functions = getFunctions(app, "us-central1");
+
 export class AuthService {
   static async verifyGoogleAuth(token: string, email: string, name: string) {
-    const response = await fetch(
-      `${FIREBASE_FUNCTIONS_BASE}/auth-verifyGoogleAuth`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token, email, name }),
-      }
-    );
-    return response.json();
+    console.log("AuthService - verifyGoogleAuth called with:", {
+      token,
+      email,
+      name,
+    });
+
+    try {
+      const verifyGoogleAuth = httpsCallable(functions, "verifyGoogleAuth");
+      const result = await verifyGoogleAuth({ token });
+      const data = result.data as { user?: any; authInfo?: any };
+
+      console.log("AuthService - Response:", data);
+      return data;
+    } catch (error) {
+      console.error("AuthService - Error:", error);
+      throw error;
+    }
   }
 }

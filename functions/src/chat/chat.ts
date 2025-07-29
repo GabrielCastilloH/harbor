@@ -1,6 +1,7 @@
-import * as functions from "firebase-functions";
+import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { StreamChat } from "stream-chat";
+import { CallableRequest } from "firebase-functions/v2/https";
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 
 const db = admin.firestore();
@@ -39,122 +40,161 @@ async function getStreamClient(): Promise<StreamChat> {
 }
 
 /**
- * Generates Stream Chat token for user
- * @param req Request with userId in body
- * @param res Response with token or error
+ * Generates Stream Chat token for authenticated user
  */
-export const generateUserToken = functions.https.onRequest(async (req, res) => {
-  // Enable CORS
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "POST");
-  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+export const generateUserToken = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
 
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
+      const userId = request.auth.uid;
 
-  try {
-    const { userId } = req.body;
-    if (!userId) {
-      res.status(400).json({ error: "Missing userId" });
-      return;
+      // Verify user exists in Firestore
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (!userDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "User not found");
+      }
+
+      const serverClient = await getStreamClient();
+      const token = serverClient.createToken(userId);
+
+      return { token };
+    } catch (error) {
+      console.error("Error generating user token:", error);
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to generate token"
+      );
     }
-
-    const userDoc = await db.collection("users").doc(userId).get();
-    if (!userDoc.exists) {
-      res.status(404).json({ error: "User not found" });
-      return;
-    }
-
-    const serverClient = await getStreamClient();
-    const token = serverClient.createToken(userId);
-    res.json({ token });
-  } catch (error) {
-    console.error("Error generating user token:", error);
-    res.status(500).json({ error: "Failed to generate token" });
   }
-});
+);
 
 /**
  * Creates a chat channel between two users
- * @param req Request with userId1 and userId2
- * @param res Response with channel data
  */
-export const createChatChannel = functions.https.onRequest(async (req, res) => {
-  // Enable CORS
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "POST");
-  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+export const createChatChannel = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ userId1: string; userId2: string }>) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
 
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
+      const { userId1, userId2 } = request.data;
 
-  try {
-    const { userId1, userId2 } = req.body;
+      if (!userId1 || !userId2) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Missing userId1 or userId2"
+        );
+      }
 
-    if (!userId1 || !userId2) {
-      res.status(400).json({ error: "Missing userId1 or userId2" });
-      return;
+      // Verify both users exist
+      const [user1Doc, user2Doc] = await Promise.all([
+        db.collection("users").doc(userId1).get(),
+        db.collection("users").doc(userId2).get(),
+      ]);
+
+      if (!user1Doc.exists || !user2Doc.exists) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "One or both users not found"
+        );
+      }
+
+      const serverClient = await getStreamClient();
+
+      // Create channel ID (sorted to ensure consistency)
+      const channelId = [userId1, userId2].sort().join("-");
+
+      // Create or get the channel
+      const channel = serverClient.channel("messaging", channelId, {
+        members: [userId1, userId2],
+        created_by_id: request.auth.uid,
+      });
+
+      try {
+        await channel.create();
+      } catch (err: any) {
+        if (err && err.code === 16) {
+          // Channel already exists, just use it
+          await channel.watch();
+        } else {
+          throw err;
+        }
+      }
+
+      return { channel: channel.data };
+    } catch (error) {
+      console.error("Error creating chat channel:", error);
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to create chat channel"
+      );
     }
-
-    // Get user data
-    const [user1Doc, user2Doc] = await Promise.all([
-      db.collection("users").doc(userId1).get(),
-      db.collection("users").doc(userId2).get(),
-    ]);
-
-    if (!user1Doc.exists || !user2Doc.exists) {
-      res.status(404).json({ error: "One or both users not found" });
-      return;
-    }
-
-    // Get user data for channel creation
-
-    // Create channel ID (sorted to ensure consistency)
-    const channelId = [userId1, userId2].sort().join("-");
-
-    const serverClient = await getStreamClient();
-
-    // Create or get the channel
-    const channel = serverClient.channel("messaging", channelId, {
-      members: [userId1, userId2],
-    });
-
-    await channel.create();
-
-    res.json({ channel: channel.data });
-  } catch (error) {
-    console.error("Error creating chat channel:", error);
-    res.status(500).json({ error: "Failed to create chat channel" });
   }
-});
+);
 
 /**
  * Updates chat channel status (freeze/unfreeze)
- * @param req Request with channelId and freeze status
- * @param res Response with updated channel data
  */
-export const updateChannelChatStatus = functions.https.onRequest(
-  async (req, res) => {
-    // Enable CORS
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Methods", "POST");
-    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-    if (req.method === "OPTIONS") {
-      res.status(204).send("");
-      return;
-    }
-
+export const updateChannelChatStatus = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ channelId: string; freeze: boolean }>) => {
     try {
-      const { channelId, freeze } = req.body;
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
 
-      if (channelId === undefined || freeze === undefined) {
-        res.status(400).json({ error: "Missing channelId or freeze status" });
-        return;
+      const { channelId, freeze } = request.data;
+
+      if (!channelId || freeze === undefined) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Missing channelId or freeze status"
+        );
       }
 
       const serverClient = await getStreamClient();
@@ -166,37 +206,48 @@ export const updateChannelChatStatus = functions.https.onRequest(
         await channel.update({ frozen: false });
       }
 
-      res.json({ channel: channel.data });
+      return { channel: channel.data };
     } catch (error) {
       console.error("Error updating channel status:", error);
-      res.status(500).json({ error: "Failed to update channel status" });
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to update channel status"
+      );
     }
   }
 );
 
 /**
  * Updates message count for a match
- * @param req Request with matchId
- * @param res Response with success status
  */
-export const updateMessageCount = functions.https.onRequest(
-  async (req, res) => {
-    // Enable CORS
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Methods", "POST");
-    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-    if (req.method === "OPTIONS") {
-      res.status(204).send("");
-      return;
-    }
-
+export const updateMessageCount = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ matchId: string }>) => {
     try {
-      const { matchId } = req.body;
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { matchId } = request.data;
 
       if (!matchId) {
-        res.status(400).json({ error: "Missing matchId" });
-        return;
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Missing matchId"
+        );
       }
 
       // Increment message count in Firestore
@@ -208,10 +259,13 @@ export const updateMessageCount = functions.https.onRequest(
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-      res.json({ success: true });
+      return { success: true };
     } catch (error) {
       console.error("Error updating message count:", error);
-      res.status(500).json({ error: "Failed to update message count" });
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to update message count"
+      );
     }
   }
 );
