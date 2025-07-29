@@ -4,14 +4,14 @@ import * as admin from "firebase-admin";
 admin.initializeApp();
 
 // Import all function modules
-import { authFunctions } from "./auth";
-import { userFunctions } from "./users";
-import { swipeFunctions } from "./swipes";
-import { matchFunctions } from "./matches";
-import { chatFunctions } from "./chat";
-import { imageFunctions } from "./images";
-import { blurFunctions } from "./blur";
-import { recommendationFunctions } from "./recommendations";
+import { authFunctions } from "./auth/auth";
+import { userFunctions } from "./users/users";
+import { swipeFunctions } from "./swipes/swipes";
+import { matchFunctions } from "./matches/matches";
+import { chatFunctions } from "./chat/chat";
+import { imageFunctions } from "./images/images";
+import { blurFunctions } from "./blur/blur";
+import { recommendationFunctions } from "./recommendations/recommendations";
 
 // Export all functions
 export const auth = authFunctions;

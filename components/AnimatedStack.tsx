@@ -13,7 +13,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Card from "./Card";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
-import { FirebaseService } from "../networking/FirebaseService";
+import { SwipeService } from "../networking";
 
 const ROTATION = 60;
 const SWIPE_VELOCITY = 800;
@@ -65,7 +65,7 @@ export default React.forwardRef(function AnimatedStack(
       if (!userId) return;
 
       try {
-        const response = await FirebaseService.createSwipe(
+        const response = await SwipeService.createSwipe(
           userId,
           profile._id,
           direction
