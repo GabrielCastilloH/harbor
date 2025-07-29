@@ -42,13 +42,13 @@ export default function ProfileForm({
   onSave,
   onLogout,
 }: ProfileFormProps) {
-  const [isReady, setIsReady] = React.useState(false);
+  const [isReady, setIsReady] = React.useState(true);
 
   React.useEffect(() => {
-    // Small delay to ensure SafeAreaView is properly initialized
+    // Ensure SafeAreaView is properly initialized
     const timer = setTimeout(() => {
       setIsReady(true);
-    }, 100);
+    }, 50);
 
     return () => clearTimeout(timer);
   }, []);
@@ -147,7 +147,7 @@ export default function ProfileForm({
     handleChange("images", newImages);
   };
 
-  if (loading || !isReady) {
+  if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <Text>Loading profile...</Text>
@@ -163,7 +163,7 @@ export default function ProfileForm({
       >
         <ScrollView
           style={styles.container}
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.section}>
@@ -327,6 +327,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.secondary100,
+    paddingTop: 10,
   },
   headerContainer: {
     flexDirection: "row",
