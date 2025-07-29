@@ -6,7 +6,7 @@ import ChatList from "../screens/ChatList";
 import ChatScreen from "../screens/ChatScreen";
 import LoadingScreen from "../components/LoadingScreen";
 import Colors from "../constants/Colors";
-import { UserService } from "../networking";
+import { UserService, ChatFunctions } from "../networking";
 import {
   OverlayProvider,
   Chat,
@@ -16,7 +16,6 @@ import {
 } from "stream-chat-expo";
 import { NavigationProp } from "@react-navigation/native";
 import ProfileScreen from "../screens/ProfileScreen";
-import { fetchUserToken } from "../networking";
 import { useAppContext } from "../context/AppContext";
 import { RootStackParamList } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -91,7 +90,28 @@ export default function ChatNavigator() {
 
   // Define these states at the top level - always need to be declared
   const [chatUserToken, setChatUserToken] = useState<string | null>(null);
-  const chatApiKey = process.env.STREAM_API_KEY || process.env.STREAM_API_KEY;
+  const [chatApiKey, setChatApiKey] = useState<string | null>(null);
+
+  // Fetch Stream API key
+  useEffect(() => {
+    const fetchApiKey = async () => {
+      try {
+        const apiKey = await ChatFunctions.getStreamApiKey();
+        setChatApiKey(apiKey);
+        console.log("ChatNavigator - API Key fetched successfully");
+      } catch (error) {
+        console.error("ChatNavigator - Failed to fetch API key:", error);
+      }
+    };
+
+    fetchApiKey();
+  }, []);
+
+  // Add debugging for API key
+  useEffect(() => {
+    console.log("ChatNavigator - API Key length:", chatApiKey?.length || 0);
+    console.log("ChatNavigator - API Key starts with:", chatApiKey?.substring(0, 10));
+  }, [chatApiKey]);
 
   // Create a memoized user object to avoid recreating on each render
   const user = useMemo(() => {
@@ -104,10 +124,17 @@ export default function ChatNavigator() {
 
   // ALWAYS call this hook at the top level, with a consistent value
   const chatClient = useCreateChatClient({
-    apiKey: chatApiKey,
+    apiKey: chatApiKey || "",
     userData: user,
     tokenOrProvider: chatUserToken || "",
   });
+
+  // Add debugging for chat client
+  useEffect(() => {
+    console.log("ChatNavigator - Chat client created:", !!chatClient);
+    console.log("ChatNavigator - User data:", user);
+    console.log("ChatNavigator - Token available:", !!chatUserToken);
+  }, [chatClient, user, chatUserToken]);
 
   // Fetch user profile data
   useEffect(() => {
@@ -126,11 +153,11 @@ export default function ChatNavigator() {
         // Check if the response has data directly or within a user property
         if (response) {
           // If response contains data directly as the user object
-          if (response._id) {
+          if (response.uid) {
             setProfile(response);
           }
           // If response contains data in the user property
-          else if (response.user && response.user._id) {
+          else if (response.user && response.user.uid) {
             setProfile(response.user);
           } else {
             console.error(
@@ -160,7 +187,7 @@ export default function ChatNavigator() {
 
     async function getToken() {
       try {
-        const token = await fetchUserToken(userId as string);
+        const token = await ChatFunctions.generateToken(userId as string);
         setChatUserToken(token);
       } catch (error: unknown) {
         console.error("ChatNavigator - Failed to fetch chat token:", error);
