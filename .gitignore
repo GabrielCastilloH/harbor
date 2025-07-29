@@ -50,7 +50,7 @@ android/app/src/debug/java/com/example/reactnativeflipper/
 *.jsbundle
 
 # CocoaPods
-/ios/Pods/
+/ios/
 
 # Expo
 .expo/
