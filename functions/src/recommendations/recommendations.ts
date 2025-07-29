@@ -24,6 +24,8 @@ export const getRecommendations = functions.https.onCall(
   async (request: CallableRequest<{ userId: string }>) => {
     try {
       console.log("getRecommendations function called with:", request.data);
+      console.log("getRecommendations - request.auth:", request.auth);
+      console.log("getRecommendations - request.data:", request.data);
 
       if (!request.auth) {
         console.log("getRecommendations - User not authenticated");
@@ -34,8 +36,16 @@ export const getRecommendations = functions.https.onCall(
       }
 
       const { userId } = request.data;
+      console.log("getRecommendations - Extracted userId:", userId);
+      console.log("getRecommendations - userId type:", typeof userId);
+      console.log("getRecommendations - userId length:", userId?.length);
+
       if (!userId) {
         console.log("getRecommendations - No userId provided");
+        console.log(
+          "getRecommendations - request.data keys:",
+          Object.keys(request.data || {})
+        );
         throw new functions.https.HttpsError(
           "invalid-argument",
           "User ID is required"
@@ -70,6 +80,8 @@ export const getRecommendations = functions.https.onCall(
       return { recommendations };
     } catch (error: any) {
       console.error("getRecommendations - Error:", error);
+      console.error("getRecommendations - Error message:", error.message);
+      console.error("getRecommendations - Error code:", error.code);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
