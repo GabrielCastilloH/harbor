@@ -42,8 +42,6 @@ export const updateBlurLevelForMessage = functions.https.onRequest(
       const messageCount = matchData.messageCount || 0;
       const blurPercentage = matchData.blurPercentage || 100;
       const warningShown = matchData.warningShown || false;
-      const user1Agreed = matchData.user1Agreed || false;
-      const user2Agreed = matchData.user2Agreed || false;
 
       // Calculate new blur level based on message count
       let newBlurPercentage = blurPercentage;

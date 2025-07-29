@@ -111,8 +111,7 @@ export const createChatChannel = functions.https.onRequest(async (req, res) => {
       return;
     }
 
-    const user1 = user1Doc.data();
-    const user2 = user2Doc.data();
+    // Get user data for channel creation
 
     // Create channel ID (sorted to ensure consistency)
     const channelId = [userId1, userId2].sort().join("-");
