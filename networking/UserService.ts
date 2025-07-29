@@ -40,19 +40,31 @@ export class UserService {
   static async getUserById(id: string) {
     console.log("UserService - getUserById called with:", id);
     await logToNtfy(`UserService - getUserById called with id: ${id}`);
+    await logToNtfy(`UserService - id type: ${typeof id}`);
+    await logToNtfy(`UserService - id length: ${id?.length}`);
 
     try {
       const getUserById = httpsCallable(functions, "users-getUserById");
+
+      await logToNtfy(
+        `UserService - Calling function with data: ${JSON.stringify({ id })}`
+      );
+
       const result = await getUserById({ id });
       const data = result.data as any;
 
       console.log("UserService - User fetched:", data);
       await logToNtfy(`UserService - getUserById success for id: ${id}`);
+      await logToNtfy(
+        `UserService - User data keys: ${Object.keys(data || {}).join(", ")}`
+      );
       return data;
     } catch (error: any) {
       await logToNtfy(
         `UserService - Error fetching user ${id}: ${error.message}`
       );
+      await logToNtfy(`UserService - Error code: ${error.code}`);
+      await logToNtfy(`UserService - Error details: ${JSON.stringify(error)}`);
       console.error("UserService - Error fetching user:", error);
       throw error;
     }
