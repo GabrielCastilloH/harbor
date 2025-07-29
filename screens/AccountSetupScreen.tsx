@@ -9,6 +9,7 @@ import ProfileForm from "../components/ProfileForm";
 import LoadingScreen from "../components/LoadingScreen";
 import { signOut } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
 const emptyProfile: Profile = {
   _id: "",
@@ -36,6 +37,9 @@ export default function AccountSetupScreen() {
 
   const handleLogout = async () => {
     try {
+      // Sign out from Google Sign-In first
+      await GoogleSignin.signOut();
+
       // Sign out from Firebase Auth
       await signOut(auth);
 
