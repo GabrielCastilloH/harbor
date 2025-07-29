@@ -1,22 +1,16 @@
-// Firebase Functions base URL
-const FIREBASE_FUNCTIONS_BASE =
-  "https://us-central1-harbor-ch.cloudfunctions.net";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import app from "../firebaseConfig";
+
+const functions = getFunctions(app, "us-central1");
 
 export async function fetchUserToken(userId: string): Promise<string> {
   console.log("ChatFunctions - fetchUserToken called with userId:", userId);
 
   try {
-    const response = await fetch(
-      `${FIREBASE_FUNCTIONS_BASE}/chat-generateUserToken`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ userId }),
-      }
-    );
-    const data = await response.json();
+    const generateUserToken = httpsCallable(functions, "generateUserToken");
+    const result = await generateUserToken();
+    const data = result.data as { token: string };
+
     console.log("ChatFunctions - Token response:", data);
     return data.token;
   } catch (error) {
@@ -35,19 +29,18 @@ export async function fetchCreateChatChannel(
     "and",
     userId2
   );
-  const response = await fetch(
-    `${FIREBASE_FUNCTIONS_BASE}/chat-createChatChannel`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ userId1, userId2 }),
-    }
-  );
-  const data = await response.json();
-  console.log("ChatFunctions - Channel created:", data.channel);
-  return data.channel;
+
+  try {
+    const createChatChannel = httpsCallable(functions, "createChatChannel");
+    const result = await createChatChannel({ userId1, userId2 });
+    const data = result.data as { channel: any };
+
+    console.log("ChatFunctions - Channel created:", data.channel);
+    return data.channel;
+  } catch (error) {
+    console.error("ChatFunctions - Error creating channel:", error);
+    throw new Error("Failed to create chat channel");
+  }
 }
 
 export async function fetchUpdateChannelChatStatus(
@@ -60,18 +53,15 @@ export async function fetchUpdateChannelChatStatus(
     "frozen:",
     freeze
   );
+
   try {
-    const response = await fetch(
-      `${FIREBASE_FUNCTIONS_BASE}/chat-updateChannelChatStatus`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ channelId, freeze }),
-      }
+    const updateChannelChatStatus = httpsCallable(
+      functions,
+      "updateChannelChatStatus"
     );
-    const data = await response.json();
+    const result = await updateChannelChatStatus({ channelId, freeze });
+    const data = result.data as { channel: any };
+
     console.log("ChatFunctions - Channel updated:", data.channel);
     return data.channel;
   } catch (error) {
@@ -82,18 +72,12 @@ export async function fetchUpdateChannelChatStatus(
 
 export async function updateMessageCount(matchId: string): Promise<void> {
   console.log("ChatFunctions - Updating message count for match:", matchId);
+
   try {
-    const response = await fetch(
-      `${FIREBASE_FUNCTIONS_BASE}/chat-updateMessageCount`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ matchId }),
-      }
-    );
-    const data = await response.json();
+    const updateMessageCount = httpsCallable(functions, "updateMessageCount");
+    const result = await updateMessageCount({ matchId });
+    const data = result.data as { success: boolean };
+
     console.log("ChatFunctions - Message count updated:", data);
   } catch (error) {
     console.error("ChatFunctions - Error updating message count:", error);
