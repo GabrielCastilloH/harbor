@@ -1,45 +1,58 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
 import app from "../firebaseConfig";
+import { logToNtfy } from "../util/debugUtils";
 
 const functions = getFunctions(app, "us-central1");
 
-export async function fetchUserToken(userId: string): Promise<string> {
-  console.log("ChatFunctions - fetchUserToken called with userId:", userId);
+export class ChatFunctions {
+  static async generateToken(userId: string) {
+    console.log("ChatFunctions - generateToken called with:", userId);
+    await logToNtfy(
+      `ChatFunctions - generateToken called with userId: ${userId}`
+    );
 
-  try {
-    const generateUserToken = httpsCallable(functions, "generateUserToken");
-    const result = await generateUserToken();
-    const data = result.data as { token: string };
+    try {
+      const generateToken = httpsCallable(functions, "chat-generateUserToken");
+      const result = await generateToken({ userId });
+      const data = result.data as { token: string };
 
-    console.log("ChatFunctions - Token response:", data);
-    return data.token;
-  } catch (error) {
-    console.error("ChatFunctions - Token fetch error:", error);
-    throw error;
+      console.log("ChatFunctions - Token generated:", data);
+      await logToNtfy(
+        `ChatFunctions - generateToken success for userId: ${userId}`
+      );
+      return data.token;
+    } catch (error: any) {
+      await logToNtfy(
+        `ChatFunctions - Token fetch error for ${userId}: ${error.message}`
+      );
+      console.error("ChatFunctions - Token fetch error:", error);
+      throw error;
+    }
   }
-}
 
-export async function fetchCreateChatChannel(
-  userId1: string,
-  userId2: string
-): Promise<any> {
-  console.log(
-    "ChatFunctions - Creating chat channel for users:",
-    userId1,
-    "and",
-    userId2
-  );
+  static async createChannel(channelData: any) {
+    console.log("ChatFunctions - createChannel called with:", channelData);
+    await logToNtfy(
+      `ChatFunctions - createChannel called with: ${JSON.stringify(
+        channelData
+      )}`
+    );
 
-  try {
-    const createChatChannel = httpsCallable(functions, "createChatChannel");
-    const result = await createChatChannel({ userId1, userId2 });
-    const data = result.data as { channel: any };
+    try {
+      const createChannel = httpsCallable(functions, "chat-createChatChannel");
+      const result = await createChannel(channelData);
+      const data = result.data as any;
 
-    console.log("ChatFunctions - Channel created:", data.channel);
-    return data.channel;
-  } catch (error) {
-    console.error("ChatFunctions - Error creating channel:", error);
-    throw new Error("Failed to create chat channel");
+      console.log("ChatFunctions - Channel created:", data);
+      await logToNtfy(`ChatFunctions - createChannel success`);
+      return data;
+    } catch (error: any) {
+      await logToNtfy(
+        `ChatFunctions - Channel creation error: ${error.message}`
+      );
+      console.error("ChatFunctions - Channel creation error:", error);
+      throw error;
+    }
   }
 }
 
@@ -57,7 +70,7 @@ export async function fetchUpdateChannelChatStatus(
   try {
     const updateChannelChatStatus = httpsCallable(
       functions,
-      "updateChannelChatStatus"
+      "chat-updateChannelChatStatus"
     );
     const result = await updateChannelChatStatus({ channelId, freeze });
     const data = result.data as { channel: any };
@@ -74,7 +87,10 @@ export async function updateMessageCount(matchId: string): Promise<void> {
   console.log("ChatFunctions - Updating message count for match:", matchId);
 
   try {
-    const updateMessageCount = httpsCallable(functions, "updateMessageCount");
+    const updateMessageCount = httpsCallable(
+      functions,
+      "chat-updateMessageCount"
+    );
     const result = await updateMessageCount({ matchId });
     const data = result.data as { success: boolean };
 

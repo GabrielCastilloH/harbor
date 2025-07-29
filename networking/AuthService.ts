@@ -12,7 +12,10 @@ export class AuthService {
     });
 
     try {
-      const verifyGoogleAuth = httpsCallable(functions, "verifyGoogleAuth");
+      const verifyGoogleAuth = httpsCallable(
+        functions,
+        "auth-verifyGoogleAuth"
+      );
       const result = await verifyGoogleAuth({ token });
       const data = result.data as { user?: any; authInfo?: any };
 

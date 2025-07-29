@@ -16,7 +16,7 @@ export class BlurService {
     try {
       const updateBlurLevelForMessage = httpsCallable(
         functions,
-        "updateBlurLevelForMessage"
+        "blur-updateBlurLevelForMessage"
       );
       const result = await updateBlurLevelForMessage({ userId, matchedUserId });
       const data = result.data as {
@@ -48,7 +48,7 @@ export class BlurService {
     try {
       const handleWarningResponse = httpsCallable(
         functions,
-        "handleWarningResponse"
+        "blur-handleWarningResponse"
       );
       const result = await handleWarningResponse({ matchId, userId, agreed });
       const data = result.data as { message: string };
@@ -68,7 +68,7 @@ export class BlurService {
     });
 
     try {
-      const getBlurLevel = httpsCallable(functions, "getBlurLevel");
+      const getBlurLevel = httpsCallable(functions, "blur-getBlurLevel");
       const result = await getBlurLevel({ userId, matchedUserId });
       const data = result.data as {
         blurPercentage: number;
