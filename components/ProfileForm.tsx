@@ -15,7 +15,6 @@ import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import * as ImagePicker from "expo-image-picker";
 import { getImageSource } from "../util/imageUtils";
-import CachedImage from "./CachedImage";
 
 interface ProfileFormProps {
   profileData: Profile;
@@ -275,11 +274,7 @@ export default function ProfileForm({
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {profileData.images.map((image, index) => (
               <View key={index} style={styles.imageContainer}>
-                {image.startsWith("file:") || image.startsWith("data:") ? (
-                  <Image source={{ uri: image }} style={styles.image} />
-                ) : (
-                  <CachedImage fileId={image} style={styles.image} />
-                )}
+                <Image source={getImageSource(image)} style={styles.image} />
                 <TouchableOpacity
                   style={styles.removeButton}
                   onPress={() => removeImage(index)}
