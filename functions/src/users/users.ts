@@ -53,6 +53,19 @@ async function getStreamClient(): Promise<StreamChat> {
     return streamClient;
   } catch (error) {
     await logToNtfy(`getStreamClient - Error getting Stream client: ${error}`);
+
+    // Try environment variables as fallback only
+    const apiKey = process.env.STREAM_API_KEY;
+    const apiSecret = process.env.STREAM_API_SECRET;
+
+    if (apiKey && apiSecret) {
+      await logToNtfy(
+        "getStreamClient - Using environment variables as fallback"
+      );
+      streamClient = StreamChat.getInstance(apiKey, apiSecret);
+      return streamClient;
+    }
+
     throw error;
   }
 }
@@ -83,6 +96,10 @@ async function createStreamUser(userId: string, firstName: string) {
       `createStreamUser - Error creating Stream Chat user: ${error}`
     );
     // Don't throw error here as we don't want to fail the entire user creation
+    // Just log the error and continue
+    await logToNtfy(
+      `createStreamUser - Continuing with user creation despite Stream Chat error`
+    );
   }
 }
 
