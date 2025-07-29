@@ -10,14 +10,13 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import axios from "axios";
 import Card from "./Card";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
+import { FirebaseService } from "../networking/FirebaseService";
 
 const ROTATION = 60;
 const SWIPE_VELOCITY = 800;
-const serverUrl = process.env.SERVER_URL; // Ensure this is configured correctly
 
 // Add new prop types
 type AnimatedStackProps = {
@@ -63,12 +62,14 @@ export default React.forwardRef(function AnimatedStack(
       }
       (window as any).lastSwipeKey = swipeKey;
 
+      if (!userId) return;
+
       try {
-        const response = await axios.post(`${serverUrl}/swipes`, {
-          swiperId: userId,
-          swipedId: profile._id,
-          direction,
-        });
+        const response = await FirebaseService.createSwipe(
+          userId,
+          profile._id,
+          direction
+        );
 
         if (direction === "right" && onSwipeRight) {
           onSwipeRight(profile);
