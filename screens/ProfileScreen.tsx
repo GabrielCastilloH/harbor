@@ -9,6 +9,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
@@ -17,7 +18,7 @@ import PageIndicator from "../components/PageIndicator";
 import BasicInfoView from "../components/BasicInfoView";
 import AcademicView from "../components/AcademicView";
 import PersonalView from "../components/PersonalView";
-import CachedImage from "../components/CachedImage";
+import { getImageSource } from "../util/imageUtils";
 import axios from "axios";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
@@ -169,7 +170,7 @@ export default function ProfileScreen() {
               setModalVisible(true);
             }}
           >
-            <CachedImage fileId={fileId} style={styles.thumbnail} />
+            <Image source={getImageSource(fileId)} style={styles.thumbnail} />
           </Pressable>
         ))}
       </ScrollView>
@@ -186,8 +187,8 @@ export default function ProfileScreen() {
           onPress={() => setModalVisible(false)}
         >
           {selectedPhoto && (
-            <CachedImage
-              fileId={selectedPhoto}
+            <Image
+              source={getImageSource(selectedPhoto)}
               style={styles.fullImage}
               resizeMode="contain"
             />
