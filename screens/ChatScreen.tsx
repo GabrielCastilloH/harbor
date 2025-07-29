@@ -1,11 +1,5 @@
-import {
-  SafeAreaView,
-  Text,
-  View,
-  StyleSheet,
-  Modal,
-  Pressable,
-} from "react-native";
+import { Text, View, StyleSheet, Modal, Pressable } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useEffect, useState } from "react";
 import { Channel, MessageInput, MessageList } from "stream-chat-expo";
 import { useAppContext } from "../context/AppContext";
