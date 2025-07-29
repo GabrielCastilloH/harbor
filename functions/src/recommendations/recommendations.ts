@@ -110,28 +110,19 @@ export const getRecommendations = functions.https.onCall(
       );
 
       // Get all users except the current user
-      // Try to find current user first to determine if we're using email or UID
+      // Try to find current user first to determine if we're using UID or email (for backward compatibility)
       await logToNtfy(
         `getRecommendations - Looking for current user: ${userId}`
       );
       const currentUserDoc = await db.collection("users").doc(userId).get();
-      const currentUserByUid = await db
+      const currentUserByEmail = await db
         .collection("users")
-        .where("uid", "==", userId)
+        .where("email", "==", userId)
         .limit(1)
         .get();
 
       let usersSnapshot;
       if (currentUserDoc.exists) {
-        // User found by email, exclude by email
-        await logToNtfy(
-          `getRecommendations - User found by email, excluding by email: ${userId}`
-        );
-        usersSnapshot = await db
-          .collection("users")
-          .where("_id", "!=", userId)
-          .get();
-      } else if (!currentUserByUid.empty) {
         // User found by UID, exclude by UID
         await logToNtfy(
           `getRecommendations - User found by UID, excluding by UID: ${userId}`
@@ -139,6 +130,15 @@ export const getRecommendations = functions.https.onCall(
         usersSnapshot = await db
           .collection("users")
           .where("uid", "!=", userId)
+          .get();
+      } else if (!currentUserByEmail.empty) {
+        // User found by email (backward compatibility), exclude by email
+        await logToNtfy(
+          `getRecommendations - User found by email, excluding by email: ${userId}`
+        );
+        usersSnapshot = await db
+          .collection("users")
+          .where("email", "!=", userId)
           .get();
       } else {
         // User not found, return empty recommendations
@@ -154,7 +154,6 @@ export const getRecommendations = functions.https.onCall(
       }
 
       const recommendations = usersSnapshot.docs.map((doc) => ({
-        _id: doc.id,
         ...doc.data(),
       }));
 
