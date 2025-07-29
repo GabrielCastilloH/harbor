@@ -1,5 +1,6 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
 import app from "../firebaseConfig";
+import { logToNtfy } from "../util/debugUtils";
 
 const functions = getFunctions(app, "us-central1");
 
@@ -8,7 +9,7 @@ export class UserService {
     console.log("UserService - createUser called with:", userData);
 
     try {
-      const createUser = httpsCallable(functions, "createUser");
+      const createUser = httpsCallable(functions, "users-createUser");
       const result = await createUser(userData);
       const data = result.data as { message: string; user: any };
 
@@ -24,7 +25,7 @@ export class UserService {
     console.log("UserService - getAllUsers called");
 
     try {
-      const getAllUsers = httpsCallable(functions, "getAllUsers");
+      const getAllUsers = httpsCallable(functions, "users-getAllUsers");
       const result = await getAllUsers();
       const data = result.data as { users: any[] };
 
@@ -38,15 +39,20 @@ export class UserService {
 
   static async getUserById(id: string) {
     console.log("UserService - getUserById called with:", id);
+    await logToNtfy(`UserService - getUserById called with id: ${id}`);
 
     try {
-      const getUserById = httpsCallable(functions, "getUserById");
+      const getUserById = httpsCallable(functions, "users-getUserById");
       const result = await getUserById({ id });
       const data = result.data as any;
 
       console.log("UserService - User fetched:", data);
+      await logToNtfy(`UserService - getUserById success for id: ${id}`);
       return data;
-    } catch (error) {
+    } catch (error: any) {
+      await logToNtfy(
+        `UserService - Error fetching user ${id}: ${error.message}`
+      );
       console.error("UserService - Error fetching user:", error);
       throw error;
     }
@@ -56,7 +62,7 @@ export class UserService {
     console.log("UserService - updateUser called with:", { id, userData });
 
     try {
-      const updateUser = httpsCallable(functions, "updateUser");
+      const updateUser = httpsCallable(functions, "users-updateUser");
       const result = await updateUser({ id, userData });
       const data = result.data as { message: string; user: any };
 
@@ -72,7 +78,7 @@ export class UserService {
     console.log("UserService - unmatchUser called with:", { id, matchId });
 
     try {
-      const unmatchUser = httpsCallable(functions, "unmatchUser");
+      const unmatchUser = httpsCallable(functions, "users-unmatchUser");
       const result = await unmatchUser({ id, matchId });
       const data = result.data as { message: string; currentMatches: string[] };
 
