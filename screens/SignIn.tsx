@@ -1,173 +1,51 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  Alert,
-} from "react-native";
-import * as WebBrowser from "expo-web-browser";
-import * as Google from "expo-auth-session/providers/google";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import React from "react";
+import { View, Text, StyleSheet, Alert } from "react-native";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
-import { FirebaseService } from "../networking/FirebaseService";
-
-// Ensure we complete the auth session in web browsers
-WebBrowser.maybeCompleteAuthSession();
+import GoogleSignInButton from "../components/GoogleSignInButton";
+import { createUserProfile } from "../util/userBackend";
 
 export default function SignIn() {
-  const { setIsAuthenticated, setUserId, setAuthToken } = useAppContext();
-  const [isLoading, setIsLoading] = useState(false);
+  const { setIsAuthenticated, setUserId } = useAppContext();
 
-  // Set up Google authentication request
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: process.env.ANDROID_GOOGLE_CLIENT_ID as string,
-    iosClientId: process.env.IOS_GOOGLE_CLIENT_ID as string,
-    webClientId: process.env.WEB_GOOGLE_CLIENT_ID as string,
-    clientId: process.env.WEB_GOOGLE_CLIENT_ID as string,
-    scopes: ["profile", "email"],
-  });
-
-  // Handle authentication response
-  useEffect(() => {
-    handleAuthResponse();
-  }, [response]);
-
-  const handleAuthResponse = async () => {
-    // Check if we have a cached user and token
-    const [cachedUser, cachedToken] = await Promise.all([
-      getCachedUser(),
-      AsyncStorage.getItem("@authToken"),
-    ]);
-
-    if (cachedUser && cachedToken) {
-      setAuthToken(cachedToken);
-      setIsAuthenticated(true);
-      setUserId(cachedUser._id);
-      return;
-    }
-
-    // Process new sign-in response
-    if (response?.type === "success") {
-      setIsLoading(true);
-      try {
-        // Get user info from Google
-        const { accessToken } = response.authentication!;
-        const userInfo = await getUserInfo(accessToken);
-
-        console.log(
-          "User info from Google:",
-          JSON.stringify(userInfo, null, 2)
-        );
-        console.log("Sending auth request to Firebase Functions");
-
-        // Send token to Firebase Functions
-        const serverResponse = await FirebaseService.verifyGoogleAuth(
-          accessToken,
-          userInfo.email,
-          userInfo.name
-        );
-
-        // Process server response
-        if (serverResponse.data) {
-          // Store the auth token
-          await AsyncStorage.setItem("@authToken", accessToken);
-          setAuthToken(accessToken);
-
-          if (serverResponse.data.user && serverResponse.data.user._id) {
-            // Existing user case
-            // Cache user data
-            await AsyncStorage.setItem(
-              "@user",
-              JSON.stringify(serverResponse.data.user)
-            );
-
-            // Update app state
-            setIsAuthenticated(true);
-            setUserId(serverResponse.data.user._id);
-          } else if (serverResponse.data.authInfo) {
-            // New user case - authenticated but needs profile setup
-            // Cache just the auth info for profile setup
-            await AsyncStorage.setItem(
-              "@authInfo",
-              JSON.stringify(serverResponse.data.authInfo)
-            );
-
-            setIsAuthenticated(true);
-            // Do NOT set userId since user doesn't exist in DB yet
-            setUserId(null);
-          } else {
-            console.log("Server response:", serverResponse.data);
-            Alert.alert("Error", "User authentication failed");
-          }
-        }
-      } catch (error) {
-        console.error("Authentication Error:", error);
-
-        // More detailed error logging
-        console.error("Authentication error:", error);
-
-        // Show error message
-        Alert.alert(
-          "Authentication Failed",
-          "Please check your connection and try again."
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    }
+  const handleExistingUser = (userData: any) => {
+    // Handle existing user - navigate to main app
+    console.log("Existing user:", userData);
+    setIsAuthenticated(true);
+    setUserId(userData.uid);
   };
 
-  const getCachedUser = async () => {
-    try {
-      const userData = await AsyncStorage.getItem("@user");
-      return userData ? JSON.parse(userData) : null;
-    } catch (error) {
-      console.error("Error reading cached user:", error);
-      return null;
-    }
+  const handleNewUser = (user: any) => {
+    // Handle new user - navigate to setup/onboarding
+    console.log("New user:", user);
+    setIsAuthenticated(true);
+    setUserId(null); // This will trigger AccountSetupScreen
   };
 
-  const getUserInfo = async (token: any) => {
-    const response = await fetch("https://www.googleapis.com/userinfo/v2/me", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return response.json();
+  const handleError = (error: any) => {
+    Alert.alert(
+      "Sign In Error",
+      error.message || "Failed to sign in with Google"
+    );
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.logoContainer}>
-        <Image
-          tintColor={Colors.primary500}
-          source={require("../assets/logo.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </View>
-      <Text style={styles.title}>Sign In</Text>
-      <Text style={styles.description}>
-        In order to use this app you must sign in with your Cornell NetID via
-        Google.
-      </Text>
+      <View style={styles.content}>
+        <Text style={styles.title}>Welcome to Harbor</Text>
+        <Text style={styles.subtitle}>Sign in to get started</Text>
 
-      {/* Custom Button */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => promptAsync()}
-        disabled={!request || isLoading}
-      >
-        <Image
-          source={require("../assets/images/cornell-logo.png")}
-          style={[styles.cornellLogo, { tintColor: Colors.primary500 }]}
-          resizeMode="contain"
-        />
-        <Text style={styles.buttonText}>
-          {isLoading ? "Signing In..." : "Sign In With Google"}
-        </Text>
-      </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <GoogleSignInButton
+            onUserExists={handleExistingUser}
+            onNewUser={handleNewUser}
+            onError={handleError}
+            buttonText="Continue with Google"
+            buttonStyle={styles.googleButton}
+            textStyle={styles.googleButtonText}
+          />
+        </View>
+      </View>
     </View>
   );
 }
@@ -176,48 +54,45 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.secondary100,
-    alignItems: "center",
-    padding: 20,
   },
-  logoContainer: {
-    height: 120,
-    marginTop: 150,
+  content: {
+    flex: 1,
     justifyContent: "center",
-  },
-  logo: {
-    width: 150,
-    height: 150,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: Colors.primary500,
-    marginTop: 40,
-    marginBottom: 20,
-  },
-  description: {
-    fontSize: 16,
-    color: Colors.primary500,
-    textAlign: "center",
-    marginBottom: 40,
+    alignItems: "center",
     paddingHorizontal: 20,
   },
-  button: {
-    flexDirection: "row",
-    backgroundColor: Colors.primary100,
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  cornellLogo: {
-    width: 30,
-    height: 30,
-    marginRight: 10,
-  },
-  buttonText: {
-    color: Colors.primary500,
-    fontSize: 16,
+  title: {
+    fontSize: 28,
     fontWeight: "bold",
+    color: Colors.black,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  subtitle: {
+    fontSize: 16,
+    color: Colors.secondary500,
+    marginBottom: 40,
+    textAlign: "center",
+  },
+  buttonContainer: {
+    width: "100%",
+    maxWidth: 300,
+  },
+  googleButton: {
+    backgroundColor: "#4285F4",
+    paddingVertical: 15,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
