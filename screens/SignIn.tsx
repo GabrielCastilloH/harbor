@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -10,9 +10,42 @@ import {
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 import GoogleSignInButton from "../components/GoogleSignInButton";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { signOut } from "firebase/auth";
+import { auth } from "../firebaseConfig";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function SignIn() {
-  const { setIsAuthenticated, setUserId } = useAppContext();
+  const { setIsAuthenticated, setUserId, setProfile, setAuthToken } =
+    useAppContext();
+
+  // Clean up any existing authentication state when the SignIn screen loads
+  useEffect(() => {
+    const cleanupAuth = async () => {
+      try {
+        // Sign out from Google Sign-In
+        await GoogleSignin.signOut();
+
+        // Sign out from Firebase Auth
+        await signOut(auth);
+
+        // Clear app context state
+        setUserId(null);
+        setProfile(null);
+        setIsAuthenticated(false);
+        setAuthToken(null);
+
+        // Clear stored data from AsyncStorage
+        await AsyncStorage.multiRemove(["@authToken", "@user"]);
+
+        console.log("SignIn screen - Cleaned up authentication state");
+      } catch (error) {
+        console.log("SignIn screen - Error during cleanup:", error);
+      }
+    };
+
+    cleanupAuth();
+  }, [setUserId, setProfile, setIsAuthenticated, setAuthToken]);
 
   const handleExistingUser = (userData: any) => {
     // Handle existing user - navigate to main app
@@ -57,7 +90,7 @@ export default function SignIn() {
           onUserExists={handleExistingUser}
           onNewUser={handleNewUser}
           onError={handleError}
-          buttonText="Sign In With Google"
+          buttonText="Continue with Cornell"
           buttonStyle={styles.button}
           textStyle={styles.buttonText}
           showCornellLogo={true}
