@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Alert } from "react-native";
 import { Profile } from "../types/App";
-import axios from "axios";
 import { useAppContext } from "../context/AppContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { auth } from "../firebaseConfig";
+import { createUserProfile } from "../util/userBackend";
 import { uploadImageToServer } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 import LoadingScreen from "../components/LoadingScreen";
-
-const serverUrl = process.env.SERVER_URL;
 
 const emptyProfile: Profile = {
   _id: "",
@@ -34,25 +32,25 @@ export default function AccountSetupScreen() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const loadAuthInfo = async () => {
+    const loadUserInfo = async () => {
       try {
-        const authInfoString = await AsyncStorage.getItem("@authInfo");
-        if (authInfoString) {
-          const authInfo = JSON.parse(authInfoString);
-          // Pre-populate the form with information from Google
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          // Pre-populate the form with information from Firebase Auth
           setProfileData((prev) => ({
             ...prev,
-            firstName: authInfo.firstName || "",
-            lastName: authInfo.lastName || "",
-            email: authInfo.email || "",
+            firstName: currentUser.displayName?.split(" ")[0] || "",
+            lastName:
+              currentUser.displayName?.split(" ").slice(1).join(" ") || "",
+            email: currentUser.email || "",
           }));
         }
       } catch (error) {
-        console.error("Error loading auth info:", error);
+        console.error("Error loading user info:", error);
       }
     };
 
-    loadAuthInfo();
+    loadUserInfo();
   }, []);
 
   const handleSave = async () => {
@@ -61,19 +59,15 @@ export default function AccountSetupScreen() {
       console.log("Starting profile save...");
       console.log("Current image array length:", profileData.images.length);
 
-      // Get the auth info from AsyncStorage
-      const authInfoString = await AsyncStorage.getItem("@authInfo");
-      if (!authInfoString) {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
         Alert.alert(
           "Error",
-          "Authentication info not found. Please sign in again."
+          "No authenticated user found. Please sign in again."
         );
         setLoading(false);
         return;
       }
-
-      const authInfo = JSON.parse(authInfoString);
-      console.log("Creating new user with auth info:", authInfo.email);
 
       // STEP 1: Upload all images first and collect their fileIds
       const imageFileIds = [];
@@ -87,89 +81,55 @@ export default function AccountSetupScreen() {
         }
       }
 
-      // STEP 2: Now create the user WITH the image IDs
+      // STEP 2: Create the user profile in Firestore
       const userData = {
-        ...profileData,
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        email: currentUser.email || "",
+        // Add other profile fields as needed
+        age: profileData.age,
+        yearLevel: profileData.yearLevel,
+        major: profileData.major,
+        aboutMe: profileData.aboutMe,
+        yearlyGoal: profileData.yearlyGoal,
+        potentialActivities: profileData.potentialActivities,
+        favoriteMedia: profileData.favoriteMedia,
+        majorReason: profileData.majorReason,
+        studySpot: profileData.studySpot,
+        hobbies: profileData.hobbies,
         images: imageFileIds, // Include the file IDs we just uploaded
-        email: authInfo.email,
       };
 
-      const response = await axios.post(`${serverUrl}/users`, userData);
+      await createUserProfile(userData);
 
-      if (response.data && response.data.user && response.data.user._id) {
-        const newUserId = response.data.user._id;
-        console.log("User created with ID:", newUserId);
+      // STEP 3: Update app state
+      setUserId(currentUser.uid);
+      setProfile({
+        ...profileData,
+        _id: currentUser.uid,
+        email: currentUser.email || "",
+        images: imageFileIds,
+      });
 
-        // Store user data in AsyncStorage
-        await AsyncStorage.setItem("@user", JSON.stringify(response.data.user));
-        await AsyncStorage.removeItem("@authInfo");
-
-        // Update app state
-        setUserId(response.data.user._id);
-        setProfile(response.data.user);
-      }
-
-      Alert.alert("Success", "Profile saved successfully!");
-    } catch (error: any) {
-      // Error handling
-      console.error("Failed to save profile:", error);
-      // Log detailed error information
-      if (axios.isAxiosError(error)) {
-        console.error("Status:", error.response?.status);
-
-        if (error.response?.data) {
-          const errorData =
-            typeof error.response.data === "object"
-              ? JSON.stringify(error.response.data).substring(0, 200) + "..."
-              : String(error.response.data).substring(0, 200) + "...";
-          console.error("Response data (truncated):", errorData);
-        }
-
-        if (error.config?.url) {
-          console.error("Request URL:", error.config.url);
-        }
-
-        if (error.config?.method) {
-          console.error("Request method:", error.config.method);
-        }
-      }
-
-      // Attempt to extract error details from the backend response.
-      let errorMessage = "Failed to save profile";
-      if (error.response && error.response.data) {
-        if (error.response.data.message) {
-          errorMessage = error.response.data.message;
-        }
-        if (error.response.data.errors) {
-          const errorsArray = error.response.data.errors;
-          if (Array.isArray(errorsArray)) {
-            errorMessage +=
-              "\n" + errorsArray.map((e) => e.msg || e).join("\n");
-          } else {
-            errorMessage += "\n" + JSON.stringify(errorsArray);
-          }
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      Alert.alert("Error", errorMessage);
+      console.log("Profile created successfully");
+    } catch (error) {
+      console.error("Error creating profile:", error);
+      Alert.alert("Error", "Failed to create profile. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) {
-    return <LoadingScreen loadingText="Creating your profile" />;
+    return <LoadingScreen loadingText="Creating your profile..." />;
   }
 
   return (
     <ProfileForm
       profileData={profileData}
       onProfileChange={setProfileData}
-      loading={loading}
-      isAccountSetup={true}
       onSave={handleSave}
+      isAccountSetup={true}
     />
   );
 }
