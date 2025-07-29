@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import AccountSetupScreen from "./screens/AccountSetupScreen";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // Configure Google Sign-In
 GoogleSignin.configure({
@@ -44,8 +45,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <SafeAreaProvider>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </SafeAreaProvider>
   );
 }
