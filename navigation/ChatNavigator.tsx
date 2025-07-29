@@ -6,7 +6,7 @@ import ChatList from "../screens/ChatList";
 import ChatScreen from "../screens/ChatScreen";
 import LoadingScreen from "../components/LoadingScreen";
 import Colors from "../constants/Colors";
-import { FirebaseService } from "../networking/FirebaseService";
+import { UserService } from "../networking";
 import {
   OverlayProvider,
   Chat,
@@ -16,7 +16,7 @@ import {
 } from "stream-chat-expo";
 import { NavigationProp } from "@react-navigation/native";
 import ProfileScreen from "../screens/ProfileScreen";
-import { fetchUserToken } from "../networking/ChatFunctions";
+import { fetchUserToken } from "../networking";
 import { useAppContext } from "../context/AppContext";
 import { RootStackParamList } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -121,7 +121,7 @@ export default function ChatNavigator() {
 
       setIsLoadingProfile(true);
       try {
-        const response = await FirebaseService.getUserById(userId);
+        const response = await UserService.getUserById(userId);
 
         // Check if the response has data directly or within a user property
         if (response) {

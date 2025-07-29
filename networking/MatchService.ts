@@ -1,4 +1,4 @@
-import { FirebaseService } from "./FirebaseService";
+import { BlurService } from "./BlurService";
 
 export interface Match {
   _id: string;
@@ -10,53 +10,66 @@ export interface Match {
   channelId?: string;
 }
 
+// Firebase Functions base URL
+const FIREBASE_FUNCTIONS_BASE =
+  "https://us-central1-harbor-ch.cloudfunctions.net";
+
 export const createMatch = async (
   user1Id: string,
   user2Id: string
 ): Promise<string> => {
-  try {
-    const response = await FirebaseService.createMatch(user1Id, user2Id);
-    return response.matchId;
-  } catch (error) {
-    console.error("Error creating match:", error);
-    throw error;
-  }
+  const response = await fetch(
+    `${FIREBASE_FUNCTIONS_BASE}/matches-createMatch`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ user1Id, user2Id }),
+    }
+  );
+  const data = await response.json();
+  return data.matchId;
 };
 
 export const getActiveMatches = async (userId: string): Promise<Match[]> => {
-  try {
-    const response = await FirebaseService.getActiveMatches(userId);
-    return response.matches;
-  } catch (error) {
-    console.error("Error getting active matches:", error);
-    throw error;
-  }
+  const response = await fetch(
+    `${FIREBASE_FUNCTIONS_BASE}/matches-getActiveMatches/${userId}`
+  );
+  const data = await response.json();
+  return data.matches || [];
 };
 
 export const unmatch = async (
   userId: string,
   matchId: string
 ): Promise<void> => {
-  try {
-    await FirebaseService.unmatchUser(userId, matchId);
-  } catch (error) {
-    console.error("Error unmatching:", error);
-    throw error;
-  }
+  await fetch(`${FIREBASE_FUNCTIONS_BASE}/matches-unmatchUsers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ userId, matchId }),
+  });
 };
 
 export const updateMatchChannel = async (
   matchId: string,
   channelId: string
 ): Promise<void> => {
-  try {
-    await FirebaseService.updateMatchChannel(matchId, channelId);
-  } catch (error) {
-    console.error("Error updating match channel:", error);
-    throw error;
-  }
+  await fetch(
+    `${FIREBASE_FUNCTIONS_BASE}/matches-updateMatchChannel/${matchId}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ channelId }),
+    }
+  );
 };
 
+// Re-export blur functions for convenience
 export const updateBlurLevel = async (
   userId: string,
   matchedUserId: string
@@ -66,16 +79,7 @@ export const updateBlurLevel = async (
   hasShownWarning: boolean;
   messageCount: number;
 }> => {
-  try {
-    const response = await FirebaseService.updateBlurLevelForMessage(
-      userId,
-      matchedUserId
-    );
-    return response;
-  } catch (error) {
-    console.error("Error updating blur level:", error);
-    throw error;
-  }
+  return BlurService.updateBlurLevelForMessage(userId, matchedUserId);
 };
 
 export const getBlurLevel = async (
@@ -86,11 +90,5 @@ export const getBlurLevel = async (
   hasShownWarning: boolean;
   messageCount: number;
 }> => {
-  try {
-    const response = await FirebaseService.getBlurLevel(userId, matchedUserId);
-    return response;
-  } catch (error) {
-    console.error("Error getting blur level:", error);
-    throw error;
-  }
+  return BlurService.getBlurLevel(userId, matchedUserId);
 };
