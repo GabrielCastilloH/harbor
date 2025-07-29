@@ -132,7 +132,7 @@ export default function HomeScreen() {
 
   const handleSwipeRight = async (profile: Profile) => {
     // Prevent duplicate swipes on the same profile or while a swipe is in progress
-    if (swipeInProgress || lastSwipedProfile === profile._id) {
+    if (swipeInProgress || lastSwipedProfile === profile.uid) {
       return;
     }
 
@@ -140,11 +140,11 @@ export default function HomeScreen() {
 
     try {
       setSwipeInProgress(true);
-      setLastSwipedProfile(profile._id);
+      setLastSwipedProfile(profile.uid);
 
       const response = await SwipeService.createSwipe(
         userId,
-        profile._id,
+        profile.uid,
         "right"
       );
 
@@ -156,7 +156,7 @@ export default function HomeScreen() {
 
       // Update current profile to the next one
       const currentIndex = recommendations.findIndex(
-        (p) => p._id === profile._id
+        (p) => p.uid === profile.uid
       );
       if (currentIndex < recommendations.length - 1) {
         setCurrentProfile(recommendations[currentIndex + 1]);
@@ -176,16 +176,16 @@ export default function HomeScreen() {
 
   const handleSwipeLeft = (profile: Profile) => {
     // Prevent duplicate swipes while a swipe is in progress
-    if (swipeInProgress || lastSwipedProfile === profile._id) {
+    if (swipeInProgress || lastSwipedProfile === profile.uid) {
       return;
     }
 
     setSwipeInProgress(true);
-    setLastSwipedProfile(profile._id);
+    setLastSwipedProfile(profile.uid);
 
     // Update current profile to the next one
     const currentIndex = recommendations.findIndex(
-      (p) => p._id === profile._id
+      (p) => p.uid === profile.uid
     );
     if (currentIndex < recommendations.length - 1) {
       setCurrentProfile(recommendations[currentIndex + 1]);
