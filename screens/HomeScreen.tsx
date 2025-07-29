@@ -16,7 +16,11 @@ import LoadingScreen from "../components/LoadingScreen";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
 import SocketService from "../util/SocketService";
-import { FirebaseService } from "../networking/FirebaseService";
+import {
+  UserService,
+  SwipeService,
+  RecommendationService,
+} from "../networking";
 
 export default function HomeScreen() {
   const { userId } = useAppContext();
@@ -67,7 +71,7 @@ export default function HomeScreen() {
       if (!userId) return;
       setLoadingProfile(true);
       try {
-        const response = await FirebaseService.getUserById(userId);
+        const response = await UserService.getUserById(userId);
         if (response) {
           setUserProfile(response.user || response);
         }
@@ -86,7 +90,7 @@ export default function HomeScreen() {
       if (!userId) return;
       setLoadingRecommendations(true);
       try {
-        const response = await FirebaseService.getRecommendations(userId);
+        const response = await RecommendationService.getRecommendations(userId);
         if (response && response.recommendations) {
           setRecommendations(response.recommendations);
           if (response.recommendations.length > 0) {
@@ -138,7 +142,7 @@ export default function HomeScreen() {
       setSwipeInProgress(true);
       setLastSwipedProfile(profile._id);
 
-      const response = await FirebaseService.createSwipe(
+      const response = await SwipeService.createSwipe(
         userId,
         profile._id,
         "right"

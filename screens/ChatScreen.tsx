@@ -10,8 +10,8 @@ import React, { useEffect, useState } from "react";
 import { Channel, MessageInput, MessageList } from "stream-chat-expo";
 import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
-import { updateMessageCount } from "../networking/ChatFunctions";
-import { FirebaseService } from "../networking/FirebaseService";
+import { updateMessageCount } from "../networking";
+import { BlurService } from "../networking";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
@@ -31,10 +31,7 @@ export default function ChatScreen() {
 
       if (otherUserId) {
         try {
-          const response = await FirebaseService.getBlurLevel(
-            userId,
-            otherUserId
-          );
+          const response = await BlurService.getBlurLevel(userId, otherUserId);
           const {
             warningShown,
             bothAgreed,
@@ -64,7 +61,7 @@ export default function ChatScreen() {
       const matchId = channel?.data?.matchId;
       if (!matchId || !userId) return;
 
-      const response = await FirebaseService.handleWarningResponse(
+      const response = await BlurService.handleWarningResponse(
         matchId,
         userId,
         agreed
@@ -125,7 +122,7 @@ export default function ChatScreen() {
               userId,
               otherUserId,
             });
-            const response = await FirebaseService.updateBlurLevelForMessage(
+            const response = await BlurService.updateBlurLevelForMessage(
               userId,
               otherUserId
             );

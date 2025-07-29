@@ -22,8 +22,8 @@ import PersonalView from "../components/PersonalView";
 import { getImageSource } from "../util/imageUtils";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
-import { unmatch } from "../networking/MatchService";
-import { FirebaseService } from "../networking/FirebaseService";
+import { unmatch } from "../networking";
+import { UserService, BlurService } from "../networking";
 
 type ProfileScreenParams = {
   ProfileScreen: {
@@ -55,7 +55,7 @@ export default function ProfileScreen() {
       }
 
       try {
-        const response = await FirebaseService.getUserById(userId);
+        const response = await UserService.getUserById(userId);
         if (response) {
           setProfile(response.user || response);
         }
@@ -75,10 +75,7 @@ export default function ProfileScreen() {
       if (!userId || !currentUserId || userId === currentUserId) return;
 
       try {
-        const response = await FirebaseService.getBlurLevel(
-          currentUserId,
-          userId
-        );
+        const response = await BlurService.getBlurLevel(currentUserId, userId);
         if (response.shouldShowWarning) {
           setShowBlurWarning(true);
         }

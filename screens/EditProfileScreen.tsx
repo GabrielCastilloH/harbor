@@ -11,7 +11,7 @@ import { useAppContext } from "../context/AppContext";
 import { uploadImageToServer } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 import Colors from "../constants/Colors";
-import { FirebaseService } from "../networking/FirebaseService";
+import { UserService } from "../networking";
 
 const emptyProfile: Profile = {
   _id: "",
@@ -52,7 +52,7 @@ export default function EditProfileScreen() {
 
       setLoading(true);
       try {
-        const response = await FirebaseService.getUserById(userId);
+        const response = await UserService.getUserById(userId);
         const userData = response.user || response;
         setProfileData(userData);
         setProfile(userData);
@@ -125,10 +125,7 @@ export default function EditProfileScreen() {
       console.log("Sending profile update to server...");
       console.log("Final images array length:", finalProfileData.images.length);
 
-      const response = await FirebaseService.updateUser(
-        userId,
-        finalProfileData
-      );
+      const response = await UserService.updateUser(userId, finalProfileData);
       console.log("Profile update response status:", response.status);
 
       // Store the updated full user profile in context
