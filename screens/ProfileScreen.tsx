@@ -11,6 +11,7 @@ import {
   Alert,
   Image,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
@@ -141,96 +142,110 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary500} />
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary500} />
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!profile) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>No profile data available</Text>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text>No profile data available</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView style={styles.scrollView}>
-      <ScrollView
-        horizontal
-        style={styles.photoScroll}
-        showsHorizontalScrollIndicator={false}
-      >
-        {profile.images.map((fileId, index) => (
-          <Pressable
-            key={index}
-            onPress={() => {
-              setSelectedPhoto(fileId);
-              setModalVisible(true);
-            }}
-          >
-            <Image source={getImageSource(fileId)} style={styles.thumbnail} />
-          </Pressable>
-        ))}
-      </ScrollView>
-      <BasicInfoView profile={profile} />
-
-      {/* Image Modal */}
-      <Modal
-        visible={modalVisible}
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <Pressable
-          style={styles.modalBackground}
-          onPress={() => setModalVisible(false)}
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        <ScrollView
+          horizontal
+          style={styles.photoScroll}
+          showsHorizontalScrollIndicator={false}
         >
-          {selectedPhoto && (
-            <Image
-              source={getImageSource(selectedPhoto)}
-              style={styles.fullImage}
-              resizeMode="contain"
-            />
-          )}
-        </Pressable>
-      </Modal>
+          {profile.images.map((fileId, index) => (
+            <Pressable
+              key={index}
+              onPress={() => {
+                setSelectedPhoto(fileId);
+                setModalVisible(true);
+              }}
+            >
+              <Image source={getImageSource(fileId)} style={styles.thumbnail} />
+            </Pressable>
+          ))}
+        </ScrollView>
+        <BasicInfoView profile={profile} />
 
-      {/* Blur Warning Modal */}
-      <Modal visible={showBlurWarning} transparent={true} animationType="fade">
-        <View style={styles.warningModalBackground}>
-          <View style={styles.warningModalContent}>
-            <Text style={styles.warningTitle}>Photos Will Be Revealed</Text>
-            <Text style={styles.warningText}>
-              You've exchanged enough messages that your photos will start
-              becoming clearer. This is your last chance to unmatch while
-              remaining anonymous.
-            </Text>
-            <View style={styles.warningButtons}>
-              <Pressable
-                style={[styles.warningButton, styles.unmatchButton]}
-                onPress={handleUnmatch}
-              >
-                <Text style={styles.warningButtonText}>Unmatch</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.warningButton, styles.continueButton]}
-                onPress={() => setShowBlurWarning(false)}
-              >
-                <Text style={styles.warningButtonText}>Continue</Text>
-              </Pressable>
+        {/* Image Modal */}
+        <Modal
+          visible={modalVisible}
+          transparent={true}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <Pressable
+            style={styles.modalBackground}
+            onPress={() => setModalVisible(false)}
+          >
+            {selectedPhoto && (
+              <Image
+                source={getImageSource(selectedPhoto)}
+                style={styles.fullImage}
+                resizeMode="contain"
+              />
+            )}
+          </Pressable>
+        </Modal>
+
+        {/* Blur Warning Modal */}
+        <Modal
+          visible={showBlurWarning}
+          transparent={true}
+          animationType="fade"
+        >
+          <View style={styles.warningModalBackground}>
+            <View style={styles.warningModalContent}>
+              <Text style={styles.warningTitle}>Photos Will Be Revealed</Text>
+              <Text style={styles.warningText}>
+                You've exchanged enough messages that your photos will start
+                becoming clearer. This is your last chance to unmatch while
+                remaining anonymous.
+              </Text>
+              <View style={styles.warningButtons}>
+                <Pressable
+                  style={[styles.warningButton, styles.unmatchButton]}
+                  onPress={handleUnmatch}
+                >
+                  <Text style={styles.warningButtonText}>Unmatch</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.warningButton, styles.continueButton]}
+                  onPress={() => setShowBlurWarning(false)}
+                >
+                  <Text style={styles.warningButtonText}>Continue</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      <AcademicView profile={profile} />
-      <PersonalView profile={profile} />
-    </ScrollView>
+        <AcademicView profile={profile} />
+        <PersonalView profile={profile} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.secondary100,
+  },
   scrollView: {
     flex: 1,
     backgroundColor: Colors.secondary100,
@@ -260,7 +275,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.secondary100,
   },
   unmatchButton: {
     marginRight: 15,
