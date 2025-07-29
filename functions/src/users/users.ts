@@ -189,7 +189,10 @@ export const getUserById = functions.https.onCall(
   },
   async (request: CallableRequest<{ id: string }>) => {
     try {
+      console.log("getUserById function called with:", request.data);
+
       if (!request.auth) {
+        console.log("getUserById - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -197,30 +200,30 @@ export const getUserById = functions.https.onCall(
       }
 
       const { id } = request.data;
-
       if (!id) {
+        console.log("getUserById - No id provided");
         throw new functions.https.HttpsError(
           "invalid-argument",
           "User ID is required"
         );
       }
 
+      console.log("getUserById - Fetching user with ID:", id);
       const userDoc = await db.collection("users").doc(id).get();
+
       if (!userDoc.exists) {
+        console.log("getUserById - User not found:", id);
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
-      return {
-        _id: userDoc.id,
-        ...userDoc.data(),
-      };
+      const userData = userDoc.data();
+      console.log("getUserById - User found:", userData);
+      return userData;
     } catch (error: any) {
-      console.error("Error fetching user:", error);
-
+      console.error("getUserById - Error:", error);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-
       throw new functions.https.HttpsError("internal", "Failed to fetch user");
     }
   }

@@ -16,7 +16,7 @@ export class SwipeService {
     });
 
     try {
-      const createSwipe = httpsCallable(functions, "createSwipe");
+      const createSwipe = httpsCallable(functions, "swipes-createSwipe");
       const result = await createSwipe({ swiperId, swipedId, direction });
       const data = result.data as {
         message: string;
@@ -37,7 +37,10 @@ export class SwipeService {
     console.log("SwipeService - countRecentSwipes called with:", id);
 
     try {
-      const countRecentSwipes = httpsCallable(functions, "countRecentSwipes");
+      const countRecentSwipes = httpsCallable(
+        functions,
+        "swipes-countRecentSwipes"
+      );
       const result = await countRecentSwipes({ id });
       const data = result.data as {
         swipeCount: number;
@@ -57,7 +60,10 @@ export class SwipeService {
     console.log("SwipeService - getSwipesByUser called with:", id);
 
     try {
-      const getSwipesByUser = httpsCallable(functions, "getSwipesByUser");
+      const getSwipesByUser = httpsCallable(
+        functions,
+        "swipes-getSwipesByUser"
+      );
       const result = await getSwipesByUser({ id });
       const data = result.data as { swipes: any[] };
 

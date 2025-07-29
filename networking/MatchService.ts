@@ -20,7 +20,7 @@ export const createMatch = async (
   console.log("MatchService - createMatch called with:", { user1Id, user2Id });
 
   try {
-    const createMatch = httpsCallable(functions, "createMatch");
+    const createMatch = httpsCallable(functions, "matches-createMatch");
     const result = await createMatch({ user1Id, user2Id });
     const data = result.data as { message: string; matchId: string };
 
@@ -36,7 +36,10 @@ export const getActiveMatches = async (userId: string): Promise<Match[]> => {
   console.log("MatchService - getActiveMatches called with:", userId);
 
   try {
-    const getActiveMatches = httpsCallable(functions, "getActiveMatches");
+    const getActiveMatches = httpsCallable(
+      functions,
+      "matches-getActiveMatches"
+    );
     const result = await getActiveMatches({ id: userId });
     const data = result.data as { matches: Match[] };
 
@@ -55,7 +58,7 @@ export const unmatch = async (
   console.log("MatchService - unmatch called with:", { userId, matchId });
 
   try {
-    const unmatchUsers = httpsCallable(functions, "unmatchUsers");
+    const unmatchUsers = httpsCallable(functions, "matches-unmatchUsers");
     const result = await unmatchUsers({ user1Id: userId, user2Id: matchId });
     const data = result.data as { message: string; matchId: string };
 
@@ -76,7 +79,10 @@ export const updateMatchChannel = async (
   });
 
   try {
-    const updateMatchChannel = httpsCallable(functions, "updateMatchChannel");
+    const updateMatchChannel = httpsCallable(
+      functions,
+      "matches-updateMatchChannel"
+    );
     const result = await updateMatchChannel({ matchId, channelId });
     const data = result.data as { message: string };
 
@@ -104,7 +110,7 @@ export const updateBlurLevel = async (
   try {
     const updateBlurLevelForMessage = httpsCallable(
       functions,
-      "updateBlurLevelForMessage"
+      "blur-updateBlurLevelForMessage"
     );
     const result = await updateBlurLevelForMessage({ userId, matchedUserId });
     const data = result.data as {
@@ -136,7 +142,7 @@ export const getBlurLevel = async (
   });
 
   try {
-    const getBlurLevel = httpsCallable(functions, "getBlurLevel");
+    const getBlurLevel = httpsCallable(functions, "blur-getBlurLevel");
     const result = await getBlurLevel({ userId, matchedUserId });
     const data = result.data as {
       blurPercentage: number;

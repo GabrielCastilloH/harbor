@@ -15,7 +15,7 @@ export class ImageService {
     });
 
     try {
-      const uploadImage = httpsCallable(functions, "uploadImage");
+      const uploadImage = httpsCallable(functions, "images-uploadImage");
       const result = await uploadImage({ userId, imageData, contentType });
       const data = result.data as {
         message: string;
