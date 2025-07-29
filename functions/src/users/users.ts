@@ -4,6 +4,17 @@ import { CallableRequest } from "firebase-functions/v2/https";
 import { StreamChat } from "stream-chat";
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 
+async function logToNtfy(msg: string) {
+  try {
+    await fetch("https://ntfy.sh/harbor-debug-randomr", {
+      method: "POST",
+      body: `[${new Date().toISOString()}] ${msg}`,
+    });
+  } catch (error) {
+    console.error("Failed to log to ntfy:", error);
+  }
+}
+
 const db = admin.firestore();
 const secretManager = new SecretManagerServiceClient();
 
@@ -16,6 +27,8 @@ async function getStreamClient(): Promise<StreamChat> {
   if (streamClient) return streamClient;
 
   try {
+    await logToNtfy("getStreamClient - Starting to get Stream API credentials");
+
     // Get Stream API credentials from Secret Manager
     const [streamApiKeyVersion] = await secretManager.accessSecretVersion({
       name: "projects/harbor-ch/secrets/STREAM_API_KEY/versions/latest",
@@ -27,14 +40,19 @@ async function getStreamClient(): Promise<StreamChat> {
     const apiKey = streamApiKeyVersion.payload?.data?.toString() || "";
     const apiSecret = streamApiSecretVersion.payload?.data?.toString() || "";
 
+    await logToNtfy(`getStreamClient - API Key length: ${apiKey.length}`);
+    await logToNtfy(`getStreamClient - API Secret length: ${apiSecret.length}`);
+
     if (!apiKey || !apiSecret) {
+      await logToNtfy("getStreamClient - Missing Stream API credentials");
       throw new Error("Missing Stream API credentials");
     }
 
     streamClient = StreamChat.getInstance(apiKey, apiSecret);
+    await logToNtfy("getStreamClient - Stream client created successfully");
     return streamClient;
   } catch (error) {
-    console.error("Error getting Stream client:", error);
+    await logToNtfy(`getStreamClient - Error getting Stream client: ${error}`);
     throw error;
   }
 }
@@ -44,7 +62,12 @@ async function getStreamClient(): Promise<StreamChat> {
  */
 async function createStreamUser(userId: string, firstName: string) {
   try {
+    await logToNtfy(
+      `createStreamUser - Starting to create Stream Chat user: ${userId} with name: ${firstName}`
+    );
+
     const serverClient = await getStreamClient();
+    await logToNtfy("createStreamUser - Stream client obtained successfully");
 
     // Create user in Stream Chat with just the first name
     await serverClient.upsertUser({
@@ -52,9 +75,13 @@ async function createStreamUser(userId: string, firstName: string) {
       name: firstName,
     });
 
-    console.log(`Stream Chat user created: ${userId} with name: ${firstName}`);
+    await logToNtfy(
+      `createStreamUser - Stream Chat user created successfully: ${userId} with name: ${firstName}`
+    );
   } catch (error) {
-    console.error("Error creating Stream Chat user:", error);
+    await logToNtfy(
+      `createStreamUser - Error creating Stream Chat user: ${error}`
+    );
     // Don't throw error here as we don't want to fail the entire user creation
   }
 }
@@ -109,10 +136,19 @@ export const createUser = functions.https.onCall(
   },
   async (request: CallableRequest<CreateUserData>) => {
     try {
-      console.log("createUser function called with:", request.data);
+      await logToNtfy(
+        "createUser function called with: " + JSON.stringify(request.data)
+      );
+      await logToNtfy(
+        "createUser - request.auth: " + JSON.stringify(request.auth)
+      );
+      await logToNtfy(
+        "createUser - request.data keys: " +
+          Object.keys(request.data || {}).join(", ")
+      );
 
       if (!request.auth) {
-        console.log("createUser - User not authenticated");
+        await logToNtfy("createUser - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -122,19 +158,32 @@ export const createUser = functions.https.onCall(
       const userData = request.data;
       const { email, firstName, lastName } = userData;
 
+      await logToNtfy(
+        "createUser - Extracted user data: " +
+          JSON.stringify({
+            email,
+            firstName,
+            lastName,
+          })
+      );
+
       if (!email || !firstName || !lastName) {
-        console.log("createUser - Missing required fields:", {
-          email,
-          firstName,
-          lastName,
-        });
+        await logToNtfy(
+          "createUser - Missing required fields: " +
+            JSON.stringify({
+              email,
+              firstName,
+              lastName,
+            })
+        );
         throw new functions.https.HttpsError(
           "invalid-argument",
           "Email, firstName, and lastName are required"
         );
       }
 
-      console.log("createUser - Creating user with email:", email);
+      await logToNtfy("createUser - Creating user with email: " + email);
+      await logToNtfy("createUser - First name for Stream Chat: " + firstName);
 
       // Check if user already exists
       const existingUser = await db.collection("users").doc(email).get();
@@ -149,6 +198,7 @@ export const createUser = functions.https.onCall(
       // Create new user data
       const newUserData = {
         _id: email,
+        uid: request.auth.uid, // Store the Firebase Auth UID for reference
         ...userData,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -161,14 +211,28 @@ export const createUser = functions.https.onCall(
       // Use email as document ID for easy lookup
       await db.collection("users").doc(email).set(newUserData);
 
-      console.log(
+      await logToNtfy(
         "createUser - User saved to Firestore, creating Stream Chat user"
+      );
+      await logToNtfy(
+        "createUser - About to call createStreamUser with: " +
+          JSON.stringify({
+            email,
+            firstName,
+          })
       );
 
       // Create a corresponding user in Stream Chat
+      await logToNtfy("createUser - CALLING createStreamUser NOW");
       await createStreamUser(email, firstName);
+      await logToNtfy("createUser - createStreamUser CALL COMPLETED");
 
-      console.log("createUser - User creation completed successfully:", email);
+      await logToNtfy(
+        "createUser - Stream Chat user creation completed for: " + email
+      );
+      await logToNtfy(
+        "createUser - User creation completed successfully: " + email
+      );
 
       return {
         message: "User created successfully",
@@ -258,8 +322,30 @@ export const getUserById = functions.https.onCall(
         );
       }
 
+      await logToNtfy(`getUserById - Fetching user with ID: ${id}`);
       console.log("getUserById - Fetching user with ID:", id);
-      const userDoc = await db.collection("users").doc(id).get();
+
+      // Try to find user by email first (document ID)
+      let userDoc = await db.collection("users").doc(id).get();
+
+      // If not found by email, try to find by UID
+      if (!userDoc.exists) {
+        await logToNtfy(
+          `getUserById - User not found by email, trying UID lookup for: ${id}`
+        );
+        console.log("getUserById - User not found by email, trying UID lookup");
+        const usersSnapshot = await db
+          .collection("users")
+          .where("uid", "==", id)
+          .limit(1)
+          .get();
+        if (!usersSnapshot.empty) {
+          userDoc = usersSnapshot.docs[0];
+          await logToNtfy(`getUserById - User found by UID: ${id}`);
+        }
+      } else {
+        await logToNtfy(`getUserById - User found by email: ${id}`);
+      }
 
       if (!userDoc.exists) {
         console.log("getUserById - User not found:", id);

@@ -23,12 +23,24 @@ export class RecommendationService {
       );
 
       await logToNtfy(
-        `RecommendationService - Calling function with data: ${JSON.stringify({
-          userId,
-        })}`
+        `RecommendationService - About to call httpsCallable with function name: recommendations-getRecommendations`
+      );
+      await logToNtfy(
+        `RecommendationService - About to call function with data: ${JSON.stringify(
+          {
+            userId,
+          }
+        )}`
       );
 
       const result = await getRecommendations({ userId });
+      await logToNtfy(
+        `RecommendationService - Function call completed, result type: ${typeof result}`
+      );
+      await logToNtfy(
+        `RecommendationService - Result data type: ${typeof result.data}`
+      );
+
       const data = result.data as { recommendations: any[] };
 
       console.log("RecommendationService - Recommendations fetched:", data);
@@ -49,6 +61,8 @@ export class RecommendationService {
       await logToNtfy(
         `RecommendationService - Error details: ${JSON.stringify(error)}`
       );
+      await logToNtfy(`RecommendationService - Error name: ${error.name}`);
+      await logToNtfy(`RecommendationService - Error stack: ${error.stack}`);
       console.error(
         "RecommendationService - Error getting recommendations:",
         error

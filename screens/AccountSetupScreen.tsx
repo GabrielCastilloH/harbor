@@ -5,6 +5,7 @@ import { useAppContext } from "../context/AppContext";
 import { auth } from "../firebaseConfig";
 import { createUserProfile } from "../util/userBackend";
 import { uploadImageToServer } from "../util/imageUtils";
+import { logToNtfy } from "../util/debugUtils";
 import ProfileForm from "../components/ProfileForm";
 import LoadingScreen from "../components/LoadingScreen";
 import { signOut } from "firebase/auth";
@@ -83,11 +84,13 @@ export default function AccountSetupScreen() {
   const handleSave = async () => {
     setLoading(true);
     try {
+      await logToNtfy("AccountSetupScreen - Starting profile save...");
       console.log("Starting profile save...");
       console.log("Current image array length:", profileData.images.length);
 
       const currentUser = auth.currentUser;
       if (!currentUser) {
+        await logToNtfy("AccountSetupScreen - No authenticated user found");
         Alert.alert(
           "Error",
           "No authenticated user found. Please sign in again."
@@ -127,19 +130,27 @@ export default function AccountSetupScreen() {
         images: imageFileIds, // Include the file IDs we just uploaded
       };
 
+      await logToNtfy("AccountSetupScreen - About to call createUserProfile");
       await createUserProfile(userData);
+      await logToNtfy(
+        "AccountSetupScreen - createUserProfile completed successfully"
+      );
 
       // STEP 3: Update app state
-      setUserId(currentUser.uid);
+      // Use email as user ID since that's how the user was stored in Firestore
+      const userEmail = currentUser.email || "";
+      setUserId(userEmail);
       setProfile({
         ...profileData,
-        _id: currentUser.uid,
-        email: currentUser.email || "",
+        _id: userEmail,
+        email: userEmail,
         images: imageFileIds,
       });
 
+      await logToNtfy("AccountSetupScreen - Profile created successfully");
       console.log("Profile created successfully");
     } catch (error) {
+      await logToNtfy(`AccountSetupScreen - Error creating profile: ${error}`);
       console.error("Error creating profile:", error);
       Alert.alert("Error", "Failed to create profile. Please try again.");
     } finally {
