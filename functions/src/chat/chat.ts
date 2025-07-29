@@ -56,7 +56,10 @@ export const generateUserToken = functions.https.onCall(
   },
   async (request: CallableRequest) => {
     try {
+      console.log("generateUserToken function called with:", request.data);
+
       if (!request.auth) {
+        console.log("generateUserToken - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -64,19 +67,92 @@ export const generateUserToken = functions.https.onCall(
       }
 
       const userId = request.auth.uid;
+      console.log("generateUserToken - Generating token for user:", userId);
 
       // Verify user exists in Firestore
       const userDoc = await db.collection("users").doc(userId).get();
       if (!userDoc.exists) {
+        console.log("generateUserToken - User not found:", userId);
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
       const serverClient = await getStreamClient();
       const token = serverClient.createToken(userId);
 
+      console.log(
+        "generateUserToken - Token generated successfully for user:",
+        userId
+      );
       return { token };
-    } catch (error) {
-      console.error("Error generating user token:", error);
+    } catch (error: any) {
+      console.error("generateUserToken - Error:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to generate token"
+      );
+    }
+  }
+);
+
+// Alias for the client-side call
+export const generateToken = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ userId: string }>) => {
+    try {
+      console.log("generateToken function called with:", request.data);
+
+      if (!request.auth) {
+        console.log("generateToken - User not authenticated");
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { userId } = request.data;
+      if (!userId) {
+        console.log("generateToken - No userId provided");
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "User ID is required"
+        );
+      }
+
+      console.log("generateToken - Generating token for user:", userId);
+
+      // Verify user exists in Firestore
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (!userDoc.exists) {
+        console.log("generateToken - User not found:", userId);
+        throw new functions.https.HttpsError("not-found", "User not found");
+      }
+
+      const serverClient = await getStreamClient();
+      const token = serverClient.createToken(userId);
+
+      console.log(
+        "generateToken - Token generated successfully for user:",
+        userId
+      );
+      return { token };
+    } catch (error: any) {
+      console.error("generateToken - Error:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
       throw new functions.https.HttpsError(
         "internal",
         "Failed to generate token"
@@ -272,7 +348,9 @@ export const updateMessageCount = functions.https.onCall(
 
 export const chatFunctions = {
   generateUserToken,
+  generateToken,
   createChatChannel,
+  createChannel: createChatChannel, // Alias for client-side call
   updateChannelChatStatus,
   updateMessageCount,
 };

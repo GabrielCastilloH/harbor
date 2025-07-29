@@ -18,8 +18,6 @@ export { RecommendationService } from "./RecommendationService";
 
 // Re-export specific functions for easier imports
 export {
-  fetchUserToken,
-  fetchCreateChatChannel,
   fetchUpdateChannelChatStatus,
   updateMessageCount,
 } from "./ChatFunctions";

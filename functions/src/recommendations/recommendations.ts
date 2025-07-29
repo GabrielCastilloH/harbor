@@ -21,94 +21,58 @@ export const getRecommendations = functions.https.onCall(
     ingressSettings: "ALLOW_ALL",
     invoker: "public",
   },
-  async (request: CallableRequest<{ id: string }>) => {
+  async (request: CallableRequest<{ userId: string }>) => {
     try {
+      console.log("getRecommendations function called with:", request.data);
+
       if (!request.auth) {
+        console.log("getRecommendations - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
         );
       }
 
-      const { id } = request.data;
-
-      if (!id) {
+      const { userId } = request.data;
+      if (!userId) {
+        console.log("getRecommendations - No userId provided");
         throw new functions.https.HttpsError(
           "invalid-argument",
           "User ID is required"
         );
       }
 
-      // Check if the user can add more matches
-      const canAddMatch = await canUserAddMatch(id);
-      if (!canAddMatch) {
-        return {
-          message: "User cannot add more matches",
-          recommendations: [],
-        };
-      }
+      console.log(
+        "getRecommendations - Getting recommendations for user:",
+        userId
+      );
 
-      // Check daily swipe limit
-      const swipeCount = await countRecentSwipes(id);
-      if (swipeCount > DAILY_SWIPES) {
-        return {
-          message: "User exceeded daily swipes",
-          swipeCount,
-        };
-      }
-
-      // Get all users the current user has swiped on
-      const swipesSnapshot = await db
-        .collection("swipes")
-        .where("swiperId", "==", id)
+      // Get all users except the current user
+      const usersSnapshot = await db
+        .collection("users")
+        .where("_id", "!=", userId)
         .get();
 
-      const swipedIds = swipesSnapshot.docs.map((doc) => doc.data().swipedId);
-
-      // Get current user to check if they're premium
-      const currentUserDoc = await db.collection("users").doc(id).get();
-      if (!currentUserDoc.exists) {
-        throw new functions.https.HttpsError("not-found", "User not found");
+      if (usersSnapshot.empty) {
+        console.log("getRecommendations - No other users found");
+        return { recommendations: [] };
       }
 
-      const currentUser = currentUserDoc.data() as any;
+      const recommendations = usersSnapshot.docs.map((doc) => ({
+        _id: doc.id,
+        ...doc.data(),
+      }));
 
-      // Get all users except the current user and those already swiped
-      const allUsersSnapshot = await db.collection("users").get();
-      const allUsers = allUsersSnapshot.docs
-        .map((doc) => ({ _id: doc.id, ...doc.data() }))
-        .filter(
-          (user) =>
-            user._id !== id &&
-            !swipedIds.includes(user._id) &&
-            user._id !== currentUser.email // Also exclude by email
-        );
-
-      // Filter out users who can't add more matches (unless premium)
-      const availableUsers = [];
-      for (const user of allUsers) {
-        const canAddMatch = await canUserAddMatch(user._id);
-        if (canAddMatch) {
-          availableUsers.push(user);
-        }
-      }
-
-      // Shuffle and limit to recommended count
-      const shuffled = availableUsers.sort(() => 0.5 - Math.random());
-      const recommendations = shuffled.slice(0, RECOMMENDED_COUNT);
-
-      return {
-        recommendations,
-        swipeCount,
-        dailyLimit: DAILY_SWIPES,
-      };
+      console.log(
+        "getRecommendations - Found recommendations:",
+        recommendations.length
+      );
+      return { recommendations };
     } catch (error: any) {
-      console.error("Error getting recommendations:", error);
-
+      console.error("getRecommendations - Error:", error);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-
       throw new functions.https.HttpsError(
         "internal",
         "Failed to get recommendations"
