@@ -247,23 +247,6 @@ export class FirebaseService {
     return response.json();
   }
 
-  static async getImage(id: string, requestingUserId: string) {
-    const response = await fetch(
-      `${FIREBASE_FUNCTIONS_BASE}/images-getImage/${id}?requestingUserId=${requestingUserId}`
-    );
-    return response.json();
-  }
-
-  static async deleteImage(id: string) {
-    const response = await fetch(
-      `${FIREBASE_FUNCTIONS_BASE}/images-deleteImage/${id}`,
-      {
-        method: "DELETE",
-      }
-    );
-    return response.json();
-  }
-
   // Blur Functions
   static async updateBlurLevelForMessage(
     userId: string,
