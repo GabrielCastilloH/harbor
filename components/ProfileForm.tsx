@@ -151,12 +151,7 @@ export default function ProfileForm({
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView
-          style={[
-            styles.container,
-            isAccountSetup && styles.accountSetupContainer,
-          ]}
-        >
+        <ScrollView style={[styles.container]}>
           <View style={styles.section}>
             <View style={styles.headerContainer}>
               {isAccountSetup && onLogout && (
@@ -318,9 +313,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.secondary100,
-  },
-  accountSetupContainer: {
-    paddingTop: 60,
   },
   headerContainer: {
     flexDirection: "row",
