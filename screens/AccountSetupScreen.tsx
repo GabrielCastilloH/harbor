@@ -8,6 +8,7 @@ import { uploadImageToServer } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 import LoadingScreen from "../components/LoadingScreen";
 import { signOut } from "firebase/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const emptyProfile: Profile = {
   _id: "",
@@ -28,15 +29,26 @@ const emptyProfile: Profile = {
 };
 
 export default function AccountSetupScreen() {
-  const { setUserId, setProfile } = useAppContext();
+  const { setUserId, setProfile, setIsAuthenticated, setAuthToken } =
+    useAppContext();
   const [profileData, setProfileData] = useState<Profile>(emptyProfile);
   const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {
     try {
+      // Sign out from Firebase Auth
       await signOut(auth);
+
+      // Clear app context state
       setUserId(null);
       setProfile(null);
+      setIsAuthenticated(false);
+      setAuthToken(null);
+
+      // Clear stored data from AsyncStorage
+      await AsyncStorage.multiRemove(["@authToken", "@user"]);
+
+      console.log("User signed out successfully");
     } catch (error) {
       console.error("Error signing out:", error);
     }
