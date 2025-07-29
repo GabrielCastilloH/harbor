@@ -75,7 +75,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     initializeAppState();
   }, []);
 
-  // Firebase Functions don't need axios interceptors since they use direct HTTP calls
+  // Firebase Functions use direct HTTP calls, no interceptors needed
 
   return (
     <AppContext.Provider
