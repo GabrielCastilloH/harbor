@@ -7,15 +7,37 @@ const functions = getFunctions(app, "us-central1");
 export class UserService {
   static async createUser(userData: any) {
     console.log("UserService - createUser called with:", userData);
+    await logToNtfy(
+      `UserService - createUser called with: ${JSON.stringify(userData)}`
+    );
 
     try {
+      await logToNtfy(
+        `UserService - About to call httpsCallable with function name: users-createUser`
+      );
       const createUser = httpsCallable(functions, "users-createUser");
+
+      await logToNtfy(
+        `UserService - About to call function with data: ${JSON.stringify(
+          userData
+        )}`
+      );
       const result = await createUser(userData);
+
+      await logToNtfy(
+        `UserService - Function call completed, result type: ${typeof result}`
+      );
       const data = result.data as { message: string; user: any };
 
       console.log("UserService - User created:", data);
+      await logToNtfy(
+        `UserService - User created successfully: ${JSON.stringify(data)}`
+      );
       return data;
-    } catch (error) {
+    } catch (error: any) {
+      await logToNtfy(`UserService - Error creating user: ${error.message}`);
+      await logToNtfy(`UserService - Error code: ${error.code}`);
+      await logToNtfy(`UserService - Error details: ${JSON.stringify(error)}`);
       console.error("UserService - Error creating user:", error);
       throw error;
     }
