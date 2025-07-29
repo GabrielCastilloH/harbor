@@ -14,8 +14,6 @@ async function logToNtfy(msg: string) {
 }
 
 const db = admin.firestore();
-const RECOMMENDED_COUNT = 3;
-const DAILY_SWIPES = 100;
 
 /**
  * Gets user recommendations for swiping
@@ -34,6 +32,7 @@ export const getRecommendations = functions.https.onCall(
   },
   async (request: CallableRequest<{ userId: string }>) => {
     try {
+      await logToNtfy("=== getRecommendations FUNCTION START ===");
       await logToNtfy(
         "getRecommendations function called with: " +
           JSON.stringify(request.data)
@@ -162,8 +161,10 @@ export const getRecommendations = functions.https.onCall(
       await logToNtfy(
         "getRecommendations - Found recommendations: " + recommendations.length
       );
+      await logToNtfy("=== getRecommendations FUNCTION SUCCESS ===");
       return { recommendations };
     } catch (error: any) {
+      await logToNtfy("=== getRecommendations FUNCTION ERROR ===");
       await logToNtfy("getRecommendations - Error: " + error);
       await logToNtfy("getRecommendations - Error message: " + error.message);
       await logToNtfy("getRecommendations - Error code: " + error.code);
@@ -177,43 +178,6 @@ export const getRecommendations = functions.https.onCall(
     }
   }
 );
-
-/**
- * Helper function to check if a user can add more matches
- * @param userId User ID to check
- * @returns Promise<boolean> Whether user can add more matches
- */
-async function canUserAddMatch(userId: string): Promise<boolean> {
-  const userDoc = await db.collection("users").doc(userId).get();
-  if (!userDoc.exists) return false;
-
-  const userData = userDoc.data() as any;
-  const currentMatches = userData?.currentMatches || [];
-
-  // Premium users can have unlimited matches
-  if (userData?.isPremium) return true;
-
-  // Non-premium users can only have 1 match
-  return currentMatches.length < 1;
-}
-
-/**
- * Helper function to count recent swipes for a user
- * @param userId User ID to count swipes for
- * @returns Promise<number> Number of swipes in last 24 hours
- */
-async function countRecentSwipes(userId: string): Promise<number> {
-  const twentyFourHoursAgo = new Date();
-  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
-
-  const swipesSnapshot = await db
-    .collection("swipes")
-    .where("swiperId", "==", userId)
-    .where("timestamp", ">=", twentyFourHoursAgo)
-    .get();
-
-  return swipesSnapshot.size;
-}
 
 export const recommendationFunctions = {
   getRecommendations,
