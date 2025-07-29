@@ -1,26 +1,33 @@
-// Firebase Functions base URL
-const FIREBASE_FUNCTIONS_BASE =
-  "https://us-central1-harbor-ch.cloudfunctions.net";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import app from "../firebaseConfig";
 
-/**
- * Image Service - Handles image-related API calls
- */
+const functions = getFunctions(app, "us-central1");
+
 export class ImageService {
   static async uploadImage(
     userId: string,
     imageData: string,
     contentType: string = "image/jpeg"
   ) {
-    const response = await fetch(
-      `${FIREBASE_FUNCTIONS_BASE}/images-uploadImage`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ userId, imageData, contentType }),
-      }
-    );
-    return response.json();
+    console.log("ImageService - uploadImage called with:", {
+      userId,
+      contentType,
+    });
+
+    try {
+      const uploadImage = httpsCallable(functions, "uploadImage");
+      const result = await uploadImage({ userId, imageData, contentType });
+      const data = result.data as {
+        message: string;
+        fileId: string;
+        url: string;
+      };
+
+      console.log("ImageService - Image uploaded:", data);
+      return data;
+    } catch (error) {
+      console.error("ImageService - Error uploading image:", error);
+      throw error;
+    }
   }
 }

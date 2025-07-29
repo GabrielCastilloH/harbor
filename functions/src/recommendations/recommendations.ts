@@ -1,5 +1,6 @@
-import * as functions from "firebase-functions";
+import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
+import { CallableRequest } from "firebase-functions/v2/https";
 
 const db = admin.firestore();
 const RECOMMENDED_COUNT = 3;
@@ -7,46 +8,53 @@ const DAILY_SWIPES = 100;
 
 /**
  * Gets user recommendations for swiping
- * @param req Request containing user ID
- * @param res Response with array of recommended users
  */
-export const getRecommendations = functions.https.onRequest(
-  async (req, res) => {
-    // Enable CORS
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Methods", "GET");
-    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-    if (req.method === "OPTIONS") {
-      res.status(204).send("");
-      return;
-    }
-
+export const getRecommendations = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ id: string }>) => {
     try {
-      const { id } = req.params;
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { id } = request.data;
+
       if (!id) {
-        res.status(400).json({ message: "User ID is required" });
-        return;
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "User ID is required"
+        );
       }
 
       // Check if the user can add more matches
       const canAddMatch = await canUserAddMatch(id);
       if (!canAddMatch) {
-        res.status(200).json({
+        return {
           message: "User cannot add more matches",
           recommendations: [],
-        });
-        return;
+        };
       }
 
       // Check daily swipe limit
       const swipeCount = await countRecentSwipes(id);
       if (swipeCount > DAILY_SWIPES) {
-        res.status(200).json({
+        return {
           message: "User exceeded daily swipes",
           swipeCount,
-        });
-        return;
+        };
       }
 
       // Get all users the current user has swiped on
@@ -60,8 +68,7 @@ export const getRecommendations = functions.https.onRequest(
       // Get current user to check if they're premium
       const currentUserDoc = await db.collection("users").doc(id).get();
       if (!currentUserDoc.exists) {
-        res.status(404).json({ message: "User not found" });
-        return;
+        throw new functions.https.HttpsError("not-found", "User not found");
       }
 
       const currentUser = currentUserDoc.data() as any;
@@ -90,17 +97,22 @@ export const getRecommendations = functions.https.onRequest(
       const shuffled = availableUsers.sort(() => 0.5 - Math.random());
       const recommendations = shuffled.slice(0, RECOMMENDED_COUNT);
 
-      res.status(200).json({
+      return {
         recommendations,
         swipeCount,
         dailyLimit: DAILY_SWIPES,
-      });
-    } catch (error) {
+      };
+    } catch (error: any) {
       console.error("Error getting recommendations:", error);
-      res.status(500).json({
-        message: "Failed to get recommendations",
-        error: error instanceof Error ? error.message : String(error),
-      });
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to get recommendations"
+      );
     }
   }
 );
