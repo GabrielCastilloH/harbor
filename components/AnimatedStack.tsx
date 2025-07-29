@@ -55,19 +55,19 @@ export default React.forwardRef(function AnimatedStack(
   const handleSwipe = useCallback(
     async (direction: "left" | "right", profile: Profile) => {
       // Use a local variable to track if this swipe was already processed
-      const swipeKey = `${profile._id}-${direction}`;
+      const swipeKey = `${profile.uid}-${direction}`;
       if ((window as any).lastSwipeKey === swipeKey) {
         console.log("Preventing duplicate swipe");
         return;
       }
       (window as any).lastSwipeKey = swipeKey;
 
-      if (!userId) return;
+      if (!userId || !profile.uid) return;
 
       try {
         const response = await SwipeService.createSwipe(
           userId,
-          profile._id,
+          profile.uid,
           direction
         );
 
