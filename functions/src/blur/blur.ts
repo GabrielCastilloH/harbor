@@ -1,41 +1,49 @@
-import * as functions from "firebase-functions";
+import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
+import { CallableRequest } from "firebase-functions/v2/https";
 
 const db = admin.firestore();
 
 /**
  * Updates blur level for a match based on message count
- * @param req Request containing userId and matchedUserId
- * @param res Response with blur data
  */
-export const updateBlurLevelForMessage = functions.https.onRequest(
-  async (req, res) => {
-    // Enable CORS
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Methods", "POST");
-    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-    if (req.method === "OPTIONS") {
-      res.status(204).send("");
-      return;
-    }
-
+export const updateBlurLevelForMessage = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (
+    request: CallableRequest<{ userId: string; matchedUserId: string }>
+  ) => {
     try {
-      const { userId, matchedUserId } = req.body;
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { userId, matchedUserId } = request.data;
 
       if (!userId || !matchedUserId) {
-        res.status(400).json({
-          message: "User ID and matched user ID are required",
-        });
-        return;
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "User ID and matched user ID are required"
+        );
       }
 
       // Find the match between these users
       const match = await findMatchByUsers(userId, matchedUserId);
 
       if (!match) {
-        res.status(404).json({ message: "Match not found" });
-        return;
+        throw new functions.https.HttpsError("not-found", "Match not found");
       }
 
       const matchData = match as any;
@@ -69,53 +77,69 @@ export const updateBlurLevelForMessage = functions.https.onRequest(
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      res.status(200).json({
+      return {
         blurPercentage: newBlurPercentage,
         shouldShowWarning,
         hasShownWarning,
         messageCount,
-      });
-    } catch (error) {
+      };
+    } catch (error: any) {
       console.error("Error updating blur level:", error);
-      res.status(500).json({
-        message: "Failed to update blur level",
-        error: error instanceof Error ? error.message : String(error),
-      });
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to update blur level"
+      );
     }
   }
 );
 
 /**
  * Handles user response to blur warning
- * @param req Request containing matchId, userId, and agreed status
- * @param res Response with success status
  */
-export const handleWarningResponse = functions.https.onRequest(
-  async (req, res) => {
-    // Enable CORS
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Methods", "POST");
-    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-    if (req.method === "OPTIONS") {
-      res.status(204).send("");
-      return;
-    }
-
+export const handleWarningResponse = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (
+    request: CallableRequest<{
+      matchId: string;
+      userId: string;
+      agreed: boolean;
+    }>
+  ) => {
     try {
-      const { matchId, userId, agreed } = req.body;
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { matchId, userId, agreed } = request.data;
 
       if (!matchId || !userId || agreed === undefined) {
-        res.status(400).json({
-          message: "Match ID, user ID, and agreed status are required",
-        });
-        return;
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Match ID, user ID, and agreed status are required"
+        );
       }
 
       const matchDoc = await db.collection("matches").doc(matchId).get();
       if (!matchDoc.exists) {
-        res.status(404).json({ message: "Match not found" });
-        return;
+        throw new functions.https.HttpsError("not-found", "Match not found");
       }
 
       const matchData = matchDoc.data() as any;
@@ -130,76 +154,97 @@ export const handleWarningResponse = functions.https.onRequest(
       } else if (userId === user2Id) {
         updateData.user2Agreed = agreed;
       } else {
-        res.status(400).json({ message: "User is not part of this match" });
-        return;
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "User is not part of this match"
+        );
       }
 
       updateData.updatedAt = admin.firestore.FieldValue.serverTimestamp();
 
       await db.collection("matches").doc(matchId).update(updateData);
 
-      res.status(200).json({
+      return {
         message: "Warning response recorded successfully",
-      });
-    } catch (error) {
+      };
+    } catch (error: any) {
       console.error("Error handling warning response:", error);
-      res.status(500).json({
-        message: "Failed to handle warning response",
-        error: error instanceof Error ? error.message : String(error),
-      });
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to handle warning response"
+      );
     }
   }
 );
 
 /**
  * Gets blur level for a match
- * @param req Request containing user IDs
- * @param res Response with blur data
  */
-export const getBlurLevel = functions.https.onRequest(async (req, res) => {
-  // Enable CORS
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "GET");
-  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+export const getBlurLevel = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (
+    request: CallableRequest<{ userId: string; matchedUserId: string }>
+  ) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
 
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
+      const { userId, matchedUserId } = request.data;
 
-  try {
-    const { userId, matchedUserId } = req.params;
+      if (!userId || !matchedUserId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "User ID and matched user ID are required"
+        );
+      }
 
-    if (!userId || !matchedUserId) {
-      res.status(400).json({
-        message: "User ID and matched user ID are required",
-      });
-      return;
+      // Find the match between these users
+      const match = await findMatchByUsers(userId, matchedUserId);
+
+      if (!match) {
+        throw new functions.https.HttpsError("not-found", "Match not found");
+      }
+
+      const matchData = match as any;
+
+      return {
+        blurPercentage: matchData.blurPercentage || 100,
+        hasShownWarning: matchData.warningShown || false,
+        messageCount: matchData.messageCount || 0,
+      };
+    } catch (error: any) {
+      console.error("Error getting blur level:", error);
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to get blur level"
+      );
     }
-
-    // Find the match between these users
-    const match = await findMatchByUsers(userId, matchedUserId);
-
-    if (!match) {
-      res.status(404).json({ message: "Match not found" });
-      return;
-    }
-
-    const matchData = match as any;
-
-    res.status(200).json({
-      blurPercentage: matchData.blurPercentage || 100,
-      hasShownWarning: matchData.warningShown || false,
-      messageCount: matchData.messageCount || 0,
-    });
-  } catch (error) {
-    console.error("Error getting blur level:", error);
-    res.status(500).json({
-      message: "Failed to get blur level",
-      error: error instanceof Error ? error.message : String(error),
-    });
   }
-});
+);
 
 /**
  * Helper function to find a match between two users
