@@ -7,6 +7,7 @@ import { createUserProfile } from "../util/userBackend";
 import { uploadImageToServer } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 import LoadingScreen from "../components/LoadingScreen";
+import { signOut } from "firebase/auth";
 
 const emptyProfile: Profile = {
   _id: "",
@@ -30,6 +31,16 @@ export default function AccountSetupScreen() {
   const { setUserId, setProfile } = useAppContext();
   const [profileData, setProfileData] = useState<Profile>(emptyProfile);
   const [loading, setLoading] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setUserId(null);
+      setProfile(null);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   useEffect(() => {
     const loadUserInfo = async () => {
@@ -134,6 +145,7 @@ export default function AccountSetupScreen() {
         onProfileChange={setProfileData}
         onSave={handleSave}
         isAccountSetup={true}
+        onLogout={handleLogout}
       />
     </KeyboardAvoidingView>
   );
