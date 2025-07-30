@@ -18,6 +18,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRef, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const emptyProfile: Profile = {
   email: "",
@@ -199,30 +200,34 @@ export default function EditProfileScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.secondary100 }}>
       {/* Custom Header */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingTop: insets.top + 8,
-          paddingBottom: 8,
-          paddingHorizontal: 16,
-          backgroundColor: Colors.primary100,
-        }}
+      <SafeAreaView
+        edges={["top"]}
+        style={{ backgroundColor: Colors.primary100 }}
       >
-        <TouchableOpacity onPress={handleBack} style={{ padding: 4 }}>
-          <Ionicons name="chevron-back" size={28} color={Colors.primary500} />
-        </TouchableOpacity>
-        <Text
+        <View
           style={{
-            fontSize: 20,
-            fontWeight: "bold",
-            marginLeft: 8,
-            color: Colors.primary500,
+            flexDirection: "row",
+            alignItems: "center",
+            paddingBottom: 8,
+            paddingHorizontal: 16,
+            backgroundColor: Colors.primary100,
           }}
         >
-          Profile
-        </Text>
-      </View>
+          <TouchableOpacity onPress={handleBack} style={{ padding: 4 }}>
+            <Ionicons name="chevron-back" size={28} color={Colors.primary500} />
+          </TouchableOpacity>
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: "bold",
+              marginLeft: 8,
+              color: Colors.primary500,
+            }}
+          >
+            Profile
+          </Text>
+        </View>
+      </SafeAreaView>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
