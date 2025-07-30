@@ -145,7 +145,7 @@ export default function EditProfileScreen() {
     );
   }
 
-  const handleSave = async () => {
+  const handleSave = async (images?: string[]) => {
     setLoading(true);
     try {
       if (!userId) {
@@ -155,7 +155,7 @@ export default function EditProfileScreen() {
       }
 
       // Check if there are any local image URIs that need to be uploaded
-      const updatedImages = [...profileData.images];
+      const updatedImages = images || [...profileData.images];
       let hasChanges = false;
 
       for (let i = 0; i < updatedImages.length; i++) {
