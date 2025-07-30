@@ -71,7 +71,6 @@ export const verifyGoogleAuth = functions.https.onCall(
           authInfo: {
             email: payload.email,
             firstName: payload.given_name || "",
-            lastName: payload.family_name || "",
             isNewUser: true,
           },
         };
