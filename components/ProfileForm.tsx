@@ -65,6 +65,8 @@ const ImageSkeleton = ({ count }: { count: number }) => {
     fadeInOut();
   }, [fadeAnim]);
 
+  console.log(`ImageSkeleton - Rendering ${count} skeletons`);
+
   return (
     <>
       {Array.from({ length: count }).map((_, index) => (
@@ -354,34 +356,44 @@ export default function ProfileForm({
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {loading ? (
-              <ImageSkeleton
-                count={Math.max(profileData.images?.length || 0, 3)}
-              />
+              <>
+                {console.log(
+                  `ProfileForm - Loading state: ${loading}, showing skeleton`
+                )}
+                <ImageSkeleton
+                  count={Math.max(profileData.images?.length || 0, 3)}
+                />
+              </>
             ) : (
-              imagesWithKeys.map((image) => (
-                <View key={image.key} style={styles.imageContainer}>
-                  <Image
-                    source={getImageSource(image.uri)}
-                    style={styles.image}
-                    onLoadStart={() => {
-                      // Image started loading
-                    }}
-                    onLoadEnd={() => {
-                      // Image finished loading
-                    }}
-                  />
-                  <TouchableOpacity
-                    style={styles.removeButton}
-                    onPress={() => removeImage(image.key)}
-                  >
-                    <Ionicons
-                      name="close"
-                      size={24}
-                      color={Colors.secondary100}
+              <>
+                {console.log(
+                  `ProfileForm - Not loading, showing ${imagesWithKeys.length} images`
+                )}
+                {imagesWithKeys.map((image) => (
+                  <View key={image.key} style={styles.imageContainer}>
+                    <Image
+                      source={getImageSource(image.uri)}
+                      style={styles.image}
+                      onLoadStart={() => {
+                        // Image started loading
+                      }}
+                      onLoadEnd={() => {
+                        // Image finished loading
+                      }}
                     />
-                  </TouchableOpacity>
-                </View>
-              ))
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={() => removeImage(image.key)}
+                    >
+                      <Ionicons
+                        name="close"
+                        size={24}
+                        color={Colors.secondary100}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </>
             )}
             <TouchableOpacity style={styles.addButton} onPress={pickImage}>
               <AntDesign name="plus" size={40} color={Colors.primary500} />
@@ -513,11 +525,14 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 10,
-    backgroundColor: Colors.secondary200,
+    backgroundColor: Colors.primary500, // Use the main primary color
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+    // Add a subtle border effect
+    borderWidth: 1,
+    borderColor: Colors.secondary500,
   },
 });
