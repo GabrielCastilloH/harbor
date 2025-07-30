@@ -70,8 +70,8 @@ export default function ProfileForm({
   const validateProfile = (): string[] => {
     const errors: string[] = [];
 
-    // Check images
-    if (profileData.images.filter((img) => img !== "").length < 3) {
+    // Check images - use imagesWithKeys instead of profileData.images
+    if (imagesWithKeys.filter((img) => img.uri !== "").length < 3) {
       errors.push("Please add at least 3 images");
     }
 
