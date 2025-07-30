@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 import GoogleSignInButton from "../components/GoogleSignInButton";
@@ -37,9 +38,7 @@ export default function SignIn() {
 
         // Clear stored data from AsyncStorage
         await AsyncStorage.multiRemove(["@authToken", "@user"]);
-
-      } catch (error) {
-      }
+      } catch (error) {}
     };
 
     cleanupAuth();
@@ -65,34 +64,36 @@ export default function SignIn() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.logoContainer}>
-        <Image
-          tintColor={Colors.primary500}
-          source={require("../assets/logo.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </View>
-      <Text style={styles.title}>Sign In</Text>
-      <Text style={styles.description}>
-        In order to use this app you must sign in with your Cornell NetID via
-        Google.
-      </Text>
+    <SafeAreaView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        <View style={styles.logoContainer}>
+          <Image
+            tintColor={Colors.primary500}
+            source={require("../assets/logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+        <Text style={styles.title}>Sign In</Text>
+        <Text style={styles.description}>
+          In order to use this app you must sign in with your Cornell NetID via
+          Google.
+        </Text>
 
-      {/* Custom Button */}
-      <View style={styles.buttonContainer}>
-        <GoogleSignInButton
-          onUserExists={handleExistingUser}
-          onNewUser={handleNewUser}
-          onError={handleError}
-          buttonText="Continue with Cornell"
-          buttonStyle={styles.button}
-          textStyle={styles.buttonText}
-          showCornellLogo={true}
-        />
+        {/* Custom Button */}
+        <View style={styles.buttonContainer}>
+          <GoogleSignInButton
+            onUserExists={handleExistingUser}
+            onNewUser={handleNewUser}
+            onError={handleError}
+            buttonText="Continue with Cornell"
+            buttonStyle={styles.button}
+            textStyle={styles.buttonText}
+            showCornellLogo={true}
+          />
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
