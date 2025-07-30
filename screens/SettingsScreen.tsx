@@ -74,7 +74,7 @@ export default function SettingsScreen() {
         </View>
       </SafeAreaView>
       <ScrollView style={styles.container}>
-        <View style={styles.section}>
+        <View style={[styles.section, { paddingTop: 5 }]}>
           <View style={styles.setting}>
             <Text style={styles.settingText}>Notifications</Text>
             <Switch
