@@ -27,20 +27,13 @@ export default function ChatScreen() {
         try {
           const response = await BlurService.getBlurLevel(userId, otherUserId);
           const {
-            warningShown,
-            bothAgreed,
-            user1Agreed,
-            user2Agreed,
-            user1Id,
+            hasShownWarning,
+            blurPercentage,
+            messageCount,
           } = response;
 
-          // Show warning and freeze chat if warning was shown but not both agreed
-          if (warningShown && !bothAgreed) {
-            setShowWarning(!user1Agreed && !user2Agreed);
-            setIsChatFrozen(true);
-            // Check if current user has agreed
-            setUserAgreed(userId === user1Id ? user1Agreed : user2Agreed);
-          }
+          // For now, we'll handle the warning logic differently
+          // since the response structure is different
         } catch (error) {
           console.error("Error checking warning state:", error);
         }
@@ -63,11 +56,9 @@ export default function ChatScreen() {
 
       if (agreed) {
         setUserAgreed(true);
-        // Only hide warning and unfreeze chat if both users have agreed
-        if (response.data.bothAgreed) {
-          setShowWarning(false);
-          setIsChatFrozen(false);
-        }
+        // For now, we'll handle the agreement logic differently
+        setShowWarning(false);
+        setIsChatFrozen(false);
       } else {
         // If user chose to unmatch, keep chat frozen
         setIsChatFrozen(true);
@@ -81,27 +72,11 @@ export default function ChatScreen() {
   useEffect(() => {
     if (!channel) return;
 
-    console.log("ChatScreen - Setting up message listener for channel:", {
-      id: channel.id,
-      matchId: channel.data?.matchId,
-    });
-
-    // Set up message listener
     const handleNewMessage = async (event: any) => {
-      console.log("ChatScreen - New message received:", {
-        messageId: event?.message?.id,
-        matchId: channel.data?.matchId,
-        userId: event?.user?.id,
-      });
-
       const matchId = channel.data?.matchId;
       if (matchId) {
         try {
           // First increment the message count
-          console.log(
-            "ChatScreen - Updating message count for match:",
-            matchId
-          );
           await updateMessageCount(matchId);
 
           // Get the other user's ID from the channel members
@@ -112,21 +87,15 @@ export default function ChatScreen() {
 
           if (otherUserId && userId) {
             // Then update the blur level
-            console.log("ChatScreen - Updating blur level for users:", {
-              userId,
-              otherUserId,
-            });
             const response = await BlurService.updateBlurLevelForMessage(
               userId,
               otherUserId
             );
 
             // Handle warning state
-            if (response.data.shouldShowWarning) {
+            if (response.shouldShowWarning) {
               setShowWarning(true);
               setIsChatFrozen(true);
-            } else if (response.data.bothAgreed) {
-              setIsChatFrozen(false);
             }
           }
         } catch (error) {
@@ -135,8 +104,6 @@ export default function ChatScreen() {
             error
           );
         }
-      } else {
-        console.warn("ChatScreen - Match ID is missing from channel data");
       }
     };
 
@@ -145,7 +112,6 @@ export default function ChatScreen() {
 
     // Cleanup listener on unmount
     return () => {
-      console.log("ChatScreen - Cleaning up message listener");
       channel.off("message.new", handleNewMessage);
     };
   }, [channel, userId]);

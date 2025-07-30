@@ -8,11 +8,6 @@ export class BlurService {
     userId: string,
     matchedUserId: string
   ) {
-    console.log("BlurService - updateBlurLevelForMessage called with:", {
-      userId,
-      matchedUserId,
-    });
-
     try {
       const updateBlurLevelForMessage = httpsCallable(
         functions,
@@ -26,7 +21,6 @@ export class BlurService {
         messageCount: number;
       };
 
-      console.log("BlurService - Blur level updated:", data);
       return data;
     } catch (error) {
       console.error("BlurService - Error updating blur level:", error);
@@ -39,12 +33,6 @@ export class BlurService {
     userId: string,
     agreed: boolean
   ) {
-    console.log("BlurService - handleWarningResponse called with:", {
-      matchId,
-      userId,
-      agreed,
-    });
-
     try {
       const handleWarningResponse = httpsCallable(
         functions,
@@ -53,7 +41,6 @@ export class BlurService {
       const result = await handleWarningResponse({ matchId, userId, agreed });
       const data = result.data as { message: string };
 
-      console.log("BlurService - Warning response handled:", data);
       return data;
     } catch (error) {
       console.error("BlurService - Error handling warning response:", error);
@@ -62,11 +49,6 @@ export class BlurService {
   }
 
   static async getBlurLevel(userId: string, matchedUserId: string) {
-    console.log("BlurService - getBlurLevel called with:", {
-      userId,
-      matchedUserId,
-    });
-
     try {
       const getBlurLevel = httpsCallable(functions, "blur-getBlurLevel");
       const result = await getBlurLevel({ userId, matchedUserId });
@@ -76,7 +58,6 @@ export class BlurService {
         messageCount: number;
       };
 
-      console.log("BlurService - Blur level:", data);
       return data;
     } catch (error) {
       console.error("BlurService - Error getting blur level:", error);

@@ -57,7 +57,6 @@ export default React.forwardRef(function AnimatedStack(
       // Use a local variable to track if this swipe was already processed
       const swipeKey = `${profile.uid}-${direction}`;
       if ((window as any).lastSwipeKey === swipeKey) {
-        console.log("Preventing duplicate swipe");
         return;
       }
       (window as any).lastSwipeKey = swipeKey;
@@ -77,7 +76,6 @@ export default React.forwardRef(function AnimatedStack(
           onSwipeLeft(profile);
         }
       } catch (error) {
-        console.log("Error posting swipe:", error);
         // Clear the swipe key on error so it can be retried
         if ((window as any).lastSwipeKey === swipeKey) {
           delete (window as any).lastSwipeKey;

@@ -38,9 +38,7 @@ export default function SignIn() {
         // Clear stored data from AsyncStorage
         await AsyncStorage.multiRemove(["@authToken", "@user"]);
 
-        console.log("SignIn screen - Cleaned up authentication state");
       } catch (error) {
-        console.log("SignIn screen - Error during cleanup:", error);
       }
     };
 
@@ -49,14 +47,12 @@ export default function SignIn() {
 
   const handleExistingUser = (userData: any) => {
     // Handle existing user - navigate to main app
-    console.log("Existing user:", userData);
     setIsAuthenticated(true);
     setUserId(userData.uid);
   };
 
   const handleNewUser = (user: any) => {
     // Handle new user - navigate to setup/onboarding
-    console.log("New user:", user);
     setIsAuthenticated(true);
     setUserId(null); // This will trigger AccountSetupScreen
   };

@@ -22,8 +22,8 @@ import PersonalView from "../components/PersonalView";
 import { getImageSource } from "../util/imageUtils";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
-import { unmatch } from "../networking";
-import { UserService, BlurService } from "../networking";
+import { MatchService, UserService } from "../networking";
+import { BlurService } from "../networking";
 
 type ProfileScreenParams = {
   ProfileScreen: {
@@ -76,7 +76,7 @@ export default function ProfileScreen() {
 
       try {
         const response = await BlurService.getBlurLevel(currentUserId, userId);
-        if (response.shouldShowWarning) {
+        if (response.hasShownWarning) {
           setShowBlurWarning(true);
         }
       } catch (error) {
@@ -122,7 +122,7 @@ export default function ProfileScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await unmatch(currentUserId, matchId);
+              await MatchService.unmatch(currentUserId, matchId);
               navigation.goBack();
               navigation.goBack();
             } catch (error) {

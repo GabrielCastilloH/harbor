@@ -78,7 +78,10 @@ export default function GoogleSignInButton({
         onNewUser(userCredential.user);
       }
     } catch (error: any) {
-      console.error("Google Sign-In Error:", error);
+      // console.log(
+      //   "GoogleSignInButton - Error during Google sign-in:",
+      //   error
+      // );
 
       // Handle specific error types
       if (error.message?.includes("offline")) {
@@ -92,10 +95,10 @@ export default function GoogleSignInButton({
           await GoogleSignin.signOut();
           await signOut(auth);
         } catch (signOutError) {
-          console.log(
-            "Error during sign out after cancellation:",
-            signOutError
-          );
+          // console.log(
+          //   "Error during sign out after cancellation:",
+          //   signOutError
+          // );
         }
         return;
       } else {
