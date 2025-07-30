@@ -8,7 +8,6 @@ import {
   GestureResponderEvent,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaView } from "react-native-safe-area-context";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import Colors from "../constants/Colors";
 import AnimatedStack from "../components/AnimatedStack";
@@ -209,7 +208,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <GestureHandlerRootView style={styles.container}>
         <View style={styles.headerContainer}>
           <Image
@@ -277,7 +276,7 @@ export default function HomeScreen() {
           currentProfile={userProfile}
         />
       </GestureHandlerRootView>
-    </SafeAreaView>
+    </View>
   );
 }
 
