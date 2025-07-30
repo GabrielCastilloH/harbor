@@ -15,7 +15,11 @@ export default function SettingsStack() {
         headerTintColor: Colors.black,
       }}
     >
-      <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ headerShown: false }}
+      />
       <Stack.Screen
         name="Profile"
         component={EditProfileScreen}
