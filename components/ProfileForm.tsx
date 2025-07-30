@@ -296,7 +296,11 @@ export default function ProfileForm({
                   style={styles.removeButton}
                   onPress={() => removeImage(index)}
                 >
-                  <Text style={styles.removeButtonText}>X</Text>
+                  <Ionicons
+                    name="close"
+                    size={20}
+                    color={Colors.secondary100}
+                  />
                 </TouchableOpacity>
               </View>
             ))}
@@ -365,9 +369,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 5,
     right: 5,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 10,
-    padding: 5,
+    backgroundColor: Colors.primary500,
+    borderRadius: 20,
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
   },
   removeButtonText: {
     color: "white",
