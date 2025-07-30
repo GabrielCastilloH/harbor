@@ -296,10 +296,12 @@ export default function ProfileForm({
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {imagesWithKeys.map((image) => (
               <View key={image.key} style={styles.imageContainer}>
-                <Image
-                  source={getImageSource(image.uri)}
-                  style={styles.image}
-                />
+                <View style={styles.imageBackground}>
+                  <Image
+                    source={getImageSource(image.uri)}
+                    style={styles.image}
+                  />
+                </View>
                 <TouchableOpacity
                   style={styles.removeButton}
                   onPress={() => removeImage(image.key)}
@@ -376,10 +378,19 @@ const styles = StyleSheet.create({
     marginTop: 8,
     overflow: "visible",
   },
+  imageBackground: {
+    width: 100,
+    height: 100,
+    borderRadius: 10,
+    backgroundColor: Colors.secondary200, // Light background for placeholder
+    justifyContent: "center",
+    alignItems: "center",
+  },
   image: {
     width: 100,
     height: 100,
     borderRadius: 10,
+    resizeMode: "cover", // Ensure image covers the background
   },
   removeButton: {
     position: "absolute",
