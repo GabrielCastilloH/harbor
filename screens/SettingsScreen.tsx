@@ -47,11 +47,33 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <>
+      <SafeAreaView
+        edges={["top"]}
+        style={{ backgroundColor: Colors.primary100 }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingBottom: 8,
+            paddingHorizontal: 16,
+            backgroundColor: Colors.primary100,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: "bold",
+              color: Colors.primary500,
+            }}
+          >
+            App Settings
+          </Text>
+        </View>
+      </SafeAreaView>
       <ScrollView style={styles.container}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>App Settings</Text>
-
           <View style={styles.setting}>
             <Text style={styles.settingText}>Notifications</Text>
             <Switch
@@ -97,7 +119,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </>
   );
 }
 
