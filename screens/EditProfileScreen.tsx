@@ -5,6 +5,8 @@ import {
   View,
   KeyboardAvoidingView,
   Platform,
+  Text,
+  TouchableOpacity,
 } from "react-native";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
@@ -12,6 +14,9 @@ import { uploadImageToServer } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 import Colors from "../constants/Colors";
 import { UserService } from "../networking";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useRef, useCallback } from "react";
+import { Ionicons } from "@expo/vector-icons";
 
 const emptyProfile: Profile = {
   email: "",
@@ -40,6 +45,8 @@ export default function EditProfileScreen() {
     contextProfile || emptyProfile
   );
   const [loading, setLoading] = useState(false);
+  const navigation = useNavigation();
+  const initialProfileRef = useRef(profileData);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -67,6 +74,34 @@ export default function EditProfileScreen() {
       fetchUserProfile();
     }
   }, [userId, contextProfile, setProfile, isInitialized]);
+
+  // Store the initial profile data only once (on mount)
+  useEffect(() => {
+    initialProfileRef.current = profileData;
+    // eslint-disable-next-line
+  }, []);
+
+  // Custom back handler
+  const handleBack = () => {
+    const isDirty =
+      JSON.stringify(profileData) !== JSON.stringify(initialProfileRef.current);
+    if (!isDirty) {
+      navigation.goBack();
+      return;
+    }
+    Alert.alert(
+      "Discard changes?",
+      "You have unsaved changes. Are you sure you want to discard them and leave the screen?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => navigation.goBack(),
+        },
+      ]
+    );
+  };
 
   if (!isInitialized) {
     return (
@@ -147,16 +182,43 @@ export default function EditProfileScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ProfileForm
-        profileData={profileData}
-        onProfileChange={setProfileData}
-        loading={loading}
-        onSave={handleSave}
-      />
-    </KeyboardAvoidingView>
+    <View style={{ flex: 1, backgroundColor: Colors.secondary100 }}>
+      {/* Custom Header */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingTop: 48,
+          paddingBottom: 16,
+          paddingHorizontal: 16,
+          backgroundColor: Colors.primary100,
+        }}
+      >
+        <TouchableOpacity onPress={handleBack} style={{ padding: 4 }}>
+          <Ionicons name="chevron-back" size={28} color={Colors.primary500} />
+        </TouchableOpacity>
+        <Text
+          style={{
+            fontSize: 20,
+            fontWeight: "bold",
+            marginLeft: 8,
+            color: Colors.primary500,
+          }}
+        >
+          Profile
+        </Text>
+      </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ProfileForm
+          profileData={profileData}
+          onProfileChange={setProfileData}
+          loading={loading}
+          onSave={handleSave}
+        />
+      </KeyboardAvoidingView>
+    </View>
   );
 }

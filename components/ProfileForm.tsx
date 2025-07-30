@@ -12,7 +12,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, AntDesign } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import * as ImagePicker from "expo-image-picker";
@@ -308,7 +308,7 @@ export default function ProfileForm({
               </View>
             ))}
             <TouchableOpacity style={styles.addButton} onPress={pickImage}>
-              <Text style={styles.addButtonText}>+</Text>
+              <AntDesign name="plus" size={40} color={Colors.primary500} />
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -393,14 +393,19 @@ const styles = StyleSheet.create({
   addButton: {
     width: 100,
     height: 100,
-    backgroundColor: Colors.primary500,
+    backgroundColor: "transparent",
     borderRadius: 10,
+    borderWidth: 2,
+    borderColor: Colors.primary500,
+    borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 8, // aligns with imageContainer's marginTop
   },
   addButtonText: {
-    color: Colors.secondary100,
-    fontSize: 24,
+    color: Colors.primary500,
+    fontSize: 40,
+    fontWeight: "bold",
   },
   saveButton: {
     backgroundColor: Colors.primary500,
