@@ -19,21 +19,21 @@ async function logToNtfy(msg: string) {
 
 async function getStreamClient(): Promise<StreamChat> {
   // await logToNtfy("getStreamClient - Starting to get Stream API credentials");
-  
+
   const apiKey = process.env.STREAM_API_KEY;
   const apiSecret = process.env.STREAM_API_SECRET;
-  
+
   // await logToNtfy(`getStreamClient - API Key length: ${apiKey.length}`);
   // await logToNtfy(`getStreamClient - API Secret length: ${apiSecret.length}`);
-  
+
   if (!apiKey || !apiSecret) {
     // await logToNtfy("getStreamClient - Missing Stream API credentials");
     throw new Error("Missing Stream API credentials");
   }
-  
+
   const client = StreamChat.getInstance(apiKey, apiSecret);
   // await logToNtfy("getStreamClient - Stream client created successfully");
-  
+
   return client;
 }
 
@@ -47,11 +47,11 @@ async function createStreamUser(userId: string, firstName: string) {
   // await logToNtfy(
   //   `createStreamUser - First name for Stream Chat: ${firstName}`
   // );
-  
+
   try {
     const client = await getStreamClient();
     // await logToNtfy("createStreamUser - Stream client obtained successfully");
-    
+
     // await logToNtfy(
     //   `createStreamUser - About to call client.upsertUser with userId: ${userId}`
     // );
@@ -61,17 +61,17 @@ async function createStreamUser(userId: string, firstName: string) {
     // await logToNtfy(
     //   `createStreamUser - About to call client.upsertUser with role: user`
     // );
-    
+
     const response = await client.upsertUser({
       id: userId,
       name: firstName,
       role: "user",
     });
-    
+
     // await logToNtfy(
     //   `createStreamUser - Stream user created successfully: ${JSON.stringify(response)}`
     // );
-    
+
     return response;
   } catch (error) {
     // await logToNtfy(
@@ -309,7 +309,7 @@ export const getUserById = functions.https.onCall(
         userData = userDoc.data();
       } else {
         // console.log("getUserById - User not found by UID, trying email lookup");
-        
+
         // If not found by UID, try to find by email
         const emailQuery = await db
           .collection("users")
@@ -354,7 +354,10 @@ export const updateUser = functions.https.onCall(
     invoker: "public",
   },
   async (
-    request: functions.https.CallableRequest<{ id: string; userData: UpdateUserData }>
+    request: functions.https.CallableRequest<{
+      id: string;
+      userData: UpdateUserData;
+    }>
   ) => {
     try {
       if (!request.auth) {
@@ -406,7 +409,9 @@ export const unmatchUser = functions.https.onCall(
     ingressSettings: "ALLOW_ALL",
     invoker: "public",
   },
-  async (request: functions.https.CallableRequest<{ id: string; matchId: string }>) => {
+  async (
+    request: functions.https.CallableRequest<{ id: string; matchId: string }>
+  ) => {
     try {
       if (!request.auth) {
         throw new functions.https.HttpsError(
@@ -441,7 +446,10 @@ export const unmatchUser = functions.https.onCall(
       };
     } catch (error: any) {
       console.error("Error unmatching user:", error);
-      throw new functions.https.HttpsError("internal", "Failed to unmatch user");
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to unmatch user"
+      );
     }
   }
 );
