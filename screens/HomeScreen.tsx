@@ -150,7 +150,7 @@ export default function HomeScreen() {
       );
 
       // If it's a match, show the match modal
-      if (response.data.match) {
+      if (response.match) {
         setMatchedProfile(profile);
         setShowMatch(true);
       }
