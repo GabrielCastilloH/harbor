@@ -91,7 +91,7 @@ export default function AccountSetupScreen() {
     loadUserInfo();
   }, []);
 
-  const handleSave = async () => {
+  const handleSave = async (images?: string[]) => {
     setLoading(true);
     try {
       // await logToNtfy("AccountSetupScreen - Starting profile save...");
@@ -114,16 +114,18 @@ export default function AccountSetupScreen() {
 
       // STEP 1: Upload all images first and collect their fileIds
       const imageFileIds = [];
+      const imagesToUpload = images || profileData.images;
+
       console.log(
-        `AccountSetupScreen - Starting to upload ${profileData.images.length} images`
+        `AccountSetupScreen - Starting to upload ${imagesToUpload.length} images`
       );
 
-      for (let i = 0; i < profileData.images.length; i++) {
-        const imageUri = profileData.images[i];
+      for (let i = 0; i < imagesToUpload.length; i++) {
+        const imageUri = imagesToUpload[i];
         if (imageUri) {
           console.log(
             `AccountSetupScreen - Uploading image ${i + 1}/${
-              profileData.images.length
+              imagesToUpload.length
             }: ${imageUri.substring(0, 50)}...`
           );
           // Use the actual Firebase UID for uploading images
