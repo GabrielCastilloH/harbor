@@ -155,171 +155,178 @@ export default function ProfileForm({
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: "orange" }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView
+        style={[
+          styles.container,
+          isAccountSetup && styles.containerAccountSetup,
+        ]}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingBottom: 20,
+          backgroundColor: "yellow",
+        }}
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          style={styles.container}
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
-          showsVerticalScrollIndicator={false}
+        <View
+          style={[styles.section, isAccountSetup && styles.sectionAccountSetup]}
         >
-          <View style={styles.section}>
-            <View style={styles.headerContainer}>
-              {isAccountSetup && onLogout && (
-                <TouchableOpacity style={styles.backButton} onPress={onLogout}>
+          <View style={[styles.headerContainer, { backgroundColor: "green" }]}>
+            {isAccountSetup && onLogout && (
+              <TouchableOpacity style={styles.backButton} onPress={onLogout}>
+                <Ionicons
+                  name="chevron-back"
+                  size={24}
+                  color={Colors.primary500}
+                />
+              </TouchableOpacity>
+            )}
+            <Text style={styles.sectionTitle}>
+              {isAccountSetup ? "Setup your Account" : "Personal Information"}
+            </Text>
+          </View>
+
+          <Text style={styles.label}>First Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="First Name"
+            value={profileData.firstName}
+            onChangeText={(text) => handleChange("firstName", text)}
+          />
+
+          <Text style={styles.label}>Age</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Age"
+            value={profileData.age ? profileData.age.toString() : ""}
+            onChangeText={(text) => handleChange("age", Number(text))}
+            keyboardType="numeric"
+          />
+
+          <Text style={styles.label}>Year Level</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Year Level"
+            value={profileData.yearLevel}
+            onChangeText={(text) => handleChange("yearLevel", text)}
+          />
+
+          <Text style={styles.label}>Major</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Major"
+            value={profileData.major}
+            onChangeText={(text) => handleChange("major", text)}
+          />
+
+          <Text style={styles.label}>About Me</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Tell us about yourself..."
+            value={profileData.aboutMe}
+            onChangeText={(text) => handleChange("aboutMe", text)}
+            multiline
+            numberOfLines={3}
+          />
+
+          <Text style={styles.label}>This year, I really want to</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="This year, I want to..."
+            value={profileData.q1}
+            onChangeText={(text) => handleChange("q1", text)}
+            multiline
+            numberOfLines={3}
+          />
+
+          <Text style={styles.label}>Together we could</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="We could..."
+            value={profileData.q2}
+            onChangeText={(text) => handleChange("q2", text)}
+            multiline
+            numberOfLines={3}
+          />
+
+          <Text style={styles.label}>Favorite book, movie or song</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="My favorite book/movie/song is..."
+            value={profileData.q3}
+            onChangeText={(text) => handleChange("q3", text)}
+            multiline
+            numberOfLines={3}
+          />
+
+          <Text style={styles.label}>I chose my major because...</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="I chose my major because..."
+            value={profileData.q4}
+            onChangeText={(text) => handleChange("q4", text)}
+            multiline
+            numberOfLines={3}
+          />
+
+          <Text style={styles.label}>My favorite study spot is</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="My favorite study spot is..."
+            value={profileData.q5}
+            onChangeText={(text) => handleChange("q5", text)}
+            multiline
+            numberOfLines={3}
+          />
+
+          <Text style={styles.label}>Some of my hobbies are</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="In my free time, I like to..."
+            value={profileData.q6}
+            onChangeText={(text) => handleChange("q6", text)}
+            multiline
+            numberOfLines={3}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, styles.profileImagesTitle]}>
+            Profile Images
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {imagesWithKeys.map((image) => (
+              <View key={image.key} style={styles.imageContainer}>
+                <Image
+                  source={getImageSource(image.uri)}
+                  style={styles.image}
+                />
+                <TouchableOpacity
+                  style={styles.removeButton}
+                  onPress={() => removeImage(image.key)}
+                >
                   <Ionicons
-                    name="chevron-back"
+                    name="close"
                     size={24}
-                    color={Colors.primary500}
+                    color={Colors.secondary100}
                   />
                 </TouchableOpacity>
-              )}
-              <Text style={styles.sectionTitle}>
-                {isAccountSetup ? "Setup your Account" : "Personal Information"}
-              </Text>
-            </View>
+              </View>
+            ))}
+            <TouchableOpacity style={styles.addButton} onPress={pickImage}>
+              <AntDesign name="plus" size={40} color={Colors.primary500} />
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
 
-            <Text style={styles.label}>First Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="First Name"
-              value={profileData.firstName}
-              onChangeText={(text) => handleChange("firstName", text)}
-            />
-
-            <Text style={styles.label}>Age</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Age"
-              value={profileData.age ? profileData.age.toString() : ""}
-              onChangeText={(text) => handleChange("age", Number(text))}
-              keyboardType="numeric"
-            />
-
-            <Text style={styles.label}>Year Level</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Year Level"
-              value={profileData.yearLevel}
-              onChangeText={(text) => handleChange("yearLevel", text)}
-            />
-
-            <Text style={styles.label}>Major</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Major"
-              value={profileData.major}
-              onChangeText={(text) => handleChange("major", text)}
-            />
-
-            <Text style={styles.label}>About Me</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Tell us about yourself..."
-              value={profileData.aboutMe}
-              onChangeText={(text) => handleChange("aboutMe", text)}
-              multiline
-              numberOfLines={3}
-            />
-
-            <Text style={styles.label}>This year, I really want to</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="This year, I want to..."
-              value={profileData.q1}
-              onChangeText={(text) => handleChange("q1", text)}
-              multiline
-              numberOfLines={3}
-            />
-
-            <Text style={styles.label}>Together we could</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="We could..."
-              value={profileData.q2}
-              onChangeText={(text) => handleChange("q2", text)}
-              multiline
-              numberOfLines={3}
-            />
-
-            <Text style={styles.label}>Favorite book, movie or song</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="My favorite book/movie/song is..."
-              value={profileData.q3}
-              onChangeText={(text) => handleChange("q3", text)}
-              multiline
-              numberOfLines={3}
-            />
-
-            <Text style={styles.label}>I chose my major because...</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="I chose my major because..."
-              value={profileData.q4}
-              onChangeText={(text) => handleChange("q4", text)}
-              multiline
-              numberOfLines={3}
-            />
-
-            <Text style={styles.label}>My favorite study spot is</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="My favorite study spot is..."
-              value={profileData.q5}
-              onChangeText={(text) => handleChange("q5", text)}
-              multiline
-              numberOfLines={3}
-            />
-
-            <Text style={styles.label}>Some of my hobbies are</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="In my free time, I like to..."
-              value={profileData.q6}
-              onChangeText={(text) => handleChange("q6", text)}
-              multiline
-              numberOfLines={3}
-            />
-          </View>
-
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, styles.profileImagesTitle]}>
-              Profile Images
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {imagesWithKeys.map((image) => (
-                <View key={image.key} style={styles.imageContainer}>
-                  <Image
-                    source={getImageSource(image.uri)}
-                    style={styles.image}
-                  />
-                  <TouchableOpacity
-                    style={styles.removeButton}
-                    onPress={() => removeImage(image.key)}
-                  >
-                    <Ionicons
-                      name="close"
-                      size={24}
-                      color={Colors.secondary100}
-                    />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <TouchableOpacity style={styles.addButton} onPress={pickImage}>
-                <AntDesign name="plus" size={40} color={Colors.primary500} />
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-
-          <TouchableOpacity style={styles.saveButton} onPress={handleSaveClick}>
-            <Text style={styles.saveButtonText}>Save</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSaveClick}>
+          <Text style={styles.saveButtonText}>Save</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -329,10 +336,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.secondary100,
     paddingTop: 16,
   },
+  containerAccountSetup: {
+    paddingTop: 0,
+  },
   headerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 0, // Temporarily remove this
+    backgroundColor: "green",
   },
   backButton: {
     marginRight: 10,
@@ -341,7 +352,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   section: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 0, // Temporarily remove this
+    backgroundColor: "pink",
+  },
+  sectionAccountSetup: {
+    paddingTop: 0,
   },
   sectionTitle: {
     fontSize: 22,
