@@ -34,6 +34,14 @@ const truncateForLog = (str: string): string => {
     : str;
 };
 
+// Utility to wrap URIs with keys
+function wrapImagesWithKeys(images: string[]) {
+  return images.map((uri) => ({
+    key: Date.now().toString() + Math.random(),
+    uri,
+  }));
+}
+
 export default function ProfileForm({
   profileData,
   onProfileChange,
@@ -42,16 +50,16 @@ export default function ProfileForm({
   onSave,
   onLogout,
 }: ProfileFormProps) {
-  const [isReady, setIsReady] = React.useState(true);
+  // Local state for images with keys
+  const [imagesWithKeys, setImagesWithKeys] = React.useState(() =>
+    wrapImagesWithKeys(profileData.images)
+  );
 
+  // Keep imagesWithKeys in sync with profileData.images if profileData changes (e.g., on load)
   React.useEffect(() => {
-    // Ensure SafeAreaView is properly initialized
-    const timer = setTimeout(() => {
-      setIsReady(true);
-    }, 50);
+    setImagesWithKeys(wrapImagesWithKeys(profileData.images));
+  }, [profileData.images]);
 
-    return () => clearTimeout(timer);
-  }, []);
   const handleChange = (
     key: keyof Profile,
     value: string | number | string[]
@@ -97,53 +105,45 @@ export default function ProfileForm({
     return errors;
   };
 
-  const handleSaveClick = () => {
-    const errors = validateProfile();
-    if (errors.length > 0) {
-      Alert.alert("Cannot Save Profile", errors.join("\n"), [{ text: "OK" }]);
-      return;
-    }
-    onSave();
-  };
-
+  // When adding an image
   const pickImage = async () => {
-    if (profileData.images.filter((img) => img !== "").length >= 6) {
+    if (imagesWithKeys.length >= 6) {
       Alert.alert("Maximum Images", "You can only add up to 6 images");
       return;
     }
-
-    console.log("Opening image picker...");
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.9,
     });
-
-    console.log(
-      "Image picker result:",
-      result.canceled ? "Canceled" : "Selected"
-    );
-
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const imageUri = result.assets[0].uri;
-      const truncatedUri = imageUri.startsWith("file:")
-        ? `file:...${truncateForLog(imageUri.substring(5))}`
-        : truncateForLog(imageUri);
-
-      console.log("Selected image URI:", truncatedUri);
-
-      handleChange("images", [...profileData.images, result.assets[0].uri]);
-      console.log(
-        "Image added to profile data. Total images:",
-        profileData.images.length + 1
-      );
+      setImagesWithKeys((prev) => [
+        ...prev,
+        { key: Date.now().toString() + Math.random(), uri: imageUri },
+      ]);
     }
   };
 
-  const removeImage = (index: number) => {
-    const newImages = profileData.images.filter((_, i) => i !== index);
-    handleChange("images", newImages);
+  // When removing an image
+  const removeImage = (key: string) => {
+    setImagesWithKeys((prev) => prev.filter((img) => img.key !== key));
+  };
+
+  // When saving, update profileData.images to be just the uris
+  const handleSaveClick = () => {
+    const errors = validateProfile();
+    if (errors.length > 0) {
+      Alert.alert("Cannot Save Profile", errors.join("\n"), [{ text: "OK" }]);
+      return;
+    }
+    // Update profileData.images before saving
+    onProfileChange({
+      ...profileData,
+      images: imagesWithKeys.map((img) => img.uri),
+    });
+    onSave();
   };
 
   if (loading) {
@@ -289,16 +289,19 @@ export default function ProfileForm({
             Profile Images
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {profileData.images.map((image, index) => (
-              <View key={index} style={styles.imageContainer}>
-                <Image source={getImageSource(image)} style={styles.image} />
+            {imagesWithKeys.map((image) => (
+              <View key={image.key} style={styles.imageContainer}>
+                <Image
+                  source={getImageSource(image.uri)}
+                  style={styles.image}
+                />
                 <TouchableOpacity
                   style={styles.removeButton}
-                  onPress={() => removeImage(index)}
+                  onPress={() => removeImage(image.key)}
                 >
                   <Ionicons
                     name="close"
-                    size={20}
+                    size={24}
                     color={Colors.secondary100}
                   />
                 </TouchableOpacity>
@@ -358,7 +361,9 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     position: "relative",
-    marginRight: 10,
+    marginRight: 16,
+    marginTop: 8,
+    overflow: "visible",
   },
   image: {
     width: 100,
@@ -367,14 +372,19 @@ const styles = StyleSheet.create({
   },
   removeButton: {
     position: "absolute",
-    top: 5,
-    right: 5,
+    top: -8,
+    right: -8,
     backgroundColor: Colors.primary500,
     borderRadius: 20,
     width: 32,
     height: 32,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   removeButtonText: {
     color: "white",
