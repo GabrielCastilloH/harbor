@@ -10,7 +10,6 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, AntDesign } from "@expo/vector-icons";
@@ -22,7 +21,6 @@ import { getImageSource } from "../util/imageUtils";
 interface ProfileFormProps {
   profileData: Profile;
   onProfileChange: (profile: Profile) => void;
-  loading?: boolean;
   isAccountSetup?: boolean;
   onSave: (images?: string[]) => void;
   onLogout?: () => void;
@@ -43,52 +41,9 @@ function wrapImagesWithKeys(images: string[]) {
   }));
 }
 
-// Skeletal loading component for images
-const ImageSkeleton = ({ count }: { count: number }) => {
-  const fadeAnim = React.useRef(new Animated.Value(0.3)).current;
-
-  React.useEffect(() => {
-    const fadeInOut = () => {
-      Animated.sequence([
-        Animated.timing(fadeAnim, {
-          toValue: 0.8,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 0.2,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => fadeInOut());
-    };
-    fadeInOut();
-  }, [fadeAnim]);
-
-  console.log(`ImageSkeleton - Rendering ${count} skeletons`);
-
-  return (
-    <>
-      {Array.from({ length: count }).map((_, index) => (
-        <View key={index} style={styles.imageContainer}>
-          <Animated.View
-            style={[
-              styles.imageSkeleton,
-              {
-                opacity: fadeAnim,
-              },
-            ]}
-          />
-        </View>
-      ))}
-    </>
-  );
-};
-
 export default function ProfileForm({
   profileData,
   onProfileChange,
-  loading = false,
   isAccountSetup = false,
   onSave,
   onLogout,
@@ -182,14 +137,6 @@ export default function ProfileForm({
       return;
     }
 
-    console.log(
-      `ProfileForm - Saving profile with ${imagesWithKeys.length} images`
-    );
-    console.log(
-      `ProfileForm - Image URIs:`,
-      imagesWithKeys.map((img) => img.uri.substring(0, 50) + "...")
-    );
-
     // Update profileData.images before saving
     const updatedProfile = {
       ...profileData,
@@ -206,14 +153,6 @@ export default function ProfileForm({
       onSave(imagesWithKeys.map((img) => img.uri));
     }
   };
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading profile...</Text>
-      </View>
-    );
-  }
 
   return (
     <KeyboardAvoidingView
@@ -355,46 +294,24 @@ export default function ProfileForm({
             Profile Images
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {loading ? (
-              <>
-                {console.log(
-                  `ProfileForm - Loading state: ${loading}, showing skeleton`
-                )}
-                <ImageSkeleton
-                  count={Math.max(profileData.images?.length || 0, 3)}
+            {imagesWithKeys.map((image) => (
+              <View key={image.key} style={styles.imageContainer}>
+                <Image
+                  source={getImageSource(image.uri)}
+                  style={styles.image}
                 />
-              </>
-            ) : (
-              <>
-                {console.log(
-                  `ProfileForm - Not loading, showing ${imagesWithKeys.length} images`
-                )}
-                {imagesWithKeys.map((image) => (
-                  <View key={image.key} style={styles.imageContainer}>
-                    <Image
-                      source={getImageSource(image.uri)}
-                      style={styles.image}
-                      onLoadStart={() => {
-                        // Image started loading
-                      }}
-                      onLoadEnd={() => {
-                        // Image finished loading
-                      }}
-                    />
-                    <TouchableOpacity
-                      style={styles.removeButton}
-                      onPress={() => removeImage(image.key)}
-                    >
-                      <Ionicons
-                        name="close"
-                        size={24}
-                        color={Colors.secondary100}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </>
-            )}
+                <TouchableOpacity
+                  style={styles.removeButton}
+                  onPress={() => removeImage(image.key)}
+                >
+                  <Ionicons
+                    name="close"
+                    size={24}
+                    color={Colors.secondary100}
+                  />
+                </TouchableOpacity>
+              </View>
+            ))}
             <TouchableOpacity style={styles.addButton} onPress={pickImage}>
               <AntDesign name="plus" size={40} color={Colors.primary500} />
             </TouchableOpacity>
@@ -513,26 +430,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   profileImagesTitle: {
     marginBottom: 8,
-  },
-  imageSkeleton: {
-    width: 100,
-    height: 100,
-    borderRadius: 10,
-    backgroundColor: Colors.primary500, // Use the main primary color
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
-    // Add a subtle border effect
-    borderWidth: 1,
-    borderColor: Colors.secondary500,
   },
 });
