@@ -70,16 +70,15 @@ export default function ProfileForm({
     // Check text fields
     const textFields: (keyof Profile)[] = [
       "firstName",
-      "lastName",
       "yearLevel",
       "major",
       "aboutMe",
-      "yearlyGoal",
-      "potentialActivities",
-      "majorReason",
-      "studySpot",
-      "hobbies",
-      "favoriteMedia",
+      "q1",
+      "q2",
+      "q3",
+      "q4",
+      "q5",
+      "q6",
     ];
 
     textFields.forEach((field) => {
@@ -190,14 +189,6 @@ export default function ProfileForm({
               onChangeText={(text) => handleChange("firstName", text)}
             />
 
-            <Text style={styles.label}>Last Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Last Name"
-              value={profileData.lastName}
-              onChangeText={(text) => handleChange("lastName", text)}
-            />
-
             <Text style={styles.label}>Age</Text>
             <TextInput
               style={styles.input}
@@ -237,8 +228,8 @@ export default function ProfileForm({
             <TextInput
               style={styles.input}
               placeholder="This year, I want to..."
-              value={profileData.yearlyGoal}
-              onChangeText={(text) => handleChange("yearlyGoal", text)}
+              value={profileData.q1}
+              onChangeText={(text) => handleChange("q1", text)}
               multiline
               numberOfLines={3}
             />
@@ -247,38 +238,8 @@ export default function ProfileForm({
             <TextInput
               style={styles.input}
               placeholder="We could..."
-              value={profileData.potentialActivities}
-              onChangeText={(text) => handleChange("potentialActivities", text)}
-              multiline
-              numberOfLines={3}
-            />
-
-            <Text style={styles.label}>I chose my major because...</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="I chose my major because..."
-              value={profileData.majorReason}
-              onChangeText={(text) => handleChange("majorReason", text)}
-              multiline
-              numberOfLines={3}
-            />
-
-            <Text style={styles.label}>My favorite study spot is</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="My favorite study spot is..."
-              value={profileData.studySpot}
-              onChangeText={(text) => handleChange("studySpot", text)}
-              multiline
-              numberOfLines={3}
-            />
-
-            <Text style={styles.label}>Some of my hobbies are</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="In my free time, I like to..."
-              value={profileData.hobbies}
-              onChangeText={(text) => handleChange("hobbies", text)}
+              value={profileData.q2}
+              onChangeText={(text) => handleChange("q2", text)}
               multiline
               numberOfLines={3}
             />
@@ -287,8 +248,38 @@ export default function ProfileForm({
             <TextInput
               style={styles.input}
               placeholder="My favorite book/movie/song is..."
-              value={profileData.favoriteMedia}
-              onChangeText={(text) => handleChange("favoriteMedia", text)}
+              value={profileData.q3}
+              onChangeText={(text) => handleChange("q3", text)}
+              multiline
+              numberOfLines={3}
+            />
+
+            <Text style={styles.label}>I chose my major because...</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="I chose my major because..."
+              value={profileData.q4}
+              onChangeText={(text) => handleChange("q4", text)}
+              multiline
+              numberOfLines={3}
+            />
+
+            <Text style={styles.label}>My favorite study spot is</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="My favorite study spot is..."
+              value={profileData.q5}
+              onChangeText={(text) => handleChange("q5", text)}
+              multiline
+              numberOfLines={3}
+            />
+
+            <Text style={styles.label}>Some of my hobbies are</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="In my free time, I like to..."
+              value={profileData.q6}
+              onChangeText={(text) => handleChange("q6", text)}
               multiline
               numberOfLines={3}
             />

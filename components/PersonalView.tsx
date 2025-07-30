@@ -16,21 +16,21 @@ export default function PersonalView({ profile }: CardViewProps) {
                 This year, I really want to
               </Text>
             </View>
-            <Text style={styles.aboutText}>{profile.yearlyGoal}</Text>
+            <Text style={styles.aboutText}>{profile.q1}</Text>
           </View>
           <View style={[styles.section, { flex: 1 }]}>
             <View style={styles.sectionHeader}>
               <Ionicons name="heart" size={28} color={Colors.primary500} />
               <Text style={styles.sectionTitle}>Some of my hobbies are</Text>
             </View>
-            <Text style={styles.aboutText}>{profile.hobbies}</Text>
+            <Text style={styles.aboutText}>{profile.q6}</Text>
           </View>
           <View style={[styles.section, { flex: 1 }]}>
             <View style={styles.sectionHeader}>
               <Ionicons name="film" size={28} color={Colors.primary500} />
               <Text style={styles.sectionTitle}>Favorite book/movie/song</Text>
             </View>
-            <Text style={styles.aboutText}>{profile.favoriteMedia}</Text>
+            <Text style={styles.aboutText}>{profile.q3}</Text>
           </View>
         </View>
       </View>

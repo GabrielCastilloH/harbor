@@ -15,24 +15,37 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin";
 const emptyProfile: Profile = {
   email: "",
   firstName: "",
-  lastName: "",
   age: 0,
   yearLevel: "",
   major: "",
   images: [],
   aboutMe: "",
-  yearlyGoal: "",
-  potentialActivities: "",
-  favoriteMedia: "",
-  majorReason: "",
-  studySpot: "",
-  hobbies: "",
+  q1: "",
+  q2: "",
+  q3: "",
+  q4: "",
+  q5: "",
+  q6: "",
 };
 
 export default function AccountSetupScreen() {
   const { setUserId, setProfile, setIsAuthenticated, setAuthToken } =
     useAppContext();
-  const [profileData, setProfileData] = useState<Profile>(emptyProfile);
+  const [profileData, setProfileData] = useState<Profile>({
+    firstName: "",
+    yearLevel: "",
+    age: 18,
+    major: "",
+    images: [],
+    aboutMe: "",
+    q1: "",
+    q2: "",
+    q3: "",
+    q4: "",
+    q5: "",
+    q6: "",
+    email: "",
+  });
   const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {
@@ -67,8 +80,6 @@ export default function AccountSetupScreen() {
           setProfileData((prev) => ({
             ...prev,
             firstName: currentUser.displayName?.split(" ")[0] || "",
-            lastName:
-              currentUser.displayName?.split(" ").slice(1).join(" ") || "",
             email: currentUser.email || "",
           }));
         }
@@ -113,19 +124,18 @@ export default function AccountSetupScreen() {
       // STEP 2: Create the user profile in Firestore
       const userData = {
         firstName: profileData.firstName,
-        lastName: profileData.lastName,
         email: currentUser.email || "",
         // Add other profile fields as needed
         age: profileData.age,
         yearLevel: profileData.yearLevel,
         major: profileData.major,
         aboutMe: profileData.aboutMe,
-        yearlyGoal: profileData.yearlyGoal,
-        potentialActivities: profileData.potentialActivities,
-        favoriteMedia: profileData.favoriteMedia,
-        majorReason: profileData.majorReason,
-        studySpot: profileData.studySpot,
-        hobbies: profileData.hobbies,
+        q1: profileData.q1,
+        q2: profileData.q2,
+        q3: profileData.q3,
+        q4: profileData.q4,
+        q5: profileData.q5,
+        q6: profileData.q6,
         images: imageFileIds, // Include the file IDs we just uploaded
       };
 
