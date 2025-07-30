@@ -98,7 +98,8 @@ export default function HomeScreen() {
           }
         }
       } catch (error) {
-        console.log("Error fetching recommendations:", error);
+        // console.log("Error fetching recommendations:", error);
+        setRecommendations([]);
       } finally {
         setLoadingRecommendations(false);
       }
@@ -136,7 +137,7 @@ export default function HomeScreen() {
       return;
     }
 
-    if (!userId) return;
+    if (!userId || !profile.uid) return;
 
     try {
       setSwipeInProgress(true);
@@ -179,6 +180,8 @@ export default function HomeScreen() {
     if (swipeInProgress || lastSwipedProfile === profile.uid) {
       return;
     }
+
+    if (!profile.uid) return;
 
     setSwipeInProgress(true);
     setLastSwipedProfile(profile.uid);

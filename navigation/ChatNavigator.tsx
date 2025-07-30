@@ -98,7 +98,6 @@ export default function ChatNavigator() {
       try {
         const apiKey = await ChatFunctions.getStreamApiKey();
         setChatApiKey(apiKey);
-        console.log("ChatNavigator - API Key fetched successfully");
       } catch (error) {
         console.error("ChatNavigator - Failed to fetch API key:", error);
       }
@@ -109,8 +108,8 @@ export default function ChatNavigator() {
 
   // Add debugging for API key
   useEffect(() => {
-    console.log("ChatNavigator - API Key length:", chatApiKey?.length || 0);
-    console.log("ChatNavigator - API Key starts with:", chatApiKey?.substring(0, 10));
+    // console.log("ChatNavigator - API Key length:", chatApiKey?.length || 0);
+    // console.log("ChatNavigator - API Key starts with:", chatApiKey?.substring(0, 10));
   }, [chatApiKey]);
 
   // Create a memoized user object to avoid recreating on each render
@@ -131,18 +130,18 @@ export default function ChatNavigator() {
 
   // Add debugging for chat client
   useEffect(() => {
-    console.log("ChatNavigator - Chat client created:", !!chatClient);
-    console.log("ChatNavigator - User data:", user);
-    console.log("ChatNavigator - Token available:", !!chatUserToken);
+    // console.log("ChatNavigator - Chat client created:", !!chatClient);
+    // console.log("ChatNavigator - User data:", user);
+    // console.log("ChatNavigator - Token available:", !!chatUserToken);
   }, [chatClient, user, chatUserToken]);
 
   // Fetch user profile data
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!userId) {
-        console.log(
-          "ChatNavigator - No userId available, cannot fetch profile"
-        );
+        // console.log(
+        //   "ChatNavigator - No userId available, cannot fetch profile"
+        // );
         return;
       }
 
@@ -199,31 +198,31 @@ export default function ChatNavigator() {
 
   // Log state changes
   useEffect(() => {
-    console.log(
-      "ChatNavigator - Token updated:",
-      chatUserToken ? "Has token" : "No token"
-    );
+    // console.log(
+    //   "ChatNavigator - Token updated:",
+    //   chatUserToken ? "Has token" : "No token"
+    // );
   }, [chatUserToken]);
 
   useEffect(() => {
-    console.log("ChatNavigator - Client updated:", !!chatClient);
+    // console.log("ChatNavigator - Client updated:", !!chatClient);
   }, [chatClient]);
 
   // Conditionally render loading or chat UI
   if (isLoadingProfile || !profile) {
-    console.log("ChatNavigator - Waiting for profile to load");
+    // console.log("ChatNavigator - Waiting for profile to load");
     return <LoadingScreen loadingText="Loading..." />;
   }
 
   if (!chatUserToken || !chatClient) {
-    console.log(
-      "ChatNavigator - Showing LoadingScreen because:",
-      !chatUserToken ? "No token" : "No client"
-    );
+    // console.log(
+    //   "ChatNavigator - Showing LoadingScreen because:",
+    //   !chatUserToken ? "No token" : "No client"
+    // );
     return <LoadingScreen loadingText="Loading..." />;
   }
 
-  console.log("ChatNavigator - Rendering chat UI");
+  // console.log("ChatNavigator - Rendering chat UI");
   return (
     <OverlayProvider value={{ style: theme }}>
       <Chat client={chatClient}>

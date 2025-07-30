@@ -9,23 +9,11 @@ export class SwipeService {
     swipedId: string,
     direction: "left" | "right"
   ) {
-    console.log("SwipeService - createSwipe called with:", {
-      swiperId,
-      swipedId,
-      direction,
-    });
-
     try {
       const createSwipe = httpsCallable(functions, "swipes-createSwipe");
       const result = await createSwipe({ swiperId, swipedId, direction });
-      const data = result.data as {
-        message: string;
-        swipe: any;
-        match: boolean;
-        matchId?: string;
-      };
+      const data = result.data as any;
 
-      console.log("SwipeService - Swipe created:", data);
       return data;
     } catch (error) {
       console.error("SwipeService - Error creating swipe:", error);
@@ -34,43 +22,27 @@ export class SwipeService {
   }
 
   static async countRecentSwipes(id: string) {
-    console.log("SwipeService - countRecentSwipes called with:", id);
-
     try {
-      const countRecentSwipes = httpsCallable(
-        functions,
-        "swipes-countRecentSwipes"
-      );
+      const countRecentSwipes = httpsCallable(functions, "swipes-countRecentSwipes");
       const result = await countRecentSwipes({ id });
-      const data = result.data as {
-        swipeCount: number;
-        dailyLimit: number;
-        canSwipe: boolean;
-      };
+      const data = result.data as any;
 
-      console.log("SwipeService - Swipe count:", data);
       return data;
     } catch (error) {
-      console.error("SwipeService - Error counting swipes:", error);
+      console.error("SwipeService - Error counting recent swipes:", error);
       throw error;
     }
   }
 
   static async getSwipesByUser(id: string) {
-    console.log("SwipeService - getSwipesByUser called with:", id);
-
     try {
-      const getSwipesByUser = httpsCallable(
-        functions,
-        "swipes-getSwipesByUser"
-      );
+      const getSwipesByUser = httpsCallable(functions, "swipes-getSwipesByUser");
       const result = await getSwipesByUser({ id });
-      const data = result.data as { swipes: any[] };
+      const data = result.data as any;
 
-      console.log("SwipeService - User swipes:", data);
-      return data.swipes;
+      return data;
     } catch (error) {
-      console.error("SwipeService - Error getting user swipes:", error);
+      console.error("SwipeService - Error getting swipes by user:", error);
       throw error;
     }
   }
