@@ -57,11 +57,10 @@ export default function EditProfileScreen() {
     profile: contextProfile,
     isInitialized,
   } = useAppContext();
+  const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] = useState<Profile>(
     contextProfile || emptyProfile
   );
-  const [loading, setLoading] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const initialProfileRef = useRef(profileData);
@@ -74,7 +73,6 @@ export default function EditProfileScreen() {
       }
 
       setLoading(true);
-      setImageLoading(true);
       try {
         const response = await UserService.getUserById(userId);
         const userData = response.user || response;
@@ -87,15 +85,9 @@ export default function EditProfileScreen() {
 
         setProfileData(profileWithImages);
         setProfile(profileWithImages);
-
-        // Simulate image loading time
-        setTimeout(() => {
-          setImageLoading(false);
-        }, 1000);
       } catch (error) {
         console.error("Error fetching user profile:", error);
         Alert.alert("Error", "Failed to load profile data. Please try again.");
-        setImageLoading(false);
       } finally {
         setLoading(false);
       }
@@ -106,7 +98,6 @@ export default function EditProfileScreen() {
       fetchUserProfile();
     } else if (contextProfile) {
       // If we have context profile, just set image loading to false
-      setImageLoading(false);
     }
   }, [userId, contextProfile, setProfile, isInitialized]);
 
@@ -243,7 +234,6 @@ export default function EditProfileScreen() {
         <ProfileForm
           profileData={profileData}
           onProfileChange={setProfileData}
-          loading={loading || imageLoading}
           onSave={handleSave}
         />
       </KeyboardAvoidingView>
