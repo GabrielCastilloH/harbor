@@ -53,21 +53,90 @@ export const createSwipe = functions.https.onCall(
         );
       }
 
+      // Get the swiped user's data as well
+      const swipedDoc = await db.collection("users").doc(swipedId).get();
+      if (!swipedDoc.exists) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "Swiped user not found"
+        );
+      }
+
       const swiperUser = swiperDoc.data();
+      const swipedUser = swipedDoc.data();
+
+      // Check if users can match by looking at their actual active matches
+      const [swiperActiveMatches, swipedActiveMatches] = await Promise.all([
+        db
+          .collection("matches")
+          .where("user1Id", "==", swiperId)
+          .where("isActive", "==", true)
+          .get(),
+        db
+          .collection("matches")
+          .where("user2Id", "==", swiperId)
+          .where("isActive", "==", true)
+          .get(),
+        db
+          .collection("matches")
+          .where("user1Id", "==", swipedId)
+          .where("isActive", "==", true)
+          .get(),
+        db
+          .collection("matches")
+          .where("user2Id", "==", swipedId)
+          .where("isActive", "==", true)
+          .get(),
+      ]);
+
+      const swiperMatches = [
+        ...swiperActiveMatches.docs,
+        ...swipedActiveMatches.docs,
+      ];
+      const swipedMatches = [
+        ...swipedActiveMatches.docs,
+        ...swipedActiveMatches.docs,
+      ];
+
+      // Check if users can match based on their premium status and current matches
+      const canSwiperMatch = swiperUser?.isPremium || swiperMatches.length < 1;
+      const canSwipedMatch = swipedUser?.isPremium || swipedMatches.length < 1;
+
+      console.log(
+        `Match check - Swiper: ${swiperId}, Premium: ${swiperUser?.isPremium}, Active matches: ${swiperMatches.length}`
+      );
+      console.log(
+        `Match check - Swiped: ${swipedId}, Premium: ${swipedUser?.isPremium}, Active matches: ${swipedMatches.length}`
+      );
 
       // If user is not premium and already has a match, prevent the swipe
-      if (!swiperUser?.isPremium && swiperUser?.currentMatches?.length > 0) {
+      if (!swiperUser?.isPremium && swiperMatches.length >= 1) {
+        console.log(
+          `Swiper ${swiperId} is not premium and has ${swiperMatches.length} active matches`
+        );
         throw new functions.https.HttpsError(
           "permission-denied",
           "Non-premium users cannot swipe while they have an active match"
         );
       }
 
-      // Check if users can match
-      const [canSwiperMatch, canSwipedMatch] = await Promise.all([
-        canAddMatch(swiperId),
-        canAddMatch(swipedId),
-      ]);
+      // Check if these users have unmatched before (prevent re-matching)
+      const unmatchedCheck = await db
+        .collection("matches")
+        .where("user1Id", "in", [swiperId, swipedId])
+        .where("user2Id", "in", [swiperId, swipedId])
+        .where("isActive", "==", false)
+        .limit(1)
+        .get();
+
+      if (!unmatchedCheck.empty) {
+        console.log(`Users have unmatched before: ${swiperId} and ${swipedId}`);
+        return {
+          message: "Users have unmatched before, cannot match again",
+          swipe: null,
+          match: false,
+        };
+      }
 
       // Check if this swipe already exists to prevent duplicates
       const existingSwipe = await db
@@ -163,6 +232,28 @@ export const createSwipe = functions.https.onCall(
           };
 
           const matchRef = await db.collection("matches").add(matchData);
+
+          // Update both users' currentMatches arrays
+          await Promise.all([
+            db
+              .collection("users")
+              .doc(swiperId)
+              .update({
+                currentMatches: admin.firestore.FieldValue.arrayUnion(
+                  matchRef.id
+                ),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              }),
+            db
+              .collection("users")
+              .doc(swipedId)
+              .update({
+                currentMatches: admin.firestore.FieldValue.arrayUnion(
+                  matchRef.id
+                ),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              }),
+          ]);
 
           return {
             message: "Swipe recorded and match created",
@@ -316,25 +407,6 @@ export const getSwipesByUser = functions.https.onCall(
     }
   }
 );
-
-/**
- * Helper function to check if a user can add more matches
- * @param userId User ID to check
- * @returns Promise<boolean> Whether user can add more matches
- */
-async function canAddMatch(userId: string): Promise<boolean> {
-  const userDoc = await db.collection("users").doc(userId).get();
-  if (!userDoc.exists) return false;
-
-  const userData = userDoc.data();
-  const currentMatches = userData?.currentMatches || [];
-
-  // Premium users can have unlimited matches
-  if (userData?.isPremium) return true;
-
-  // Non-premium users can only have 1 match
-  return currentMatches.length < 1;
-}
 
 export const swipeFunctions = {
   createSwipe,
