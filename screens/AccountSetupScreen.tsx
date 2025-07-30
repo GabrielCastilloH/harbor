@@ -110,17 +110,36 @@ export default function AccountSetupScreen() {
         return;
       }
 
+      const firebaseUid = currentUser.uid;
+
       // STEP 1: Upload all images first and collect their fileIds
       const imageFileIds = [];
+      console.log(
+        `AccountSetupScreen - Starting to upload ${profileData.images.length} images`
+      );
+
       for (let i = 0; i < profileData.images.length; i++) {
         const imageUri = profileData.images[i];
         if (imageUri) {
-          // For pre-upload, use a temporary ID
-          const tempUserId = "temp_" + new Date().getTime();
-          const fileId = await uploadImageToServer(tempUserId, imageUri);
+          console.log(
+            `AccountSetupScreen - Uploading image ${i + 1}/${
+              profileData.images.length
+            }: ${imageUri.substring(0, 50)}...`
+          );
+          // Use the actual Firebase UID for uploading images
+          const fileId = await uploadImageToServer(firebaseUid, imageUri);
+          console.log(
+            `AccountSetupScreen - Image ${
+              i + 1
+            } uploaded successfully: ${fileId}`
+          );
           imageFileIds.push(fileId);
         }
       }
+
+      console.log(
+        `AccountSetupScreen - All ${imageFileIds.length} images uploaded successfully`
+      );
 
       // STEP 2: Create the user profile in Firestore
       const userData = {
@@ -152,7 +171,6 @@ export default function AccountSetupScreen() {
 
       // STEP 3: Update app state
       // Use Firebase UID as user ID since that's how the user is stored in Firestore
-      const firebaseUid = currentUser.uid;
       setUserId(firebaseUid);
       setProfile({
         ...profileData,
