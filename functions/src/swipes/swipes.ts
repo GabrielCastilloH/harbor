@@ -69,6 +69,60 @@ export const createSwipe = functions.https.onCall(
         canAddMatch(swipedId),
       ]);
 
+      // Check if this swipe already exists to prevent duplicates
+      const existingSwipe = await db
+        .collection("swipes")
+        .where("swiperId", "==", swiperId)
+        .where("swipedId", "==", swipedId)
+        .where("direction", "==", direction)
+        .limit(1)
+        .get();
+
+      if (!existingSwipe.empty) {
+        console.log(
+          `Swipe already exists: ${swiperId} -> ${swipedId} (${direction})`
+        );
+        // Swipe already exists, return the existing data
+        const existingSwipeData = existingSwipe.docs[0].data();
+
+        // Check if it's a match (both users swiped right on each other)
+        if (direction === "right") {
+          const reverseSwipe = await db
+            .collection("swipes")
+            .where("swiperId", "==", swipedId)
+            .where("swipedId", "==", swiperId)
+            .where("direction", "==", "right")
+            .limit(1)
+            .get();
+
+          if (!reverseSwipe.empty && canSwiperMatch && canSwipedMatch) {
+            // Check if match already exists
+            const existingMatch = await db
+              .collection("matches")
+              .where("user1Id", "in", [swiperId, swipedId])
+              .where("user2Id", "in", [swiperId, swipedId])
+              .where("isActive", "==", true)
+              .limit(1)
+              .get();
+
+            if (!existingMatch.empty) {
+              return {
+                message: "Swipe already exists and match found",
+                swipe: existingSwipeData,
+                match: true,
+                matchId: existingMatch.docs[0].id,
+              };
+            }
+          }
+        }
+
+        return {
+          message: "Swipe already exists",
+          swipe: existingSwipeData,
+          match: false,
+        };
+      }
+
       // Record the swipe
       const swipeData = {
         swiperId,
@@ -77,11 +131,14 @@ export const createSwipe = functions.https.onCall(
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       };
 
+      console.log(
+        `Creating new swipe: ${swiperId} -> ${swipedId} (${direction})`
+      );
       await db.collection("swipes").add(swipeData);
 
       // Check if it's a match (both users swiped right on each other)
       if (direction === "right") {
-        const existingSwipe = await db
+        const reverseSwipe = await db
           .collection("swipes")
           .where("swiperId", "==", swipedId)
           .where("swipedId", "==", swiperId)
@@ -89,7 +146,7 @@ export const createSwipe = functions.https.onCall(
           .limit(1)
           .get();
 
-        if (!existingSwipe.empty && canSwiperMatch && canSwipedMatch) {
+        if (!reverseSwipe.empty && canSwiperMatch && canSwipedMatch) {
           // It's a match! Create a match record
           const matchData = {
             user1Id: swiperId,
