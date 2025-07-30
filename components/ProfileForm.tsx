@@ -179,6 +179,15 @@ export default function ProfileForm({
       Alert.alert("Cannot Save Profile", errors.join("\n"), [{ text: "OK" }]);
       return;
     }
+
+    console.log(
+      `ProfileForm - Saving profile with ${imagesWithKeys.length} images`
+    );
+    console.log(
+      `ProfileForm - Image URIs:`,
+      imagesWithKeys.map((img) => img.uri.substring(0, 50) + "...")
+    );
+
     // Update profileData.images before saving
     onProfileChange({
       ...profileData,
