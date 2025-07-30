@@ -1,9 +1,11 @@
 import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
-import { CallableRequest } from "firebase-functions/v2/https";
 import { StreamChat } from "stream-chat";
-import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 
+const db = admin.firestore();
+
+// Keep the logToNtfy function available for future use
+// @ts-ignore
 async function logToNtfy(msg: string) {
   try {
     await fetch("https://ntfy.sh/harbor-debug-randomr", {
@@ -15,91 +17,67 @@ async function logToNtfy(msg: string) {
   }
 }
 
-const db = admin.firestore();
-const secretManager = new SecretManagerServiceClient();
-
-let streamClient: StreamChat | null = null;
-
-/**
- * Initialize Stream Chat client with secrets from Google Secret Manager
- */
 async function getStreamClient(): Promise<StreamChat> {
-  if (streamClient) return streamClient;
-
-  try {
-    await logToNtfy("getStreamClient - Starting to get Stream API credentials");
-
-    // Get Stream API credentials from Secret Manager
-    const [streamApiKeyVersion] = await secretManager.accessSecretVersion({
-      name: "projects/harbor-ch/secrets/STREAM_API_KEY/versions/latest",
-    });
-    const [streamApiSecretVersion] = await secretManager.accessSecretVersion({
-      name: "projects/harbor-ch/secrets/STREAM_API_SECRET/versions/latest",
-    });
-
-    const apiKey = streamApiKeyVersion.payload?.data?.toString() || "";
-    const apiSecret = streamApiSecretVersion.payload?.data?.toString() || "";
-
-    await logToNtfy(`getStreamClient - API Key length: ${apiKey.length}`);
-    await logToNtfy(`getStreamClient - API Secret length: ${apiSecret.length}`);
-
-    if (!apiKey || !apiSecret) {
-      await logToNtfy("getStreamClient - Missing Stream API credentials");
-      throw new Error("Missing Stream API credentials");
-    }
-
-    streamClient = StreamChat.getInstance(apiKey, apiSecret);
-    await logToNtfy("getStreamClient - Stream client created successfully");
-    return streamClient;
-  } catch (error) {
-    await logToNtfy(`getStreamClient - Error getting Stream client: ${error}`);
-
-    // Try environment variables as fallback only
-    const apiKey = process.env.STREAM_API_KEY;
-    const apiSecret = process.env.STREAM_API_SECRET;
-
-    if (apiKey && apiSecret) {
-      await logToNtfy(
-        "getStreamClient - Using environment variables as fallback"
-      );
-      streamClient = StreamChat.getInstance(apiKey, apiSecret);
-      return streamClient;
-    }
-
-    throw error;
+  // await logToNtfy("getStreamClient - Starting to get Stream API credentials");
+  
+  const apiKey = process.env.STREAM_API_KEY;
+  const apiSecret = process.env.STREAM_API_SECRET;
+  
+  // await logToNtfy(`getStreamClient - API Key length: ${apiKey.length}`);
+  // await logToNtfy(`getStreamClient - API Secret length: ${apiSecret.length}`);
+  
+  if (!apiKey || !apiSecret) {
+    // await logToNtfy("getStreamClient - Missing Stream API credentials");
+    throw new Error("Missing Stream API credentials");
   }
+  
+  const client = StreamChat.getInstance(apiKey, apiSecret);
+  // await logToNtfy("getStreamClient - Stream client created successfully");
+  
+  return client;
 }
 
 /**
  * Creates a user in Stream Chat
  */
 async function createStreamUser(userId: string, firstName: string) {
+  // await logToNtfy(
+  //   `createStreamUser - Starting to create Stream user for userId: ${userId}`
+  // );
+  // await logToNtfy(
+  //   `createStreamUser - First name for Stream Chat: ${firstName}`
+  // );
+  
   try {
-    await logToNtfy(
-      `createStreamUser - Starting to create Stream Chat user: ${userId} with name: ${firstName}`
-    );
-
-    const serverClient = await getStreamClient();
-    await logToNtfy("createStreamUser - Stream client obtained successfully");
-
-    // Create user in Stream Chat with just the first name
-    await serverClient.upsertUser({
+    const client = await getStreamClient();
+    // await logToNtfy("createStreamUser - Stream client obtained successfully");
+    
+    // await logToNtfy(
+    //   `createStreamUser - About to call client.upsertUser with userId: ${userId}`
+    // );
+    // await logToNtfy(
+    //   `createStreamUser - About to call client.upsertUser with name: ${firstName}`
+    // );
+    // await logToNtfy(
+    //   `createStreamUser - About to call client.upsertUser with role: user`
+    // );
+    
+    const response = await client.upsertUser({
       id: userId,
       name: firstName,
+      role: "user",
     });
-
-    await logToNtfy(
-      `createStreamUser - Stream Chat user created successfully: ${userId} with name: ${firstName}`
-    );
+    
+    // await logToNtfy(
+    //   `createStreamUser - Stream user created successfully: ${JSON.stringify(response)}`
+    // );
+    
+    return response;
   } catch (error) {
-    await logToNtfy(
-      `createStreamUser - Error creating Stream Chat user: ${error}`
-    );
-    // Don't throw error here as we don't want to fail the entire user creation
-    // Just log the error and continue
-    await logToNtfy(
-      `createStreamUser - Continuing with user creation despite Stream Chat error`
-    );
+    // await logToNtfy(
+    //   `createStreamUser - Error creating Stream user: ${error}`
+    // );
+    throw error;
   }
 }
 
@@ -149,125 +127,98 @@ export const createUser = functions.https.onCall(
     ingressSettings: "ALLOW_ALL",
     invoker: "public",
   },
-  async (request: CallableRequest<CreateUserData>) => {
+  async (request: functions.https.CallableRequest<CreateUserData>) => {
     try {
-      await logToNtfy(
-        "createUser function called with: " + JSON.stringify(request.data)
-      );
-      await logToNtfy(
-        "createUser - request.auth: " + JSON.stringify(request.auth)
-      );
-      await logToNtfy(
-        "createUser - request.data keys: " +
-          Object.keys(request.data || {}).join(", ")
-      );
-
       if (!request.auth) {
-        await logToNtfy("createUser - User not authenticated");
+        // await logToNtfy("createUser - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
         );
       }
 
-      const userData = request.data;
-      const { email, firstName, yearLevel } = userData;
       const firebaseUid = request.auth.uid;
+      const userData = request.data;
 
-      await logToNtfy(
-        "createUser - Extracted user data: " +
-          JSON.stringify({
-            email,
-            firstName,
-            yearLevel,
-            firebaseUid,
-          })
-      );
+      // await logToNtfy(
+      //   `createUser - Received request with firebaseUid: ${firebaseUid}`
+      // );
+      // await logToNtfy(
+      //   `createUser - Received request with userData: ${JSON.stringify(userData)}`
+      // );
 
-      if (!email || !firstName || !yearLevel) {
-        await logToNtfy(
-          "createUser - Missing required fields: " +
-            JSON.stringify({
-              email,
-              firstName,
-              yearLevel,
-            })
-        );
+      if (!userData || !userData.firstName || !userData.email) {
         throw new functions.https.HttpsError(
           "invalid-argument",
-          "Email, firstName, and yearLevel are required"
+          "firstName and email are required"
         );
       }
 
-      await logToNtfy("createUser - Creating user with UID: " + firebaseUid);
-      await logToNtfy("createUser - First name for Stream Chat: " + firstName);
-
-      // Check if user already exists by Firebase UID
+      // Check if user already exists
       const existingUser = await db.collection("users").doc(firebaseUid).get();
       if (existingUser.exists) {
-        console.log("createUser - User already exists:", firebaseUid);
+        // console.log("createUser - User already exists:", firebaseUid);
         throw new functions.https.HttpsError(
           "already-exists",
           "User already exists"
         );
       }
 
-      // Create new user data using Firebase UID as document ID
-      const newUserData = {
-        uid: firebaseUid, // Store the Firebase Auth UID as the primary identifier
-        email: email, // Store email as a field
+      // await logToNtfy("createUser - Creating user with UID: " + firebaseUid);
+      // await logToNtfy("createUser - First name for Stream Chat: " + userData.firstName);
+
+      // Create user document in Firestore
+      const userDoc = {
+        uid: firebaseUid,
         firstName: userData.firstName,
-        yearLevel: userData.yearLevel,
-        age: userData.age,
-        major: userData.major,
-        images: userData.images,
-        aboutMe: userData.aboutMe,
-        q1: userData.q1,
-        q2: userData.q2,
-        q3: userData.q3,
-        q4: userData.q4,
-        q5: userData.q5,
-        q6: userData.q6,
+        yearLevel: userData.yearLevel || "",
+        age: userData.age || 0,
+        major: userData.major || "",
+        images: userData.images || [],
+        aboutMe: userData.aboutMe || "",
+        q1: userData.q1 || "",
+        q2: userData.q2 || "",
+        q3: userData.q3 || "",
+        q4: userData.q4 || "",
+        q5: userData.q5 || "",
+        q6: userData.q6 || "",
+        email: userData.email,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        currentMatches: [],
-        isPremium: false,
       };
 
-      console.log("createUser - Saving user to Firestore:", firebaseUid);
+      // await logToNtfy(
+      //   `createUser - About to save user to Firestore with data: ${JSON.stringify(userDoc)}`
+      // );
+      // await logToNtfy("createUser - Saving user to Firestore:", firebaseUid);
 
-      // Use Firebase UID as document ID for easy lookup
-      await db.collection("users").doc(firebaseUid).set(newUserData);
+      await db.collection("users").doc(firebaseUid).set(userDoc);
 
-      await logToNtfy(
-        "createUser - User saved to Firestore, creating Stream Chat user"
-      );
-      await logToNtfy(
-        "createUser - About to call createStreamUser with: " +
-          JSON.stringify({
-            firebaseUid,
-            firstName,
-          })
-      );
+      // await logToNtfy(
+      //   `createUser - User saved to Firestore successfully: ${firebaseUid}`
+      // );
+      // await logToNtfy(
+      //   `createUser - About to create Stream Chat user for: ${firebaseUid}`
+      // );
 
-      // Create a corresponding user in Stream Chat using Firebase UID
-      await logToNtfy("createUser - CALLING createStreamUser NOW");
-      await createStreamUser(firebaseUid, firstName);
-      await logToNtfy("createUser - createStreamUser CALL COMPLETED");
+      // Create Stream Chat user
+      // await logToNtfy("createUser - CALLING createStreamUser NOW");
+      await createStreamUser(firebaseUid, userData.firstName);
+      // await logToNtfy("createUser - createStreamUser CALL COMPLETED");
 
-      await logToNtfy(
-        "createUser - Stream Chat user creation completed for: " + firebaseUid
-      );
-      await logToNtfy(
-        "createUser - User creation completed successfully: " + firebaseUid
-      );
+      // await logToNtfy(
+      //   `createUser - Stream Chat user created successfully: ${firebaseUid}`
+      // );
+      // await logToNtfy(
+      //   `createUser - User creation completed successfully: ${firebaseUid}`
+      // );
 
       return {
         message: "User created successfully",
-        user: newUserData,
+        user: userDoc,
       };
     } catch (error: any) {
-      console.error("createUser - Error:", error);
+      console.error("Error creating user:", error);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
@@ -291,7 +242,7 @@ export const getAllUsers = functions.https.onCall(
     ingressSettings: "ALLOW_ALL",
     invoker: "public",
   },
-  async (request: CallableRequest) => {
+  async (request: functions.https.CallableRequest) => {
     try {
       if (!request.auth) {
         throw new functions.https.HttpsError(
@@ -329,12 +280,10 @@ export const getUserById = functions.https.onCall(
     ingressSettings: "ALLOW_ALL",
     invoker: "public",
   },
-  async (request: CallableRequest<{ id: string }>) => {
+  async (request: functions.https.CallableRequest<{ id: string }>) => {
     try {
-      console.log("getUserById function called with:", request.data);
-
       if (!request.auth) {
-        console.log("getUserById - User not authenticated");
+        // console.log("getUserById - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -343,52 +292,48 @@ export const getUserById = functions.https.onCall(
 
       const { id } = request.data;
       if (!id) {
-        console.log("getUserById - No id provided");
+        // console.log("getUserById - No id provided");
         throw new functions.https.HttpsError(
           "invalid-argument",
           "User ID is required"
         );
       }
 
-      await logToNtfy(`getUserById - Fetching user with ID: ${id}`);
-      console.log("getUserById - Fetching user with ID:", id);
+      // console.log("getUserById - Fetching user with ID:", id);
 
-      // Try to find user by Firebase UID first (document ID)
+      // Try to get user by UID first
       let userDoc = await db.collection("users").doc(id).get();
+      let userData = null;
 
-      // If not found by UID, try to find by email (for backward compatibility)
-      if (!userDoc.exists) {
-        await logToNtfy(
-          `getUserById - User not found by UID, trying email lookup for: ${id}`
-        );
-        console.log("getUserById - User not found by UID, trying email lookup");
-        const usersSnapshot = await db
+      if (userDoc.exists) {
+        userData = userDoc.data();
+      } else {
+        // console.log("getUserById - User not found by UID, trying email lookup");
+        
+        // If not found by UID, try to find by email
+        const emailQuery = await db
           .collection("users")
           .where("email", "==", id)
           .limit(1)
           .get();
-        if (!usersSnapshot.empty) {
-          userDoc = usersSnapshot.docs[0];
-          await logToNtfy(`getUserById - User found by email: ${id}`);
+
+        if (!emailQuery.empty) {
+          // console.log("getUserById - User found by email:", id);
+          userData = emailQuery.docs[0].data();
+        } else {
+          // console.log("getUserById - User not found:", id);
+          throw new functions.https.HttpsError("not-found", "User not found");
         }
-      } else {
-        await logToNtfy(`getUserById - User found by UID: ${id}`);
       }
 
-      if (!userDoc.exists) {
-        console.log("getUserById - User not found:", id);
-        throw new functions.https.HttpsError("not-found", "User not found");
-      }
-
-      const userData = userDoc.data();
-      console.log("getUserById - User found:", userData);
-      return userData;
+      // console.log("getUserById - User found:", userData);
+      return { user: userData };
     } catch (error: any) {
-      console.error("getUserById - Error:", error);
+      console.error("Error getting user by ID:", error);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-      throw new functions.https.HttpsError("internal", "Failed to fetch user");
+      throw new functions.https.HttpsError("internal", "Failed to get user");
     }
   }
 );
@@ -409,7 +354,7 @@ export const updateUser = functions.https.onCall(
     invoker: "public",
   },
   async (
-    request: CallableRequest<{ id: string; userData: UpdateUserData }>
+    request: functions.https.CallableRequest<{ id: string; userData: UpdateUserData }>
   ) => {
     try {
       if (!request.auth) {
@@ -421,37 +366,26 @@ export const updateUser = functions.https.onCall(
 
       const { id, userData } = request.data;
 
-      if (!id) {
+      if (!id || !userData) {
         throw new functions.https.HttpsError(
           "invalid-argument",
-          "User ID is required"
+          "User ID and user data are required"
         );
       }
 
-      const updatedData = {
+      const updateData = {
         ...userData,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-      await db.collection("users").doc(id).update(updatedData);
-
-      const updatedUserDoc = await db.collection("users").doc(id).get();
-      const updatedUser = {
-        _id: updatedUserDoc.id,
-        ...updatedUserDoc.data(),
-      };
+      await db.collection("users").doc(id).update(updateData);
 
       return {
         message: "User updated successfully",
-        user: updatedUser,
+        user: { id, ...updateData },
       };
     } catch (error: any) {
       console.error("Error updating user:", error);
-
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
-      }
-
       throw new functions.https.HttpsError("internal", "Failed to update user");
     }
   }
@@ -472,7 +406,7 @@ export const unmatchUser = functions.https.onCall(
     ingressSettings: "ALLOW_ALL",
     invoker: "public",
   },
-  async (request: CallableRequest<{ id: string; matchId: string }>) => {
+  async (request: functions.https.CallableRequest<{ id: string; matchId: string }>) => {
     try {
       if (!request.auth) {
         throw new functions.https.HttpsError(
@@ -490,39 +424,24 @@ export const unmatchUser = functions.https.onCall(
         );
       }
 
+      // Remove the match from the user's matches array
       const userRef = db.collection("users").doc(id);
-      const userDoc = await userRef.get();
-
-      if (!userDoc.exists) {
-        throw new functions.https.HttpsError("not-found", "User not found");
-      }
-
-      const userData = userDoc.data();
-      const currentMatches = userData?.currentMatches || [];
-      const updatedMatches = currentMatches.filter(
-        (match: string) => match !== matchId
-      );
-
       await userRef.update({
-        currentMatches: updatedMatches,
+        matches: admin.firestore.FieldValue.arrayRemove(matchId),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
+      // Get updated matches
+      const userDoc = await userRef.get();
+      const currentMatches = userDoc.data()?.matches || [];
+
       return {
-        message: "Match removed successfully",
-        currentMatches: updatedMatches,
+        message: "User unmatched successfully",
+        currentMatches,
       };
     } catch (error: any) {
       console.error("Error unmatching user:", error);
-
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
-      }
-
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to unmatch user"
-      );
+      throw new functions.https.HttpsError("internal", "Failed to unmatch user");
     }
   }
 );

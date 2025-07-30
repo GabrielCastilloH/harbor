@@ -12,6 +12,7 @@ export * from "./RecommendationService";
 export { AuthService } from "./AuthService";
 export { UserService } from "./UserService";
 export { SwipeService } from "./SwipeService";
+export { MatchService } from "./MatchService";
 export { ImageService } from "./ImageService";
 export { BlurService } from "./BlurService";
 export { RecommendationService } from "./RecommendationService";
@@ -21,12 +22,3 @@ export {
   fetchUpdateChannelChatStatus,
   updateMessageCount,
 } from "./ChatFunctions";
-
-export {
-  createMatch,
-  getActiveMatches,
-  unmatch,
-  updateMatchChannel,
-  updateBlurLevel,
-  getBlurLevel,
-} from "./MatchService";

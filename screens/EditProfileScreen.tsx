@@ -140,14 +140,11 @@ export default function EditProfileScreen() {
       const updatedImages = [...profileData.images];
       let hasChanges = false;
 
-      console.log("Checking for local images to upload...");
       for (let i = 0; i < updatedImages.length; i++) {
         const img = updatedImages[i];
         if (img && (img.startsWith("file:") || img.startsWith("data:"))) {
-          console.log(`Found local image at index ${i}, uploading...`);
           try {
             const fileId = await uploadImageToServer(userId, img);
-            console.log(`Local image uploaded, received fileId: ${fileId}`);
             updatedImages[i] = fileId;
             hasChanges = true;
           } catch (error) {
@@ -158,10 +155,6 @@ export default function EditProfileScreen() {
 
       // If we processed any local images, update the profileData
       if (hasChanges) {
-        console.log(
-          "Updating profileData with processed images count:",
-          updatedImages.length
-        );
         setProfileData((prev) => ({ ...prev, images: updatedImages }));
       }
 
@@ -171,11 +164,7 @@ export default function EditProfileScreen() {
         images: updatedImages,
       };
 
-      console.log("Sending profile update to server...");
-      console.log("Final images array length:", finalProfileData.images.length);
-
       const response = await UserService.updateUser(userId, finalProfileData);
-      console.log("Profile update response:", response);
 
       // Store the updated full user profile in context
       setProfile(response.user);

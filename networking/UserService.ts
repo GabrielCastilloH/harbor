@@ -1,106 +1,76 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
 import app from "../firebaseConfig";
-import { logToNtfy } from "../util/debugUtils";
+// import { logToNtfy } from "../util/debugUtils";
 
 const functions = getFunctions(app, "us-central1");
 
 export class UserService {
   static async createUser(userData: any) {
-    console.log("UserService - createUser called with:", userData);
-    await logToNtfy(
-      `UserService - createUser called with: ${JSON.stringify(userData)}`
-    );
+    // await logToNtfy(
+    //   `UserService - createUser called with userData: ${JSON.stringify(userData)}`
+    // );
+    // await logToNtfy(
+    //   `UserService - userData type: ${typeof userData}`
+    // );
+    // await logToNtfy(
+    //   `UserService - userData keys: ${Object.keys(userData || {}).join(", ")}`
+    // );
 
     try {
-      await logToNtfy(
-        `UserService - About to call httpsCallable with function name: users-createUser`
-      );
       const createUser = httpsCallable(functions, "users-createUser");
-
-      await logToNtfy(
-        `UserService - About to call function with data: ${JSON.stringify(
-          userData
-        )}`
-      );
       const result = await createUser(userData);
+      const data = result.data as any;
 
-      await logToNtfy(
-        `UserService - Function call completed, result type: ${typeof result}`
-      );
-      const data = result.data as { message: string; user: any };
-
-      console.log("UserService - User created:", data);
-      await logToNtfy(
-        `UserService - User created successfully: ${JSON.stringify(data)}`
-      );
+      // await logToNtfy(
+      //   `UserService - createUser success: ${JSON.stringify(data)}`
+      // );
+      // console.log("UserService - User created:", data);
       return data;
-    } catch (error: any) {
-      await logToNtfy(`UserService - Error creating user: ${error.message}`);
-      await logToNtfy(`UserService - Error code: ${error.code}`);
-      await logToNtfy(`UserService - Error details: ${JSON.stringify(error)}`);
+    } catch (error) {
       console.error("UserService - Error creating user:", error);
       throw error;
     }
   }
 
   static async getAllUsers() {
-    console.log("UserService - getAllUsers called");
-
     try {
       const getAllUsers = httpsCallable(functions, "users-getAllUsers");
       const result = await getAllUsers();
-      const data = result.data as { users: any[] };
+      const data = result.data as any;
 
-      console.log("UserService - All users fetched:", data);
-      return data.users;
+      // console.log("UserService - All users fetched:", data);
+      return data;
     } catch (error) {
-      console.error("UserService - Error fetching users:", error);
+      console.error("UserService - Error getting all users:", error);
       throw error;
     }
   }
 
   static async getUserById(id: string) {
-    console.log("UserService - getUserById called with:", id);
-    await logToNtfy(`UserService - getUserById called with id: ${id}`);
-    await logToNtfy(`UserService - id type: ${typeof id}`);
-    await logToNtfy(`UserService - id length: ${id?.length}`);
+    // console.log("UserService - getUserById called with:", id);
 
     try {
       const getUserById = httpsCallable(functions, "users-getUserById");
-
-      await logToNtfy(
-        `UserService - Calling function with data: ${JSON.stringify({ id })}`
-      );
-
       const result = await getUserById({ id });
       const data = result.data as any;
 
-      console.log("UserService - User fetched:", data);
-      await logToNtfy(`UserService - getUserById success for id: ${id}`);
-      await logToNtfy(
-        `UserService - User data keys: ${Object.keys(data || {}).join(", ")}`
-      );
+      // console.log("UserService - User fetched:", data);
       return data;
-    } catch (error: any) {
-      await logToNtfy(
-        `UserService - Error fetching user ${id}: ${error.message}`
-      );
-      await logToNtfy(`UserService - Error code: ${error.code}`);
-      await logToNtfy(`UserService - Error details: ${JSON.stringify(error)}`);
-      console.error("UserService - Error fetching user:", error);
+    } catch (error) {
+      console.error("UserService - Error getting user by ID:", error);
       throw error;
     }
   }
 
   static async updateUser(id: string, userData: any) {
-    console.log("UserService - updateUser called with:", { id, userData });
+    // console.log("UserService - updateUser called with:", { id, userData });
 
     try {
       const updateUser = httpsCallable(functions, "users-updateUser");
       const result = await updateUser({ id, userData });
-      const data = result.data as { message: string; user: any };
+      const data = result.data as any;
 
-      console.log("UserService - User updated:", data);
+      // console.log("UserService - User updated:", data);
       return data;
     } catch (error) {
       console.error("UserService - Error updating user:", error);
@@ -109,14 +79,14 @@ export class UserService {
   }
 
   static async unmatchUser(id: string, matchId: string) {
-    console.log("UserService - unmatchUser called with:", { id, matchId });
+    // console.log("UserService - unmatchUser called with:", { id, matchId });
 
     try {
       const unmatchUser = httpsCallable(functions, "users-unmatchUser");
       const result = await unmatchUser({ id, matchId });
-      const data = result.data as { message: string; currentMatches: string[] };
+      const data = result.data as any;
 
-      console.log("UserService - User unmatched:", data);
+      // console.log("UserService - User unmatched:", data);
       return data;
     } catch (error) {
       console.error("UserService - Error unmatching user:", error);

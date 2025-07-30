@@ -40,11 +40,9 @@ export const createSwipe = functions.https.onCall(
       if (!swiperId || !swipedId || !direction) {
         throw new functions.https.HttpsError(
           "invalid-argument",
-          "swiperId, swipedId, and direction are required"
+          "Swiper ID, swiped ID, and direction are required"
         );
       }
-
-      console.log("Processing swipe:", { swiperId, swipedId, direction });
 
       // Get the swiper's user data to check premium status and current matches
       const swiperDoc = await db.collection("users").doc(swiperId).get();
@@ -65,31 +63,11 @@ export const createSwipe = functions.https.onCall(
         );
       }
 
-      // Check if users can add more matches
+      // Check if users can match
       const [canSwiperMatch, canSwipedMatch] = await Promise.all([
         canAddMatch(swiperId),
         canAddMatch(swipedId),
       ]);
-
-      console.log("Can users match:", { canSwiperMatch, canSwipedMatch });
-
-      if (!canSwiperMatch || !canSwipedMatch) {
-        // Record the swipe but don't create a match
-        const swipeData = {
-          swiperId,
-          swipedId,
-          direction,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        };
-
-        await db.collection("swipes").add(swipeData);
-
-        return {
-          message: "Swipe recorded (one or both users cannot add more matches)",
-          swipe: swipeData,
-          match: false,
-        };
-      }
 
       // Record the swipe
       const swipeData = {
@@ -99,9 +77,9 @@ export const createSwipe = functions.https.onCall(
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-      const swipeRef = await db.collection("swipes").add(swipeData);
+      await db.collection("swipes").add(swipeData);
 
-      // Check if this creates a match (both users swiped right)
+      // Check if it's a match (both users swiped right on each other)
       if (direction === "right") {
         const existingSwipe = await db
           .collection("swipes")
@@ -111,47 +89,27 @@ export const createSwipe = functions.https.onCall(
           .limit(1)
           .get();
 
-        if (!existingSwipe.empty) {
+        if (!existingSwipe.empty && canSwiperMatch && canSwipedMatch) {
           // It's a match! Create a match record
           const matchData = {
             user1Id: swiperId,
             user2Id: swipedId,
-            messageCount: 0,
             matchDate: admin.firestore.FieldValue.serverTimestamp(),
             isActive: true,
+            messageCount: 0,
             blurPercentage: 100,
             warningShown: false,
             user1Agreed: false,
             user2Agreed: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };
 
           const matchRef = await db.collection("matches").add(matchData);
 
-          // Update both users' currentMatches arrays
-          await Promise.all([
-            db
-              .collection("users")
-              .doc(swiperId)
-              .update({
-                currentMatches: admin.firestore.FieldValue.arrayUnion(
-                  matchRef.id
-                ),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-              }),
-            db
-              .collection("users")
-              .doc(swipedId)
-              .update({
-                currentMatches: admin.firestore.FieldValue.arrayUnion(
-                  matchRef.id
-                ),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-              }),
-          ]);
-
           return {
-            message: "Swipe recorded and match created!",
-            swipe: { id: swipeRef.id, ...swipeData },
+            message: "Swipe recorded and match created",
+            swipe: swipeData,
             match: true,
             matchId: matchRef.id,
           };
@@ -160,7 +118,7 @@ export const createSwipe = functions.https.onCall(
 
       return {
         message: "Swipe recorded",
-        swipe: { id: swipeRef.id, ...swipeData },
+        swipe: swipeData,
         match: false,
       };
     } catch (error: any) {

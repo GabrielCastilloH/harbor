@@ -56,41 +56,28 @@ export const getStreamApiKey = functions.https.onCall(
   },
   async (request: CallableRequest) => {
     try {
-      console.log("getStreamApiKey function called");
-
       if (!request.auth) {
-        console.log("getStreamApiKey - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
         );
       }
 
-      // Get Stream API key from Secret Manager
-      const [streamApiKeyVersion] = await secretManager.accessSecretVersion({
-        name: "projects/harbor-ch/secrets/STREAM_API_KEY/versions/latest",
-      });
-
-      const apiKey = streamApiKeyVersion.payload?.data?.toString() || "";
-
+      const apiKey = process.env.STREAM_API_KEY;
       if (!apiKey) {
         throw new functions.https.HttpsError(
           "internal",
-          "Stream API key not found"
+          "Stream API key not configured"
         );
       }
 
-      console.log("getStreamApiKey - API key retrieved successfully");
       return { apiKey };
     } catch (error: any) {
-      console.error("getStreamApiKey - Error:", error);
+      console.error("Error getting Stream API key:", error);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to get Stream API key"
-      );
+      throw new functions.https.HttpsError("internal", "Failed to get API key");
     }
   }
 );
@@ -112,43 +99,47 @@ export const generateUserToken = functions.https.onCall(
   },
   async (request: CallableRequest) => {
     try {
-      console.log("generateUserToken function called with:", request.data);
-
       if (!request.auth) {
-        console.log("generateUserToken - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
         );
       }
 
-      const userId = request.auth.uid;
-      console.log("generateUserToken - Generating token for user:", userId);
+      const { userId } = request.data;
+      if (!userId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "User ID is required"
+        );
+      }
 
-      // Verify user exists in Firestore
+      // Verify user exists
       const userDoc = await db.collection("users").doc(userId).get();
       if (!userDoc.exists) {
-        console.log("generateUserToken - User not found:", userId);
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
-      const serverClient = await getStreamClient();
-      const token = serverClient.createToken(userId);
+      const apiKey = process.env.STREAM_API_KEY;
+      const apiSecret = process.env.STREAM_API_SECRET;
 
-      console.log(
-        "generateUserToken - Token generated successfully for user:",
-        userId
-      );
+      if (!apiKey || !apiSecret) {
+        throw new functions.https.HttpsError(
+          "internal",
+          "Stream credentials not configured"
+        );
+      }
+
+      const client = StreamChat.getInstance(apiKey, apiSecret);
+      const token = client.createToken(userId);
+
       return { token };
     } catch (error: any) {
-      console.error("generateUserToken - Error:", error);
+      console.error("Error generating user token:", error);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to generate token"
-      );
+      throw new functions.https.HttpsError("internal", "Failed to generate token");
     }
   }
 );
@@ -168,10 +159,7 @@ export const generateToken = functions.https.onCall(
   },
   async (request: CallableRequest<{ userId: string }>) => {
     try {
-      console.log("generateToken function called with:", request.data);
-
       if (!request.auth) {
-        console.log("generateToken - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -180,39 +168,38 @@ export const generateToken = functions.https.onCall(
 
       const { userId } = request.data;
       if (!userId) {
-        console.log("generateToken - No userId provided");
         throw new functions.https.HttpsError(
           "invalid-argument",
           "User ID is required"
         );
       }
 
-      console.log("generateToken - Generating token for user:", userId);
-
-      // Verify user exists in Firestore
+      // Verify user exists
       const userDoc = await db.collection("users").doc(userId).get();
       if (!userDoc.exists) {
-        console.log("generateToken - User not found:", userId);
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
-      const serverClient = await getStreamClient();
-      const token = serverClient.createToken(userId);
+      const apiKey = process.env.STREAM_API_KEY;
+      const apiSecret = process.env.STREAM_API_SECRET;
 
-      console.log(
-        "generateToken - Token generated successfully for user:",
-        userId
-      );
+      if (!apiKey || !apiSecret) {
+        throw new functions.https.HttpsError(
+          "internal",
+          "Stream credentials not configured"
+        );
+      }
+
+      const client = StreamChat.getInstance(apiKey, apiSecret);
+      const token = client.createToken(userId);
+
       return { token };
     } catch (error: any) {
-      console.error("generateToken - Error:", error);
+      console.error("Error generating token:", error);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to generate token"
-      );
+      throw new functions.https.HttpsError("internal", "Failed to generate token");
     }
   }
 );

@@ -37,101 +37,51 @@ export const createMatch = functions.https.onCall(
         );
       }
 
-      console.log("Creating match for users:", { user1Id, user2Id });
+      // Check if match already exists
+      const existingMatches = await db
+        .collection("matches")
+        .where("user1Id", "in", [user1Id, user2Id])
+        .where("user2Id", "in", [user1Id, user2Id])
+        .where("isActive", "==", true)
+        .get();
 
-      // Check if users exist
-      const [user1Doc, user2Doc] = await Promise.all([
-        db.collection("users").doc(user1Id).get(),
-        db.collection("users").doc(user2Id).get(),
-      ]);
-
-      if (!user1Doc.exists || !user2Doc.exists) {
-        throw new functions.https.HttpsError(
-          "not-found",
-          "One or both users not found"
-        );
-      }
-
-      const user1 = user1Doc.data();
-      const user2 = user2Doc.data();
-
-      console.log("Current matches for users:", {
-        user1Matches: user1?.currentMatches || [],
-        user2Matches: user2?.currentMatches || [],
-      });
-
-      // Check if a match already exists between these users
-      const existingMatch = await findMatchByUsers(user1Id, user2Id);
-
-      if (existingMatch) {
-        console.log("Match already exists, returning existing match");
+      if (!existingMatches.empty) {
+        const existingMatch = existingMatches.docs[0];
         return {
           message: "Match already exists",
           matchId: existingMatch.id,
+          match: existingMatch.data(),
         };
       }
 
-      // Check if users can add new matches
-      const [canUser1Match, canUser2Match] = await Promise.all([
-        canAddMatch(user1Id),
-        canAddMatch(user2Id),
-      ]);
-
-      if (!canUser1Match || !canUser2Match) {
-        throw new functions.https.HttpsError(
-          "permission-denied",
-          "One or both users cannot add more matches"
-        );
-      }
-
-      // Create the match
+      // Create new match
       const matchData = {
         user1Id,
         user2Id,
-        messageCount: 0,
         matchDate: admin.firestore.FieldValue.serverTimestamp(),
         isActive: true,
+        messageCount: 0,
         blurPercentage: 100,
         warningShown: false,
         user1Agreed: false,
         user2Agreed: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
       const matchRef = await db.collection("matches").add(matchData);
 
-      // Update both users' currentMatches arrays
-      await Promise.all([
-        db
-          .collection("users")
-          .doc(user1Id)
-          .update({
-            currentMatches: admin.firestore.FieldValue.arrayUnion(matchRef.id),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }),
-        db
-          .collection("users")
-          .doc(user2Id)
-          .update({
-            currentMatches: admin.firestore.FieldValue.arrayUnion(matchRef.id),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }),
-      ]);
-
       return {
         message: "Match created successfully",
         matchId: matchRef.id,
+        match: { id: matchRef.id, ...matchData },
       };
     } catch (error: any) {
       console.error("Error creating match:", error);
-
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to create match"
-      );
+      throw new functions.https.HttpsError("internal", "Failed to create match");
     }
   }
 );
@@ -444,25 +394,6 @@ async function findMatchByUsers(user1Id: string, user2Id: string) {
   }
 
   return null;
-}
-
-/**
- * Helper function to check if a user can add more matches
- * @param userId User ID to check
- * @returns Promise<boolean> Whether user can add more matches
- */
-async function canAddMatch(userId: string): Promise<boolean> {
-  const userDoc = await db.collection("users").doc(userId).get();
-  if (!userDoc.exists) return false;
-
-  const userData = userDoc.data();
-  const currentMatches = userData?.currentMatches || [];
-
-  // Premium users can have unlimited matches
-  if (userData?.isPremium) return true;
-
-  // Non-premium users can only have 1 match
-  return currentMatches.length < 1;
 }
 
 export const matchFunctions = {
