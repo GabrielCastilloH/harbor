@@ -8,6 +8,7 @@ import {
   GestureResponderEvent,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaView } from "react-native-safe-area-context";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import Colors from "../constants/Colors";
 import AnimatedStack from "../components/AnimatedStack";
@@ -208,73 +209,75 @@ export default function HomeScreen() {
   }
 
   return (
-    <GestureHandlerRootView style={styles.container}>
-      <View style={styles.headerContainer}>
-        <Image
-          tintColor={Colors.primary500}
-          source={require("../assets/logo.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </View>
-      <View style={styles.cardsContainer}>
-        <AnimatedStack
-          ref={stackRef}
-          data={recommendations}
-          onSwipeRight={handleSwipeRight}
-          onSwipeLeft={handleSwipeLeft}
-        />
-      </View>
-      <View style={styles.buttonsContainer}>
-        <TouchableOpacity
-          style={[
-            styles.button,
-            styles.noButton,
-            isNoPressed && { backgroundColor: Colors.red },
-          ]}
-          onPressIn={(event) => {
-            setIsNoPressed(true);
-            handleTouchStart(event);
-          }}
-          onPressOut={(event) => handleTouchEnd(event, true)}
-        >
+    <SafeAreaView style={{ flex: 1 }}>
+      <GestureHandlerRootView style={styles.container}>
+        <View style={styles.headerContainer}>
           <Image
-            source={require("../assets/images/shipwreck.png")}
-            style={{
-              height: 40,
-              width: 40,
-              tintColor: isNoPressed ? Colors.primary100 : Colors.red,
-            }}
+            tintColor={Colors.primary500}
+            source={require("../assets/logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
           />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.button,
-            styles.yesButton,
-            isYesPressed && { backgroundColor: Colors.green },
-          ]}
-          onPressIn={(event) => {
-            setIsYesPressed(true);
-            handleTouchStart(event);
-          }}
-          onPressOut={(event) => handleTouchEnd(event, false)}
-        >
-          <View style={{ marginBottom: 3, marginLeft: 2 }}>
-            <FontAwesome6
-              name="sailboat"
-              size={35}
-              color={isYesPressed ? Colors.primary100 : Colors.green}
+        </View>
+        <View style={styles.cardsContainer}>
+          <AnimatedStack
+            ref={stackRef}
+            data={recommendations}
+            onSwipeRight={handleSwipeRight}
+            onSwipeLeft={handleSwipeLeft}
+          />
+        </View>
+        <View style={styles.buttonsContainer}>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.noButton,
+              isNoPressed && { backgroundColor: Colors.red },
+            ]}
+            onPressIn={(event) => {
+              setIsNoPressed(true);
+              handleTouchStart(event);
+            }}
+            onPressOut={(event) => handleTouchEnd(event, true)}
+          >
+            <Image
+              source={require("../assets/images/shipwreck.png")}
+              style={{
+                height: 40,
+                width: 40,
+                tintColor: isNoPressed ? Colors.primary100 : Colors.red,
+              }}
             />
-          </View>
-        </TouchableOpacity>
-      </View>
-      <MatchModal
-        visible={showMatch}
-        onClose={() => setShowMatch(false)}
-        matchedProfile={matchedProfile}
-        currentProfile={userProfile}
-      />
-    </GestureHandlerRootView>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.yesButton,
+              isYesPressed && { backgroundColor: Colors.green },
+            ]}
+            onPressIn={(event) => {
+              setIsYesPressed(true);
+              handleTouchStart(event);
+            }}
+            onPressOut={(event) => handleTouchEnd(event, false)}
+          >
+            <View style={{ marginBottom: 3, marginLeft: 2 }}>
+              <FontAwesome6
+                name="sailboat"
+                size={35}
+                color={isYesPressed ? Colors.primary100 : Colors.green}
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
+        <MatchModal
+          visible={showMatch}
+          onClose={() => setShowMatch(false)}
+          matchedProfile={matchedProfile}
+          currentProfile={userProfile}
+        />
+      </GestureHandlerRootView>
+    </SafeAreaView>
   );
 }
 
