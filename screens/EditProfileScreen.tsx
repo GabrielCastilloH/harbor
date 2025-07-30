@@ -61,6 +61,7 @@ export default function EditProfileScreen() {
     contextProfile || emptyProfile
   );
   const [loading, setLoading] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const initialProfileRef = useRef(profileData);
@@ -73,14 +74,28 @@ export default function EditProfileScreen() {
       }
 
       setLoading(true);
+      setImageLoading(true);
       try {
         const response = await UserService.getUserById(userId);
         const userData = response.user || response;
-        setProfileData(userData);
-        setProfile(userData);
+
+        // Ensure images are properly populated
+        const profileWithImages = {
+          ...userData,
+          images: userData.images || [],
+        };
+
+        setProfileData(profileWithImages);
+        setProfile(profileWithImages);
+
+        // Simulate image loading time
+        setTimeout(() => {
+          setImageLoading(false);
+        }, 1000);
       } catch (error) {
         console.error("Error fetching user profile:", error);
         Alert.alert("Error", "Failed to load profile data. Please try again.");
+        setImageLoading(false);
       } finally {
         setLoading(false);
       }
@@ -89,6 +104,9 @@ export default function EditProfileScreen() {
     // Only fetch if we don't have profile data in context and app is initialized
     if (!contextProfile && userId && isInitialized) {
       fetchUserProfile();
+    } else if (contextProfile) {
+      // If we have context profile, just set image loading to false
+      setImageLoading(false);
     }
   }, [userId, contextProfile, setProfile, isInitialized]);
 
@@ -225,7 +243,7 @@ export default function EditProfileScreen() {
         <ProfileForm
           profileData={profileData}
           onProfileChange={setProfileData}
-          loading={loading}
+          loading={loading || imageLoading}
           onSave={handleSave}
         />
       </KeyboardAvoidingView>
