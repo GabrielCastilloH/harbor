@@ -11,8 +11,6 @@ export async function imageToBase64(
   quality = 0.8
 ): Promise<string> {
   try {
-    console.log(`Compressing image with quality ${quality}...`);
-
     // Compress the image while maintaining good quality
     const manipResult = await ImageManipulator.manipulateAsync(
       uri,
@@ -24,16 +22,6 @@ export async function imageToBase64(
     const base64 = await FileSystem.readAsStringAsync(manipResult.uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
-
-    // Log a truncated version of the base64 string
-    const truncatedBase64 =
-      base64.length > 6
-        ? `${base64.substring(0, 3)}...${base64.substring(base64.length - 3)}`
-        : base64;
-
-    console.log(
-      `Base64 string length: ${base64.length} characters (${truncatedBase64})`
-    );
 
     return base64;
   } catch (error) {
@@ -47,41 +35,46 @@ export async function imageToBase64(
  */
 export async function uploadImageToServer(
   userId: string,
-  imageUri: string
+  imageUri: string,
+  quality: number = 0.8
 ): Promise<string> {
   try {
-    console.log("Uploading image to Firebase Storage...");
+    // Compress the image
+    // console.log(`Compressing image with quality ${quality}...`);
+    const manipResult = await ImageManipulator.manipulateAsync(
+      imageUri,
+      [{ resize: { width: 800 } }],
+      {
+        compress: quality,
+        format: ImageManipulator.SaveFormat.JPEG,
+      }
+    );
 
-    // Convert image to base64 for upload
-    const base64 = await imageToBase64(imageUri, 0.8);
-
-    // Convert base64 to blob
-    const response = await fetch(`data:image/jpeg;base64,${base64}`);
+    // Convert to blob
+    const response = await fetch(manipResult.uri);
     const blob = await response.blob();
 
-    // Create a unique filename
-    const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substring(2);
-    const filename = `users/${userId}/images/${timestamp}-${randomId}.jpg`;
-
-    // Create storage reference
-    const storageRef = ref(storage, filename);
+    // console.log(
+    //   `Image compressed successfully. Original size: ${response.headers.get(
+    //     "content-length"
+    //   )} bytes`
+    // );
 
     // Upload to Firebase Storage
-    console.log("Uploading to Firebase Storage:", filename);
-    const uploadResult = await uploadBytes(storageRef, blob, {
-      contentType: "image/jpeg",
-    });
+    // console.log("Uploading image to Firebase Storage...");
+    const filename = `users/${userId}/images/${Date.now()}.jpg`;
+    const storageRef = ref(storage, filename);
 
-    // Get the download URL
-    const downloadURL = await getDownloadURL(uploadResult.ref);
+    // console.log("Uploading to Firebase Storage:", filename);
+    await uploadBytes(storageRef, blob);
 
-    console.log("Image uploaded successfully:", downloadURL);
+    // Get download URL
+    const downloadURL = await getDownloadURL(storageRef);
+    // console.log("Image uploaded successfully:", downloadURL);
 
-    // Return the download URL (this will be stored in the user's profile)
     return downloadURL;
   } catch (error) {
-    console.error("Error uploading image to Firebase Storage:", error);
+    console.error("Error uploading image:", error);
     throw error;
   }
 }
