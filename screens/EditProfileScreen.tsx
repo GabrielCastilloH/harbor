@@ -14,21 +14,19 @@ import Colors from "../constants/Colors";
 import { UserService } from "../networking";
 
 const emptyProfile: Profile = {
-  _id: "",
   email: "",
   firstName: "",
-  lastName: "",
   age: 0,
   yearLevel: "",
   major: "",
   images: [],
   aboutMe: "",
-  yearlyGoal: "",
-  potentialActivities: "",
-  favoriteMedia: "",
-  majorReason: "",
-  studySpot: "",
-  hobbies: "",
+  q1: "",
+  q2: "",
+  q3: "",
+  q4: "",
+  q5: "",
+  q6: "",
 };
 
 export default function EditProfileScreen() {
@@ -126,10 +124,10 @@ export default function EditProfileScreen() {
       console.log("Final images array length:", finalProfileData.images.length);
 
       const response = await UserService.updateUser(userId, finalProfileData);
-      console.log("Profile update response status:", response.status);
+      console.log("Profile update response:", response);
 
       // Store the updated full user profile in context
-      setProfile(response.data.user);
+      setProfile(response.user);
 
       Alert.alert("Success", "Profile saved successfully!");
     } catch (error: any) {

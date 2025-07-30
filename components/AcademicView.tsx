@@ -14,21 +14,21 @@ export default function AcademicView({ profile }: CardViewProps) {
               <Ionicons name="school" size={28} color={Colors.primary500} />
               <Text style={styles.sectionTitle}>I picked my major because</Text>
             </View>
-            <Text style={styles.aboutText}>{profile.majorReason}</Text>
+            <Text style={styles.aboutText}>{profile.q4}</Text>
           </View>
           <View style={[styles.section, { flex: 1 }]}>
             <View style={styles.sectionHeader}>
               <Ionicons name="book" size={28} color={Colors.primary500} />
               <Text style={styles.sectionTitle}>My favorite study spot is</Text>
             </View>
-            <Text style={styles.aboutText}>{profile.studySpot}</Text>
+            <Text style={styles.aboutText}>{profile.q5}</Text>
           </View>
           <View style={[styles.section, { flex: 1 }]}>
             <View style={styles.sectionHeader}>
               <Ionicons name="people" size={28} color={Colors.primary500} />
               <Text style={styles.sectionTitle}>Together we could</Text>
             </View>
-            <Text style={styles.aboutText}>{profile.potentialActivities}</Text>
+            <Text style={styles.aboutText}>{profile.q2}</Text>
           </View>
         </View>
       </View>

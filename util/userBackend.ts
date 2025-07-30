@@ -25,7 +25,6 @@ export const checkUserExists = async (uid: string): Promise<boolean> => {
  */
 export const createUserProfile = async (userData: {
   firstName: string;
-  lastName: string;
   email: string;
   [key: string]: any;
 }) => {
