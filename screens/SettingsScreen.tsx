@@ -56,6 +56,7 @@ export default function SettingsScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
+            paddingTop: 24, // Increased space from the top
             paddingBottom: 8,
             paddingHorizontal: 16,
             backgroundColor: Colors.primary100,
