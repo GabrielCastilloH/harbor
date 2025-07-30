@@ -7,8 +7,8 @@ import {
   Switch,
   Platform,
   Alert,
-  SafeAreaView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -57,14 +57,14 @@ export default function SettingsScreen() {
             flexDirection: "row",
             alignItems: "center",
             paddingTop: 24, // Increased space from the top
-            paddingBottom: 8,
+            paddingBottom: 16, // Increased from 8 to add more space below the text
             paddingHorizontal: 16,
             backgroundColor: Colors.primary100,
           }}
         >
           <Text
             style={{
-              fontSize: 20,
+              fontSize: 24, // Increased from 20 to make text larger
               fontWeight: "bold",
               color: Colors.primary500,
             }}
