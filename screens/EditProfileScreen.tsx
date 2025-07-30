@@ -15,6 +15,7 @@ import ProfileForm from "../components/ProfileForm";
 import Colors from "../constants/Colors";
 import { UserService } from "../networking";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRef, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -34,6 +35,20 @@ const emptyProfile: Profile = {
   q6: "",
 };
 
+function isProfileDirty(current: Profile, initial: Profile): boolean {
+  // Compare all fields except images
+  const { images: currentImages, ...restCurrent } = current;
+  const { images: initialImages, ...restInitial } = initial;
+  const restDirty = JSON.stringify(restCurrent) !== JSON.stringify(restInitial);
+
+  // Compare images by URI (ignore keys)
+  const imagesDirty =
+    currentImages.length !== initialImages.length ||
+    currentImages.some((uri: string, i: number) => uri !== initialImages[i]);
+
+  return restDirty || imagesDirty;
+}
+
 export default function EditProfileScreen() {
   const {
     userId,
@@ -46,6 +61,7 @@ export default function EditProfileScreen() {
   );
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const initialProfileRef = useRef(profileData);
 
   useEffect(() => {
@@ -83,8 +99,7 @@ export default function EditProfileScreen() {
 
   // Custom back handler
   const handleBack = () => {
-    const isDirty =
-      JSON.stringify(profileData) !== JSON.stringify(initialProfileRef.current);
+    const isDirty = isProfileDirty(profileData, initialProfileRef.current);
     if (!isDirty) {
       navigation.goBack();
       return;
@@ -188,8 +203,8 @@ export default function EditProfileScreen() {
         style={{
           flexDirection: "row",
           alignItems: "center",
-          paddingTop: 48,
-          paddingBottom: 16,
+          paddingTop: insets.top + 8,
+          paddingBottom: 8,
           paddingHorizontal: 16,
           backgroundColor: Colors.primary100,
         }}

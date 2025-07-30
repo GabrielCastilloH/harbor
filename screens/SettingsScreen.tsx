@@ -7,6 +7,7 @@ import {
   Switch,
   Platform,
   Alert,
+  SafeAreaView,
 } from "react-native";
 import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
@@ -46,47 +47,57 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>App Settings</Text>
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView style={styles.container}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>App Settings</Text>
 
-        <View style={styles.setting}>
-          <Text style={styles.settingText}>Notifications</Text>
-          <Switch
-            value={notifications}
-            onValueChange={setNotifications}
-            trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
-            thumbColor={Colors.secondary100}
-          />
+          <View style={styles.setting}>
+            <Text style={styles.settingText}>Notifications</Text>
+            <Switch
+              value={notifications}
+              onValueChange={setNotifications}
+              trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
+              thumbColor={Colors.secondary100}
+            />
+          </View>
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={() => navigation.navigate("Profile" as never)}
+          >
+            <Ionicons
+              name="person-circle"
+              size={24}
+              color={Colors.primary500}
+            />
+            <Text style={styles.profileButtonText}>Edit Profile</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.profileButton}
-          onPress={() => navigation.navigate("Profile" as never)}
-        >
-          <Ionicons name="person-circle" size={24} color={Colors.primary500} />
-          <Text style={styles.profileButtonText}>Edit Profile</Text>
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account</Text>
-        <TouchableOpacity style={styles.button}>
-          <Ionicons name="lock-closed" size={20} color={Colors.primary500} />
-          <Text style={styles.buttonText}>Privacy Policy</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button}>
-          <Ionicons name="document-text" size={20} color={Colors.primary500} />
-          <Text style={styles.buttonText}>Terms of Service</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.button, styles.logoutButton]}
-          onPress={handleSignOut}
-        >
-          <Ionicons name="log-out" size={20} color={Colors.primary500} />
-          <Text style={[styles.buttonText, styles.logoutText]}>Sign Out</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <TouchableOpacity style={styles.button}>
+            <Ionicons name="lock-closed" size={20} color={Colors.primary500} />
+            <Text style={styles.buttonText}>Privacy Policy</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button}>
+            <Ionicons
+              name="document-text"
+              size={20}
+              color={Colors.primary500}
+            />
+            <Text style={styles.buttonText}>Terms of Service</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.logoutButton]}
+            onPress={handleSignOut}
+          >
+            <Ionicons name="log-out" size={20} color={Colors.primary500} />
+            <Text style={[styles.buttonText, styles.logoutText]}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
