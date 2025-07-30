@@ -24,7 +24,7 @@ interface ProfileFormProps {
   onProfileChange: (profile: Profile) => void;
   loading?: boolean;
   isAccountSetup?: boolean;
-  onSave: () => void;
+  onSave: (images?: string[]) => void;
   onLogout?: () => void;
 }
 
@@ -189,11 +189,20 @@ export default function ProfileForm({
     );
 
     // Update profileData.images before saving
-    onProfileChange({
+    const updatedProfile = {
       ...profileData,
       images: imagesWithKeys.map((img) => img.uri),
-    });
-    onSave();
+    };
+
+    onProfileChange(updatedProfile);
+
+    // Pass the updated profile to onSave so it has the latest images
+    if (isAccountSetup) {
+      // For account setup, we need to pass the images directly
+      onSave(imagesWithKeys.map((img) => img.uri));
+    } else {
+      onSave(imagesWithKeys.map((img) => img.uri));
+    }
   };
 
   if (loading) {
