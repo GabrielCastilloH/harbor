@@ -156,7 +156,7 @@ export default function ProfileForm({
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: "orange" }}
+      style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
@@ -164,17 +164,13 @@ export default function ProfileForm({
           styles.container,
           isAccountSetup && styles.containerAccountSetup,
         ]}
-        contentContainerStyle={{
-          flexGrow: 1,
-          paddingBottom: 20,
-          backgroundColor: "yellow",
-        }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       >
         <View
           style={[styles.section, isAccountSetup && styles.sectionAccountSetup]}
         >
-          <View style={[styles.headerContainer, { backgroundColor: "green" }]}>
+          <View style={styles.headerContainer}>
             {isAccountSetup && onLogout && (
               <TouchableOpacity style={styles.backButton} onPress={onLogout}>
                 <Ionicons
@@ -342,8 +338,7 @@ const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 0, // Temporarily remove this
-    backgroundColor: "green",
+    marginBottom: 10, // Restore margin for proper spacing
   },
   backButton: {
     marginRight: 10,
@@ -352,8 +347,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   section: {
-    paddingHorizontal: 0, // Temporarily remove this
-    backgroundColor: "pink",
+    paddingHorizontal: 20, // Restore horizontal padding
   },
   sectionAccountSetup: {
     paddingTop: 0,
