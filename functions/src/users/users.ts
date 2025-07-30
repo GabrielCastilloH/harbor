@@ -105,35 +105,33 @@ async function createStreamUser(userId: string, firstName: string) {
 
 interface CreateUserData {
   firstName: string;
-  lastName: string;
   yearLevel?: string;
   age?: number;
   major?: string;
   images?: string[];
   aboutMe?: string;
-  yearlyGoal?: string;
-  potentialActivities?: string;
-  favoriteMedia?: string;
-  majorReason?: string;
-  studySpot?: string;
-  hobbies?: string;
+  q1?: string;
+  q2?: string;
+  q3?: string;
+  q4?: string;
+  q5?: string;
+  q6?: string;
   email: string;
 }
 
 interface UpdateUserData {
   firstName?: string;
-  lastName?: string;
   yearLevel?: string;
   age?: number;
   major?: string;
   images?: string[];
   aboutMe?: string;
-  yearlyGoal?: string;
-  potentialActivities?: string;
-  favoriteMedia?: string;
-  majorReason?: string;
-  studySpot?: string;
-  hobbies?: string;
+  q1?: string;
+  q2?: string;
+  q3?: string;
+  q4?: string;
+  q5?: string;
+  q6?: string;
 }
 
 /**
@@ -173,7 +171,7 @@ export const createUser = functions.https.onCall(
       }
 
       const userData = request.data;
-      const { email, firstName, lastName } = userData;
+      const { email, firstName, yearLevel } = userData;
       const firebaseUid = request.auth.uid;
 
       await logToNtfy(
@@ -181,23 +179,23 @@ export const createUser = functions.https.onCall(
           JSON.stringify({
             email,
             firstName,
-            lastName,
+            yearLevel,
             firebaseUid,
           })
       );
 
-      if (!email || !firstName || !lastName) {
+      if (!email || !firstName || !yearLevel) {
         await logToNtfy(
           "createUser - Missing required fields: " +
             JSON.stringify({
               email,
               firstName,
-              lastName,
+              yearLevel,
             })
         );
         throw new functions.https.HttpsError(
           "invalid-argument",
-          "Email, firstName, and lastName are required"
+          "Email, firstName, and yearLevel are required"
         );
       }
 
@@ -219,18 +217,17 @@ export const createUser = functions.https.onCall(
         uid: firebaseUid, // Store the Firebase Auth UID as the primary identifier
         email: email, // Store email as a field
         firstName: userData.firstName,
-        lastName: userData.lastName,
         yearLevel: userData.yearLevel,
         age: userData.age,
         major: userData.major,
         images: userData.images,
         aboutMe: userData.aboutMe,
-        yearlyGoal: userData.yearlyGoal,
-        potentialActivities: userData.potentialActivities,
-        favoriteMedia: userData.favoriteMedia,
-        majorReason: userData.majorReason,
-        studySpot: userData.studySpot,
-        hobbies: userData.hobbies,
+        q1: userData.q1,
+        q2: userData.q2,
+        q3: userData.q3,
+        q4: userData.q4,
+        q5: userData.q5,
+        q6: userData.q6,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         currentMatches: [],
