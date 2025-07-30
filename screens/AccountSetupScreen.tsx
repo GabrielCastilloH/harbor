@@ -176,9 +176,9 @@ export default function AccountSetupScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "purple" }}>
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: "blue" }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ProfileForm
