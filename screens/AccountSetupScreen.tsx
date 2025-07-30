@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
 import { auth } from "../firebaseConfig";
@@ -175,17 +176,19 @@ export default function AccountSetupScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ProfileForm
-        profileData={profileData}
-        onProfileChange={setProfileData}
-        onSave={handleSave}
-        isAccountSetup={true}
-        onLogout={handleLogout}
-      />
-    </KeyboardAvoidingView>
+    <SafeAreaView style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ProfileForm
+          profileData={profileData}
+          onProfileChange={setProfileData}
+          onSave={handleSave}
+          isAccountSetup={true}
+          onLogout={handleLogout}
+        />
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

@@ -1,6 +1,7 @@
 import { ChannelList } from "stream-chat-expo";
 import { ChannelSort, DefaultGenerics } from "stream-chat";
 import { View, Text } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
 
@@ -18,13 +19,15 @@ export default function ChatList() {
   };
 
   return (
-    <ChannelList
-      filters={filters}
-      sort={sort}
-      onSelect={(channel) => {
-        setChannel(channel);
-        navigation.navigate("ChatScreen" as never);
-      }}
-    />
+    <SafeAreaView style={{ flex: 1 }}>
+      <ChannelList
+        filters={filters}
+        sort={sort}
+        onSelect={(channel) => {
+          setChannel(channel);
+          navigation.navigate("ChatScreen" as never);
+        }}
+      />
+    </SafeAreaView>
   );
 }
