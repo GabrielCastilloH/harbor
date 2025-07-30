@@ -208,7 +208,8 @@ export default function EditProfileScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            paddingBottom: 8,
+            paddingTop: 15, // Added to match App Settings header height
+            paddingBottom: 16, // Increased from 8 to match App Settings header
             paddingHorizontal: 16,
             backgroundColor: Colors.primary100,
           }}
@@ -218,13 +219,13 @@ export default function EditProfileScreen() {
           </TouchableOpacity>
           <Text
             style={{
-              fontSize: 20,
-              fontWeight: "bold",
+              fontSize: 24, // Increased from 20 to make text larger
+              fontWeight: "normal", // Changed from "bold" to "normal" to make it lighter
               marginLeft: 8,
               color: Colors.primary500,
             }}
           >
-            Profile
+            Edit Profile
           </Text>
         </View>
       </SafeAreaView>
