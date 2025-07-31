@@ -27,25 +27,33 @@ export async function uploadImagesSequentially(
     const response = await fetch(compressed.uri);
     const blob = await response.blob();
 
-    // Upload original
-    const filename = `${userId}/${uuidv4()}.jpg`;
+    // Upload original to /users/{userId}/images/{uuid}.jpg
+    const filename = `users/${userId}/images/${uuidv4()}.jpg`;
     const originalRef = ref(storage, filename);
     await uploadBytes(originalRef, blob, {
       contentType: "image/jpeg",
     });
     const originalUrl = await getDownloadURL(originalRef);
 
-    // Blur image locally (expo-image-manipulator does NOT support blur natively)
-    // For now, we'll just re-upload the compressed image as a placeholder for blurred.
-    // TODO: Replace with real blur implementation if needed.
-    const blurredResponse = await fetch(compressed.uri);
-    const blurredBlob = await blurredResponse.blob();
-    const blurredFilename = `${userId}/${uuidv4()}-blurred.jpg`;
+    // Wait for the server-side function to generate the blurred image
+    // The blurred image will be at the same path with -blurred.jpg suffix
+    const blurredFilename = filename.replace(/\.jpg$/, "-blurred.jpg");
     const blurredRef = ref(storage, blurredFilename);
-    await uploadBytes(blurredRef, blurredBlob, {
-      contentType: "image/jpeg",
-    });
-    const blurredUrl = await getDownloadURL(blurredRef);
+
+    // Poll for the blurred image to exist (max 10s)
+    let blurredUrl = "";
+    for (let attempt = 0; attempt < 20; attempt++) {
+      try {
+        blurredUrl = await getDownloadURL(blurredRef);
+        break;
+      } catch (e) {
+        // Not ready yet
+        await new Promise((res) => setTimeout(res, 500));
+      }
+    }
+    if (!blurredUrl) {
+      blurredUrl = originalUrl; // fallback
+    }
 
     results.push({ originalUrl, blurredUrl });
   }
