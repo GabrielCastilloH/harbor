@@ -8,6 +8,7 @@ import { AppProvider, useAppContext } from "./context/AppContext";
 import AccountSetupScreen from "./screens/AccountSetupScreen";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import "react-native-get-random-values";
 
 // Configure Google Sign-In
 GoogleSignin.configure({
