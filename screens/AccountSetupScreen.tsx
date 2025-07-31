@@ -154,6 +154,10 @@ export default function AccountSetupScreen() {
         images: imageObjects, // Pass the imageObjects to the user creation function
       };
 
+      console.log(
+        "AccountSetupScreen - About to call createUserProfile with data:",
+        userData
+      );
       // await logToNtfy("AccountSetupScreen - About to call createUserProfile");
       // await logToNtfy(
       //   `AccountSetupScreen - profileData: ${JSON.stringify(profileData)}`

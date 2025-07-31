@@ -39,10 +39,17 @@ export const createUserProfile = async (userData: {
     throw new Error("No authenticated user found");
   }
 
+  console.log(
+    "createUserProfile - About to call UserService.createUser with data:",
+    userData
+  );
   // await logToNtfy(`createUserProfile - About to call UserService.createUser`);
 
   try {
     const result = await UserService.createUser(userData);
+    console.log(
+      "createUserProfile - UserService.createUser completed successfully"
+    );
     // await logToNtfy(
     //   `createUserProfile - UserService.createUser completed successfully`
     // );
@@ -50,6 +57,7 @@ export const createUserProfile = async (userData: {
 
     return { success: true };
   } catch (error) {
+    console.error("createUserProfile - Error creating user profile:", error);
     // await logToNtfy(
     //   `createUserProfile - Error creating user profile: ${error}`
     // );
