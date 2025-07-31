@@ -20,6 +20,7 @@ import {
   UserService,
   SwipeService,
   RecommendationService,
+  ChatFunctions,
 } from "../networking";
 
 export default function HomeScreen() {
@@ -55,7 +56,28 @@ export default function HomeScreen() {
     socketService.authenticate(userId);
 
     // Set up match event handler
-    socketService.onMatch((matchData) => {
+    socketService.onMatch(async (matchData) => {
+      console.log("HomeScreen - Socket match event received:", matchData);
+
+      try {
+        // Create chat channel for the matched users
+        const chatResponse = await ChatFunctions.createChannel({
+          userId1: userId,
+          userId2: matchData.matchedProfile.uid,
+        });
+
+        console.log(
+          "HomeScreen - Chat channel created from socket:",
+          chatResponse
+        );
+      } catch (chatError) {
+        console.error(
+          "HomeScreen - Error creating chat channel from socket:",
+          chatError
+        );
+      }
+
+      // Show match modal after chat creation (or even if it fails)
       setMatchedProfile(matchData.matchedProfile);
       setShowMatch(true);
     });
@@ -139,12 +161,18 @@ export default function HomeScreen() {
     }
 
     if (!userId || !profile.uid) {
-      console.log("HomeScreen - Swipe blocked: missing userId or profile.uid", { userId, profileUid: profile.uid });
+      console.log("HomeScreen - Swipe blocked: missing userId or profile.uid", {
+        userId,
+        profileUid: profile.uid,
+      });
       return;
     }
 
     try {
-      console.log("HomeScreen - Starting swipe right for profile:", profile.uid);
+      console.log(
+        "HomeScreen - Starting swipe right for profile:",
+        profile.uid
+      );
       setSwipeInProgress(true);
       setLastSwipedProfile(profile.uid);
 
@@ -156,10 +184,28 @@ export default function HomeScreen() {
 
       console.log("HomeScreen - Swipe response:", response);
 
-      // If it's a match, show the match modal
+      // Step 2: If it's a match, create chat channel and show modal
       if (response.match) {
-        setMatchedProfile(profile);
-        setShowMatch(true);
+        console.log("HomeScreen - Match detected, creating chat channel");
+
+        try {
+          // Create chat channel for the matched users
+          const chatResponse = await ChatFunctions.createChannel({
+            userId1: userId,
+            userId2: profile.uid,
+          });
+
+          console.log("HomeScreen - Chat channel created:", chatResponse);
+
+          // Step 3: Show match modal after chat is created
+          setMatchedProfile(profile);
+          setShowMatch(true);
+        } catch (chatError) {
+          console.error("HomeScreen - Error creating chat channel:", chatError);
+          // Even if chat creation fails, still show the match modal
+          setMatchedProfile(profile);
+          setShowMatch(true);
+        }
       }
 
       // Update current profile to the next one
