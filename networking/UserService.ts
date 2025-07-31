@@ -17,7 +17,7 @@ export class UserService {
     // );
 
     try {
-      const createUser = httpsCallable(functions, "users-createUser");
+      const createUser = httpsCallable(functions, "userFunctions-createUser");
       const result = await createUser(userData);
       const data = result.data as any;
 
@@ -34,7 +34,7 @@ export class UserService {
 
   static async getAllUsers() {
     try {
-      const getAllUsers = httpsCallable(functions, "users-getAllUsers");
+      const getAllUsers = httpsCallable(functions, "userFunctions-getAllUsers");
       const result = await getAllUsers();
       const data = result.data as any;
 
@@ -50,7 +50,7 @@ export class UserService {
     // console.log("UserService - getUserById called with:", id);
 
     try {
-      const getUserById = httpsCallable(functions, "users-getUserById");
+      const getUserById = httpsCallable(functions, "userFunctions-getUserById");
       const result = await getUserById({ id });
       const data = result.data as any;
 
@@ -66,7 +66,7 @@ export class UserService {
     // console.log("UserService - updateUser called with:", { id, userData });
 
     try {
-      const updateUser = httpsCallable(functions, "users-updateUser");
+      const updateUser = httpsCallable(functions, "userFunctions-updateUser");
       const result = await updateUser({ id, userData });
       const data = result.data as any;
 
@@ -82,7 +82,7 @@ export class UserService {
     // console.log("UserService - unmatchUser called with:", { id, matchId });
 
     try {
-      const unmatchUser = httpsCallable(functions, "users-unmatchUser");
+      const unmatchUser = httpsCallable(functions, "userFunctions-unmatchUser");
       const result = await unmatchUser({ id, matchId });
       const data = result.data as any;
 

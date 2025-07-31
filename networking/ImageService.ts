@@ -11,7 +11,10 @@ export class ImageService {
     // });
 
     try {
-      const uploadImage = httpsCallable(functions, "images-uploadImage");
+      const uploadImage = httpsCallable(
+        functions,
+        "imageFunctions-uploadImage"
+      );
       const result = await uploadImage({ imageUri });
       const data = result.data as { fileId: string };
 
