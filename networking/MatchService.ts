@@ -141,4 +141,20 @@ export class MatchService {
       throw error;
     }
   }
+
+  static async getMatchId(userId1: string, userId2: string): Promise<string | null> {
+    try {
+      const getMatchId = httpsCallable(
+        functions,
+        "matchFunctions-getMatchId"
+      );
+      const result = await getMatchId({ userId1, userId2 });
+      const data = result.data as { matchId: string | null };
+
+      return data.matchId;
+    } catch (error) {
+      console.error("MatchService - Error getting match ID:", error);
+      throw error;
+    }
+  }
 }

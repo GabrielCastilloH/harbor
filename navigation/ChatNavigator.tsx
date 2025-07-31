@@ -6,7 +6,7 @@ import ChatList from "../screens/ChatList";
 import ChatScreen from "../screens/ChatScreen";
 import LoadingScreen from "../components/LoadingScreen";
 import Colors from "../constants/Colors";
-import { UserService, ChatFunctions } from "../networking";
+import { UserService, ChatFunctions, MatchService } from "../networking";
 import {
   OverlayProvider,
   Chat,
@@ -19,7 +19,6 @@ import ProfileScreen from "../screens/ProfileScreen";
 import { useAppContext } from "../context/AppContext";
 import { RootStackParamList } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { getMatchId } from "../util/matchUtils";
 
 type NavigationProps = NavigationProp<RootStackParamList>;
 
@@ -54,7 +53,7 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
               `[PROFILE ICON] Finding match ID for users: ${userId} and ${otherUserId}`
             );
 
-            const matchId = await getMatchId(userId, otherUserId);
+            const matchId = await MatchService.getMatchId(userId, otherUserId);
 
             if (matchId) {
               console.log(

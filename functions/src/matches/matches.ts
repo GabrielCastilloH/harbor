@@ -362,6 +362,74 @@ export const incrementMatchMessages = functions.https.onCall(
 );
 
 /**
+ * Get match ID between two users
+ */
+export const getMatchId = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ userId1: string; userId2: string }>) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { userId1, userId2 } = request.data;
+
+      if (!userId1 || !userId2) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Missing userId1 or userId2"
+        );
+      }
+
+      // Verify the requesting user is one of the users in the match
+      if (request.auth.uid !== userId1 && request.auth.uid !== userId2) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User can only access their own matches"
+        );
+      }
+
+      // Find the active match between these users
+      const matchQuery = await db
+        .collection("matches")
+        .where("user1Id", "in", [userId1, userId2])
+        .where("user2Id", "in", [userId1, userId2])
+        .where("isActive", "==", true)
+        .limit(1)
+        .get();
+
+      if (!matchQuery.empty) {
+        return { matchId: matchQuery.docs[0].id };
+      }
+
+      return { matchId: null };
+    } catch (error: any) {
+      console.error("Error getting match ID:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to get match ID"
+      );
+    }
+  }
+);
+
+/**
  * Helper function to find a match between two users
  * @param user1Id First user ID
  * @param user2Id Second user ID
@@ -401,5 +469,5 @@ export const matchFunctions = {
   getActiveMatches,
   unmatchUsers,
   updateMatchChannel,
-  incrementMatchMessages,
+  getMatchId,
 };
