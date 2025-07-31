@@ -73,9 +73,15 @@ export const uploadImage = functions.https.onCall(
       // Generate and upload blurred versions
       const blurFilePaths: { [key: string]: string } = {};
       console.log(`Starting blur generation for ${BLUR_LEVELS.length} levels`);
+      console.log(`Original image buffer size: ${imageBuffer.length} bytes`);
+
       for (const blur of BLUR_LEVELS) {
         console.log(`Generating blur level ${blur}%`);
         const blurredBuffer = await blurImageBuffer(imageBuffer, blur);
+        console.log(
+          `Blurred buffer size for ${blur}%: ${blurredBuffer.length} bytes`
+        );
+
         const blurFileName = `${baseName}_blur${blur}.jpg`;
         const file = bucket.file(blurFileName);
         await file.save(blurredBuffer, {
@@ -112,15 +118,23 @@ export const uploadImage = functions.https.onCall(
 
       const userData = userDoc.data();
       const images = userData?.images || [];
-      images.push({
+
+      const imageObject = {
         baseName,
         blurFilePaths, // { '100': ..., '75': ..., ... }
-      });
+      };
+
+      console.log(`Storing image object in Firestore:`, imageObject);
+      images.push(imageObject);
 
       await db.collection("users").doc(userId).update({
         images,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+
+      console.log(
+        `Successfully stored image with blur paths in Firestore for user ${userId}`
+      );
 
       return {
         message: "Image uploaded successfully",
@@ -182,13 +196,24 @@ export const getBlurredImageUrl = functions.https.onCall(
       }
 
       // Get target user's images
-      const targetUserDoc = await db.collection("users").doc(targetUserId).get();
+      const targetUserDoc = await db
+        .collection("users")
+        .doc(targetUserId)
+        .get();
       if (!targetUserDoc.exists) {
-        throw new functions.https.HttpsError("not-found", "Target user not found");
+        throw new functions.https.HttpsError(
+          "not-found",
+          "Target user not found"
+        );
       }
 
       const targetUserData = targetUserDoc.data();
       const images = targetUserData?.images || [];
+
+      console.log(
+        `getBlurredImageUrl - Target user ${targetUserId} has ${images.length} images`
+      );
+      console.log(`getBlurredImageUrl - Images data:`, images);
 
       if (imageIndex >= images.length) {
         throw new functions.https.HttpsError(
@@ -198,8 +223,16 @@ export const getBlurredImageUrl = functions.https.onCall(
       }
 
       const imageData = images[imageIndex];
+      console.log(
+        `getBlurredImageUrl - Image data for index ${imageIndex}:`,
+        imageData
+      );
+
       if (!imageData.blurFilePaths) {
         // Fallback for old image format
+        console.log(
+          `getBlurredImageUrl - Using fallback for old image format: ${imageData}`
+        );
         return {
           url: imageData, // Return the old format URL
         };
@@ -214,17 +247,23 @@ export const getBlurredImageUrl = functions.https.onCall(
         .limit(1)
         .get();
 
-      console.log(`Match query result: ${matchQuery.empty ? 'no match' : 'match found'}`);
+      console.log(
+        `Match query result: ${matchQuery.empty ? "no match" : "match found"}`
+      );
 
       if (matchQuery.empty) {
         // No match - return most blurred version
         console.log(`No match found, returning most blurred version (100%)`);
         const mostBlurredFile = imageData.blurFilePaths[100];
+        console.log(
+          `getBlurredImageUrl - Most blurred file path: ${mostBlurredFile}`
+        );
         const file = bucket.file(mostBlurredFile);
         const [url] = await file.getSignedUrl({
           action: "read",
           expires: "03-01-2500",
         });
+        console.log(`getBlurredImageUrl - Returning URL: ${url}`);
         return { url };
       }
 
@@ -242,13 +281,18 @@ export const getBlurredImageUrl = functions.https.onCall(
       else if (messageCount >= 15) blurLevel = 50;
       else if (messageCount >= 5) blurLevel = 75;
 
-      console.log(`Returning blur level ${blurLevel}% for ${messageCount} messages`);
+      console.log(
+        `Returning blur level ${blurLevel}% for ${messageCount} messages`
+      );
       const blurFile = imageData.blurFilePaths[blurLevel];
+      console.log(`getBlurredImageUrl - Blur file path: ${blurFile}`);
       const file = bucket.file(blurFile);
       const [url] = await file.getSignedUrl({
         action: "read",
         expires: "03-01-2500",
       });
+
+      console.log(`getBlurredImageUrl - Returning URL: ${url}`);
 
       return {
         url,
