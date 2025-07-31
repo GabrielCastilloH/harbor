@@ -6,9 +6,6 @@ import sharp from "sharp";
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
 
-// Define blur levels (percentages)
-const BLUR_LEVELS = [100, 75, 50, 25, 1];
-
 /**
  * Helper to blur an image buffer using sharp
  */
@@ -16,20 +13,46 @@ async function blurImageBuffer(
   buffer: Buffer,
   blurPercent: number
 ): Promise<Buffer> {
-  // Map blur percent to a sharp blur sigma (higher = more blur)
-  // 100% blur = sigma 40, 1% blur = sigma 0.4 (minimum allowed)
-  const sigma = blurPercent === 1 ? 0.4 : blurPercent / 2.5; // Use minimum sigma for 1% blur
-  return sharp(buffer).jpeg().blur(sigma).toBuffer();
+  console.log(`blurImageBuffer - Starting blur for ${blurPercent}%`);
+
+  try {
+    // Calculate sigma based on blur percentage
+    // Higher blur percentage = higher sigma (more blur)
+    // For 70% blur, we want a significant blur effect
+    const sigma = Math.max(5, blurPercent / 10); // 70% = sigma of 7
+
+    console.log(
+      `blurImageBuffer - Using sigma: ${sigma} for ${blurPercent}% blur`
+    );
+
+    // Process image with sharp
+    const blurredBuffer = await sharp(buffer)
+      .resize(800, 800, { fit: "inside", withoutEnlargement: true })
+      .blur(sigma)
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    console.log(
+      `blurImageBuffer - Blur ${blurPercent}% completed, buffer size: ${blurredBuffer.length}`
+    );
+    return blurredBuffer;
+  } catch (error) {
+    console.error(
+      `blurImageBuffer - Error blurring image for ${blurPercent}%:`,
+      error
+    );
+    throw error;
+  }
 }
 
 /**
- * Uploads image to Firebase Storage and links to user, generating blurred versions
+ * Uploads image to Firebase Storage with original and 70% blurred versions
  */
 export const uploadImage = functions.https.onCall(
   {
     region: "us-central1",
     memory: "1GiB",
-    timeoutSeconds: 120,
+    timeoutSeconds: 300,
     minInstances: 0,
     maxInstances: 10,
     concurrency: 80,
@@ -37,14 +60,9 @@ export const uploadImage = functions.https.onCall(
     ingressSettings: "ALLOW_ALL",
     invoker: "public",
   },
-  async (
-    request: CallableRequest<{
-      userId: string;
-      imageData: string;
-      contentType?: string;
-    }>
-  ) => {
-    console.log("uploadImage called", request.data);
+  async (request) => {
+    console.log("imageFunctions-uploadImage - Starting upload");
+
     try {
       if (!request.auth) {
         throw new functions.https.HttpsError(
@@ -53,110 +71,92 @@ export const uploadImage = functions.https.onCall(
         );
       }
 
-      const { userId, imageData, contentType = "image/jpeg" } = request.data;
+      const { userId, imageData, contentType } = request.data;
 
-      if (!userId || !imageData) {
+      if (!userId || !imageData || !contentType) {
         throw new functions.https.HttpsError(
           "invalid-argument",
-          "User ID and image data are required"
+          "Missing required fields: userId, imageData, or contentType"
         );
       }
 
-      // Remove data URL prefix if present
-      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
-      const imageBuffer = Buffer.from(base64Data, "base64");
+      // Convert to buffer
+      const imageBuffer = Buffer.from(imageData, "base64");
+      console.log(
+        "imageFunctions-uploadImage - Buffer size:",
+        imageBuffer.length
+      );
 
-      // Generate unique base filename
-      const baseName = `users/${userId}/images/${Date.now()}-${Math.random()
-        .toString(36)
-        .substring(7)}`;
+      // Generate file paths
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 8);
+      const baseName = `users/${userId}/images/${timestamp}-${randomId}`;
+      const originalFilePath = `${baseName}_original.jpg`;
+      const blurredFilePath = `${baseName}_blurred.jpg`;
 
-      // Generate and upload blurred versions
-      const blurFilePaths: { [key: string]: string } = {};
-      console.log(`Starting blur generation for ${BLUR_LEVELS.length} levels`);
-      console.log(`Original image buffer size: ${imageBuffer.length} bytes`);
+      // Upload original image first (simpler, more reliable)
+      console.log("imageFunctions-uploadImage - Uploading original image...");
+      await bucket.file(originalFilePath).save(imageBuffer, {
+        metadata: { contentType: "image/jpeg" },
+      });
 
-      for (const blur of BLUR_LEVELS) {
-        console.log(`Generating blur level ${blur}%`);
-        const blurredBuffer = await blurImageBuffer(imageBuffer, blur);
-        console.log(
-          `Blurred buffer size for ${blur}%: ${blurredBuffer.length} bytes`
-        );
+      // Generate and upload blurred version
+      console.log("imageFunctions-uploadImage - Generating blurred version...");
+      const blurredBuffer = await blurImageBuffer(imageBuffer, 70);
+      await bucket.file(blurredFilePath).save(blurredBuffer, {
+        metadata: { contentType: "image/jpeg" },
+      });
 
-        const blurFileName = `${baseName}_blur${blur}.jpg`;
-        const file = bucket.file(blurFileName);
-        await file.save(blurredBuffer, {
-          metadata: {
-            contentType,
-          },
-        });
-        blurFilePaths[blur] = blurFileName;
-        console.log(`Uploaded blur level ${blur}% to ${blurFileName}`);
-      }
-      console.log(`Completed blur generation. File paths:`, blurFilePaths);
-
-      // Only expose the most-blurred version to the client
-      const mostBlurredFile = blurFilePaths[100];
-      const url = `https://storage.googleapis.com/${bucket.name}/${mostBlurredFile}`;
-
-      if (userId.startsWith("temp_")) {
-        return {
-          message: "Image uploaded successfully",
-          fileId: mostBlurredFile,
-          url,
-        };
-      }
-
-      // Link all blur file paths to user in Firestore (for backend reference)
-      const userDoc = await db.collection("users").doc(userId).get();
+      // Create image object
+      const imageHash = require("crypto")
+        .createHash("md5")
+        .update(imageBuffer)
+        .digest("hex");
 
       const imageObject = {
         baseName,
-        blurFilePaths, // { '100': ..., '75': ..., ... }
+        originalUrl: `https://storage.googleapis.com/${bucket.name}/${originalFilePath}`,
+        blurredUrl: `https://storage.googleapis.com/${bucket.name}/${blurredFilePath}`,
+        imageHash,
       };
 
-      console.log(`Storing image object in Firestore:`, imageObject);
-
-      if (!userDoc.exists) {
-        // User doesn't exist yet (during account setup), just return the image data
-        // The user creation function will handle creating the user document
-        console.log(
-          `User ${userId} doesn't exist yet, returning image data for later use`
-        );
-        return {
-          message: "Image uploaded successfully",
-          fileId: mostBlurredFile,
-          url,
-          imageObject, // Return the image object for the user creation function
-        };
-      } else {
-        // User exists, update the images array
+      // Update user document if user exists
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (userDoc.exists) {
+        // Check for duplicates
         const userData = userDoc.data();
-        const images = userData?.images || [];
-        images.push(imageObject);
+        const existingImages = userData?.images || [];
+        const isDuplicate = existingImages.some(
+          (img: any) => img.imageHash === imageHash
+        );
 
-        await db.collection("users").doc(userId).update({
-          images,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        if (isDuplicate) {
+          throw new functions.https.HttpsError(
+            "already-exists",
+            "This image has already been uploaded"
+          );
+        }
+
+        // Add to user's images
+        await db
+          .collection("users")
+          .doc(userId)
+          .update({
+            images: admin.firestore.FieldValue.arrayUnion(imageObject),
+          });
       }
 
-      console.log(
-        `Successfully stored image with blur paths in Firestore for user ${userId}`
-      );
-
-      return {
+      const result = {
+        url: imageObject.originalUrl,
+        blurredUrl: imageObject.blurredUrl,
+        imageObject,
         message: "Image uploaded successfully",
-        fileId: mostBlurredFile,
-        url,
       };
-    } catch (error: any) {
-      console.error("Error uploading image:", error);
 
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
-      }
-
+      console.log("imageFunctions-uploadImage - Upload completed successfully");
+      return result;
+    } catch (error) {
+      console.error("imageFunctions-uploadImage - Error:", error);
       throw new functions.https.HttpsError(
         "internal",
         "Failed to upload image"
@@ -166,9 +166,9 @@ export const uploadImage = functions.https.onCall(
 );
 
 /**
- * Securely gets a blurred image URL based on match state and conversation progress
+ * Gets the appropriate image URL based on match state and consent
  */
-export const getBlurredImageUrl = functions.https.onCall(
+export const getImageUrl = functions.https.onCall(
   {
     region: "us-central1",
     memory: "256MiB",
@@ -219,11 +219,6 @@ export const getBlurredImageUrl = functions.https.onCall(
       const targetUserData = targetUserDoc.data();
       const images = targetUserData?.images || [];
 
-      console.log(
-        `getBlurredImageUrl - Target user ${targetUserId} has ${images.length} images`
-      );
-      console.log(`getBlurredImageUrl - Images data:`, images);
-
       if (imageIndex >= images.length) {
         throw new functions.https.HttpsError(
           "invalid-argument",
@@ -232,22 +227,8 @@ export const getBlurredImageUrl = functions.https.onCall(
       }
 
       const imageData = images[imageIndex];
-      console.log(
-        `getBlurredImageUrl - Image data for index ${imageIndex}:`,
-        imageData
-      );
 
-      if (!imageData.blurFilePaths) {
-        // Fallback for old image format
-        console.log(
-          `getBlurredImageUrl - Using fallback for old image format: ${imageData}`
-        );
-        return {
-          url: imageData, // Return the old format URL
-        };
-      }
-
-      // Check if users are matched
+      // Check if users are matched and have consented
       const matchQuery = await db
         .collection("matches")
         .where("user1Id", "in", [currentUserId, targetUserId])
@@ -256,52 +237,28 @@ export const getBlurredImageUrl = functions.https.onCall(
         .limit(1)
         .get();
 
-      console.log(
-        `Match query result: ${matchQuery.empty ? "no match" : "match found"}`
-      );
-
       if (matchQuery.empty) {
-        // No match - return most blurred version
-        console.log(`No match found, returning most blurred version (100%)`);
-        const mostBlurredFile = imageData.blurFilePaths[100];
-        console.log(
-          `getBlurredImageUrl - Most blurred file path: ${mostBlurredFile}`
-        );
-        const url = `https://storage.googleapis.com/${bucket.name}/${mostBlurredFile}`;
-        console.log(`getBlurredImageUrl - Returning URL: ${url}`);
-        return { url };
+        // No match - return blurred version
+        return { url: imageData.blurredUrl };
       }
 
-      // Users are matched - check conversation progress
+      // Users are matched - check consent
       const matchDoc = matchQuery.docs[0];
       const matchData = matchDoc.data();
-      const messageCount = matchData?.messageCount || 0;
 
-      console.log(`Match found with ${messageCount} messages`);
+      // Check if both users have consented to see unblurred images
+      const user1Consented = matchData?.user1Consented || false;
+      const user2Consented = matchData?.user2Consented || false;
 
-      // Determine blur level based on message count
-      let blurLevel = 100;
-      if (messageCount >= 50) blurLevel = 1;
-      else if (messageCount >= 30) blurLevel = 25;
-      else if (messageCount >= 15) blurLevel = 50;
-      else if (messageCount >= 5) blurLevel = 75;
-
-      console.log(
-        `Returning blur level ${blurLevel}% for ${messageCount} messages`
-      );
-      const blurFile = imageData.blurFilePaths[blurLevel];
-      console.log(`getBlurredImageUrl - Blur file path: ${blurFile}`);
-      const url = `https://storage.googleapis.com/${bucket.name}/${blurFile}`;
-
-      console.log(`getBlurredImageUrl - Returning URL: ${url}`);
-
-      return {
-        url,
-        blurLevel,
-        messageCount,
-      };
+      if (user1Consented && user2Consented) {
+        // Both consented - return original
+        return { url: imageData.originalUrl };
+      } else {
+        // Not both consented - return blurred
+        return { url: imageData.blurredUrl };
+      }
     } catch (error: any) {
-      console.error("Error getting blurred image URL:", error);
+      console.error("Error getting image URL:", error);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -309,7 +266,7 @@ export const getBlurredImageUrl = functions.https.onCall(
 
       throw new functions.https.HttpsError(
         "internal",
-        "Failed to get blurred image URL"
+        "Failed to get image URL"
       );
     }
   }
@@ -317,5 +274,5 @@ export const getBlurredImageUrl = functions.https.onCall(
 
 export const imageFunctions = {
   uploadImage,
-  getBlurredImageUrl,
+  getImageUrl,
 };
