@@ -15,6 +15,10 @@ interface AppContextType {
   setProfile: (profile: Profile | null) => void;
   authToken: string | null;
   setAuthToken: (token: string | null) => void;
+  streamApiKey: string | null;
+  setStreamApiKey: (key: string | null) => void;
+  streamUserToken: string | null;
+  setStreamUserToken: (token: string | null) => void;
   isInitialized: boolean;
 }
 
@@ -31,6 +35,10 @@ const defaultValue: AppContextType = {
   setProfile: () => {},
   authToken: null,
   setAuthToken: () => {},
+  streamApiKey: null,
+  setStreamApiKey: () => {},
+  streamUserToken: null,
+  setStreamUserToken: () => {},
   isInitialized: false,
 };
 
@@ -47,15 +55,19 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [streamApiKey, setStreamApiKey] = useState<string | null>(null);
+  const [streamUserToken, setStreamUserToken] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Initialize app state from AsyncStorage
   useEffect(() => {
     const initializeAppState = async () => {
       try {
-        const [storedToken, storedUser] = await Promise.all([
+        const [storedToken, storedUser, storedStreamApiKey, storedStreamUserToken] = await Promise.all([
           AsyncStorage.getItem("@authToken"),
           AsyncStorage.getItem("@user"),
+          AsyncStorage.getItem("@streamApiKey"),
+          AsyncStorage.getItem("@streamUserToken"),
         ]);
 
         if (storedToken && storedUser) {
@@ -64,6 +76,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           setIsAuthenticated(true);
           setUserId(userData.uid);
           setProfile(userData);
+        }
+
+        // Load cached Stream credentials
+        if (storedStreamApiKey) {
+          setStreamApiKey(storedStreamApiKey);
+        }
+        if (storedStreamUserToken) {
+          setStreamUserToken(storedStreamUserToken);
         }
       } catch (error) {
         console.error("Error initializing app state:", error);
@@ -92,6 +112,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setProfile,
         authToken,
         setAuthToken,
+        streamApiKey,
+        setStreamApiKey,
+        streamUserToken,
+        setStreamUserToken,
         isInitialized,
       }}
     >
