@@ -13,7 +13,8 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Card from "./Card";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
-import { SwipeService } from "../networking";
+// Remove this import - we don't need SwipeService here
+// import { SwipeService } from "../networking";
 
 const ROTATION = 60;
 const SWIPE_VELOCITY = 800;
@@ -63,23 +64,11 @@ export default React.forwardRef(function AnimatedStack(
 
       if (!userId || !profile.uid) return;
 
-      try {
-        const response = await SwipeService.createSwipe(
-          userId,
-          profile.uid,
-          direction
-        );
-
-        if (direction === "right" && onSwipeRight) {
-          onSwipeRight(profile);
-        } else if (direction === "left" && onSwipeLeft) {
-          onSwipeLeft(profile);
-        }
-      } catch (error) {
-        // Clear the swipe key on error so it can be retried
-        if ((window as any).lastSwipeKey === swipeKey) {
-          delete (window as any).lastSwipeKey;
-        }
+      // Only call the callback functions - don't call SwipeService here
+      if (direction === "right" && onSwipeRight) {
+        onSwipeRight(profile);
+      } else if (direction === "left" && onSwipeLeft) {
+        onSwipeLeft(profile);
       }
     },
     [userId, onSwipeRight, onSwipeLeft]

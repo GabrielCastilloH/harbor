@@ -154,13 +154,16 @@ export default function HomeScreen() {
   };
 
   const handleSwipeRight = async (profile: Profile) => {
+    // Generate unique ID for this swipe attempt
+    const swipeId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     if (swipeInProgress || lastSwipedProfile === profile.uid) {
-      console.log("HomeScreen - Swipe blocked: duplicate or in progress");
+      console.log(`HomeScreen - [${swipeId}] Swipe blocked: duplicate or in progress`);
       return;
     }
 
     if (!userId || !profile.uid) {
-      console.log("HomeScreen - Swipe blocked: missing userId or profile.uid", {
+      console.log(`HomeScreen - [${swipeId}] Swipe blocked: missing userId or profile.uid`, {
         userId,
         profileUid: profile.uid,
       });
@@ -169,7 +172,7 @@ export default function HomeScreen() {
 
     try {
       console.log(
-        "HomeScreen - [SWIPE] Starting swipe right for profile:",
+        `HomeScreen - [${swipeId}] Starting swipe right for profile:`,
         profile.uid
       );
       setSwipeInProgress(true);
@@ -182,14 +185,14 @@ export default function HomeScreen() {
         "right"
       );
       console.log(
-        "HomeScreen - [SWIPE] SwipeService.createSwipe result:",
+        `HomeScreen - [${swipeId}] SwipeService.createSwipe result:`,
         response
       );
 
       // Step 2: If it's a match, create chat channel and show modal
       if (response.match) {
         console.log(
-          "HomeScreen - [MATCH] Match detected, attempting to create chat channel"
+          `HomeScreen - [${swipeId}] Match detected, attempting to create chat channel`
         );
         try {
           const chatResponse = await ChatFunctions.createChannel({
@@ -197,12 +200,12 @@ export default function HomeScreen() {
             userId2: profile.uid,
           });
           console.log(
-            "HomeScreen - [CHAT] Chat channel created:",
+            `HomeScreen - [${swipeId}] Chat channel created:`,
             chatResponse
           );
         } catch (chatError) {
           console.error(
-            "HomeScreen - [CHAT] Error creating chat channel:",
+            `HomeScreen - [${swipeId}] Error creating chat channel:`,
             chatError
           );
         } finally {
@@ -210,7 +213,7 @@ export default function HomeScreen() {
           setMatchedProfile(profile);
           setShowMatch(true);
           console.log(
-            "HomeScreen - [MODAL] Match modal shown for:",
+            `HomeScreen - [${swipeId}] Match modal shown for:`,
             profile.uid
           );
         }
@@ -226,12 +229,13 @@ export default function HomeScreen() {
         setCurrentProfile(null);
       }
     } catch (error) {
-      console.error("HomeScreen - [ERROR] Error handling right swipe:", error);
+      console.error(`HomeScreen - [${swipeId}] Error handling right swipe:`, error);
     } finally {
+      // Increase timeout to prevent race conditions
       setTimeout(() => {
         setSwipeInProgress(false);
         setLastSwipedProfile(null);
-      }, 1000);
+      }, 2000); // Increased from 1000ms to 2000ms
     }
   };
 
