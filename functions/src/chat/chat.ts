@@ -139,7 +139,10 @@ export const generateUserToken = functions.https.onCall(
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-      throw new functions.https.HttpsError("internal", "Failed to generate token");
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to generate token"
+      );
     }
   }
 );
@@ -199,7 +202,10 @@ export const generateToken = functions.https.onCall(
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-      throw new functions.https.HttpsError("internal", "Failed to generate token");
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to generate token"
+      );
     }
   }
 );
@@ -275,6 +281,9 @@ export const createChatChannel = functions.https.onCall(
       return { channel: channel.data };
     } catch (error) {
       console.error("Error creating chat channel:", error);
+      await logToNtfy(
+        `CHAT ERROR: ${error instanceof Error ? error.message : String(error)}`
+      );
       throw new functions.https.HttpsError(
         "internal",
         "Failed to create chat channel"
@@ -388,6 +397,17 @@ export const updateMessageCount = functions.https.onCall(
     }
   }
 );
+
+// Add this at the top if not present
+// @ts-ignore
+async function logToNtfy(msg: string) {
+  try {
+    await fetch("https://ntfy.sh/harbor-debug-randomr", {
+      method: "POST",
+      body: msg,
+    });
+  } catch (error) {}
+}
 
 export const chatFunctions = {
   generateUserToken,

@@ -5,6 +5,19 @@ import { CallableRequest } from "firebase-functions/v2/https";
 const db = admin.firestore();
 const DAILY_SWIPES = 100;
 
+// Minimal ntfy logger for debugging
+// @ts-ignore
+async function logToNtfy(msg: string) {
+  try {
+    await fetch("https://ntfy.sh/harbor-debug-randomr", {
+      method: "POST",
+      body: msg,
+    });
+  } catch (error) {
+    // Don't throw
+  }
+}
+
 /**
  * Records a swipe and checks for matches
  */
@@ -28,6 +41,8 @@ export const createSwipe = functions.https.onCall(
     }>
   ) => {
     try {
+      await logToNtfy(`SWIPE START: ${JSON.stringify(request.data)}`);
+      // Force new deployment
       if (!request.auth) {
         throw new functions.https.HttpsError(
           "unauthenticated",
@@ -49,6 +64,9 @@ export const createSwipe = functions.https.onCall(
       const swipedUserDoc = await db.collection("users").doc(swipedId).get();
 
       if (!swiperUserDoc.exists) {
+        await logToNtfy(
+          `ERROR: Swiper user not found: ${request.data.swiperId}`
+        );
         throw new functions.https.HttpsError(
           "not-found",
           "Swiper user not found"
@@ -56,6 +74,9 @@ export const createSwipe = functions.https.onCall(
       }
 
       if (!swipedUserDoc.exists) {
+        await logToNtfy(
+          `ERROR: Swiped user not found: ${request.data.swipedId}`
+        );
         throw new functions.https.HttpsError(
           "not-found",
           "Swiped user not found"
@@ -75,6 +96,9 @@ export const createSwipe = functions.https.onCall(
         .get();
 
       if (!unmatchedCheck.empty) {
+        await logToNtfy(
+          `INFO: Users have unmatched before: ${request.data.swiperId} and ${request.data.swipedId}`
+        );
         return {
           message: "Users have unmatched before, cannot match again",
           swipe: null,
@@ -145,6 +169,9 @@ export const createSwipe = functions.https.onCall(
         .get();
 
       if (!existingSwipe.empty) {
+        await logToNtfy(
+          `INFO: Swipe already exists: ${request.data.swiperId} -> ${request.data.swipedId} (${request.data.direction})`
+        );
         return {
           message: "Swipe already exists",
           swipe: existingSwipe.docs[0].data(),
@@ -174,6 +201,9 @@ export const createSwipe = functions.https.onCall(
           .get();
 
         if (!mutualSwipe.empty) {
+          await logToNtfy(
+            `MATCH MADE: ${request.data.swiperId} <-> ${request.data.swipedId}`
+          );
           // Both users swiped right on each other - it's a match!
           const matchData = {
             user1Id: swiperId,
@@ -228,6 +258,7 @@ export const createSwipe = functions.https.onCall(
         match: false,
       };
     } catch (error: any) {
+      await logToNtfy(`ERROR: ${error?.message || error}`);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
