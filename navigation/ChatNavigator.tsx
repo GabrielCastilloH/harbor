@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { TouchableOpacity } from "react-native";
+import { TouchableOpacity, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ChatList from "../screens/ChatList";
 import ChatScreen from "../screens/ChatScreen";
@@ -84,18 +84,20 @@ const theme: DeepPartial<Theme> = {
 };
 
 export default function ChatNavigator() {
-  const { 
-    userId, 
-    streamApiKey, 
-    streamUserToken, 
-    setStreamApiKey, 
-    setStreamUserToken 
+  const {
+    userId,
+    streamApiKey,
+    streamUserToken,
+    setStreamApiKey,
+    setStreamUserToken,
   } = useAppContext();
   const [profile, setProfile] = useState<any>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   // Use pre-loaded credentials from context, fallback to fetching if not available
-  const [chatUserToken, setChatUserToken] = useState<string | null>(streamUserToken);
+  const [chatUserToken, setChatUserToken] = useState<string | null>(
+    streamUserToken
+  );
   const [chatApiKey, setChatApiKey] = useState<string | null>(streamApiKey);
 
   // Update local state when context values change
@@ -212,11 +214,23 @@ export default function ChatNavigator() {
 
   // Conditionally render loading or chat UI
   if (isLoadingProfile || !profile) {
-    return <LoadingScreen loadingText="Loading..." />;
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: "red", textAlign: "center", marginTop: 40 }}>
+          Error: Could not load your profile. Please try again later.
+        </Text>
+      </View>
+    );
   }
 
-  if (!chatUserToken || !chatClient) {
-    return <LoadingScreen loadingText="Loading..." />;
+  if (!chatUserToken || !chatClient || !chatApiKey) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: "red", textAlign: "center", marginTop: 40 }}>
+          Error: Could not load chat credentials. Please sign out and try again.
+        </Text>
+      </View>
+    );
   }
 
   return (
