@@ -23,7 +23,9 @@ export default function ChatList() {
         filters={filters}
         sort={sort}
         onSelect={(channel) => {
+          console.log("[ChatList] Channel selected:", channel);
           setChannel(channel);
+          console.log("[ChatList] setChannel called, navigating to ChatScreen");
           navigation.navigate("ChatScreen" as never);
         }}
       />
