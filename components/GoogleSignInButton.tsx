@@ -17,6 +17,8 @@ interface GoogleSignInButtonProps {
   onUserExists: (userData: any) => void; // Callback for existing users
   onNewUser: (user: any) => void; // Callback for new users
   onError: (error: any) => void; // Error callback
+  onSignInStart?: () => void; // Callback when sign-in starts
+  onSignInComplete?: () => void; // Callback when sign-in completes
   buttonText?: string;
   buttonStyle?: any;
   textStyle?: any;
@@ -27,6 +29,8 @@ export default function GoogleSignInButton({
   onUserExists,
   onNewUser,
   onError,
+  onSignInStart,
+  onSignInComplete,
   buttonText = "Continue with Google",
   buttonStyle,
   textStyle,
@@ -34,6 +38,9 @@ export default function GoogleSignInButton({
 }: GoogleSignInButtonProps) {
   const handleGoogleSignIn = async () => {
     try {
+      // Call onSignInStart if provided
+      onSignInStart?.();
+
       // 1. Check network connectivity
       const netInfo = await NetInfo.fetch();
       if (!netInfo.isConnected) {
@@ -41,6 +48,7 @@ export default function GoogleSignInButton({
           "No Internet Connection",
           "Please check your internet connection and try again."
         );
+        onSignInComplete?.();
         return;
       }
 
@@ -72,11 +80,17 @@ export default function GoogleSignInButton({
         if (userDoc.exists()) {
           const userData = userDoc.data();
           onUserExists(userData);
+        } else {
+          // User exists in auth but not in Firestore - treat as new user
+          onNewUser(userCredential.user);
         }
       } else {
         // 7b. New user - call new user callback
         onNewUser(userCredential.user);
       }
+
+      // Call onSignInComplete if provided
+      onSignInComplete?.();
     } catch (error: any) {
       // console.log(
       //   "GoogleSignInButton - Error during Google sign-in:",
@@ -100,10 +114,14 @@ export default function GoogleSignInButton({
           //   signOutError
           // );
         }
+        onSignInComplete?.();
         return;
       } else {
         onError(error);
       }
+
+      // Call onSignInComplete if provided
+      onSignInComplete?.();
     }
   };
 
