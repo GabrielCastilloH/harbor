@@ -23,28 +23,26 @@ export async function uploadImagesSequentially(
       { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
     );
 
-    // Read as base64 and convert to Buffer
-    const imageBufferStr = await FileSystem.readAsStringAsync(compressed.uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    const buffer = Buffer.from(imageBufferStr, "base64");
+    // Use fetch to get a Blob from the local file URI
+    const response = await fetch(compressed.uri);
+    const blob = await response.blob();
 
     // Upload original
     const filename = `${userId}/${uuidv4()}.jpg`;
     const originalRef = ref(storage, filename);
-    await uploadBytes(originalRef, buffer, {
+    await uploadBytes(originalRef, blob, {
       contentType: "image/jpeg",
     });
     const originalUrl = await getDownloadURL(originalRef);
 
     // Blur image locally (expo-image-manipulator does NOT support blur natively)
-    // You must use a different library or do this server-side if you need real blur.
     // For now, we'll just re-upload the compressed image as a placeholder for blurred.
     // TODO: Replace with real blur implementation if needed.
-    const blurredBuffer = buffer;
+    const blurredResponse = await fetch(compressed.uri);
+    const blurredBlob = await blurredResponse.blob();
     const blurredFilename = `${userId}/${uuidv4()}-blurred.jpg`;
     const blurredRef = ref(storage, blurredFilename);
-    await uploadBytes(blurredRef, blurredBuffer, {
+    await uploadBytes(blurredRef, blurredBlob, {
       contentType: "image/jpeg",
     });
     const blurredUrl = await getDownloadURL(blurredRef);
