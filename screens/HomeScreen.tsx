@@ -134,12 +134,17 @@ export default function HomeScreen() {
   const handleSwipeRight = async (profile: Profile) => {
     // Prevent duplicate swipes on the same profile or while a swipe is in progress
     if (swipeInProgress || lastSwipedProfile === profile.uid) {
+      console.log("HomeScreen - Swipe blocked: duplicate or in progress");
       return;
     }
 
-    if (!userId || !profile.uid) return;
+    if (!userId || !profile.uid) {
+      console.log("HomeScreen - Swipe blocked: missing userId or profile.uid", { userId, profileUid: profile.uid });
+      return;
+    }
 
     try {
+      console.log("HomeScreen - Starting swipe right for profile:", profile.uid);
       setSwipeInProgress(true);
       setLastSwipedProfile(profile.uid);
 
@@ -148,6 +153,8 @@ export default function HomeScreen() {
         profile.uid,
         "right"
       );
+
+      console.log("HomeScreen - Swipe response:", response);
 
       // If it's a match, show the match modal
       if (response.match) {
@@ -165,7 +172,7 @@ export default function HomeScreen() {
         setCurrentProfile(null);
       }
     } catch (error) {
-      console.error("Error handling right swipe:", error);
+      console.error("HomeScreen - Error handling right swipe:", error);
     } finally {
       // Reset swipe flags after a short delay
       setTimeout(() => {
