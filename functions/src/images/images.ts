@@ -7,7 +7,7 @@ const db = admin.firestore();
 const bucket = admin.storage().bucket();
 
 // Define blur levels (percentages)
-const BLUR_LEVELS = [100, 75, 50, 25, 0];
+const BLUR_LEVELS = [100, 75, 50, 25, 1];
 
 /**
  * Helper to blur an image buffer using sharp
@@ -17,8 +17,8 @@ async function blurImageBuffer(
   blurPercent: number
 ): Promise<Buffer> {
   // Map blur percent to a sharp blur sigma (higher = more blur)
-  // 100% blur = sigma 40, 0% blur = sigma 0
-  const sigma = blurPercent === 0 ? 0 : blurPercent / 2.5; // tweak as needed
+  // 100% blur = sigma 40, 1% blur = sigma 0.4 (minimum allowed)
+  const sigma = blurPercent === 1 ? 0.4 : blurPercent / 2.5; // Use minimum sigma for 1% blur
   return sharp(buffer).jpeg().blur(sigma).toBuffer();
 }
 
@@ -96,11 +96,7 @@ export const uploadImage = functions.https.onCall(
 
       // Only expose the most-blurred version to the client
       const mostBlurredFile = blurFilePaths[100];
-      const file = bucket.file(mostBlurredFile);
-      const [url] = await file.getSignedUrl({
-        action: "read",
-        expires: "03-01-2500",
-      });
+      const url = `https://storage.googleapis.com/${bucket.name}/${mostBlurredFile}`;
 
       if (userId.startsWith("temp_")) {
         return {
@@ -112,12 +108,6 @@ export const uploadImage = functions.https.onCall(
 
       // Link all blur file paths to user in Firestore (for backend reference)
       const userDoc = await db.collection("users").doc(userId).get();
-      if (!userDoc.exists) {
-        throw new functions.https.HttpsError("not-found", "User not found");
-      }
-
-      const userData = userDoc.data();
-      const images = userData?.images || [];
 
       const imageObject = {
         baseName,
@@ -125,12 +115,29 @@ export const uploadImage = functions.https.onCall(
       };
 
       console.log(`Storing image object in Firestore:`, imageObject);
-      images.push(imageObject);
 
-      await db.collection("users").doc(userId).update({
-        images,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      if (!userDoc.exists) {
+        // User doesn't exist yet (during account setup), create the document
+        console.log(`Creating new user document for ${userId} with image`);
+        await db
+          .collection("users")
+          .doc(userId)
+          .set({
+            images: [imageObject],
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+      } else {
+        // User exists, update the images array
+        const userData = userDoc.data();
+        const images = userData?.images || [];
+        images.push(imageObject);
+
+        await db.collection("users").doc(userId).update({
+          images,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
 
       console.log(
         `Successfully stored image with blur paths in Firestore for user ${userId}`
@@ -258,11 +265,7 @@ export const getBlurredImageUrl = functions.https.onCall(
         console.log(
           `getBlurredImageUrl - Most blurred file path: ${mostBlurredFile}`
         );
-        const file = bucket.file(mostBlurredFile);
-        const [url] = await file.getSignedUrl({
-          action: "read",
-          expires: "03-01-2500",
-        });
+        const url = `https://storage.googleapis.com/${bucket.name}/${mostBlurredFile}`;
         console.log(`getBlurredImageUrl - Returning URL: ${url}`);
         return { url };
       }
@@ -276,7 +279,7 @@ export const getBlurredImageUrl = functions.https.onCall(
 
       // Determine blur level based on message count
       let blurLevel = 100;
-      if (messageCount >= 50) blurLevel = 0;
+      if (messageCount >= 50) blurLevel = 1;
       else if (messageCount >= 30) blurLevel = 25;
       else if (messageCount >= 15) blurLevel = 50;
       else if (messageCount >= 5) blurLevel = 75;
@@ -286,11 +289,7 @@ export const getBlurredImageUrl = functions.https.onCall(
       );
       const blurFile = imageData.blurFilePaths[blurLevel];
       console.log(`getBlurredImageUrl - Blur file path: ${blurFile}`);
-      const file = bucket.file(blurFile);
-      const [url] = await file.getSignedUrl({
-        action: "read",
-        expires: "03-01-2500",
-      });
+      const url = `https://storage.googleapis.com/${bucket.name}/${blurFile}`;
 
       console.log(`getBlurredImageUrl - Returning URL: ${url}`);
 

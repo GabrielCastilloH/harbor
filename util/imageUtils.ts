@@ -2,6 +2,10 @@ import * as FileSystem from "expo-file-system";
 import * as ImageManipulator from "expo-image-manipulator";
 import { storage } from "../firebaseConfig";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { httpsCallable, getFunctions } from "firebase/functions";
+import app from "../firebaseConfig";
+
+const functions = getFunctions(app, "us-central1");
 
 /**
  * Convert an image URI to base64 format with compression
@@ -31,7 +35,7 @@ export async function imageToBase64(
 }
 
 /**
- * Upload an image to Firebase Storage directly
+ * Upload an image using the new blurring function
  */
 export async function uploadImageToServer(
   userId: string,
@@ -40,7 +44,7 @@ export async function uploadImageToServer(
 ): Promise<string> {
   try {
     // Compress the image
-    // console.log(`Compressing image with quality ${quality}...`);
+    console.log(`Compressing image with quality ${quality}...`);
     const manipResult = await ImageManipulator.manipulateAsync(
       imageUri,
       [{ resize: { width: 800 } }],
@@ -50,29 +54,25 @@ export async function uploadImageToServer(
       }
     );
 
-    // Convert to blob
-    const response = await fetch(manipResult.uri);
-    const blob = await response.blob();
+    // Convert to base64
+    const base64 = await FileSystem.readAsStringAsync(manipResult.uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
 
-    // console.log(
-    //   `Image compressed successfully. Original size: ${response.headers.get(
-    //     "content-length"
-    //   )} bytes`
-    // );
+    console.log("Uploading image using new blurring function...");
 
-    // Upload to Firebase Storage
-    // console.log("Uploading image to Firebase Storage...");
-    const filename = `users/${userId}/images/${Date.now()}.jpg`;
-    const storageRef = ref(storage, filename);
+    // Use the new blurring function
+    const uploadImage = httpsCallable(functions, "imageFunctions-uploadImage");
+    const result = await uploadImage({
+      userId,
+      imageData: base64,
+      contentType: "image/jpeg",
+    });
 
-    // console.log("Uploading to Firebase Storage:", filename);
-    await uploadBytes(storageRef, blob);
+    const response = result.data as { url: string; fileId: string };
+    console.log("Image uploaded successfully with blurring:", response.url);
 
-    // Get download URL
-    const downloadURL = await getDownloadURL(storageRef);
-    // console.log("Image uploaded successfully:", downloadURL);
-
-    return downloadURL;
+    return response.url;
   } catch (error) {
     console.error("Error uploading image:", error);
     throw error;
