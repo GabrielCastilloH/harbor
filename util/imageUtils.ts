@@ -29,6 +29,24 @@ export async function uploadImagesSequentially(
 
     // Upload original to /users/{userId}/images/{uuid}.jpg
     const filename = `users/${userId}/images/${uuidv4()}.jpg`;
+    // LOGGING: Print userId, filename, and currentUser UID
+    try {
+      // Dynamically import firebase/auth to get currentUser
+      const { getAuth } = await import("firebase/auth");
+      const appAuth = getAuth();
+      const currentUid = appAuth.currentUser?.uid;
+      console.log("[uploadImagesSequentially] userId param:", userId);
+      console.log("[uploadImagesSequentially] upload path:", filename);
+      console.log(
+        "[uploadImagesSequentially] firebase.auth().currentUser.uid:",
+        currentUid
+      );
+    } catch (e) {
+      console.log(
+        "[uploadImagesSequentially] Could not log currentUser UID:",
+        e
+      );
+    }
     const originalRef = ref(storage, filename);
     await uploadBytes(originalRef, blob, {
       contentType: "image/jpeg",
