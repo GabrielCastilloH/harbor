@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { TouchableOpacity, Text, View } from "react-native";
+import { TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ChatList from "../screens/ChatList";
 import ChatScreen from "../screens/ChatScreen";
@@ -214,23 +214,11 @@ export default function ChatNavigator() {
 
   // Conditionally render loading or chat UI
   if (isLoadingProfile || !profile) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: "red", textAlign: "center", marginTop: 40 }}>
-          Error: Could not load your profile. Please try again later.
-        </Text>
-      </View>
-    );
+    return <LoadingScreen loadingText="Loading..." />;
   }
 
-  if (!chatUserToken || !chatClient || !chatApiKey) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: "red", textAlign: "center", marginTop: 40 }}>
-          Error: Could not load chat credentials. Please sign out and try again.
-        </Text>
-      </View>
-    );
+  if (!chatUserToken || !chatClient) {
+    return <LoadingScreen loadingText="Loading..." />;
   }
 
   return (
