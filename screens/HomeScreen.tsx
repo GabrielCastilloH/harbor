@@ -22,6 +22,7 @@ import {
   RecommendationService,
   ChatFunctions,
 } from "../networking";
+import { getBlurredImageUrl } from "../networking/ImageService";
 
 export default function HomeScreen() {
   const { userId } = useAppContext();
@@ -114,14 +115,26 @@ export default function HomeScreen() {
       try {
         const response = await RecommendationService.getRecommendations(userId);
         if (response && response.recommendations) {
-          setRecommendations(response.recommendations);
-          if (response.recommendations.length > 0) {
-            setCurrentProfile(response.recommendations[0]);
+          // Fetch secure image URLs for each recommendation
+          const recommendationsWithSecureImages = await Promise.all(
+            response.recommendations.map(async (profile: Profile) => {
+              try {
+                // For now, we'll keep the original images in the profile
+                // but we can add secure image URLs later if needed
+                return profile;
+              } catch (error) {
+                console.error("Error fetching secure images for profile:", error);
+                return profile;
+              }
+            })
+          );
+          setRecommendations(recommendationsWithSecureImages);
+          if (recommendationsWithSecureImages.length > 0) {
+            setCurrentProfile(recommendationsWithSecureImages[0]);
           }
         }
       } catch (error) {
-        // console.log("Error fetching recommendations:", error);
-        setRecommendations([]);
+        console.error("Error fetching recommendations:", error);
       } finally {
         setLoadingRecommendations(false);
       }
