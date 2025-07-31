@@ -8,7 +8,10 @@ export class MatchService {
     // console.log("MatchService - createMatch called with:", { user1Id, user2Id });
 
     try {
-      const createMatch = httpsCallable(functions, "matches-createMatch");
+      const createMatch = httpsCallable(
+        functions,
+        "matchFunctions-createMatch"
+      );
       const result = await createMatch({ user1Id, user2Id });
       const data = result.data as any;
 
@@ -24,7 +27,10 @@ export class MatchService {
     // console.log("MatchService - getActiveMatches called with:", userId);
 
     try {
-      const getActiveMatches = httpsCallable(functions, "matches-getActiveMatches");
+      const getActiveMatches = httpsCallable(
+        functions,
+        "matchFunctions-getActiveMatches"
+      );
       const result = await getActiveMatches({ userId });
       const data = result.data as any;
 
@@ -40,7 +46,7 @@ export class MatchService {
     // console.log("MatchService - unmatch called with:", { userId, matchId });
 
     try {
-      const unmatch = httpsCallable(functions, "matches-unmatch");
+      const unmatch = httpsCallable(functions, "matchFunctions-unmatchUsers");
       const result = await unmatch({ userId, matchId });
       const data = result.data as any;
 
@@ -66,7 +72,7 @@ export class MatchService {
     try {
       const updateMatchChannel = httpsCallable(
         functions,
-        "matches-updateMatchChannel"
+        "matchFunctions-updateMatchChannel"
       );
       const result = await updateMatchChannel({
         matchId,
@@ -95,7 +101,10 @@ export class MatchService {
     // });
 
     try {
-      const updateBlurLevel = httpsCallable(functions, "matches-updateBlurLevel");
+      const updateBlurLevel = httpsCallable(
+        functions,
+        "blurFunctions-updateBlurLevelForMessage"
+      );
       const result = await updateBlurLevel({
         userId,
         matchedUserId,
@@ -118,7 +127,10 @@ export class MatchService {
     // });
 
     try {
-      const getBlurLevel = httpsCallable(functions, "matches-getBlurLevel");
+      const getBlurLevel = httpsCallable(
+        functions,
+        "blurFunctions-getBlurLevel"
+      );
       const result = await getBlurLevel({ userId, matchedUserId });
       const data = result.data as any;
 
