@@ -272,6 +272,94 @@ export const getImageUrl = functions.https.onCall(
   }
 );
 
+/**
+ * Returns all images for a user, each with the correct URL (blurred or original) and blurLevel/messageCount
+ */
+export const getImages = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+      const { targetUserId } = request.data;
+      const currentUserId = request.auth.uid;
+      if (!targetUserId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Target user ID is required"
+        );
+      }
+      // Get target user's images
+      const targetUserDoc = await db
+        .collection("users")
+        .doc(targetUserId)
+        .get();
+      if (!targetUserDoc.exists) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "Target user not found"
+        );
+      }
+      const targetUserData = targetUserDoc.data();
+      const images = targetUserData?.images || [];
+      // Get match info
+      const matchQuery = await db
+        .collection("matches")
+        .where("user1Id", "in", [currentUserId, targetUserId])
+        .where("user2Id", "in", [currentUserId, targetUserId])
+        .where("isActive", "==", true)
+        .limit(1)
+        .get();
+      let user1Consented = false;
+      let user2Consented = false;
+      let blurLevel = 100;
+      let messageCount = 0;
+      if (!matchQuery.empty) {
+        const matchData = matchQuery.docs[0].data();
+        user1Consented = matchData?.user1Consented || false;
+        user2Consented = matchData?.user2Consented || false;
+        blurLevel = matchData?.blurPercentage ?? 100;
+        messageCount = matchData?.messageCount ?? 0;
+      }
+      // For each image, return the correct URL and blurLevel
+      const result = images.map((img: any) => {
+        let url = img.blurredUrl;
+        let effectiveBlurLevel = blurLevel;
+        if (user1Consented && user2Consented) {
+          url = img.originalUrl;
+          effectiveBlurLevel = 0;
+        }
+        return {
+          url,
+          blurLevel: effectiveBlurLevel,
+          messageCount,
+        };
+      });
+      return { images: result };
+    } catch (error: any) {
+      console.error("Error in getImages:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError("internal", "Failed to get images");
+    }
+  }
+);
+
 export const imageFunctions = {
   uploadImage,
   getImageUrl,
