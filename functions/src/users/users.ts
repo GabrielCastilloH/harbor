@@ -1,8 +1,10 @@
 import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { StreamChat } from "stream-chat";
+import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 
 const db = admin.firestore();
+const secretManager = new SecretManagerServiceClient();
 
 // Keep the logToNtfy function available for future use
 // @ts-ignore
@@ -18,23 +20,28 @@ async function logToNtfy(msg: string) {
 }
 
 async function getStreamClient(): Promise<StreamChat> {
-  // await logToNtfy("getStreamClient - Starting to get Stream API credentials");
+  try {
+    // Get Stream API credentials from Secret Manager
+    const [streamApiKeyVersion] = await secretManager.accessSecretVersion({
+      name: "projects/harbor-ch/secrets/STREAM_API_KEY/versions/latest",
+    });
+    const [streamApiSecretVersion] = await secretManager.accessSecretVersion({
+      name: "projects/harbor-ch/secrets/STREAM_API_SECRET/versions/latest",
+    });
 
-  const apiKey = process.env.STREAM_API_KEY;
-  const apiSecret = process.env.STREAM_API_SECRET;
+    const apiKey = streamApiKeyVersion.payload?.data?.toString() || "";
+    const apiSecret = streamApiSecretVersion.payload?.data?.toString() || "";
 
-  // await logToNtfy(`getStreamClient - API Key length: ${apiKey.length}`);
-  // await logToNtfy(`getStreamClient - API Secret length: ${apiSecret.length}`);
+    if (!apiKey || !apiSecret) {
+      throw new Error("Missing Stream API credentials");
+    }
 
-  if (!apiKey || !apiSecret) {
-    // await logToNtfy("getStreamClient - Missing Stream API credentials");
-    throw new Error("Missing Stream API credentials");
+    const client = StreamChat.getInstance(apiKey, apiSecret);
+    return client;
+  } catch (error) {
+    console.error("Error getting Stream client:", error);
+    throw error;
   }
-
-  const client = StreamChat.getInstance(apiKey, apiSecret);
-  // await logToNtfy("getStreamClient - Stream client created successfully");
-
-  return client;
 }
 
 /**
