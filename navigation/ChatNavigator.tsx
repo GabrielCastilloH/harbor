@@ -19,6 +19,7 @@ import ProfileScreen from "../screens/ProfileScreen";
 import { useAppContext } from "../context/AppContext";
 import { RootStackParamList } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { getMatchId } from "../util/matchUtils";
 
 type NavigationProps = NavigationProp<RootStackParamList>;
 
@@ -38,7 +39,6 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
   const otherMembers = channel?.state?.members || {};
   const otherUserId = Object.keys(otherMembers).find((key) => key !== userId);
   const isFrozen = channel?.data?.frozen;
-  const matchId = channel?.data?.matchId;
 
   // Don't show the profile button if channel is frozen
   if (isFrozen) {
@@ -47,12 +47,35 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
 
   return (
     <TouchableOpacity
-      onPress={() => {
-        if (otherUserId && matchId) {
-          navigation.navigate("ProfileScreen", {
-            userId: otherUserId,
-            matchId: matchId,
-          });
+      onPress={async () => {
+        if (otherUserId && userId) {
+          try {
+            console.log(
+              `[PROFILE ICON] Finding match ID for users: ${userId} and ${otherUserId}`
+            );
+            
+            const matchId = await getMatchId(userId, otherUserId);
+            
+            if (matchId) {
+              console.log(
+                `[PROFILE ICON] Navigating to ProfileScreen for userId=${otherUserId}, matchId=${matchId}`
+              );
+              navigation.navigate("ProfileScreen", {
+                userId: otherUserId,
+                matchId: matchId,
+              });
+            } else {
+              console.error(
+                `[PROFILE ICON] No active match found between users: ${userId} and ${otherUserId}`
+              );
+            }
+          } catch (error) {
+            console.error("[PROFILE ICON] Error finding match ID:", error);
+          }
+        } else {
+          console.error(
+            `[PROFILE ICON] Navigation failed: otherUserId or userId missing. otherUserId=${otherUserId}, userId=${userId}`
+          );
         }
       }}
     >
