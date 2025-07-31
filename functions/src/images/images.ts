@@ -1,18 +1,35 @@
 import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { CallableRequest } from "firebase-functions/v2/https";
+import sharp from "sharp";
 
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
 
+// Define blur levels (percentages)
+const BLUR_LEVELS = [100, 75, 50, 25, 0];
+
 /**
- * Uploads image to Firebase Storage and links to user
+ * Helper to blur an image buffer using sharp
+ */
+async function blurImageBuffer(
+  buffer: Buffer,
+  blurPercent: number
+): Promise<Buffer> {
+  // Map blur percent to a sharp blur sigma (higher = more blur)
+  // 100% blur = sigma 40, 0% blur = sigma 0
+  const sigma = blurPercent === 0 ? 0 : blurPercent / 2.5; // tweak as needed
+  return sharp(buffer).jpeg().blur(sigma).toBuffer();
+}
+
+/**
+ * Uploads image to Firebase Storage and links to user, generating blurred versions
  */
 export const uploadImage = functions.https.onCall(
   {
     region: "us-central1",
-    memory: "256MiB",
-    timeoutSeconds: 60,
+    memory: "1GiB",
+    timeoutSeconds: 120,
     minInstances: 0,
     maxInstances: 10,
     concurrency: 80,
@@ -48,34 +65,46 @@ export const uploadImage = functions.https.onCall(
       const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
       const imageBuffer = Buffer.from(base64Data, "base64");
 
-      // Generate unique filename
-      const filename = `users/${userId}/images/${Date.now()}-${Math.random()
+      // Generate unique base filename
+      const baseName = `users/${userId}/images/${Date.now()}-${Math.random()
         .toString(36)
-        .substring(7)}.jpg`;
+        .substring(7)}`;
 
-      // Upload to Firebase Storage
-      const file = bucket.file(filename);
-      await file.save(imageBuffer, {
-        metadata: {
-          contentType,
-        },
-      });
+      // Generate and upload blurred versions
+      const blurFilePaths: { [key: string]: string } = {};
+      console.log(`Starting blur generation for ${BLUR_LEVELS.length} levels`);
+      for (const blur of BLUR_LEVELS) {
+        console.log(`Generating blur level ${blur}%`);
+        const blurredBuffer = await blurImageBuffer(imageBuffer, blur);
+        const blurFileName = `${baseName}_blur${blur}.jpg`;
+        const file = bucket.file(blurFileName);
+        await file.save(blurredBuffer, {
+          metadata: {
+            contentType,
+          },
+        });
+        blurFilePaths[blur] = blurFileName;
+        console.log(`Uploaded blur level ${blur}% to ${blurFileName}`);
+      }
+      console.log(`Completed blur generation. File paths:`, blurFilePaths);
 
-      // Get the public URL
+      // Only expose the most-blurred version to the client
+      const mostBlurredFile = blurFilePaths[100];
+      const file = bucket.file(mostBlurredFile);
       const [url] = await file.getSignedUrl({
         action: "read",
-        expires: "03-01-2500", // Far future expiration
+        expires: "03-01-2500",
       });
 
       if (userId.startsWith("temp_")) {
         return {
           message: "Image uploaded successfully",
-          fileId: filename,
+          fileId: mostBlurredFile,
           url,
         };
       }
 
-      // Link image to user in Firestore
+      // Link all blur file paths to user in Firestore (for backend reference)
       const userDoc = await db.collection("users").doc(userId).get();
       if (!userDoc.exists) {
         throw new functions.https.HttpsError("not-found", "User not found");
@@ -83,7 +112,10 @@ export const uploadImage = functions.https.onCall(
 
       const userData = userDoc.data();
       const images = userData?.images || [];
-      images.push(filename);
+      images.push({
+        baseName,
+        blurFilePaths, // { '100': ..., '75': ..., ... }
+      });
 
       await db.collection("users").doc(userId).update({
         images,
@@ -92,7 +124,7 @@ export const uploadImage = functions.https.onCall(
 
       return {
         message: "Image uploaded successfully",
-        fileId: filename,
+        fileId: mostBlurredFile,
         url,
       };
     } catch (error: any) {
@@ -110,6 +142,135 @@ export const uploadImage = functions.https.onCall(
   }
 );
 
+/**
+ * Securely gets a blurred image URL based on match state and conversation progress
+ */
+export const getBlurredImageUrl = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (
+    request: CallableRequest<{
+      targetUserId: string;
+      imageIndex: number;
+    }>
+  ) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { targetUserId, imageIndex } = request.data;
+      const currentUserId = request.auth.uid;
+
+      if (!targetUserId || imageIndex === undefined) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Target user ID and image index are required"
+        );
+      }
+
+      // Get target user's images
+      const targetUserDoc = await db.collection("users").doc(targetUserId).get();
+      if (!targetUserDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Target user not found");
+      }
+
+      const targetUserData = targetUserDoc.data();
+      const images = targetUserData?.images || [];
+
+      if (imageIndex >= images.length) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Image index out of range"
+        );
+      }
+
+      const imageData = images[imageIndex];
+      if (!imageData.blurFilePaths) {
+        // Fallback for old image format
+        return {
+          url: imageData, // Return the old format URL
+        };
+      }
+
+      // Check if users are matched
+      const matchQuery = await db
+        .collection("matches")
+        .where("user1Id", "in", [currentUserId, targetUserId])
+        .where("user2Id", "in", [currentUserId, targetUserId])
+        .where("isActive", "==", true)
+        .limit(1)
+        .get();
+
+      console.log(`Match query result: ${matchQuery.empty ? 'no match' : 'match found'}`);
+
+      if (matchQuery.empty) {
+        // No match - return most blurred version
+        console.log(`No match found, returning most blurred version (100%)`);
+        const mostBlurredFile = imageData.blurFilePaths[100];
+        const file = bucket.file(mostBlurredFile);
+        const [url] = await file.getSignedUrl({
+          action: "read",
+          expires: "03-01-2500",
+        });
+        return { url };
+      }
+
+      // Users are matched - check conversation progress
+      const matchDoc = matchQuery.docs[0];
+      const matchData = matchDoc.data();
+      const messageCount = matchData?.messageCount || 0;
+
+      console.log(`Match found with ${messageCount} messages`);
+
+      // Determine blur level based on message count
+      let blurLevel = 100;
+      if (messageCount >= 50) blurLevel = 0;
+      else if (messageCount >= 30) blurLevel = 25;
+      else if (messageCount >= 15) blurLevel = 50;
+      else if (messageCount >= 5) blurLevel = 75;
+
+      console.log(`Returning blur level ${blurLevel}% for ${messageCount} messages`);
+      const blurFile = imageData.blurFilePaths[blurLevel];
+      const file = bucket.file(blurFile);
+      const [url] = await file.getSignedUrl({
+        action: "read",
+        expires: "03-01-2500",
+      });
+
+      return {
+        url,
+        blurLevel,
+        messageCount,
+      };
+    } catch (error: any) {
+      console.error("Error getting blurred image URL:", error);
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to get blurred image URL"
+      );
+    }
+  }
+);
+
 export const imageFunctions = {
   uploadImage,
+  getBlurredImageUrl,
 };
