@@ -6,7 +6,8 @@ import ChatList from "../screens/ChatList";
 import ChatScreen from "../screens/ChatScreen";
 import LoadingScreen from "../components/LoadingScreen";
 import Colors from "../constants/Colors";
-import { UserService, ChatFunctions, MatchService } from "../networking";
+import { UserService, ChatFunctions } from "../networking";
+import { MatchService } from "../networking/MatchService";
 import {
   OverlayProvider,
   Chat,
@@ -39,6 +40,10 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
   const otherUserId = Object.keys(otherMembers).find((key) => key !== userId);
   const isFrozen = channel?.data?.frozen;
 
+  // Debug: Check if MatchService is properly imported
+  console.log("[DEBUG] MatchService:", MatchService);
+  console.log("[DEBUG] MatchService.getMatchId:", MatchService?.getMatchId);
+
   // Don't show the profile button if channel is frozen
   if (isFrozen) {
     return null;
@@ -52,9 +57,15 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
             console.log(
               `[PROFILE ICON] Finding match ID for users: ${userId} and ${otherUserId}`
             );
-
+            
+            // Check if the function exists before calling it
+            if (typeof MatchService.getMatchId !== 'function') {
+              console.error("[PROFILE ICON] MatchService.getMatchId is not a function:", MatchService.getMatchId);
+              return;
+            }
+            
             const matchId = await MatchService.getMatchId(userId, otherUserId);
-
+            
             if (matchId) {
               console.log(
                 `[PROFILE ICON] Navigating to ProfileScreen for userId=${otherUserId}, matchId=${matchId}`
