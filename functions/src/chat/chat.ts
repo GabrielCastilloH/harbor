@@ -63,7 +63,12 @@ export const getStreamApiKey = functions.https.onCall(
         );
       }
 
-      const apiKey = process.env.STREAM_API_KEY;
+      // Get Stream API key from Secret Manager
+      const [streamApiKeyVersion] = await secretManager.accessSecretVersion({
+        name: "projects/harbor-ch/secrets/STREAM_API_KEY/versions/latest",
+      });
+
+      const apiKey = streamApiKeyVersion.payload?.data?.toString() || "";
       if (!apiKey) {
         throw new functions.https.HttpsError(
           "internal",
@@ -120,8 +125,18 @@ export const generateUserToken = functions.https.onCall(
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
-      const apiKey = process.env.STREAM_API_KEY;
-      const apiSecret = process.env.STREAM_API_SECRET;
+      // Get Stream API credentials from Secret Manager
+      const [streamApiKeyVersion, streamApiSecretVersion] = await Promise.all([
+        secretManager.accessSecretVersion({
+          name: "projects/harbor-ch/secrets/STREAM_API_KEY/versions/latest",
+        }),
+        secretManager.accessSecretVersion({
+          name: "projects/harbor-ch/secrets/STREAM_API_SECRET/versions/latest",
+        }),
+      ]);
+
+      const apiKey = streamApiKeyVersion[0].payload?.data?.toString() || "";
+      const apiSecret = streamApiSecretVersion[0].payload?.data?.toString() || "";
 
       if (!apiKey || !apiSecret) {
         throw new functions.https.HttpsError(
@@ -183,8 +198,18 @@ export const generateToken = functions.https.onCall(
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
-      const apiKey = process.env.STREAM_API_KEY;
-      const apiSecret = process.env.STREAM_API_SECRET;
+      // Get Stream API credentials from Secret Manager
+      const [streamApiKeyVersion, streamApiSecretVersion] = await Promise.all([
+        secretManager.accessSecretVersion({
+          name: "projects/harbor-ch/secrets/STREAM_API_KEY/versions/latest",
+        }),
+        secretManager.accessSecretVersion({
+          name: "projects/harbor-ch/secrets/STREAM_API_SECRET/versions/latest",
+        }),
+      ]);
+
+      const apiKey = streamApiKeyVersion[0].payload?.data?.toString() || "";
+      const apiSecret = streamApiSecretVersion[0].payload?.data?.toString() || "";
 
       if (!apiKey || !apiSecret) {
         throw new functions.https.HttpsError(
