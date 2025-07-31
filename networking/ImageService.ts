@@ -35,12 +35,19 @@ export const getBlurredImageUrl = async (
   imageIndex: number
 ): Promise<{ url: string; blurLevel?: number; messageCount?: number }> => {
   try {
-    const imageFunctions = httpsCallable(functions, "imageFunctions-getBlurredImageUrl");
+    const imageFunctions = httpsCallable(
+      functions,
+      "imageFunctions-getBlurredImageUrl"
+    );
     const response = await imageFunctions({
       targetUserId,
       imageIndex,
     });
-    return response.data as { url: string; blurLevel?: number; messageCount?: number };
+    return response.data as {
+      url: string;
+      blurLevel?: number;
+      messageCount?: number;
+    };
   } catch (error) {
     console.error("Error getting blurred image URL:", error);
     throw error;
