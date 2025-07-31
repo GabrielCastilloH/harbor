@@ -5,18 +5,6 @@ import { CallableRequest } from "firebase-functions/v2/https";
 const db = admin.firestore();
 const DAILY_SWIPES = 100;
 
-// @ts-ignore
-async function logToNtfy(msg: string) {
-  try {
-    await fetch("https://ntfy.sh/harbor-debug-randomr", {
-      method: "POST",
-      body: msg,
-    });
-  } catch (error) {
-    console.error("Failed to log to ntfy:", error);
-  }
-}
-
 /**
  * Records a swipe and checks for matches
  */
@@ -40,21 +28,7 @@ export const createSwipe = functions.https.onCall(
     }>
   ) => {
     try {
-      console.log("=== createSwipe FUNCTION START ===");
-      console.log("createSwipe - request.data:", request.data);
-      console.log("createSwipe - request.auth:", request.auth);
-
-      await logToNtfy("=== createSwipe FUNCTION START ===");
-      await logToNtfy(
-        `createSwipe - request.data: ${JSON.stringify(request.data)}`
-      );
-      await logToNtfy(
-        `createSwipe - request.auth: ${JSON.stringify(request.auth)}`
-      );
-
       if (!request.auth) {
-        console.log("createSwipe - User not authenticated");
-        await logToNtfy("createSwipe - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -64,28 +38,17 @@ export const createSwipe = functions.https.onCall(
       const { swiperId, swipedId, direction } = request.data;
 
       if (!swiperId || !swipedId || !direction) {
-        console.log("createSwipe - Missing required parameters");
-        await logToNtfy("createSwipe - Missing required parameters");
         throw new functions.https.HttpsError(
           "invalid-argument",
           "Swiper ID, swiped ID, and direction are required"
         );
       }
 
-      console.log(
-        `createSwipe - Processing swipe: ${swiperId} -> ${swipedId} (${direction})`
-      );
-      await logToNtfy(
-        `createSwipe - Processing swipe: ${swiperId} -> ${swipedId} (${direction})`
-      );
-
       // Get the swiper's user data to check premium status and current matches
       const swiperUserDoc = await db.collection("users").doc(swiperId).get();
       const swipedUserDoc = await db.collection("users").doc(swipedId).get();
 
       if (!swiperUserDoc.exists) {
-        console.log(`createSwipe - Swiper user not found: ${swiperId}`);
-        await logToNtfy(`createSwipe - Swiper user not found: ${swiperId}`);
         throw new functions.https.HttpsError(
           "not-found",
           "Swiper user not found"
@@ -93,8 +56,6 @@ export const createSwipe = functions.https.onCall(
       }
 
       if (!swipedUserDoc.exists) {
-        console.log(`createSwipe - Swiped user not found: ${swipedId}`);
-        await logToNtfy(`createSwipe - Swiped user not found: ${swipedId}`);
         throw new functions.https.HttpsError(
           "not-found",
           "Swiped user not found"
@@ -103,16 +64,6 @@ export const createSwipe = functions.https.onCall(
 
       const swiperUser = swiperUserDoc.data();
       const swipedUser = swipedUserDoc.data();
-
-      console.log("createSwipe - User data retrieved:", {
-        swiperId,
-        swipedId,
-        swiperPremium: swiperUser?.isPremium,
-        swipedPremium: swipedUser?.isPremium,
-      });
-      await logToNtfy(
-        `createSwipe - User data retrieved - swiperPremium: ${swiperUser?.isPremium}, swipedPremium: ${swipedUser?.isPremium}`
-      );
 
       // Check if users have unmatched before
       const unmatchedCheck = await db
@@ -124,12 +75,6 @@ export const createSwipe = functions.https.onCall(
         .get();
 
       if (!unmatchedCheck.empty) {
-        console.log(
-          `createSwipe - Users have unmatched before: ${swiperId} and ${swipedId}`
-        );
-        await logToNtfy(
-          `Users have unmatched before: ${swiperId} and ${swipedId}`
-        );
         return {
           message: "Users have unmatched before, cannot match again",
           swipe: null,
@@ -175,92 +120,15 @@ export const createSwipe = functions.https.onCall(
         ...swipedActiveMatches2.docs,
       ];
 
-      console.log("createSwipe - Match query results:", {
-        swiperUser1Matches: swiperActiveMatches1.docs.length,
-        swiperUser2Matches: swiperActiveMatches2.docs.length,
-        swipedUser1Matches: swipedActiveMatches1.docs.length,
-        swipedUser2Matches: swipedActiveMatches2.docs.length,
-        totalSwiperMatches: swiperMatches.length,
-        totalSwipedMatches: swipedMatches.length,
-      });
-
-      await logToNtfy(
-        `DEBUG: Swiper matches query results - user1Id: ${swiperActiveMatches1.docs.length}, user2Id: ${swiperActiveMatches2.docs.length}`
-      );
-      await logToNtfy(
-        `DEBUG: Swiped matches query results - user1Id: ${swipedActiveMatches1.docs.length}, user2Id: ${swipedActiveMatches2.docs.length}`
-      );
-      await logToNtfy(
-        `DEBUG: Total swiper matches: ${swiperMatches.length}, Total swiped matches: ${swipedMatches.length}`
-      );
-
-      // Check if users can match based on their premium status and current matches
-      const canSwiperMatch = swiperUser?.isPremium || swiperMatches.length < 1;
-      const canSwipedMatch = swipedUser?.isPremium || swipedMatches.length < 1;
-
-      console.log("createSwipe - Match eligibility:", {
-        canSwiperMatch,
-        canSwipedMatch,
-        swiperPremium: swiperUser?.isPremium,
-        swipedPremium: swipedUser?.isPremium,
-      });
-
-      await logToNtfy(
-        `Match check - Swiper: ${swiperId}, Premium: ${swiperUser?.isPremium}, Active matches: ${swiperMatches.length}`
-      );
-      await logToNtfy(
-        `Match check - Swiped: ${swipedId}, Premium: ${swipedUser?.isPremium}, Active matches: ${swipedMatches.length}`
-      );
-
       // If user is not premium and already has a match, prevent the swipe
-      console.log("createSwipe - Checking swiper match eligibility:", {
-        swiperId,
-        isPremium: swiperUser?.isPremium,
-        matchCount: swiperMatches.length,
-        condition: !swiperUser?.isPremium && swiperMatches.length >= 1,
-      });
-      await logToNtfy(
-        `createSwipe - Checking swiper match eligibility: swiperId=${swiperId}, isPremium=${
-          swiperUser?.isPremium
-        }, matchCount=${swiperMatches.length}, condition=${
-          !swiperUser?.isPremium && swiperMatches.length >= 1
-        }`
-      );
-
       if (!swiperUser?.isPremium && swiperMatches.length >= 1) {
-        console.log(
-          `createSwipe - Swiper ${swiperId} is not premium and has ${swiperMatches.length} active matches`
-        );
-        await logToNtfy(
-          `Swiper ${swiperId} is not premium and has ${swiperMatches.length} active matches`
-        );
         throw new functions.https.HttpsError(
           "permission-denied",
           "Non-premium users cannot swipe while they have an active match"
         );
       }
 
-      console.log("createSwipe - Checking swiped match eligibility:", {
-        swipedId,
-        isPremium: swipedUser?.isPremium,
-        matchCount: swipedMatches.length,
-        condition: !swipedUser?.isPremium && swipedMatches.length >= 1,
-      });
-      await logToNtfy(
-        `createSwipe - Checking swiped match eligibility: swipedId=${swipedId}, isPremium=${
-          swipedUser?.isPremium
-        }, matchCount=${swipedMatches.length}, condition=${
-          !swipedUser?.isPremium && swipedMatches.length >= 1
-        }`
-      );
-
       if (!swipedUser?.isPremium && swipedMatches.length >= 1) {
-        console.log(
-          `createSwipe - Swiped ${swipedId} is not premium and has ${swipedMatches.length} active matches`
-        );
-        await logToNtfy(
-          `Swiped ${swipedId} is not premium and has ${swipedMatches.length} active matches`
-        );
         throw new functions.https.HttpsError(
           "permission-denied",
           "Cannot swipe on users who have active matches"
@@ -277,23 +145,12 @@ export const createSwipe = functions.https.onCall(
         .get();
 
       if (!existingSwipe.empty) {
-        console.log(
-          `createSwipe - Swipe already exists: ${swiperId} -> ${swipedId} (${direction})`
-        );
-        await logToNtfy(
-          `Swipe already exists: ${swiperId} -> ${swipedId} (${direction})`
-        );
         return {
           message: "Swipe already exists",
           swipe: existingSwipe.docs[0].data(),
           match: false,
         };
       }
-
-      console.log("createSwipe - Creating new swipe");
-      await logToNtfy(
-        `Creating new swipe: ${swiperId} -> ${swipedId} (${direction})`
-      );
 
       // Create the swipe
       const swipeData = {
@@ -317,9 +174,6 @@ export const createSwipe = functions.https.onCall(
           .get();
 
         if (!mutualSwipe.empty) {
-          console.log("createSwipe - Mutual swipe found, creating match");
-          await logToNtfy("createSwipe - Mutual swipe found, creating match");
-
           // Both users swiped right on each other - it's a match!
           const matchData = {
             user1Id: swiperId,
@@ -336,11 +190,6 @@ export const createSwipe = functions.https.onCall(
           };
 
           const matchRef = await db.collection("matches").add(matchData);
-
-          console.log("createSwipe - Match created with ID:", matchRef.id);
-          await logToNtfy(
-            `createSwipe - Match created with ID: ${matchRef.id}`
-          );
 
           // Update both users' currentMatches arrays
           await Promise.all([
@@ -364,9 +213,6 @@ export const createSwipe = functions.https.onCall(
               }),
           ]);
 
-          console.log("createSwipe - User currentMatches arrays updated");
-          await logToNtfy("createSwipe - User currentMatches arrays updated");
-
           return {
             message: "Swipe recorded and match created",
             swipe: swipeData,
@@ -376,18 +222,12 @@ export const createSwipe = functions.https.onCall(
         }
       }
 
-      console.log("createSwipe - Swipe recorded, no match");
-      await logToNtfy("createSwipe - Swipe recorded, no match");
-
       return {
         message: "Swipe recorded",
         swipe: swipeData,
         match: false,
       };
     } catch (error: any) {
-      console.error("createSwipe - Error creating swipe:", error);
-      await logToNtfy(`createSwipe - Error: ${error.message}`);
-
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
