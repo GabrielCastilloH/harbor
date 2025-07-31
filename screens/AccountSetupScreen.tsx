@@ -124,17 +124,25 @@ export default function AccountSetupScreen() {
       const imageUrls = [];
       const imagesToUpload = images || profileData.images;
 
+      console.log("AccountSetupScreen - Starting image uploads. Count:", imagesToUpload.length);
+
       for (let i = 0; i < imagesToUpload.length; i++) {
         const imageUri = imagesToUpload[i];
+        console.log(`AccountSetupScreen - Uploading image ${i + 1}/${imagesToUpload.length}:`, imageUri);
+        
         if (imageUri) {
-          // Use the actual Firebase UID for uploading images
+          console.log(`AccountSetupScreen - About to upload image ${i + 1} for user:`, firebaseUid);
           const result = await uploadImageToServer(firebaseUid, imageUri);
+          console.log(`AccountSetupScreen - Image ${i + 1} upload result:`, result);
           imageUrls.push(result.url);
           if (result.imageObject) {
             imageObjects.push(result.imageObject);
           }
         }
       }
+
+      console.log("AccountSetupScreen - All images uploaded. imageObjects:", imageObjects);
+      console.log("AccountSetupScreen - All images uploaded. imageUrls:", imageUrls);
 
       // STEP 2: Create the user profile in Firestore
       const userData = {
