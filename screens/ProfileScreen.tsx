@@ -21,7 +21,8 @@ import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
 import { MatchService, UserService } from "../networking";
 import { BlurService } from "../networking";
-import { getBlurredImageUrl } from "../networking/ImageService";
+import { getImages } from "../networking/ImageService";
+import { BlurView } from "expo-blur";
 import LoadingScreen from "../components/LoadingScreen";
 
 type ProfileScreenParams = {
@@ -40,7 +41,9 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [showBlurWarning, setShowBlurWarning] = useState(false);
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imagesWithBlur, setImagesWithBlur] = useState<
+    Array<{ url: string; blurLevel: number; messageCount: number }>
+  >([]);
   const [imageLoading, setImageLoading] = useState(true);
   const route = useRoute<RouteProp<ProfileScreenParams, "ProfileScreen">>();
   const navigation = useNavigation();
@@ -85,32 +88,24 @@ export default function ProfileScreen() {
     fetchProfile();
   }, [userId]);
 
-  // Fetch secure image URLs
+  // Fetch images with blur info
   useEffect(() => {
-    const fetchImageUrls = async () => {
-      if (!userId || !currentUserId || !profile?.images) {
+    const fetchImages = async () => {
+      if (!userId) {
         setImageLoading(false);
         return;
       }
-
       try {
-        const urls = await Promise.all(
-          profile.images.map((_, index) => getBlurredImageUrl(userId, index))
-        );
-        setImageUrls(urls.map((result) => result.url));
+        const images = await getImages(userId);
+        setImagesWithBlur(images);
       } catch (error) {
-        console.error("Error fetching image URLs:", error);
-        // Fallback to original images if secure access fails
-        setImageUrls(profile.images);
+        console.error("Error fetching images with blur:", error);
       } finally {
         setImageLoading(false);
       }
     };
-
-    if (profile) {
-      fetchImageUrls();
-    }
-  }, [profile, userId, currentUserId]);
+    fetchImages();
+  }, [userId]);
 
   // Check for blur warning
   useEffect(() => {
@@ -211,8 +206,7 @@ export default function ProfileScreen() {
           showsHorizontalScrollIndicator={false}
         >
           {imageLoading
-            ? // Show loading placeholders
-              profile.images.map((_, index) => (
+            ? profile.images.map((_, index) => (
                 <View
                   key={index}
                   style={[styles.thumbnail, styles.loadingThumbnail]}
@@ -220,20 +214,32 @@ export default function ProfileScreen() {
                   <ActivityIndicator size="small" color={Colors.primary500} />
                 </View>
               ))
-            : // Show actual images with secure URLs
-              imageUrls.map((imageUrl, index) => (
+            : imagesWithBlur.map((img, index) => (
                 <Pressable
                   key={index}
                   onPress={() => {
-                    setSelectedPhoto(imageUrl);
+                    setSelectedPhoto(img.url);
                     setModalVisible(true);
                   }}
                 >
-                  <Image
-                    source={{ uri: imageUrl }}
-                    style={styles.thumbnail}
-                    resizeMode="cover"
-                  />
+                  {img.blurLevel > 0 ? (
+                    <BlurView
+                      intensity={img.blurLevel * 2}
+                      style={styles.thumbnail}
+                    >
+                      <Image
+                        source={{ uri: img.url }}
+                        style={styles.thumbnail}
+                        resizeMode="cover"
+                      />
+                    </BlurView>
+                  ) : (
+                    <Image
+                      source={{ uri: img.url }}
+                      style={styles.thumbnail}
+                      resizeMode="cover"
+                    />
+                  )}
                 </Pressable>
               ))}
         </ScrollView>
