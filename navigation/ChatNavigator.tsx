@@ -51,40 +51,13 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
 
   return (
     <TouchableOpacity
-      onPress={async () => {
+      onPress={() => {
         if (otherUserId && userId) {
-          try {
-            console.log(
-              `[PROFILE ICON] Finding match ID for users: ${userId} and ${otherUserId}`
-            );
-
-            // Check if the function exists before calling it
-            if (typeof MatchService.getMatchId !== "function") {
-              console.error(
-                "[PROFILE ICON] MatchService.getMatchId is not a function:",
-                MatchService.getMatchId
-              );
-              return;
-            }
-
-            const matchId = await MatchService.getMatchId(userId, otherUserId);
-
-            if (matchId) {
-              console.log(
-                `[PROFILE ICON] Navigating to ProfileScreen for userId=${otherUserId}, matchId=${matchId}`
-              );
-              navigation.navigate("ProfileScreen", {
-                userId: otherUserId,
-                matchId: matchId,
-              });
-            } else {
-              console.error(
-                `[PROFILE ICON] No active match found between users: ${userId} and ${otherUserId}`
-              );
-            }
-          } catch (error) {
-            console.error("[PROFILE ICON] Error finding match ID:", error);
-          }
+          // Navigate instantly, let ProfileScreen fetch matchId
+          navigation.navigate("ProfileScreen", {
+            userId: otherUserId,
+            matchId: null, // Will be fetched in ProfileScreen
+          });
         } else {
           console.error(
             `[PROFILE ICON] Navigation failed: otherUserId or userId missing. otherUserId=${otherUserId}, userId=${userId}`
