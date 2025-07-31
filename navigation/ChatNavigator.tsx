@@ -84,33 +84,76 @@ const theme: DeepPartial<Theme> = {
 };
 
 export default function ChatNavigator() {
-  const { userId } = useAppContext();
+  const { 
+    userId, 
+    streamApiKey, 
+    streamUserToken, 
+    setStreamApiKey, 
+    setStreamUserToken 
+  } = useAppContext();
   const [profile, setProfile] = useState<any>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
-  // Define these states at the top level - always need to be declared
-  const [chatUserToken, setChatUserToken] = useState<string | null>(null);
-  const [chatApiKey, setChatApiKey] = useState<string | null>(null);
+  // Use pre-loaded credentials from context, fallback to fetching if not available
+  const [chatUserToken, setChatUserToken] = useState<string | null>(streamUserToken);
+  const [chatApiKey, setChatApiKey] = useState<string | null>(streamApiKey);
 
-  // Fetch Stream API key
+  // Update local state when context values change
+  useEffect(() => {
+    if (streamApiKey) {
+      setChatApiKey(streamApiKey);
+    }
+  }, [streamApiKey]);
+
+  useEffect(() => {
+    if (streamUserToken) {
+      setChatUserToken(streamUserToken);
+    }
+  }, [streamUserToken]);
+
+  // Fetch Stream API key only if not pre-loaded
   useEffect(() => {
     const fetchApiKey = async () => {
+      if (chatApiKey) {
+        console.log("ChatNavigator - Using pre-loaded API key");
+        return;
+      }
+
       try {
+        console.log("ChatNavigator - Fetching API key (not pre-loaded)");
         const apiKey = await ChatFunctions.getStreamApiKey();
         setChatApiKey(apiKey);
+        setStreamApiKey(apiKey); // Store in context for future use
       } catch (error) {
         console.error("ChatNavigator - Failed to fetch API key:", error);
       }
     };
 
     fetchApiKey();
-  }, []);
+  }, [chatApiKey, setStreamApiKey]);
 
-  // Add debugging for API key
+  // Fetch user token only if not pre-loaded
   useEffect(() => {
-    // console.log("ChatNavigator - API Key length:", chatApiKey?.length || 0);
-    // console.log("ChatNavigator - API Key starts with:", chatApiKey?.substring(0, 10));
-  }, [chatApiKey]);
+    const fetchToken = async () => {
+      if (chatUserToken || !userId) {
+        if (chatUserToken) {
+          console.log("ChatNavigator - Using pre-loaded user token");
+        }
+        return;
+      }
+
+      try {
+        console.log("ChatNavigator - Fetching user token (not pre-loaded)");
+        const token = await ChatFunctions.generateToken(userId);
+        setChatUserToken(token);
+        setStreamUserToken(token); // Store in context for future use
+      } catch (error) {
+        console.error("ChatNavigator - Failed to fetch chat token:", error);
+      }
+    };
+
+    fetchToken();
+  }, [chatUserToken, userId, setStreamUserToken]);
 
   // Create a memoized user object to avoid recreating on each render
   const user = useMemo(() => {
@@ -128,20 +171,10 @@ export default function ChatNavigator() {
     tokenOrProvider: chatUserToken || "",
   });
 
-  // Add debugging for chat client
-  useEffect(() => {
-    // console.log("ChatNavigator - Chat client created:", !!chatClient);
-    // console.log("ChatNavigator - User data:", user);
-    // console.log("ChatNavigator - Token available:", !!chatUserToken);
-  }, [chatClient, user, chatUserToken]);
-
   // Fetch user profile data
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!userId) {
-        // console.log(
-        //   "ChatNavigator - No userId available, cannot fetch profile"
-        // );
         return;
       }
 
@@ -177,52 +210,15 @@ export default function ChatNavigator() {
     fetchUserProfile();
   }, [userId]);
 
-  // Fetch the token when profile is loaded - now using userId
-  useEffect(() => {
-    if (!userId) {
-      console.warn("ChatNavigator - Token fetch failed: No userId available");
-      return;
-    }
-
-    async function getToken() {
-      try {
-        const token = await ChatFunctions.generateToken(userId as string);
-        setChatUserToken(token);
-      } catch (error: unknown) {
-        console.error("ChatNavigator - Failed to fetch chat token:", error);
-      }
-    }
-
-    getToken();
-  }, [userId]);
-
-  // Log state changes
-  useEffect(() => {
-    // console.log(
-    //   "ChatNavigator - Token updated:",
-    //   chatUserToken ? "Has token" : "No token"
-    // );
-  }, [chatUserToken]);
-
-  useEffect(() => {
-    // console.log("ChatNavigator - Client updated:", !!chatClient);
-  }, [chatClient]);
-
   // Conditionally render loading or chat UI
   if (isLoadingProfile || !profile) {
-    // console.log("ChatNavigator - Waiting for profile to load");
     return <LoadingScreen loadingText="Loading..." />;
   }
 
   if (!chatUserToken || !chatClient) {
-    // console.log(
-    //   "ChatNavigator - Showing LoadingScreen because:",
-    //   !chatUserToken ? "No token" : "No client"
-    // );
     return <LoadingScreen loadingText="Loading..." />;
   }
 
-  // console.log("ChatNavigator - Rendering chat UI");
   return (
     <OverlayProvider value={{ style: theme }}>
       <Chat client={chatClient}>

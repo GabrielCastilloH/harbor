@@ -16,10 +16,17 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { preloadChatCredentials, clearChatCredentials } from "../util/chatPreloader";
 
 export default function SignIn() {
-  const { setIsAuthenticated, setUserId, setProfile, setAuthToken } =
-    useAppContext();
+  const { 
+    setIsAuthenticated, 
+    setUserId, 
+    setProfile, 
+    setAuthToken,
+    setStreamApiKey,
+    setStreamUserToken 
+  } = useAppContext();
   const [isLoading, setIsLoading] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
 
@@ -38,16 +45,36 @@ export default function SignIn() {
         setProfile(null);
         setIsAuthenticated(false);
         setAuthToken(null);
+        setStreamApiKey(null);
+        setStreamUserToken(null);
 
         // Clear stored data from AsyncStorage
         await AsyncStorage.multiRemove(["@authToken", "@user"]);
+        
+        // Clear chat credentials
+        await clearChatCredentials();
       } catch (error) {}
     };
 
     cleanupAuth();
-  }, [setUserId, setProfile, setIsAuthenticated, setAuthToken]);
+  }, [setUserId, setProfile, setIsAuthenticated, setAuthToken, setStreamApiKey, setStreamUserToken]);
 
-  const handleExistingUser = (userData: any) => {
+  const handleExistingUser = async (userData: any) => {
+    try {
+      // Pre-load chat credentials for existing users
+      console.log("SignIn - Pre-loading chat credentials for existing user:", userData.uid);
+      const { apiKey, userToken } = await preloadChatCredentials(userData.uid);
+      
+      // Update context with pre-loaded credentials
+      setStreamApiKey(apiKey);
+      setStreamUserToken(userToken);
+      
+      console.log("SignIn - Successfully pre-loaded chat credentials");
+    } catch (error) {
+      console.error("SignIn - Error pre-loading chat credentials:", error);
+      // Don't block sign-in if chat pre-loading fails
+    }
+
     // Handle existing user - navigate to main app
     setIsLoading(false); // Stop loading when navigation occurs
     setIsAuthenticated(true);
@@ -56,6 +83,7 @@ export default function SignIn() {
 
   const handleNewUser = (user: any) => {
     // Handle new user - navigate to setup/onboarding
+    // Don't pre-load chat credentials for new users since they need to complete setup first
     setIsNewUser(true);
     setIsLoading(false); // Stop loading when navigation occurs
     setIsAuthenticated(true);
