@@ -286,7 +286,24 @@ export const createChatChannel = functions.https.onCall(
       // Create channel ID (sorted to ensure consistency)
       const channelId = [userId1, userId2].sort().join("-");
 
-      // Create or get the channel
+      // Find the match between these users
+      const matchQuery = await db
+        .collection("matches")
+        .where("user1Id", "in", [userId1, userId2])
+        .where("user2Id", "in", [userId1, userId2])
+        .where("isActive", "==", true)
+        .limit(1)
+        .get();
+
+      let matchId = null;
+      if (!matchQuery.empty) {
+        matchId = matchQuery.docs[0].id;
+        console.log(`Found match ${matchId} for users ${userId1} and ${userId2}`);
+      } else {
+        console.log(`No active match found for users ${userId1} and ${userId2}`);
+      }
+
+      // Create or get the channel with matchId in the data
       const channel = serverClient.channel("messaging", channelId, {
         members: [userId1, userId2],
         created_by_id: request.auth.uid,
@@ -294,10 +311,13 @@ export const createChatChannel = functions.https.onCall(
 
       try {
         await channel.create();
+        // Store matchId in channel data for later retrieval
+        console.log(`Channel created with matchId: ${matchId}`);
       } catch (err: any) {
         if (err && err.code === 16) {
           // Channel already exists, just use it
           await channel.watch();
+          console.log(`Channel already exists, using existing channel`);
         } else {
           throw err;
         }
@@ -403,6 +423,18 @@ export const updateMessageCount = functions.https.onCall(
         );
       }
 
+      console.log(`Updating message count for match: ${matchId}`);
+
+      // Get current message count
+      const matchDoc = await db.collection("matches").doc(matchId).get();
+      if (!matchDoc.exists) {
+        console.log(`Match ${matchId} not found`);
+        throw new functions.https.HttpsError("not-found", "Match not found");
+      }
+
+      const currentCount = matchDoc.data()?.messageCount || 0;
+      console.log(`Current message count: ${currentCount}`);
+
       // Increment message count in Firestore
       await db
         .collection("matches")
@@ -412,7 +444,9 @@ export const updateMessageCount = functions.https.onCall(
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-      return { success: true };
+      console.log(`Message count updated to: ${currentCount + 1}`);
+
+      return { success: true, newCount: currentCount + 1 };
     } catch (error) {
       console.error("Error updating message count:", error);
       throw new functions.https.HttpsError(
