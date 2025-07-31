@@ -53,3 +53,19 @@ export const getBlurredImageUrl = async (
     throw error;
   }
 };
+
+/**
+ * Gets all images for a user, each with the correct URL and blurLevel/messageCount
+ */
+export const getImages = async (
+  targetUserId: string
+): Promise<Array<{ url: string; blurLevel: number; messageCount: number }>> => {
+  try {
+    const imageFunctions = httpsCallable(functions, "imageFunctions-getImages");
+    const response = await imageFunctions({ targetUserId });
+    return (response.data as any).images;
+  } catch (error) {
+    console.error("Error getting images:", error);
+    throw error;
+  }
+};
