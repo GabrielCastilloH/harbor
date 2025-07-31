@@ -12,7 +12,7 @@ service cloud.firestore {
       allow read: if request.auth != null;
     }
     
-    // Allow users to manage their own matches
+    // Allow users to read and write their own matches
     match /matches/{matchId} {
       allow read, write: if request.auth != null && 
         (resource.data.user1Id == request.auth.uid || resource.data.user2Id == request.auth.uid);
@@ -24,14 +24,16 @@ service cloud.firestore {
         (request.resource.data.user1Id == request.auth.uid || request.resource.data.user2Id == request.auth.uid);
     }
     
-    // Allow users to manage their own swipes
+    // Allow users to read and write their own swipes
     match /swipes/{swipeId} {
-      allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && 
+        (resource.data.swiperId == request.auth.uid || resource.data.swipedId == request.auth.uid);
     }
     
     // Allow users to create new swipes
     match /swipes/{swipeId} {
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && 
+        (request.resource.data.swiperId == request.auth.uid || request.resource.data.swipedId == request.auth.uid);
     }
     
     // Allow users to manage their own chat messages
