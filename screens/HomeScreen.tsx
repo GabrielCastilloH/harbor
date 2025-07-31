@@ -57,29 +57,29 @@ export default function HomeScreen() {
 
     // Set up match event handler
     socketService.onMatch(async (matchData) => {
-      console.log("HomeScreen - Socket match event received:", matchData);
-
+      console.log("HomeScreen - [SOCKET] Match event received:", matchData);
       try {
-        // Create chat channel for the matched users
         const chatResponse = await ChatFunctions.createChannel({
           userId1: userId,
           userId2: matchData.matchedProfile.uid,
         });
-
         console.log(
-          "HomeScreen - Chat channel created from socket:",
+          "HomeScreen - [SOCKET][CHAT] Chat channel created:",
           chatResponse
         );
       } catch (chatError) {
         console.error(
-          "HomeScreen - Error creating chat channel from socket:",
+          "HomeScreen - [SOCKET][CHAT] Error creating chat channel:",
           chatError
         );
+      } finally {
+        setMatchedProfile(matchData.matchedProfile);
+        setShowMatch(true);
+        console.log(
+          "HomeScreen - [SOCKET][MODAL] Match modal shown for:",
+          matchData.matchedProfile.uid
+        );
       }
-
-      // Show match modal after chat creation (or even if it fails)
-      setMatchedProfile(matchData.matchedProfile);
-      setShowMatch(true);
     });
 
     // Cleanup on unmount
@@ -154,7 +154,6 @@ export default function HomeScreen() {
   };
 
   const handleSwipeRight = async (profile: Profile) => {
-    // Prevent duplicate swipes on the same profile or while a swipe is in progress
     if (swipeInProgress || lastSwipedProfile === profile.uid) {
       console.log("HomeScreen - Swipe blocked: duplicate or in progress");
       return;
@@ -170,41 +169,50 @@ export default function HomeScreen() {
 
     try {
       console.log(
-        "HomeScreen - Starting swipe right for profile:",
+        "HomeScreen - [SWIPE] Starting swipe right for profile:",
         profile.uid
       );
       setSwipeInProgress(true);
       setLastSwipedProfile(profile.uid);
 
+      // Step 1: Create the swipe
       const response = await SwipeService.createSwipe(
         userId,
         profile.uid,
         "right"
       );
-
-      console.log("HomeScreen - Swipe response:", response);
+      console.log(
+        "HomeScreen - [SWIPE] SwipeService.createSwipe result:",
+        response
+      );
 
       // Step 2: If it's a match, create chat channel and show modal
       if (response.match) {
-        console.log("HomeScreen - Match detected, creating chat channel");
-
+        console.log(
+          "HomeScreen - [MATCH] Match detected, attempting to create chat channel"
+        );
         try {
-          // Create chat channel for the matched users
           const chatResponse = await ChatFunctions.createChannel({
             userId1: userId,
             userId2: profile.uid,
           });
-
-          console.log("HomeScreen - Chat channel created:", chatResponse);
-
-          // Step 3: Show match modal after chat is created
-          setMatchedProfile(profile);
-          setShowMatch(true);
+          console.log(
+            "HomeScreen - [CHAT] Chat channel created:",
+            chatResponse
+          );
         } catch (chatError) {
-          console.error("HomeScreen - Error creating chat channel:", chatError);
-          // Even if chat creation fails, still show the match modal
+          console.error(
+            "HomeScreen - [CHAT] Error creating chat channel:",
+            chatError
+          );
+        } finally {
+          // Always show the match modal if a match is made
           setMatchedProfile(profile);
           setShowMatch(true);
+          console.log(
+            "HomeScreen - [MODAL] Match modal shown for:",
+            profile.uid
+          );
         }
       }
 
@@ -218,9 +226,8 @@ export default function HomeScreen() {
         setCurrentProfile(null);
       }
     } catch (error) {
-      console.error("HomeScreen - Error handling right swipe:", error);
+      console.error("HomeScreen - [ERROR] Error handling right swipe:", error);
     } finally {
-      // Reset swipe flags after a short delay
       setTimeout(() => {
         setSwipeInProgress(false);
         setLastSwipedProfile(null);
