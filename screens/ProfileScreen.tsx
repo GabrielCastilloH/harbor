@@ -164,7 +164,7 @@ export default function ProfileScreen() {
       ]
     );
   };
-  r;
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
