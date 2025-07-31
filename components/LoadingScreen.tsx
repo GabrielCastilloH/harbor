@@ -1,12 +1,25 @@
 import React from "react";
-import { View, StyleSheet, ActivityIndicator, Text, Image } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ActivityIndicator,
+  Text,
+  Image,
+  Animated,
+} from "react-native";
 import Colors from "../constants/Colors";
 
 interface LoadingScreenProps {
   loadingText: string;
+  progressBar?: {
+    progress: number; // 0 to 1
+  };
 }
 
-export default function LoadingScreen({ loadingText }: LoadingScreenProps) {
+export default function LoadingScreen({
+  loadingText,
+  progressBar,
+}: LoadingScreenProps) {
   return (
     <View style={styles.container}>
       <Image
@@ -15,11 +28,31 @@ export default function LoadingScreen({ loadingText }: LoadingScreenProps) {
         style={styles.logo}
         resizeMode="contain"
       />
-      <ActivityIndicator
-        size="large"
-        color={Colors.primary500}
-        style={styles.spinner}
-      />
+      {progressBar ? (
+        <View style={styles.progressBarContainer}>
+          <View style={styles.progressBarBackground}>
+            <View
+              style={[
+                styles.progressBarFill,
+                {
+                  width: `${
+                    Math.max(0, Math.min(1, progressBar.progress)) * 100
+                  }%`,
+                },
+              ]}
+            />
+          </View>
+          <Text style={styles.progressText}>
+            {Math.round(progressBar.progress * 100)}%
+          </Text>
+        </View>
+      ) : (
+        <ActivityIndicator
+          size="large"
+          color={Colors.primary500}
+          style={styles.spinner}
+        />
+      )}
       <Text style={styles.text}>{loadingText}</Text>
     </View>
   );
@@ -39,6 +72,29 @@ const styles = StyleSheet.create({
   },
   spinner: {
     marginBottom: 20,
+  },
+  progressBarContainer: {
+    width: 220,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  progressBarBackground: {
+    width: "100%",
+    height: 16,
+    backgroundColor: Colors.secondary200,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    backgroundColor: Colors.primary500,
+    borderRadius: 8,
+  },
+  progressText: {
+    marginTop: 6,
+    color: Colors.primary500,
+    fontWeight: "bold",
+    fontSize: 14,
   },
   text: {
     fontSize: 18,
