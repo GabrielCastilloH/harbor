@@ -6,7 +6,10 @@ const functions = getFunctions(app, "us-central1");
 export class ChatFunctions {
   static async getStreamApiKey() {
     try {
-      const getStreamApiKey = httpsCallable(functions, "chat-getStreamApiKey");
+      const getStreamApiKey = httpsCallable(
+        functions,
+        "chatFunctions-getStreamApiKey"
+      );
       const result = await getStreamApiKey();
       const data = result.data as { apiKey: string };
 
@@ -19,7 +22,10 @@ export class ChatFunctions {
 
   static async generateToken(userId: string) {
     try {
-      const generateToken = httpsCallable(functions, "chat-generateToken");
+      const generateToken = httpsCallable(
+        functions,
+        "chatFunctions-generateToken"
+      );
       const result = await generateToken({ userId });
       const data = result.data as { token: string };
 
@@ -32,7 +38,10 @@ export class ChatFunctions {
 
   static async createChannel(channelData: any) {
     try {
-      const createChannel = httpsCallable(functions, "chat-createChatChannel");
+      const createChannel = httpsCallable(
+        functions,
+        "chatFunctions-createChatChannel"
+      );
       const result = await createChannel(channelData);
       const data = result.data as any;
 
@@ -58,7 +67,7 @@ export async function fetchUpdateChannelChatStatus(
   try {
     const updateChannelChatStatus = httpsCallable(
       functions,
-      "chat-updateChannelChatStatus"
+      "chatFunctions-updateChannelChatStatus"
     );
     const result = await updateChannelChatStatus({ channelId, freeze });
     const data = result.data as { channel: any };
@@ -75,7 +84,7 @@ export async function updateMessageCount(matchId: string): Promise<void> {
   try {
     const updateMessageCount = httpsCallable(
       functions,
-      "chat-updateMessageCount"
+      "chatFunctions-updateMessageCount"
     );
     const result = await updateMessageCount({ matchId });
     const data = result.data as { success: boolean };
