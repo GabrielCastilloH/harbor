@@ -57,15 +57,18 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
             console.log(
               `[PROFILE ICON] Finding match ID for users: ${userId} and ${otherUserId}`
             );
-            
+
             // Check if the function exists before calling it
-            if (typeof MatchService.getMatchId !== 'function') {
-              console.error("[PROFILE ICON] MatchService.getMatchId is not a function:", MatchService.getMatchId);
+            if (typeof MatchService.getMatchId !== "function") {
+              console.error(
+                "[PROFILE ICON] MatchService.getMatchId is not a function:",
+                MatchService.getMatchId
+              );
               return;
             }
-            
+
             const matchId = await MatchService.getMatchId(userId, otherUserId);
-            
+
             if (matchId) {
               console.log(
                 `[PROFILE ICON] Navigating to ProfileScreen for userId=${otherUserId}, matchId=${matchId}`
