@@ -10,9 +10,16 @@ export class SwipeService {
     direction: "left" | "right"
   ) {
     try {
-      console.log("SwipeService - Starting createSwipe with:", { swiperId, swipedId, direction });
-      
-      const createSwipe = httpsCallable(functions, "swipes-createSwipe");
+      console.log("SwipeService - Starting createSwipe with:", {
+        swiperId,
+        swipedId,
+        direction,
+      });
+
+      const createSwipe = httpsCallable(
+        functions,
+        "swipeFunctions-createSwipe"
+      );
       const result = await createSwipe({ swiperId, swipedId, direction });
       const data = result.data as any;
 
@@ -23,7 +30,7 @@ export class SwipeService {
       console.error("SwipeService - Error details:", {
         code: error.code,
         message: error.message,
-        details: error.details
+        details: error.details,
       });
       throw error;
     }
@@ -31,7 +38,10 @@ export class SwipeService {
 
   static async countRecentSwipes(id: string) {
     try {
-      const countRecentSwipes = httpsCallable(functions, "swipes-countRecentSwipes");
+      const countRecentSwipes = httpsCallable(
+        functions,
+        "swipeFunctions-countRecentSwipes"
+      );
       const result = await countRecentSwipes({ id });
       const data = result.data as any;
 
@@ -44,7 +54,10 @@ export class SwipeService {
 
   static async getSwipesByUser(id: string) {
     try {
-      const getSwipesByUser = httpsCallable(functions, "swipes-getSwipesByUser");
+      const getSwipesByUser = httpsCallable(
+        functions,
+        "swipeFunctions-getSwipesByUser"
+      );
       const result = await getSwipesByUser({ id });
       const data = result.data as any;
 
