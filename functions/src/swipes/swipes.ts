@@ -40,10 +40,18 @@ export const createSwipe = functions.https.onCall(
       direction: "left" | "right";
     }>
   ) => {
+    // Generate unique request ID
+    const requestId = `${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+
     try {
-      await logToNtfy(`SWIPE START: ${JSON.stringify(request.data)}`);
+      await logToNtfy(
+        `[${requestId}] SWIPE START: ${JSON.stringify(request.data)}`
+      );
       // Force new deployment
       if (!request.auth) {
+        await logToNtfy(`[${requestId}] ERROR: User not authenticated`);
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -53,6 +61,7 @@ export const createSwipe = functions.https.onCall(
       const { swiperId, swipedId, direction } = request.data;
 
       if (!swiperId || !swipedId || !direction) {
+        await logToNtfy(`[${requestId}] ERROR: Missing required parameters`);
         throw new functions.https.HttpsError(
           "invalid-argument",
           "Swiper ID, swiped ID, and direction are required"
@@ -65,7 +74,7 @@ export const createSwipe = functions.https.onCall(
 
       if (!swiperUserDoc.exists) {
         await logToNtfy(
-          `ERROR: Swiper user not found: ${request.data.swiperId}`
+          `[${requestId}] ERROR: Swiper user not found: ${request.data.swiperId}`
         );
         throw new functions.https.HttpsError(
           "not-found",
@@ -75,7 +84,7 @@ export const createSwipe = functions.https.onCall(
 
       if (!swipedUserDoc.exists) {
         await logToNtfy(
-          `ERROR: Swiped user not found: ${request.data.swipedId}`
+          `[${requestId}] ERROR: Swiped user not found: ${request.data.swipedId}`
         );
         throw new functions.https.HttpsError(
           "not-found",
@@ -97,7 +106,7 @@ export const createSwipe = functions.https.onCall(
 
       if (!unmatchedCheck.empty) {
         await logToNtfy(
-          `INFO: Users have unmatched before: ${request.data.swiperId} and ${request.data.swipedId}`
+          `[${requestId}] INFO: Users have unmatched before: ${request.data.swiperId} and ${request.data.swipedId}`
         );
         return {
           message: "Users have unmatched before, cannot match again",
@@ -170,7 +179,7 @@ export const createSwipe = functions.https.onCall(
 
       if (!existingSwipe.empty) {
         await logToNtfy(
-          `INFO: Swipe already exists: ${request.data.swiperId} -> ${request.data.swipedId} (${request.data.direction})`
+          `[${requestId}] INFO: Swipe already exists: ${request.data.swiperId} -> ${request.data.swipedId} (${request.data.direction})`
         );
         return {
           message: "Swipe already exists",
@@ -202,7 +211,7 @@ export const createSwipe = functions.https.onCall(
 
         if (!mutualSwipe.empty) {
           await logToNtfy(
-            `MATCH MADE: ${request.data.swiperId} <-> ${request.data.swipedId}`
+            `[${requestId}] MATCH MADE: ${request.data.swiperId} <-> ${request.data.swipedId}`
           );
           // Both users swiped right on each other - it's a match!
           const matchData = {
@@ -258,7 +267,7 @@ export const createSwipe = functions.https.onCall(
         match: false,
       };
     } catch (error: any) {
-      await logToNtfy(`ERROR: ${error?.message || error}`);
+      await logToNtfy(`[${requestId}] ERROR: ${error?.message || error}`);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
