@@ -29,7 +29,9 @@ const emptyProfile: Profile = {
   q6: "",
 };
 
-export default function AccountSetupScreen() {
+export default function AccountSetupScreen({
+  showProgressBar = true,
+}: { showProgressBar?: boolean } = {}) {
   const {
     setUserId,
     setProfile,
@@ -54,6 +56,7 @@ export default function AccountSetupScreen() {
     email: "",
   });
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0); // 0 to 1
 
   const handleLogout = async () => {
     try {
@@ -89,6 +92,7 @@ export default function AccountSetupScreen() {
 
   const handleSave = async (images?: string[]) => {
     setLoading(true);
+    setProgress(0);
     try {
       const currentUser = auth.currentUser;
       if (!currentUser) {
@@ -105,11 +109,20 @@ export default function AccountSetupScreen() {
         "AccountSetupScreen - Starting sequential image uploads. Count:",
         imagesToUpload.length
       );
-      // Upload all images at once, sequentially
-      const uploadResults = await uploadImagesSequentially(
-        firebaseUid,
-        imagesToUpload
-      );
+      // Upload all images at once, sequentially, with progress
+      let uploadResults: any[] = [];
+      if (imagesToUpload.length > 0) {
+        for (let i = 0; i < imagesToUpload.length; i++) {
+          // Upload one image at a time
+          const singleResult = await uploadImagesSequentially(firebaseUid, [
+            imagesToUpload[i],
+          ]);
+          uploadResults.push(singleResult[0]);
+          setProgress((i + 1) / (imagesToUpload.length + 2)); // +2 for profile and chat steps
+        }
+      }
+      // If no images, progress is 1/3 after this step
+      if (imagesToUpload.length === 0) setProgress(1 / 3);
       const imageObjects = uploadResults.map(({ originalUrl, blurredUrl }) => ({
         originalUrl,
         blurredUrl,
@@ -123,6 +136,7 @@ export default function AccountSetupScreen() {
         "AccountSetupScreen - All images uploaded. imageUrls:",
         imageUrls
       );
+      setProgress(imagesToUpload.length / (imagesToUpload.length + 2));
       // STEP 2: Create the user profile in Firestore
       const userData = {
         firstName: profileData.firstName,
@@ -143,7 +157,8 @@ export default function AccountSetupScreen() {
         "AccountSetupScreen - About to call createUserProfile with data:",
         userData
       );
-      const result = await createUserProfile(userData);
+      await createUserProfile(userData);
+      setProgress((imagesToUpload.length + 1) / (imagesToUpload.length + 2));
       try {
         console.log(
           "AccountSetupScreen - Pre-loading chat credentials for new user:",
@@ -161,6 +176,7 @@ export default function AccountSetupScreen() {
           error
         );
       }
+      setProgress(1);
       setUserId(firebaseUid);
       setProfile({
         ...profileData,
@@ -176,7 +192,12 @@ export default function AccountSetupScreen() {
   };
 
   if (loading) {
-    return <LoadingScreen loadingText="Creating your profile..." />;
+    return (
+      <LoadingScreen
+        loadingText="Creating your profile..."
+        {...(showProgressBar ? { progressBar: { progress } } : {})}
+      />
+    );
   }
 
   return (
