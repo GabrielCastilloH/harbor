@@ -41,7 +41,7 @@ export async function uploadImageToServer(
   userId: string,
   imageUri: string,
   quality: number = 0.8
-): Promise<string> {
+): Promise<{ url: string; imageObject: any }> {
   try {
     // Compress the image
     console.log(`Compressing image with quality ${quality}...`);
@@ -69,10 +69,17 @@ export async function uploadImageToServer(
       contentType: "image/jpeg",
     });
 
-    const response = result.data as { url: string; fileId: string };
+    const response = result.data as {
+      url: string;
+      fileId: string;
+      imageObject?: any;
+    };
     console.log("Image uploaded successfully with blurring:", response.url);
 
-    return response.url;
+    return {
+      url: response.url,
+      imageObject: response.imageObject,
+    };
   } catch (error) {
     console.error("Error uploading image:", error);
     throw error;

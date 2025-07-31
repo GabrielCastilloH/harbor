@@ -44,6 +44,7 @@ export const uploadImage = functions.https.onCall(
       contentType?: string;
     }>
   ) => {
+    console.log("uploadImage called", request.data);
     try {
       if (!request.auth) {
         throw new functions.https.HttpsError(
@@ -117,16 +118,17 @@ export const uploadImage = functions.https.onCall(
       console.log(`Storing image object in Firestore:`, imageObject);
 
       if (!userDoc.exists) {
-        // User doesn't exist yet (during account setup), create the document
-        console.log(`Creating new user document for ${userId} with image`);
-        await db
-          .collection("users")
-          .doc(userId)
-          .set({
-            images: [imageObject],
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
+        // User doesn't exist yet (during account setup), just return the image data
+        // The user creation function will handle creating the user document
+        console.log(
+          `User ${userId} doesn't exist yet, returning image data for later use`
+        );
+        return {
+          message: "Image uploaded successfully",
+          fileId: mostBlurredFile,
+          url,
+          imageObject, // Return the image object for the user creation function
+        };
       } else {
         // User exists, update the images array
         const userData = userDoc.data();
