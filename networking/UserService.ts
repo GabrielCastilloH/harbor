@@ -6,6 +6,7 @@ const functions = getFunctions(app, "us-central1");
 
 export class UserService {
   static async createUser(userData: any) {
+    console.log("UserService - createUser called with userData:", userData);
     // await logToNtfy(
     //   `UserService - createUser called with userData: ${JSON.stringify(userData)}`
     // );
@@ -17,10 +18,12 @@ export class UserService {
     // );
 
     try {
+      console.log("UserService - About to call userFunctions-createUser");
       const createUser = httpsCallable(functions, "userFunctions-createUser");
       const result = await createUser(userData);
       const data = result.data as any;
 
+      console.log("UserService - createUser success:", data);
       // await logToNtfy(
       //   `UserService - createUser success: ${JSON.stringify(data)}`
       // );
