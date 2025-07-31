@@ -213,6 +213,20 @@ export const createSwipe = functions.https.onCall(
       );
 
       // If user is not premium and already has a match, prevent the swipe
+      console.log("createSwipe - Checking swiper match eligibility:", {
+        swiperId,
+        isPremium: swiperUser?.isPremium,
+        matchCount: swiperMatches.length,
+        condition: !swiperUser?.isPremium && swiperMatches.length >= 1,
+      });
+      await logToNtfy(
+        `createSwipe - Checking swiper match eligibility: swiperId=${swiperId}, isPremium=${
+          swiperUser?.isPremium
+        }, matchCount=${swiperMatches.length}, condition=${
+          !swiperUser?.isPremium && swiperMatches.length >= 1
+        }`
+      );
+
       if (!swiperUser?.isPremium && swiperMatches.length >= 1) {
         console.log(
           `createSwipe - Swiper ${swiperId} is not premium and has ${swiperMatches.length} active matches`
@@ -225,6 +239,20 @@ export const createSwipe = functions.https.onCall(
           "Non-premium users cannot swipe while they have an active match"
         );
       }
+
+      console.log("createSwipe - Checking swiped match eligibility:", {
+        swipedId,
+        isPremium: swipedUser?.isPremium,
+        matchCount: swipedMatches.length,
+        condition: !swipedUser?.isPremium && swipedMatches.length >= 1,
+      });
+      await logToNtfy(
+        `createSwipe - Checking swiped match eligibility: swipedId=${swipedId}, isPremium=${
+          swipedUser?.isPremium
+        }, matchCount=${swipedMatches.length}, condition=${
+          !swipedUser?.isPremium && swipedMatches.length >= 1
+        }`
+      );
 
       if (!swipedUser?.isPremium && swipedMatches.length >= 1) {
         console.log(
