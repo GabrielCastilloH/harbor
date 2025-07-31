@@ -42,26 +42,38 @@ export async function uploadImageToServer(
   imageUri: string,
   quality: number = 0.8
 ): Promise<{ url: string; imageObject: any }> {
+  // Changed return type
+  console.log("uploadImageToServer - Starting upload for userId:", userId);
+  console.log("uploadImageToServer - imageUri:", imageUri);
+  console.log("uploadImageToServer - quality:", quality);
+
   try {
+    console.log("uploadImageToServer - Compressing image...");
     // Compress the image
-    console.log(`Compressing image with quality ${quality}...`);
-    const manipResult = await ImageManipulator.manipulateAsync(
+    const compressedImage = await ImageManipulator.manipulateAsync(
       imageUri,
       [{ resize: { width: 800 } }],
-      {
-        compress: quality,
-        format: ImageManipulator.SaveFormat.JPEG,
-      }
+      { compress: quality, format: ImageManipulator.SaveFormat.JPEG }
+    );
+
+    console.log("uploadImageToServer - Image compressed successfully");
+    console.log(
+      "uploadImageToServer - Compressed image URI:",
+      compressedImage.uri
     );
 
     // Convert to base64
-    const base64 = await FileSystem.readAsStringAsync(manipResult.uri, {
+    const base64 = await FileSystem.readAsStringAsync(compressedImage.uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
 
-    console.log("Uploading image using new blurring function...");
+    console.log(
+      "uploadImageToServer - Image converted to base64. Length:",
+      base64.length
+    );
 
-    // Use the new blurring function
+    // Upload to Firebase Storage using the cloud function
+    console.log("uploadImageToServer - Calling imageFunctions-uploadImage...");
     const uploadImage = httpsCallable(functions, "imageFunctions-uploadImage");
     const result = await uploadImage({
       userId,
@@ -69,19 +81,25 @@ export async function uploadImageToServer(
       contentType: "image/jpeg",
     });
 
+    console.log("uploadImageToServer - Firebase function result:", result);
+
     const response = result.data as {
       url: string;
       fileId: string;
       imageObject?: any;
     };
-    console.log("Image uploaded successfully with blurring:", response.url);
+    console.log("uploadImageToServer - Response data:", response);
+    console.log(
+      "uploadImageToServer - Image uploaded successfully with blurring:",
+      response.url
+    );
 
     return {
       url: response.url,
-      imageObject: response.imageObject,
+      imageObject: response.imageObject, // Now returning imageObject
     };
   } catch (error) {
-    console.error("Error uploading image:", error);
+    console.error("uploadImageToServer - Error uploading image:", error);
     throw error;
   }
 }

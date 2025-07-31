@@ -7,6 +7,8 @@ const functions = getFunctions(app, "us-central1");
 export class UserService {
   static async createUser(userData: any) {
     console.log("UserService - createUser called with userData:", userData);
+    console.log("UserService - userData type:", typeof userData);
+    console.log("UserService - userData keys:", Object.keys(userData || {}));
     // await logToNtfy(
     //   `UserService - createUser called with userData: ${JSON.stringify(userData)}`
     // );
@@ -20,7 +22,9 @@ export class UserService {
     try {
       console.log("UserService - About to call userFunctions-createUser");
       const createUser = httpsCallable(functions, "userFunctions-createUser");
+      console.log("UserService - httpsCallable created, calling function...");
       const result = await createUser(userData);
+      console.log("UserService - Firebase function returned result:", result);
       const data = result.data as any;
 
       console.log("UserService - createUser success:", data);
@@ -31,6 +35,15 @@ export class UserService {
       return data;
     } catch (error) {
       console.error("UserService - Error creating user:", error);
+      console.error("UserService - Error type:", typeof error);
+      console.error(
+        "UserService - Error message:",
+        error instanceof Error ? error.message : String(error)
+      );
+      console.error(
+        "UserService - Error code:",
+        error instanceof Error ? (error as any).code : undefined
+      );
       throw error;
     }
   }
