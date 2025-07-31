@@ -21,6 +21,7 @@ import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
 import { MatchService, UserService } from "../networking";
 import { BlurService } from "../networking";
+import { getBlurredImageUrl } from "../networking/ImageService";
 
 type ProfileScreenParams = {
   ProfileScreen: {
@@ -38,6 +39,8 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [showBlurWarning, setShowBlurWarning] = useState(false);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imageLoading, setImageLoading] = useState(true);
   const route = useRoute<RouteProp<ProfileScreenParams, "ProfileScreen">>();
   const navigation = useNavigation();
   const { userId: currentUserId } = useAppContext();
@@ -65,6 +68,33 @@ export default function ProfileScreen() {
 
     fetchProfile();
   }, [userId]);
+
+  // Fetch secure image URLs
+  useEffect(() => {
+    const fetchImageUrls = async () => {
+      if (!userId || !currentUserId || !profile?.images) {
+        setImageLoading(false);
+        return;
+      }
+
+      try {
+        const urls = await Promise.all(
+          profile.images.map((_, index) => getBlurredImageUrl(userId, index))
+        );
+        setImageUrls(urls.map((result) => result.url));
+      } catch (error) {
+        console.error("Error fetching image URLs:", error);
+        // Fallback to original images if secure access fails
+        setImageUrls(profile.images);
+      } finally {
+        setImageLoading(false);
+      }
+    };
+
+    if (profile) {
+      fetchImageUrls();
+    }
+  }, [profile, userId, currentUserId]);
 
   // Check for blur warning
   useEffect(() => {
@@ -146,7 +176,7 @@ export default function ProfileScreen() {
   if (!profile) {
     return (
       <View style={styles.loadingContainer}>
-        <Text>No profile data available</Text>
+        <Text>Profile not found</Text>
       </View>
     );
   }
@@ -159,17 +189,32 @@ export default function ProfileScreen() {
           style={styles.photoScroll}
           showsHorizontalScrollIndicator={false}
         >
-          {profile.images.map((fileId, index) => (
-            <Pressable
-              key={index}
-              onPress={() => {
-                setSelectedPhoto(fileId);
-                setModalVisible(true);
-              }}
-            >
-              <Image source={getImageSource(fileId)} style={styles.thumbnail} />
-            </Pressable>
-          ))}
+          {imageLoading
+            ? // Show loading placeholders
+              profile.images.map((_, index) => (
+                <View
+                  key={index}
+                  style={[styles.thumbnail, styles.loadingThumbnail]}
+                >
+                  <ActivityIndicator size="small" color={Colors.primary500} />
+                </View>
+              ))
+            : // Show actual images with secure URLs
+              imageUrls.map((imageUrl, index) => (
+                <Pressable
+                  key={index}
+                  onPress={() => {
+                    setSelectedPhoto(imageUrl);
+                    setModalVisible(true);
+                  }}
+                >
+                  <Image
+                    source={{ uri: imageUrl }}
+                    style={styles.thumbnail}
+                    resizeMode="cover"
+                  />
+                </Pressable>
+              ))}
         </ScrollView>
         <BasicInfoView profile={profile} />
 
@@ -185,7 +230,7 @@ export default function ProfileScreen() {
           >
             {selectedPhoto && (
               <Image
-                source={getImageSource(selectedPhoto)}
+                source={{ uri: selectedPhoto }}
                 style={styles.fullImage}
                 resizeMode="contain"
               />
@@ -323,5 +368,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     fontSize: 16,
+  },
+  loadingThumbnail: {
+    backgroundColor: Colors.secondary200,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
