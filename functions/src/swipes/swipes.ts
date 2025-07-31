@@ -5,6 +5,11 @@ import { CallableRequest } from "firebase-functions/v2/https";
 const db = admin.firestore();
 const DAILY_SWIPES = 100;
 
+// @ts-ignore
+async function logToNtfy(msg: string) {
+  // Function kept for future use but not actively logging
+}
+
 /**
  * Records a swipe and checks for matches
  */
@@ -66,52 +71,64 @@ export const createSwipe = functions.https.onCall(
       const swipedUser = swipedDoc.data();
 
       // Check if users can match by looking at their actual active matches
-      const [swiperActiveMatches, swipedActiveMatches] = await Promise.all([
-        db
-          .collection("matches")
-          .where("user1Id", "==", swiperId)
-          .where("isActive", "==", true)
-          .get(),
-        db
-          .collection("matches")
-          .where("user2Id", "==", swiperId)
-          .where("isActive", "==", true)
-          .get(),
-        db
-          .collection("matches")
-          .where("user1Id", "==", swipedId)
-          .where("isActive", "==", true)
-          .get(),
-        db
-          .collection("matches")
-          .where("user2Id", "==", swipedId)
-          .where("isActive", "==", true)
-          .get(),
-      ]);
+      const [swiperAsUser1, swiperAsUser2, swipedAsUser1, swipedAsUser2] =
+        await Promise.all([
+          db
+            .collection("matches")
+            .where("user1Id", "==", swiperId)
+            .where("isActive", "==", true)
+            .get(),
+          db
+            .collection("matches")
+            .where("user2Id", "==", swiperId)
+            .where("isActive", "==", true)
+            .get(),
+          db
+            .collection("matches")
+            .where("user1Id", "==", swipedId)
+            .where("isActive", "==", true)
+            .get(),
+          db
+            .collection("matches")
+            .where("user2Id", "==", swipedId)
+            .where("isActive", "==", true)
+            .get(),
+        ]);
 
-      const swiperMatches = [
-        ...swiperActiveMatches.docs,
-        ...swipedActiveMatches.docs,
-      ];
-      const swipedMatches = [
-        ...swipedActiveMatches.docs,
-        ...swipedActiveMatches.docs,
-      ];
+      logToNtfy(
+        `Swipe function - Querying matches for swiper ${swiperId} and swiped ${swipedId}`
+      );
+      logToNtfy(
+        `Swipe function - Swiper as user1: ${swiperAsUser1.docs.length} matches`
+      );
+      logToNtfy(
+        `Swipe function - Swiper as user2: ${swiperAsUser2.docs.length} matches`
+      );
+
+      const swiperMatches = [...swiperAsUser1.docs, ...swiperAsUser2.docs];
+      const swipedMatches = [...swipedAsUser1.docs, ...swipedAsUser2.docs];
+
+      logToNtfy(
+        `Swipe function - Total swiper matches: ${swiperMatches.length}`
+      );
+      logToNtfy(
+        `Swipe function - Total swiped matches: ${swipedMatches.length}`
+      );
 
       // Check if users can match based on their premium status and current matches
       const canSwiperMatch = swiperUser?.isPremium || swiperMatches.length < 1;
       const canSwipedMatch = swipedUser?.isPremium || swipedMatches.length < 1;
 
-      console.log(
+      logToNtfy(
         `Match check - Swiper: ${swiperId}, Premium: ${swiperUser?.isPremium}, Active matches: ${swiperMatches.length}`
       );
-      console.log(
+      logToNtfy(
         `Match check - Swiped: ${swipedId}, Premium: ${swipedUser?.isPremium}, Active matches: ${swipedMatches.length}`
       );
 
       // If user is not premium and already has a match, prevent the swipe
       if (!swiperUser?.isPremium && swiperMatches.length >= 1) {
-        console.log(
+        logToNtfy(
           `Swiper ${swiperId} is not premium and has ${swiperMatches.length} active matches`
         );
         throw new functions.https.HttpsError(
@@ -130,7 +147,7 @@ export const createSwipe = functions.https.onCall(
         .get();
 
       if (!unmatchedCheck.empty) {
-        console.log(`Users have unmatched before: ${swiperId} and ${swipedId}`);
+        logToNtfy(`Users have unmatched before: ${swiperId} and ${swipedId}`);
         return {
           message: "Users have unmatched before, cannot match again",
           swipe: null,
@@ -148,7 +165,7 @@ export const createSwipe = functions.https.onCall(
         .get();
 
       if (!existingSwipe.empty) {
-        console.log(
+        logToNtfy(
           `Swipe already exists: ${swiperId} -> ${swipedId} (${direction})`
         );
         // Swipe already exists, return the existing data
@@ -200,7 +217,7 @@ export const createSwipe = functions.https.onCall(
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-      console.log(
+      logToNtfy(
         `Creating new swipe: ${swiperId} -> ${swipedId} (${direction})`
       );
       await db.collection("swipes").add(swipeData);
