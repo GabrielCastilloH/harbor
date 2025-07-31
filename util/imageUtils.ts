@@ -3,6 +3,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from "uuid";
 import app from "../firebaseConfig";
+import { Buffer } from "buffer";
 
 const storage = getStorage(app);
 
