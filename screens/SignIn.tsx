@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 import GoogleSignInButton from "../components/GoogleSignInButton";
+import LoadingScreen from "../components/LoadingScreen";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
@@ -19,6 +20,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export default function SignIn() {
   const { setIsAuthenticated, setUserId, setProfile, setAuthToken } =
     useAppContext();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
 
   // Clean up any existing authentication state when the SignIn screen loads
   useEffect(() => {
@@ -46,22 +49,43 @@ export default function SignIn() {
 
   const handleExistingUser = (userData: any) => {
     // Handle existing user - navigate to main app
+    setIsLoading(false); // Stop loading when navigation occurs
     setIsAuthenticated(true);
     setUserId(userData.uid);
   };
 
   const handleNewUser = (user: any) => {
     // Handle new user - navigate to setup/onboarding
+    setIsNewUser(true);
+    setIsLoading(false); // Stop loading when navigation occurs
     setIsAuthenticated(true);
     setUserId(null); // This will trigger AccountSetupScreen
   };
 
   const handleError = (error: any) => {
+    setIsLoading(false);
     Alert.alert(
       "Sign In Error",
       error.message || "Failed to sign in with Google"
     );
   };
+
+  const handleSignInStart = () => {
+    setIsLoading(true);
+    setIsNewUser(false);
+  };
+
+  const handleSignInComplete = () => {
+    // Don't stop loading here - let the navigation handle it
+    // The loading will continue until the user is navigated to the next screen
+  };
+
+  if (isLoading) {
+    const loadingText = isNewUser
+      ? "Setting up your account..."
+      : "Signing you in...";
+    return <LoadingScreen loadingText={loadingText} />;
+  }
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -86,6 +110,8 @@ export default function SignIn() {
             onUserExists={handleExistingUser}
             onNewUser={handleNewUser}
             onError={handleError}
+            onSignInStart={handleSignInStart}
+            onSignInComplete={handleSignInComplete}
             buttonText="Continue with Cornell"
             buttonStyle={styles.button}
             textStyle={styles.buttonText}
