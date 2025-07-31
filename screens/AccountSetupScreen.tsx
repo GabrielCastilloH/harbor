@@ -11,6 +11,7 @@ import LoadingScreen from "../components/LoadingScreen";
 import { signOut } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { preloadChatCredentials } from "../util/chatPreloader";
 
 const emptyProfile: Profile = {
   email: "",
@@ -29,8 +30,14 @@ const emptyProfile: Profile = {
 };
 
 export default function AccountSetupScreen() {
-  const { setUserId, setProfile, setIsAuthenticated, setAuthToken } =
-    useAppContext();
+  const {
+    setUserId,
+    setProfile,
+    setIsAuthenticated,
+    setAuthToken,
+    setStreamApiKey,
+    setStreamUserToken
+  } = useAppContext();
   const [profileData, setProfileData] = useState<Profile>({
     firstName: "",
     yearLevel: "",
@@ -153,7 +160,22 @@ export default function AccountSetupScreen() {
       //   "AccountSetupScreen - createUserProfile completed successfully"
       // );
 
-      // STEP 3: Update app state
+      // STEP 3: Pre-load chat credentials for new users
+      try {
+        console.log("AccountSetupScreen - Pre-loading chat credentials for new user:", firebaseUid);
+        const { apiKey, userToken } = await preloadChatCredentials(firebaseUid);
+
+        // Update context with pre-loaded credentials
+        setStreamApiKey(apiKey);
+        setStreamUserToken(userToken);
+
+        console.log("AccountSetupScreen - Successfully pre-loaded chat credentials");
+      } catch (error) {
+        console.error("AccountSetupScreen - Error pre-loading chat credentials:", error);
+        // Don't block profile creation if chat pre-loading fails
+      }
+
+      // STEP 4: Update app state
       // Use Firebase UID as user ID since that's how the user is stored in Firestore
       setUserId(firebaseUid);
       setProfile({
