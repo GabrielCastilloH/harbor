@@ -11,11 +11,8 @@ import {
   Alert,
   Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
-import PageIndicator from "../components/PageIndicator";
 import BasicInfoView from "../components/BasicInfoView";
 import AcademicView from "../components/AcademicView";
 import PersonalView from "../components/PersonalView";
@@ -155,7 +152,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <ScrollView style={styles.scrollView}>
         <ScrollView
           horizontal
@@ -231,7 +228,7 @@ export default function ProfileScreen() {
         <AcademicView profile={profile} />
         <PersonalView profile={profile} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
