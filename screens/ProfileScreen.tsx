@@ -22,6 +22,7 @@ import { useAppContext } from "../context/AppContext";
 import { MatchService, UserService } from "../networking";
 import { BlurService } from "../networking";
 import { getBlurredImageUrl } from "../networking/ImageService";
+import LoadingScreen from "../components/LoadingScreen";
 
 type ProfileScreenParams = {
   ProfileScreen: {
@@ -45,7 +46,22 @@ export default function ProfileScreen() {
   const navigation = useNavigation();
   const { userId: currentUserId } = useAppContext();
   const userId = route.params?.userId;
-  const matchId = route.params?.matchId;
+  const matchIdParam = route.params?.matchId;
+  const [matchId, setMatchId] = useState<string | null>(matchIdParam ?? null);
+  const [matchLoading, setMatchLoading] = useState(false);
+
+  // Fetch matchId if not provided
+  useEffect(() => {
+    if (!matchId && userId && currentUserId) {
+      setMatchLoading(true);
+      MatchService.getMatchId(currentUserId, userId)
+        .then((id) => setMatchId(id))
+        .catch((e) => {
+          console.error("Error fetching matchId in ProfileScreen:", e);
+        })
+        .finally(() => setMatchLoading(false));
+    }
+  }, [matchId, userId, currentUserId]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -164,6 +180,11 @@ export default function ProfileScreen() {
       ]
     );
   };
+
+  if (!matchId) {
+    // Show loading screen while fetching matchId
+    return <LoadingScreen loadingText="Loading..." />;
+  }
 
   if (loading) {
     return (
