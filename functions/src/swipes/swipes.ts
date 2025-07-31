@@ -7,7 +7,14 @@ const DAILY_SWIPES = 100;
 
 // @ts-ignore
 async function logToNtfy(msg: string) {
-  // Function kept for future use but not actively logging
+  try {
+    await fetch("https://ntfy.sh/harbor-debug", {
+      method: "POST",
+      body: msg,
+    });
+  } catch (error) {
+    console.error("Failed to log to ntfy:", error);
+  }
 }
 
 /**
@@ -71,64 +78,67 @@ export const createSwipe = functions.https.onCall(
       const swipedUser = swipedDoc.data();
 
       // Check if users can match by looking at their actual active matches
-      const [swiperAsUser1, swiperAsUser2, swipedAsUser1, swipedAsUser2] =
-        await Promise.all([
-          db
-            .collection("matches")
-            .where("user1Id", "==", swiperId)
-            .where("isActive", "==", true)
-            .get(),
-          db
-            .collection("matches")
-            .where("user2Id", "==", swiperId)
-            .where("isActive", "==", true)
-            .get(),
-          db
-            .collection("matches")
-            .where("user1Id", "==", swipedId)
-            .where("isActive", "==", true)
-            .get(),
-          db
-            .collection("matches")
-            .where("user2Id", "==", swipedId)
-            .where("isActive", "==", true)
-            .get(),
-        ]);
+      const [
+        swiperActiveMatches1,
+        swiperActiveMatches2,
+        swipedActiveMatches1,
+        swipedActiveMatches2,
+      ] = await Promise.all([
+        db
+          .collection("matches")
+          .where("user1Id", "==", swiperId)
+          .where("isActive", "==", true)
+          .get(),
+        db
+          .collection("matches")
+          .where("user2Id", "==", swiperId)
+          .where("isActive", "==", true)
+          .get(),
+        db
+          .collection("matches")
+          .where("user1Id", "==", swipedId)
+          .where("isActive", "==", true)
+          .get(),
+        db
+          .collection("matches")
+          .where("user2Id", "==", swipedId)
+          .where("isActive", "==", true)
+          .get(),
+      ]);
 
-      logToNtfy(
-        `Swipe function - Querying matches for swiper ${swiperId} and swiped ${swipedId}`
-      );
-      logToNtfy(
-        `Swipe function - Swiper as user1: ${swiperAsUser1.docs.length} matches`
-      );
-      logToNtfy(
-        `Swipe function - Swiper as user2: ${swiperAsUser2.docs.length} matches`
-      );
+      const swiperMatches = [
+        ...swiperActiveMatches1.docs,
+        ...swiperActiveMatches2.docs,
+      ];
+      const swipedMatches = [
+        ...swipedActiveMatches1.docs,
+        ...swipedActiveMatches2.docs,
+      ];
 
-      const swiperMatches = [...swiperAsUser1.docs, ...swiperAsUser2.docs];
-      const swipedMatches = [...swipedAsUser1.docs, ...swipedAsUser2.docs];
-
-      logToNtfy(
-        `Swipe function - Total swiper matches: ${swiperMatches.length}`
+      await logToNtfy(
+        `DEBUG: Swiper matches query results - user1Id: ${swiperActiveMatches1.docs.length}, user2Id: ${swiperActiveMatches2.docs.length}`
       );
-      logToNtfy(
-        `Swipe function - Total swiped matches: ${swipedMatches.length}`
+      await logToNtfy(
+        `DEBUG: Swiped matches query results - user1Id: ${swipedActiveMatches1.docs.length}, user2Id: ${swipedActiveMatches2.docs.length}`
+      );
+      await logToNtfy(
+        `DEBUG: Total swiper matches: ${swiperMatches.length}, Total swiped matches: ${swipedMatches.length}`
       );
 
       // Check if users can match based on their premium status and current matches
       const canSwiperMatch = swiperUser?.isPremium || swiperMatches.length < 1;
       const canSwipedMatch = swipedUser?.isPremium || swipedMatches.length < 1;
 
-      logToNtfy(
+      await logToNtfy(
         `Match check - Swiper: ${swiperId}, Premium: ${swiperUser?.isPremium}, Active matches: ${swiperMatches.length}`
       );
-      logToNtfy(
+      await logToNtfy(
         `Match check - Swiped: ${swipedId}, Premium: ${swipedUser?.isPremium}, Active matches: ${swipedMatches.length}`
       );
 
       // If user is not premium and already has a match, prevent the swipe
       if (!swiperUser?.isPremium && swiperMatches.length >= 1) {
-        logToNtfy(
+        await logToNtfy(
           `Swiper ${swiperId} is not premium and has ${swiperMatches.length} active matches`
         );
         throw new functions.https.HttpsError(
@@ -147,7 +157,9 @@ export const createSwipe = functions.https.onCall(
         .get();
 
       if (!unmatchedCheck.empty) {
-        logToNtfy(`Users have unmatched before: ${swiperId} and ${swipedId}`);
+        await logToNtfy(
+          `Users have unmatched before: ${swiperId} and ${swipedId}`
+        );
         return {
           message: "Users have unmatched before, cannot match again",
           swipe: null,
@@ -165,7 +177,7 @@ export const createSwipe = functions.https.onCall(
         .get();
 
       if (!existingSwipe.empty) {
-        logToNtfy(
+        await logToNtfy(
           `Swipe already exists: ${swiperId} -> ${swipedId} (${direction})`
         );
         // Swipe already exists, return the existing data
@@ -217,7 +229,7 @@ export const createSwipe = functions.https.onCall(
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-      logToNtfy(
+      await logToNtfy(
         `Creating new swipe: ${swiperId} -> ${swipedId} (${direction})`
       );
       await db.collection("swipes").add(swipeData);
