@@ -15,7 +15,7 @@ export class RecommendationService {
     try {
       const getRecommendations = httpsCallable(
         functions,
-        "recommendations-getRecommendations"
+        "recommendationsFunctions-getRecommendations"
       );
       const result = await getRecommendations({ userId });
       const data = result.data as { recommendations: any[] };
