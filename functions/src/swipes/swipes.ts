@@ -8,7 +8,7 @@ const DAILY_SWIPES = 100;
 // @ts-ignore
 async function logToNtfy(msg: string) {
   try {
-    await fetch("https://ntfy.sh/harbor-debug", {
+    await fetch("https://ntfy.sh/harbor-debug-randomr", {
       method: "POST",
       body: msg,
     });
@@ -40,7 +40,16 @@ export const createSwipe = functions.https.onCall(
     }>
   ) => {
     try {
+      await logToNtfy("=== createSwipe FUNCTION START ===");
+      await logToNtfy(
+        `createSwipe - request.data: ${JSON.stringify(request.data)}`
+      );
+      await logToNtfy(
+        `createSwipe - request.auth: ${JSON.stringify(request.auth)}`
+      );
+
       if (!request.auth) {
+        await logToNtfy("createSwipe - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -50,11 +59,16 @@ export const createSwipe = functions.https.onCall(
       const { swiperId, swipedId, direction } = request.data;
 
       if (!swiperId || !swipedId || !direction) {
+        await logToNtfy("createSwipe - Missing required parameters");
         throw new functions.https.HttpsError(
           "invalid-argument",
           "Swiper ID, swiped ID, and direction are required"
         );
       }
+
+      await logToNtfy(
+        `createSwipe - Processing swipe: ${swiperId} -> ${swipedId} (${direction})`
+      );
 
       // Get the swiper's user data to check premium status and current matches
       const swiperDoc = await db.collection("users").doc(swiperId).get();
