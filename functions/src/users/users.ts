@@ -135,6 +135,7 @@ export const createUser = functions.https.onCall(
     invoker: "public",
   },
   async (request: functions.https.CallableRequest<CreateUserData>) => {
+    console.log("createUser called", request.data);
     try {
       if (!request.auth) {
         // await logToNtfy("createUser - User not authenticated");
@@ -164,15 +165,39 @@ export const createUser = functions.https.onCall(
       // Check if user already exists
       const existingUser = await db.collection("users").doc(firebaseUid).get();
       if (existingUser.exists) {
-        // console.log("createUser - User already exists:", firebaseUid);
-        throw new functions.https.HttpsError(
-          "already-exists",
-          "User already exists"
-        );
-      }
+        // User exists, update the document with the new data
+        console.log("createUser - User already exists, updating:", firebaseUid);
+        const existingData = existingUser.data();
 
-      // await logToNtfy("createUser - Creating user with UID: " + firebaseUid);
-      // await logToNtfy("createUser - First name for Stream Chat: " + userData.firstName);
+        // Merge existing data with new data, preserving existing images
+        const updatedUserDoc = {
+          uid: firebaseUid,
+          firstName: userData.firstName,
+          yearLevel: userData.yearLevel || existingData?.yearLevel || "",
+          age: userData.age || existingData?.age || 0,
+          major: userData.major || existingData?.major || "",
+          images: existingData?.images || userData.images || [], // Preserve existing images
+          aboutMe: userData.aboutMe || existingData?.aboutMe || "",
+          q1: userData.q1 || existingData?.q1 || "",
+          q2: userData.q2 || existingData?.q2 || "",
+          q3: userData.q3 || existingData?.q3 || "",
+          q4: userData.q4 || existingData?.q4 || "",
+          q5: userData.q5 || existingData?.q5 || "",
+          q6: userData.q6 || existingData?.q6 || "",
+          email: userData.email,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        await db.collection("users").doc(firebaseUid).update(updatedUserDoc);
+
+        // Create Stream Chat user if not already created
+        await createStreamUser(firebaseUid, userData.firstName);
+
+        return {
+          message: "User updated successfully",
+          user: updatedUserDoc,
+        };
+      }
 
       // Create user document in Firestore
       const userDoc = {
@@ -181,7 +206,7 @@ export const createUser = functions.https.onCall(
         yearLevel: userData.yearLevel || "",
         age: userData.age || 0,
         major: userData.major || "",
-        images: userData.images || [],
+        images: userData.images || [], // This will include any images uploaded during setup
         aboutMe: userData.aboutMe || "",
         q1: userData.q1 || "",
         q2: userData.q2 || "",

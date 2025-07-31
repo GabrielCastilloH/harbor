@@ -36,7 +36,7 @@ export default function AccountSetupScreen() {
     setIsAuthenticated,
     setAuthToken,
     setStreamApiKey,
-    setStreamUserToken
+    setStreamUserToken,
   } = useAppContext();
   const [profileData, setProfileData] = useState<Profile>({
     firstName: "",
@@ -119,16 +119,20 @@ export default function AccountSetupScreen() {
 
       const firebaseUid = currentUser.uid;
 
-      // STEP 1: Upload all images first and collect their fileIds
-      const imageFileIds = [];
+      // STEP 1: Upload all images first and collect their imageObjects
+      const imageObjects = [];
+      const imageUrls = [];
       const imagesToUpload = images || profileData.images;
 
       for (let i = 0; i < imagesToUpload.length; i++) {
         const imageUri = imagesToUpload[i];
         if (imageUri) {
           // Use the actual Firebase UID for uploading images
-          const fileId = await uploadImageToServer(firebaseUid, imageUri);
-          imageFileIds.push(fileId);
+          const result = await uploadImageToServer(firebaseUid, imageUri);
+          imageUrls.push(result.url);
+          if (result.imageObject) {
+            imageObjects.push(result.imageObject);
+          }
         }
       }
 
@@ -147,7 +151,7 @@ export default function AccountSetupScreen() {
         q4: profileData.q4,
         q5: profileData.q5,
         q6: profileData.q6,
-        images: imageFileIds, // Include the file IDs we just uploaded
+        images: imageObjects, // Pass the imageObjects to the user creation function
       };
 
       // await logToNtfy("AccountSetupScreen - About to call createUserProfile");
@@ -162,16 +166,24 @@ export default function AccountSetupScreen() {
 
       // STEP 3: Pre-load chat credentials for new users
       try {
-        console.log("AccountSetupScreen - Pre-loading chat credentials for new user:", firebaseUid);
+        console.log(
+          "AccountSetupScreen - Pre-loading chat credentials for new user:",
+          firebaseUid
+        );
         const { apiKey, userToken } = await preloadChatCredentials(firebaseUid);
 
         // Update context with pre-loaded credentials
         setStreamApiKey(apiKey);
         setStreamUserToken(userToken);
 
-        console.log("AccountSetupScreen - Successfully pre-loaded chat credentials");
+        console.log(
+          "AccountSetupScreen - Successfully pre-loaded chat credentials"
+        );
       } catch (error) {
-        console.error("AccountSetupScreen - Error pre-loading chat credentials:", error);
+        console.error(
+          "AccountSetupScreen - Error pre-loading chat credentials:",
+          error
+        );
         // Don't block profile creation if chat pre-loading fails
       }
 
@@ -181,7 +193,7 @@ export default function AccountSetupScreen() {
       setProfile({
         ...profileData,
         email: currentUser.email || "",
-        images: imageFileIds,
+        images: imageUrls, // Store URLs for display
       });
 
       // await logToNtfy("AccountSetupScreen - Profile created successfully");
