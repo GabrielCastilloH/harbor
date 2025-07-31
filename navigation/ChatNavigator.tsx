@@ -53,9 +53,9 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
             console.log(
               `[PROFILE ICON] Finding match ID for users: ${userId} and ${otherUserId}`
             );
-            
+
             const matchId = await getMatchId(userId, otherUserId);
-            
+
             if (matchId) {
               console.log(
                 `[PROFILE ICON] Navigating to ProfileScreen for userId=${otherUserId}, matchId=${matchId}`
