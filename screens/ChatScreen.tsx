@@ -6,6 +6,7 @@ import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
 import { updateMessageCount } from "../networking";
 import { BlurService } from "../networking";
+import { MatchService } from "../networking";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
@@ -26,11 +27,7 @@ export default function ChatScreen() {
       if (otherUserId) {
         try {
           const response = await BlurService.getBlurLevel(userId, otherUserId);
-          const {
-            hasShownWarning,
-            blurPercentage,
-            messageCount,
-          } = response;
+          const { hasShownWarning, blurPercentage, messageCount } = response;
 
           // For now, we'll handle the warning logic differently
           // since the response structure is different
@@ -73,37 +70,70 @@ export default function ChatScreen() {
     if (!channel) return;
 
     const handleNewMessage = async (event: any) => {
-      const matchId = channel.data?.matchId;
-      if (matchId) {
-        try {
-          // First increment the message count
-          await updateMessageCount(matchId);
+      try {
+        console.log("ChatScreen - New message received:", event);
 
-          // Get the other user's ID from the channel members
-          const otherMembers = channel.state?.members || {};
-          const otherUserId = Object.keys(otherMembers).find(
-            (key) => key !== userId
-          );
+        // Get the channel ID and extract user IDs
+        const channelId = channel.id;
+        const userIds = channelId.split("-");
 
-          if (otherUserId && userId) {
-            // Then update the blur level
-            const response = await BlurService.updateBlurLevelForMessage(
-              userId,
-              otherUserId
+        console.log(
+          `ChatScreen - Channel ID: ${channelId}, User IDs:`,
+          userIds
+        );
+
+        if (userIds.length === 2 && userId) {
+          // Find the match between these users
+          const matchId = await MatchService.getMatchId(userIds[0], userIds[1]);
+
+          console.log(`ChatScreen - Match lookup result: ${matchId}`);
+
+          if (matchId) {
+            console.log(`Found matchId: ${matchId} for channel: ${channelId}`);
+
+            // First increment the message count
+            await updateMessageCount(matchId);
+            console.log(
+              `ChatScreen - Message count updated for match: ${matchId}`
             );
 
-            // Handle warning state
-            if (response.shouldShowWarning) {
-              setShowWarning(true);
-              setIsChatFrozen(true);
+            // Get the other user's ID from the channel members
+            const otherMembers = channel.state?.members || {};
+            const otherUserId = Object.keys(otherMembers).find(
+              (key) => key !== userId
+            );
+
+            console.log(`ChatScreen - Other user ID: ${otherUserId}`);
+
+            if (otherUserId && userId) {
+              // Then update the blur level
+              const response = await BlurService.updateBlurLevelForMessage(
+                userId,
+                otherUserId
+              );
+
+              console.log(`ChatScreen - Blur level update response:`, response);
+
+              // Handle warning state
+              if (response.shouldShowWarning) {
+                setShowWarning(true);
+                setIsChatFrozen(true);
+                console.log(`ChatScreen - Warning shown, chat frozen`);
+              }
             }
+          } else {
+            console.log(`No match found for channel: ${channelId}`);
           }
-        } catch (error) {
-          console.error(
-            "ChatScreen - Failed to update message count or blur level:",
-            error
+        } else {
+          console.log(
+            `ChatScreen - Invalid channel ID format or missing userId`
           );
         }
+      } catch (error) {
+        console.error(
+          "ChatScreen - Failed to update message count or blur level:",
+          error
+        );
       }
     };
 
