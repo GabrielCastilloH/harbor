@@ -119,30 +119,59 @@ export default function AccountSetupScreen() {
 
       const firebaseUid = currentUser.uid;
 
-      // STEP 1: Upload all images first and collect their imageObjects
+      // STEP 1: Upload all images sequentially
       const imageObjects = [];
       const imageUrls = [];
       const imagesToUpload = images || profileData.images;
 
-      console.log("AccountSetupScreen - Starting image uploads. Count:", imagesToUpload.length);
+      console.log(
+        "AccountSetupScreen - Starting sequential image uploads. Count:",
+        imagesToUpload.length
+      );
 
       for (let i = 0; i < imagesToUpload.length; i++) {
         const imageUri = imagesToUpload[i];
-        console.log(`AccountSetupScreen - Uploading image ${i + 1}/${imagesToUpload.length}:`, imageUri);
-        
+        console.log(
+          `AccountSetupScreen - Uploading image ${i + 1}/${
+            imagesToUpload.length
+          }:`,
+          imageUri
+        );
+
         if (imageUri) {
-          console.log(`AccountSetupScreen - About to upload image ${i + 1} for user:`, firebaseUid);
-          const result = await uploadImageToServer(firebaseUid, imageUri);
-          console.log(`AccountSetupScreen - Image ${i + 1} upload result:`, result);
-          imageUrls.push(result.url);
-          if (result.imageObject) {
-            imageObjects.push(result.imageObject);
+          try {
+            const result = await uploadImageToServer(firebaseUid, imageUri);
+            console.log(
+              `AccountSetupScreen - Image ${i + 1} upload result:`,
+              result
+            );
+            imageUrls.push(result.url);
+            if (result.imageObject) {
+              imageObjects.push(result.imageObject);
+            }
+          } catch (uploadError) {
+            console.error(
+              `AccountSetupScreen - Error uploading image ${i + 1}:`,
+              uploadError
+            );
+            Alert.alert(
+              "Upload Error",
+              `Failed to upload image ${i + 1}. Please try again.`
+            );
+            setLoading(false);
+            return;
           }
         }
       }
 
-      console.log("AccountSetupScreen - All images uploaded. imageObjects:", imageObjects);
-      console.log("AccountSetupScreen - All images uploaded. imageUrls:", imageUrls);
+      console.log(
+        "AccountSetupScreen - All images uploaded. imageObjects:",
+        imageObjects
+      );
+      console.log(
+        "AccountSetupScreen - All images uploaded. imageUrls:",
+        imageUrls
+      );
 
       // STEP 2: Create the user profile in Firestore
       const userData = {
