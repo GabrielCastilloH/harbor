@@ -46,6 +46,7 @@
     "@babel/core": "^7.25.2",
     "@react-native-community/cli": "^19.1.1",
     "@types/react": "~18.3.12",
+    "@types/uuid": "^10.0.0",
     "typescript": "^5.3.3"
   },
   "private": true,
