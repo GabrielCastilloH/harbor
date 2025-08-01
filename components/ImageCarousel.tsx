@@ -1,17 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Image,
-  FlatList,
-  Text,
-  Dimensions,
   Pressable,
   StyleSheet,
+  Dimensions,
+  FlatList,
+  Text,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import Colors from "../constants/Colors";
 
-// Types
 interface ImageItem {
   id: string;
   url: string;
@@ -21,215 +20,198 @@ interface ImageItem {
 
 interface ImageCarouselProps {
   images: ImageItem[];
-  imageHeight?: number;
-  imageWidth?: number;
+  imageSize?: number;
   borderRadius?: number;
+  spacing?: number;
   showIndicators?: boolean;
-  onImagePress?: (image: ImageItem, index: number) => void;
 }
 
 const ImageCarousel: React.FC<ImageCarouselProps> = ({
   images,
-  imageHeight = 340,
-  imageWidth = 340,
-  borderRadius = 12,
+  imageSize = 340,
+  borderRadius = 16,
+  spacing = 20,
   showIndicators = true,
-  onImagePress,
 }) => {
-  const windowWidth = Dimensions.get("window").width;
   const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = React.useRef<FlatList>(null);
 
-  const renderImageItem = ({
-    item,
-    index,
-  }: {
-    item: ImageItem;
-    index: number;
-  }) => {
+  // Tap navigation
+  const handleLeftTap = () => {
+    if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
+  };
+  const handleRightTap = () => {
+    if (currentIndex < images.length - 1) setCurrentIndex(currentIndex + 1);
+  };
+
+  // Indicator
+  const renderIndicator = () => {
+    if (!showIndicators || images.length <= 1) return null;
     return (
       <View
-        style={{
-          width: windowWidth,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+        style={[
+          styles.indicatorContainer,
+          {
+            width: imageSize - 32, // indicator is a bit narrower than the image
+            left: "50%",
+            transform: [{ translateX: -(imageSize - 32) / 2 }],
+            top: 0,
+          },
+        ]}
       >
-        {item.url && item.url.trim() !== "" ? (
-          item.blurLevel && item.blurLevel > 0 ? (
-            <BlurView
-              intensity={item.blurLevel * 2}
-              style={{
-                height: imageHeight,
-                width: imageWidth,
-                borderRadius: borderRadius,
-              }}
-            >
-              <Image
-                source={{ uri: item.url }}
-                style={{
-                  height: imageHeight,
-                  width: imageWidth,
-                  borderRadius: borderRadius,
-                }}
-                className="rounded-xl"
-                resizeMode="cover"
-              />
-            </BlurView>
-          ) : (
-            <Image
-              source={{ uri: item.url }}
-              style={{
-                height: imageHeight,
-                width: imageWidth,
-                borderRadius: borderRadius,
-              }}
-              className="rounded-xl"
-              resizeMode="cover"
-            />
-          )
-        ) : (
+        {images.map((_, idx) => (
           <View
-            style={{
-              height: imageHeight,
-              width: imageWidth,
-              borderRadius: borderRadius,
-            }}
-            className="rounded-xl bg-gray-200 items-center justify-center"
-          >
-            <Text className="text-gray-500 text-lg">No Image</Text>
-          </View>
-        )}
-      </View>
-    );
-  };
-
-  const handleScroll = (event: any) => {
-    const index = Math.round(event.nativeEvent.contentOffset.x / windowWidth);
-    setCurrentIndex(index);
-  };
-
-  const renderPageIndicator = () => {
-    if (!showIndicators || images.length <= 1) return null;
-
-    return (
-      <View style={styles.pageIndicator}>
-        {images.map((_, index) => (
-          <View
-            key={index}
-            style={[styles.dot, currentIndex === index && styles.activeDot]}
+            key={idx}
+            style={[
+              styles.dot,
+              {
+                backgroundColor:
+                  idx === currentIndex
+                    ? Colors.primary500
+                    : "rgba(255,255,255,0.7)",
+                flex: 1,
+                marginHorizontal: 4,
+              },
+            ]}
           />
         ))}
       </View>
     );
   };
 
-  const handleLeftTap = () => {
-    if (currentIndex > 0) {
-      const newIndex = currentIndex - 1;
-      setCurrentIndex(newIndex);
-      flatListRef.current?.scrollToIndex({
-        index: newIndex,
-        animated: false,
-      });
-    }
-  };
-
-  const handleRightTap = () => {
-    if (currentIndex < images.length - 1) {
-      const newIndex = currentIndex + 1;
-      setCurrentIndex(newIndex);
-      flatListRef.current?.scrollToIndex({
-        index: newIndex,
-        animated: false,
-      });
-    }
-  };
-
+  // Main render
+  const current = images[currentIndex];
   return (
-    <View style={{ marginBottom: 20 }}>
-      <View style={styles.container}>
-        <FlatList
-          ref={flatListRef}
-          data={images}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          bounces={false}
-          overScrollMode="never"
-          keyExtractor={(item, index) => `${item.id}-${index}`}
-          renderItem={renderImageItem}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          scrollEnabled={false}
+    <View
+      style={{
+        paddingTop: spacing,
+        paddingBottom: spacing,
+        paddingHorizontal: spacing,
+        alignItems: "center",
+        width: "100%",
+      }}
+    >
+      {/* Indicator */}
+      {renderIndicator()}
+
+      {/* Image with shadow and tap areas */}
+      <View
+        style={[
+          styles.shadowContainer,
+          {
+            width: imageSize,
+            height: imageSize,
+            borderRadius,
+            marginTop: 24,
+          },
+        ]}
+      >
+        {/* Tap left */}
+        <Pressable
+          style={[
+            styles.tapHalf,
+            {
+              left: 0,
+              borderTopLeftRadius: borderRadius,
+              borderBottomLeftRadius: borderRadius,
+            },
+          ]}
+          onPress={handleLeftTap}
+        />
+        {/* Tap right */}
+        <Pressable
+          style={[
+            styles.tapHalf,
+            {
+              right: 0,
+              borderTopRightRadius: borderRadius,
+              borderBottomRightRadius: borderRadius,
+            },
+          ]}
+          onPress={handleRightTap}
         />
 
-        {/* Left tap area */}
-        <Pressable style={styles.leftTapArea} onPress={handleLeftTap} />
-
-        {/* Right tap area */}
-        <Pressable style={styles.rightTapArea} onPress={handleRightTap} />
-
-        {/* Page indicator with shadow */}
-        <View style={styles.pageIndicatorContainer}>
-          {renderPageIndicator()}
-        </View>
+        {/* Image/Blur */}
+        {current?.url ? (
+          current.blurLevel && current.blurLevel > 0 ? (
+            <BlurView
+              intensity={current.blurLevel * 2}
+              style={[
+                StyleSheet.absoluteFill,
+                { borderRadius, overflow: "hidden" },
+              ]}
+            >
+              <Image
+                source={{ uri: current.url }}
+                style={{
+                  width: imageSize,
+                  height: imageSize,
+                  borderRadius,
+                }}
+                resizeMode="cover"
+              />
+            </BlurView>
+          ) : (
+            <Image
+              source={{ uri: current.url }}
+              style={{
+                width: imageSize,
+                height: imageSize,
+                borderRadius,
+              }}
+              resizeMode="cover"
+            />
+          )
+        ) : (
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: "#eee",
+                borderRadius,
+                alignItems: "center",
+                justifyContent: "center",
+              },
+            ]}
+          >
+            <Text style={{ color: "#888" }}>No Image</Text>
+          </View>
+        )}
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    position: "relative",
-  },
-  leftTapArea: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    width: "50%",
-    height: "100%",
-    zIndex: 1,
-  },
-  rightTapArea: {
-    position: "absolute",
-    right: 0,
-    top: 0,
-    width: "50%",
-    height: "100%",
-    zIndex: 1,
-  },
-  pageIndicatorContainer: {
-    position: "absolute",
-    top: 20,
-    width: 310, // Match the width of the pageIndicator
-    left: "50%",
-    transform: [{ translateX: -155 }], // Half of 310
-    zIndex: 2,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.8,
-    shadowRadius: 12,
-    elevation: 15,
-  },
-  pageIndicator: {
-    flexDirection: "row",
+  shadowContainer: {
     justifyContent: "center",
-    paddingHorizontal: 20,
-    gap: 8,
-    width: 310, // 350 - 40 (20px padding on each side)
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 16,
+    backgroundColor: "#fff", // for iOS shadow
+    overflow: "visible",
+  },
+  tapHalf: {
+    position: "absolute",
+    top: 0,
+    width: "50%",
+    height: "100%",
+    zIndex: 2,
+  },
+  indicatorContainer: {
+    position: "absolute",
+    flexDirection: "row",
+    height: 8,
+    zIndex: 10,
+    backgroundColor: "transparent",
+    marginTop: 0,
+    alignSelf: "center",
   },
   dot: {
-    width: "30%",
     height: 4,
     borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
-  },
-  activeDot: {
-    backgroundColor: Colors.primary500,
   },
 });
 
