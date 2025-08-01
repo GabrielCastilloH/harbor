@@ -1,6 +1,9 @@
 import * as ImageManipulator from "expo-image-manipulator";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { v4 as uuidv4 } from "uuid";
 import app from "../firebaseConfig";
-import { Buffer } from "buffer";
+
+const storage = getStorage(app);
 
 export async function uploadImageViaCloudFunction(
   userId: string,
@@ -13,37 +16,53 @@ export async function uploadImageViaCloudFunction(
     { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
   );
 
-  // Convert to base64 for Cloud Function
+  // Convert to blob for Firebase Storage
   const response = await fetch(compressed.uri);
   const blob = await response.blob();
-  const arrayBuffer = await blob.arrayBuffer();
-  const base64Data = Buffer.from(arrayBuffer).toString("base64");
 
-  console.log("🚀 Calling Cloud Function for image upload...");
+  // Generate filename with _original suffix
+  const timestamp = Date.now();
+  const randomId = Math.random().toString(36).substring(2, 8);
+  const filename = `${timestamp}-${randomId}_original.jpg`;
+  const filePath = `users/${userId}/images/${filename}`;
 
-  // Call the Cloud Function
+  console.log("📤 Uploading to Firebase Storage:", filePath);
+
+  // Upload to Firebase Storage directly
+  const storageRef = ref(storage, filePath);
+  await uploadBytes(storageRef, blob, {
+    contentType: "image/jpeg",
+  });
+
+  // Get the download URL
+  const originalUrl = await getDownloadURL(storageRef);
+  console.log("✅ Original image uploaded:", originalUrl);
+
+  // Call Cloud Function to generate blurred version
+  console.log("🔀 Calling Cloud Function to generate blurred version...");
   const { getFunctions, httpsCallable } = require("firebase/functions");
   const functions = getFunctions();
-  const uploadImage = httpsCallable(functions, "imageFunctions-uploadImage");
+  const generateBlurred = httpsCallable(
+    functions,
+    "imageFunctions-generateBlurred"
+  );
 
   try {
-    const result = await uploadImage({
+    const result = await generateBlurred({
       userId: userId,
-      imageData: base64Data,
-      contentType: "image/jpeg",
+      filename: filename,
     });
 
-    console.log("✅ Cloud Function upload result:", result.data);
+    console.log("✅ Blurred version generated:", result.data);
 
-    // The Cloud Function returns the filename, we need to construct URLs
-    const filename = result.data.filename;
-    const originalUrl = `https://storage.googleapis.com/harbor-ch.firebasestorage.app/users/${userId}/images/${filename}`;
+    // Construct blurred URL
     const blurredUrl = originalUrl.replace("_original.jpg", "_blurred.jpg");
 
     return { originalUrl, blurredUrl };
   } catch (error) {
-    console.error("❌ Cloud Function upload failed:", error);
-    throw error;
+    console.error("❌ Failed to generate blurred version:", error);
+    // Return original URL as fallback
+    return { originalUrl, blurredUrl: originalUrl };
   }
 }
 
