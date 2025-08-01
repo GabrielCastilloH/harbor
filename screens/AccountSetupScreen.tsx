@@ -13,22 +13,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { preloadChatCredentials } from "../util/chatPreloader";
 
-const emptyProfile: Profile = {
-  email: "",
-  firstName: "",
-  age: 0,
-  yearLevel: "",
-  major: "",
-  images: [],
-  aboutMe: "",
-  q1: "",
-  q2: "",
-  q3: "",
-  q4: "",
-  q5: "",
-  q6: "",
-};
-
 export default function AccountSetupScreen({
   showProgressBar = true,
 }: { showProgressBar?: boolean } = {}) {
