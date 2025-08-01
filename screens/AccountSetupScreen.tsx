@@ -87,10 +87,7 @@ export default function AccountSetupScreen({
       }
       const firebaseUid = currentUser.uid;
       const imagesToUpload = images || profileData.images;
-      console.log(
-        "AccountSetupScreen - Starting sequential image uploads. Count:",
-        imagesToUpload.length
-      );
+
       // Upload all images at once, sequentially, with progress
       let uploadResults: any[] = [];
       if (imagesToUpload.length > 0) {
@@ -109,10 +106,6 @@ export default function AccountSetupScreen({
 
       // Extract filenames from Cloud Function results
       const imageFilenames = uploadResults.map((r) => r.filename);
-      console.log(
-        "AccountSetupScreen - All images uploaded. imageFilenames:",
-        imageFilenames
-      );
       setProgress(imagesToUpload.length / (imagesToUpload.length + 2));
       // STEP 2: Create the user profile in Firestore
       const userData = {
@@ -130,23 +123,13 @@ export default function AccountSetupScreen({
         q6: profileData.q6,
         images: imageFilenames, // Send the filenames as strings, not URLs
       };
-      console.log(
-        "AccountSetupScreen - About to call createUserProfile with data:",
-        userData
-      );
+
       await createUserProfile(userData);
       setProgress((imagesToUpload.length + 1) / (imagesToUpload.length + 2));
       try {
-        console.log(
-          "AccountSetupScreen - Pre-loading chat credentials for new user:",
-          firebaseUid
-        );
         const { apiKey, userToken } = await preloadChatCredentials(firebaseUid);
         setStreamApiKey(apiKey);
         setStreamUserToken(userToken);
-        console.log(
-          "AccountSetupScreen - Successfully pre-loaded chat credentials"
-        );
       } catch (error) {
         console.error(
           "AccountSetupScreen - Error pre-loading chat credentials:",
