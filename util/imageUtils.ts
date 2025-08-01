@@ -31,8 +31,8 @@ export async function uploadImagesSequentially(
     const filename = `users/${userId}/images/${uuidv4()}.jpg`;
     // LOGGING: Print userId, filename, and currentUser UID
     try {
-      // Dynamically import firebase/auth to get currentUser
-      const { getAuth } = await import("firebase/auth");
+      // Import firebase/auth to get currentUser
+      const { getAuth } = require("firebase/auth");
       const appAuth = getAuth();
       const currentUid = appAuth.currentUser?.uid;
       console.log("[uploadImagesSequentially] userId param:", userId);
@@ -82,7 +82,14 @@ export async function uploadImagesSequentially(
 /**
  * Get image source object for React Native Image component
  */
-export function getImageSource(imageId: string): { uri: string } {
+export function getImageSource(imageId: string | undefined | null): {
+  uri: string;
+} {
+  // Handle undefined, null, or empty string
+  if (!imageId || imageId.trim() === "") {
+    return { uri: "" };
+  }
+
   if (imageId.startsWith("http")) {
     return { uri: imageId };
   }
