@@ -234,24 +234,29 @@ export default function ProfileScreen() {
         overScrollMode="never"
         showsVerticalScrollIndicator={false}
       >
-        {imageLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.primary500} />
-          </View>
-        ) : (
-          <ImageCarousel
-            images={imagesWithBlur.map((img, index) => ({
-              id: `${index}`,
-              url: img.url,
-              title: `Image ${index + 1}`,
-              blurLevel: img.blurLevel,
-            }))}
-            imageSize={360}
-            borderRadius={12}
-            spacing={0}
-            showIndicators={true}
-          />
-        )}
+        <ImageCarousel
+          images={
+            imagesWithBlur.length > 0
+              ? imagesWithBlur.map((img, index) => ({
+                  id: `${index}`,
+                  url: img.url,
+                  title: `Image ${index + 1}`,
+                  blurLevel: img.blurLevel,
+                }))
+              : [
+                  {
+                    id: "placeholder",
+                    url: "",
+                    title: "Loading...",
+                    blurLevel: 0,
+                  },
+                ]
+          }
+          imageSize={360}
+          borderRadius={12}
+          spacing={0}
+          showIndicators={imagesWithBlur.length > 1}
+        />
         <View style={{ paddingHorizontal: 24 }}>
           <BasicInfoView profile={profile} />
         </View>
