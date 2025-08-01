@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>838717009645-961tv8m765fpj2dk96ecg2epv13igjdu.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.838717009645-961tv8m765fpj2dk96ecg2epv13igjdu</string>
+	<key>API_KEY</key>
+	<string>AIzaSyAh5NygEYrPdJXdle524PYrwP3WsPXaIqg</string>
+	<key>GCM_SENDER_ID</key>
+	<string>838717009645</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.gabrielach.harbor</string>
+	<key>PROJECT_ID</key>
+	<string>harbor-ch</string>
+	<key>STORAGE_BUCKET</key>
+	<string>harbor-ch.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:838717009645:ios:094e6663c50385aa4426e4</string>
+</dict>
+</plist>
