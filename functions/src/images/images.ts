@@ -427,10 +427,19 @@ export const getImages = functions.https.onCall(
             // Convert original URL to blurred URL
             url = img.replace(/\.jpg\?/, "-blurred.jpg?");
             console.log(`[getImages] Converting to blurred URL:`, url);
+            // For server-side blurred images, reduce the client-side blur to make them visible
+            effectiveBlurLevel = Math.min(blurLevel, 50); // Cap at 50% for visibility
+            console.log(
+              `[getImages] Server-side blur applied, reducing client blur to:`,
+              effectiveBlurLevel
+            );
           } else {
             url = img;
+            console.log(
+              `[getImages] Using original URL, blur level:`,
+              effectiveBlurLevel
+            );
           }
-          effectiveBlurLevel = blurLevel;
         } else {
           console.log(`[getImages] Image ${index} is not a string:`, img);
           url = null;
