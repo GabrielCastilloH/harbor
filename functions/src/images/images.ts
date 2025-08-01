@@ -249,6 +249,77 @@ export const getImageUrl = functions.https.onCall(
 );
 
 /**
+ * Returns personal images for a user (unblurred) - only accessible by the user themselves
+ */
+export const getPersonalImages = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+      const { userId } = request.data;
+      const currentUserId = request.auth.uid;
+
+      if (!userId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "userId is required"
+        );
+      }
+
+      // Verify user is requesting their own images
+      if (currentUserId !== userId) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User can only access their own images"
+        );
+      }
+
+      // Get user's images
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (!userDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "User not found");
+      }
+
+      const userData = userDoc.data();
+      const images = userData?.images || [];
+
+      console.log(
+        `[getPersonalImages] Returning ${images.length} images for user ${userId}`
+      );
+
+      // Return original URLs for personal use (no blur)
+      return {
+        images: images.map((img: string) => ({
+          url: img,
+          blurLevel: 0, // No blur for personal images
+        })),
+      };
+    } catch (error) {
+      console.error("Error in getPersonalImages:", error);
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to get personal images"
+      );
+    }
+  }
+);
+
+/**
  * Returns all images for a user, each with the correct URL (blurred or original) and blurLevel/messageCount
  */
 export const getImages = functions.https.onCall(
@@ -468,5 +539,6 @@ export const imageFunctions = {
   uploadImage,
   getImageUrl,
   getImages,
+  getPersonalImages,
   getOriginalImages,
 };

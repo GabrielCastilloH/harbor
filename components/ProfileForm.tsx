@@ -35,7 +35,9 @@ const truncateForLog = (str: string): string => {
 
 // Utility to wrap URIs with keys
 function wrapImagesWithKeys(images: any[]) {
-  return images.map((img) => ({
+  // Ensure images is always an array
+  const safeImages = images || [];
+  return safeImages.map((img) => ({
     key: Date.now().toString() + Math.random(),
     uri: typeof img === "string" ? img : img.originalUrl,
   }));
