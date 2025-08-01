@@ -38,17 +38,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   const windowWidth = Dimensions.get("window").width;
 
   const renderImageItem = ({ item }: { item: ImageItem }) => {
-    console.log(`[ImageCarousel] Rendering image:`, item);
-    console.log(`[ImageCarousel] Image URL:`, item.url);
-    console.log(`[ImageCarousel] Blur level:`, item.blurLevel);
-    console.log(
-      `[ImageCarousel] Will apply blur:`,
-      item.blurLevel && item.blurLevel > 0
-    );
-    console.log(
-      `[ImageCarousel] Blur intensity:`,
-      Math.min(item.blurLevel || 0, 100)
-    );
 
     return (
       <View
