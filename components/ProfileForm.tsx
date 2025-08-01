@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, AntDesign } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
-import { Profile, ProfileImage } from "../types/App";
+import { Profile } from "../types/App";
 import * as ImagePicker from "expo-image-picker";
 import { getImageSource } from "../util/imageUtils";
 
@@ -141,15 +141,10 @@ export default function ProfileForm({
       return;
     }
 
-    // Update profileData.images before saving - save in new object format
+    // Update profileData.images before saving - save as string URLs
     const updatedProfile = {
       ...profileData,
-      images: imagesWithKeys.map(
-        (img): ProfileImage => ({
-          originalUrl: img.uri,
-          blurredUrl: img.uri, // For now, use same URL for both
-        })
-      ),
+      images: imagesWithKeys.map((img) => img.uri),
     };
 
     onProfileChange(updatedProfile);

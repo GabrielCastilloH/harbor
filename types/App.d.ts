@@ -1,8 +1,3 @@
-export type ProfileImage = {
-  originalUrl: string;
-  blurredUrl: string;
-};
-
 export type Profile = {
   uid?: string; // Firebase UID
   email: string;
@@ -10,7 +5,7 @@ export type Profile = {
   yearLevel: string;
   age: number;
   major: string;
-  images: ProfileImage[];
+  images: string[];
   aboutMe: string;
   q1: string; // "This year, I really want to:"
   q2: string; // "Together we could:"
