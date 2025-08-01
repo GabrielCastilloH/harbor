@@ -96,9 +96,16 @@ export default function ProfileScreen() {
         return;
       }
       try {
+        console.log("[ProfileScreen] Fetching images for userId:", userId);
         const images = await getImages(userId);
         setImagesWithBlur(images);
-      } catch (error) {
+      } catch (error: any) {
+        if (error?.code === "not-found") {
+          setImagesWithBlur([]);
+          setImageLoading(false);
+          setProfile(null); // Will show 'Profile not found' message
+          return;
+        }
         console.error("Error fetching images with blur:", error);
       } finally {
         setImageLoading(false);
