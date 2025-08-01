@@ -319,8 +319,9 @@ export const getImages = functions.https.onCall(
         );
       }
       const targetUserData = targetUserDoc.data();
-      const images = targetUserData?.images || [];
       console.log("[getImages] targetUserData:", targetUserData);
+
+      const images = targetUserData?.images || [];
       console.log("[getImages] images array:", images);
       console.log("[getImages] images type:", typeof images);
       console.log("[getImages] images length:", images.length);
@@ -328,7 +329,10 @@ export const getImages = functions.https.onCall(
         console.log("[getImages] First image:", images[0]);
         console.log("[getImages] First image type:", typeof images[0]);
       }
+
+      console.log("[getImages] About to get match info...");
       // Get match info
+      console.log("[getImages] Executing match query...");
       const matchQuery = await db
         .collection("matches")
         .where("user1Id", "in", [currentUserId, targetUserId])
@@ -336,16 +340,29 @@ export const getImages = functions.https.onCall(
         .where("isActive", "==", true)
         .limit(1)
         .get();
+      console.log(
+        "[getImages] Match query completed, empty:",
+        matchQuery.empty
+      );
       let user1Consented = false;
       let user2Consented = false;
       let blurLevel = 100;
       let messageCount = 0;
       if (!matchQuery.empty) {
+        console.log("[getImages] Match found, getting match data...");
         const matchData = matchQuery.docs[0].data();
         user1Consented = matchData?.user1Consented || false;
         user2Consented = matchData?.user2Consented || false;
         blurLevel = matchData?.blurPercentage ?? 100;
         messageCount = matchData?.messageCount ?? 0;
+        console.log("[getImages] Match data:", {
+          user1Consented,
+          user2Consented,
+          blurLevel,
+          messageCount,
+        });
+      } else {
+        console.log("[getImages] No match found, using defaults");
       }
       // For each image, return the correct URL and blurLevel
       const result = images.map((img: any, index: number) => {
