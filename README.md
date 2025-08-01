@@ -79,6 +79,30 @@ A unique dating app that focuses on meaningful connections through progressive p
 - Force users to use a square picture in the image picker.
 - Make the images higher quality.
 
+## 🔒 Image Blur Security Logic
+
+### Firebase Function (`getImages`) Rules:
+
+- **ALWAYS return blurred URLs when blur level >= 80** - This is a constant that never changes
+- For string URLs: Convert `original.jpg` to `original-blurred.jpg` when blur level >= 80
+- For object URLs: Use `blurredUrl` property when blur level >= 80
+- **Never return unblurred URLs when blur level >= 80, regardless of consent**
+
+### Expo BlurView Rules:
+
+- **Blur intensity = blurLevel (capped at 100)** - If blur level is 100, Expo should blur as much as possible
+- **Blur level 100 = Maximum Expo blur** - This is not rocket science, 100% blur means maximum blur
+- **Blur level 80+ = Always use blurred URLs + Expo blur** - Double protection
+- **Blur level < 80 = Use consent logic** - Only show unblurred if both users consented
+
+### Security Flow:
+
+1. Firebase function determines blur level based on match data
+2. If blur level >= 80: Return blurred URLs (server-side protection)
+3. Expo applies additional blur based on blur level (client-side protection)
+4. If blur level < 80: Use consent logic to determine URL type
+5. **NEVER expose unblurred images without proper consent**
+
 ### In Progress 🚧
 
 - [ ] Integrate Stripe for payment processing
