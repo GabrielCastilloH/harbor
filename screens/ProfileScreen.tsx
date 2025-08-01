@@ -240,9 +240,9 @@ export default function ProfileScreen() {
               title: `Image ${index + 1}`,
               blurLevel: img.blurLevel,
             }))}
-            imageHeight={340}
-            imageWidth={340}
-            borderRadius={12}
+            imageHeight={400}
+            imageWidth={Dimensions.get("window").width}
+            borderRadius={0}
             showIndicators={true}
             onImagePress={(image, index) => {
               setSelectedPhoto(image.url);
