@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
-import { uploadImagesSequentially } from "../util/imageUtils";
+import { uploadImageViaCloudFunction } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 import Colors from "../constants/Colors";
 import { UserService, getPersonalImages } from "../networking";
@@ -178,15 +178,15 @@ export default function EditProfileScreen() {
         const img = updatedImages[i];
         if (img && (img.startsWith("file:") || img.startsWith("data:"))) {
           try {
-            // Upload the image using the new sequential upload function
-            const uploadResults = await uploadImagesSequentially(
+            // Upload the image using the Cloud Function
+            const uploadResult = await uploadImageViaCloudFunction(
               currentUser.uid,
-              [img]
+              img
             );
-            if (uploadResults.length > 0) {
-              updatedImages[i] = uploadResults[0].originalUrl;
-              hasChanges = true;
-            }
+            // Extract filename from the URL
+            const urlParts = uploadResult.originalUrl.split("/");
+            updatedImages[i] = urlParts[urlParts.length - 1];
+            hasChanges = true;
           } catch (error) {
             console.error("Error uploading image during update:", error);
           }
