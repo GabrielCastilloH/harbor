@@ -43,10 +43,15 @@ function isProfileDirty(current: Profile, initial: Profile): boolean {
   const { images: initialImages, ...restInitial } = initial;
   const restDirty = JSON.stringify(restCurrent) !== JSON.stringify(restInitial);
 
-  // Compare images by URL
+  // Compare images by URL - handle undefined arrays
+  const currentImagesArray = currentImages || [];
+  const initialImagesArray = initialImages || [];
+
   const imagesDirty =
-    currentImages.length !== initialImages.length ||
-    currentImages.some((img: string, i: number) => img !== initialImages[i]);
+    currentImagesArray.length !== initialImagesArray.length ||
+    currentImagesArray.some(
+      (img: string, i: number) => img !== initialImagesArray[i]
+    );
 
   return restDirty || imagesDirty;
 }
