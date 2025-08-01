@@ -56,7 +56,7 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
           // Navigate instantly, let ProfileScreen fetch matchId
           navigation.navigate("ProfileScreen", {
             userId: otherUserId,
-            matchId: null, // Will be fetched in ProfileScreen
+            matchId: undefined, // Will be fetched in ProfileScreen
           });
         } else {
           console.error(
@@ -259,7 +259,7 @@ export default function ChatNavigator() {
             name="ProfileScreen"
             component={ProfileScreen}
             options={{
-              headerTitle: "Profile",
+              headerShown: false,
             }}
           />
         </Stack.Navigator>
