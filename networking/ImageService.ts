@@ -1,4 +1,5 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { getAuth } from "firebase/auth";
 import app from "../firebaseConfig";
 
 const functions = getFunctions(app, "us-central1");
@@ -80,6 +81,65 @@ export const getImages = async (
     return (response.data as any).images;
   } catch (error) {
     console.error("[ImageService] Error getting images:", error);
+    console.error("[ImageService] Error details:", {
+      code: (error as any)?.code,
+      message: (error as any)?.message,
+      details: (error as any)?.details,
+    });
+    throw error;
+  }
+};
+
+/**
+ * Gets original (non-blurred) images for the current user's own profile
+ */
+export const getOriginalImages = async (
+  userId: string
+): Promise<Array<{ url: string; blurLevel: number; messageCount: number }>> => {
+  try {
+    console.log(
+      "[ImageService] Calling getOriginalImages with userId:",
+      userId
+    );
+    console.log(
+      "[ImageService] Function name: imageFunctions-getOriginalImages"
+    );
+    console.log("[ImageService] Functions region: us-central1");
+
+    // Get current user to ensure authentication
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      throw new Error("No authenticated user found");
+    }
+
+    // Force token refresh to ensure we have a valid token
+    try {
+      await currentUser.getIdToken(true);
+      console.log("[ImageService] Token refreshed successfully");
+    } catch (tokenError) {
+      console.error("[ImageService] Error refreshing token:", tokenError);
+    }
+
+    console.log("[ImageService] Current user:", currentUser.uid);
+    console.log("[ImageService] Target user:", userId);
+
+    const imageFunctions = httpsCallable(
+      functions,
+      "imageFunctions-getOriginalImages"
+    );
+    console.log("[ImageService] httpsCallable created, calling function...");
+
+    const response = await imageFunctions({ userId });
+    console.log(
+      "[ImageService] Function call successful, response:",
+      response.data
+    );
+
+    return (response.data as any).images;
+  } catch (error) {
+    console.error("[ImageService] Error getting original images:", error);
     console.error("[ImageService] Error details:", {
       code: (error as any)?.code,
       message: (error as any)?.message,

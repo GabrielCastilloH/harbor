@@ -364,8 +364,84 @@ export const getImages = functions.https.onCall(
   }
 );
 
+/**
+ * Returns original (non-blurred) images for the current user's own profile
+ */
+export const getOriginalImages = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+      const { userId } = request.data;
+      const currentUserId = request.auth.uid;
+      console.log("[getOriginalImages] userId:", userId);
+      console.log("[getOriginalImages] currentUserId:", currentUserId);
+
+      if (!userId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "User ID is required"
+        );
+      }
+
+      // Ensure user can only access their own images
+      if (userId !== currentUserId) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "Can only access own images"
+        );
+      }
+
+      // Get user's images
+      const userDoc = await db.collection("users").doc(userId).get();
+      console.log("[getOriginalImages] userDoc.exists:", userDoc.exists);
+      if (!userDoc.exists) {
+        console.log("[getOriginalImages] User not found in Firestore:", userId);
+        throw new functions.https.HttpsError("not-found", "User not found");
+      }
+
+      const userData = userDoc.data();
+      const images = userData?.images || [];
+
+      // Return original URLs for all images
+      const result = images.map((img: any) => ({
+        url: img.originalUrl,
+        blurLevel: 0, // No blur for own images
+        messageCount: 0,
+      }));
+
+      return { images: result };
+    } catch (error: any) {
+      console.error("Error in getOriginalImages:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to get original images"
+      );
+    }
+  }
+);
+
 export const imageFunctions = {
   uploadImage,
   getImageUrl,
   getImages,
+  getOriginalImages,
 };
