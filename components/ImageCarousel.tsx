@@ -45,7 +45,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           alignItems: "center",
           justifyContent: "center",
           paddingHorizontal: spacing,
-          height: imageSize + 80,
+          height: imageSize + 60,
           // backgroundColor: "red",
         }}
       >
@@ -170,8 +170,8 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
 
         {/* Page indicator */}
         {showIndicators && (
-          <View style={styles.pageIndicatorContainer}>
-            <View style={styles.pageIndicator}>
+          <View style={[styles.pageIndicatorContainer, { top: 50, width: imageSize * 0.9 }]}>
+            <View style={[styles.pageIndicator, { width: imageSize * 0.9 }]}>
               {images.map((_, idx) => (
                 <View
                   key={idx}
@@ -197,8 +197,8 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 16,
+    shadowRadius: 8,
+    elevation: 8,
     backgroundColor: "#fff",
     overflow: "visible",
   },
@@ -220,7 +220,6 @@ const styles = StyleSheet.create({
   },
   pageIndicatorContainer: {
     position: "absolute",
-    top: 20,
     width: 310,
     left: "50%",
     transform: [{ translateX: -155 }],
