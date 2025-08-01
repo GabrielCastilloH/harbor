@@ -14,7 +14,6 @@ import { uploadImagesSequentially } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 import Colors from "../constants/Colors";
 import { UserService } from "../networking";
-import { getOriginalImages } from "../networking/ImageService";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRef, useCallback } from "react";
@@ -80,23 +79,31 @@ export default function EditProfileScreen() {
         const response = await UserService.getUserById(currentUser.uid);
         const userData = response.user || response;
 
-        // Fetch original (non-blurred) images for the user's own profile
-        let originalImageUrls: string[] = [];
-        try {
-          const originalImages = await getOriginalImages(currentUser.uid);
-          originalImageUrls = originalImages.map((img) => img.url);
-        } catch (imageError) {
-          console.error("Error fetching original images:", imageError);
-          // Fallback to user data images if original images fetch fails
-          originalImageUrls = userData.images || [];
-        }
+        // Extract original URLs from image objects
+        const originalImageUrls = (userData.images || [])
+          .map((img: any) => {
+            // If img is an object with originalUrl, use that
+            if (typeof img === "object" && img.originalUrl) {
+              return img.originalUrl;
+            }
+            // If img is already a string, use it as is
+            if (typeof img === "string") {
+              return img;
+            }
+            // Fallback to empty string
+            return "";
+          })
+          .filter((url: string) => url !== "");
 
-        // Ensure images are properly populated with original URLs
         const profileWithImages = {
           ...userData,
           images: originalImageUrls,
         };
 
+        console.log(
+          "[EditProfileScreen] Setting profile data with images:",
+          profileWithImages.images
+        );
         setProfileData(profileWithImages);
         setProfile(profileWithImages);
       } catch (error) {
@@ -107,17 +114,11 @@ export default function EditProfileScreen() {
       }
     };
 
-    // Only fetch if we don't have profile data in context and app is initialized
-    if (!contextProfile && isInitialized) {
+    // Only fetch once when component mounts and app is initialized
+    if (isInitialized && !loading) {
       fetchUserProfile();
-    } else if (contextProfile) {
-      // If we have context profile, fetch original images and update
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        fetchUserProfile();
-      }
     }
-  }, [contextProfile, setProfile, isInitialized]);
+  }, [isInitialized]); // Only depend on isInitialized
 
   // Store the initial profile data only once (on mount)
   useEffect(() => {
