@@ -1,6 +1,15 @@
 import React, { useState } from "react";
-import { View, Image, FlatList, Text, Dimensions } from "react-native";
+import {
+  View,
+  Image,
+  FlatList,
+  Text,
+  Dimensions,
+  Pressable,
+  StyleSheet,
+} from "react-native";
 import { BlurView } from "expo-blur";
+import Colors from "../constants/Colors";
 
 // Types
 interface ImageItem {
@@ -29,6 +38,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
 }) => {
   const windowWidth = Dimensions.get("window").width;
   const [currentIndex, setCurrentIndex] = useState(0);
+  const flatListRef = React.useRef<FlatList>(null);
 
   const renderImageItem = ({
     item,
@@ -99,80 +109,126 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
     setCurrentIndex(index);
   };
 
-  const renderScrollIndicator = () => {
+  const renderPageIndicator = () => {
     if (!showIndicators || images.length <= 1) return null;
 
     return (
-      <View
-        style={{
-          position: "absolute",
-          bottom: 20,
-          left: "50%",
-          transform: [{ translateX: -50 }],
-          borderRadius: 25,
-          overflow: "hidden",
-        }}
-      >
-        <BlurView
-          intensity={80}
-          tint="light"
-          style={{
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            backgroundColor: "rgba(255, 255, 255, 0.1)",
-          }}
-        >
+      <View style={styles.pageIndicator}>
+        {images.map((_, index) => (
           <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {images.map((_, index) => (
-              <View
-                key={index}
-                style={{
-                  height: 8,
-                  width: 8,
-                  borderRadius: 4,
-                  marginHorizontal: 4,
-                  backgroundColor: "white",
-                  opacity: index === currentIndex ? 1 : 0.4,
-                  shadowColor: "#000",
-                  shadowOffset: {
-                    width: 0,
-                    height: 1,
-                  },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 2,
-                  elevation: 3,
-                }}
-              />
-            ))}
-          </View>
-        </BlurView>
+            key={index}
+            style={[styles.dot, currentIndex === index && styles.activeDot]}
+          />
+        ))}
       </View>
     );
   };
 
+  const handleLeftTap = () => {
+    if (currentIndex > 0) {
+      const newIndex = currentIndex - 1;
+      setCurrentIndex(newIndex);
+      flatListRef.current?.scrollToIndex({
+        index: newIndex,
+        animated: true,
+      });
+    }
+  };
+
+  const handleRightTap = () => {
+    if (currentIndex < images.length - 1) {
+      const newIndex = currentIndex + 1;
+      setCurrentIndex(newIndex);
+      flatListRef.current?.scrollToIndex({
+        index: newIndex,
+        animated: true,
+      });
+    }
+  };
+
   return (
     <View style={{ marginBottom: 20 }}>
-      <FlatList
-        data={images}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        bounces={false}
-        overScrollMode="never"
-        keyExtractor={(item, index) => `${item.id}-${index}`}
-        renderItem={renderImageItem}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-      />
-      {renderScrollIndicator()}
+      <View style={styles.container}>
+        <FlatList
+          ref={flatListRef}
+          data={images}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          bounces={false}
+          overScrollMode="never"
+          keyExtractor={(item, index) => `${item.id}-${index}`}
+          renderItem={renderImageItem}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          scrollEnabled={false}
+        />
+
+        {/* Left tap area */}
+        <Pressable style={styles.leftTapArea} onPress={handleLeftTap} />
+
+        {/* Right tap area */}
+        <Pressable style={styles.rightTapArea} onPress={handleRightTap} />
+
+        {/* Page indicator with shadow */}
+        <View style={styles.pageIndicatorContainer}>
+          {renderPageIndicator()}
+        </View>
+      </View>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    position: "relative",
+  },
+  leftTapArea: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    width: 60,
+    height: "100%",
+    zIndex: 1,
+  },
+  rightTapArea: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: 60,
+    height: "100%",
+    zIndex: 1,
+  },
+  pageIndicatorContainer: {
+    position: "absolute",
+    top: 20,
+    left: 0,
+    right: 0,
+    zIndex: 2,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    elevation: 15,
+  },
+  pageIndicator: {
+    flexDirection: "row",
+    justifyContent: "center",
+    paddingHorizontal: 15,
+    gap: 8,
+  },
+  dot: {
+    width: "30%",
+    height: 4,
+    borderRadius: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+  },
+  activeDot: {
+    backgroundColor: Colors.primary500,
+  },
+});
 
 export default ImageCarousel;
