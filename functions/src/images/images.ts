@@ -107,25 +107,23 @@ export const uploadImage = functions.https.onCall(
         metadata: { contentType: "image/jpeg" },
       });
 
-      // Store only the original URL as a string - we'll generate blurred URLs on-demand
-      const originalUrl = `https://storage.googleapis.com/${bucket.name}/${originalFilePath}`;
-      const blurredUrl = `https://storage.googleapis.com/${bucket.name}/${blurredFilePath}`;
+      // Store only the filename as a string - we'll generate signed URLs on-demand
+      const filename = `${timestamp}-${randomId}_original.jpg`;
 
       // Update user document if user exists
       const userDoc = await db.collection("users").doc(userId).get();
       if (userDoc.exists) {
-        // Add to user's images as string URLs
+        // Add to user's images as filename strings
         await db
           .collection("users")
           .doc(userId)
           .update({
-            images: admin.firestore.FieldValue.arrayUnion(originalUrl),
+            images: admin.firestore.FieldValue.arrayUnion(filename),
           });
       }
 
       const result = {
-        url: originalUrl,
-        blurredUrl: blurredUrl,
+        filename: filename,
         message: "Image uploaded successfully",
       };
 
@@ -302,12 +300,22 @@ export const getPersonalImages = functions.https.onCall(
         `[getPersonalImages] Returning ${images.length} images for user ${userId}`
       );
 
-      // Return original URLs for personal use (no blur)
-      return {
-        images: images.map((img: string) => ({
-          url: img,
+      // Generate signed URLs for personal images (unblurred)
+      const personalImages = [];
+      for (const filename of images) {
+        const originalPath = `users/${userId}/images/${filename}`;
+        const [originalUrl] = await bucket.file(originalPath).getSignedUrl({
+          action: "read",
+          expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+        });
+        personalImages.push({
+          url: originalUrl,
           blurLevel: 0, // No blur for personal images
-        })),
+        });
+      }
+
+      return {
+        images: personalImages,
       };
     } catch (error) {
       console.error("Error in getPersonalImages:", error);
@@ -412,11 +420,9 @@ export const getImages = functions.https.onCall(
         let effectiveBlurLevel = blurLevel;
 
         if (typeof img === "string") {
-          // Extract just the filename from the full URL
-          const urlParts = img.split("/");
-          const filename = urlParts[urlParts.length - 1].split("?")[0]; // Remove query params
-
-          console.log(`[getImages] Processing image ${index}:`, filename);
+          // Images are now stored as filenames only
+          const filename = img;
+          console.log(`[getImages] Processing filename:`, filename);
 
           // Check if both users have consented to see unblurred images
           const bothConsented = user1Consented && user2Consented;
@@ -437,7 +443,10 @@ export const getImages = functions.https.onCall(
             console.log(`[getImages] ✅ Generated unblurred signed URL`);
           } else {
             // Not consented or high blur - generate signed URL for blurred image
-            const blurredFilename = filename.replace(".jpg", "-blurred.jpg");
+            const blurredFilename = filename.replace(
+              "_original.jpg",
+              "_blurred.jpg"
+            );
             const blurredPath = `users/${targetUserId}/images/${blurredFilename}`;
             const [blurredUrl] = await bucket.file(blurredPath).getSignedUrl({
               action: "read",
