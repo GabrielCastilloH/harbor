@@ -98,13 +98,9 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
                 {
                   backgroundColor: "#f0f0f0",
                   borderRadius,
-                  alignItems: "center",
-                  justifyContent: "center",
                 },
               ]}
-            >
-              <Text style={{ color: "#888" }}>No Image</Text>
-            </View>
+            />
           )}
         </View>
       </View>
