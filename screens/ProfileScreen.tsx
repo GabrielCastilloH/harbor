@@ -238,22 +238,24 @@ export default function ProfileScreen() {
             <ActivityIndicator size="large" color={Colors.primary500} />
           </View>
         ) : (
-          <ImageCarousel
-            images={imagesWithBlur.map((img, index) => ({
-              id: `${index}`,
-              url: img.url,
-              title: `Image ${index + 1}`,
-              blurLevel: img.blurLevel,
-            }))}
-            imageHeight={350}
-            imageWidth={350}
-            borderRadius={12}
-            showIndicators={true}
-            onImagePress={(image, index) => {
-              setSelectedPhoto(image.url);
-              setModalVisible(true);
-            }}
-          />
+          <View style={{ marginTop: 20 }}>
+            <ImageCarousel
+              images={imagesWithBlur.map((img, index) => ({
+                id: `${index}`,
+                url: img.url,
+                title: `Image ${index + 1}`,
+                blurLevel: img.blurLevel,
+              }))}
+              imageHeight={350}
+              imageWidth={350}
+              borderRadius={12}
+              showIndicators={true}
+              onImagePress={(image, index) => {
+                setSelectedPhoto(image.url);
+                setModalVisible(true);
+              }}
+            />
+          </View>
         )}
         <View style={{ paddingHorizontal: 24 }}>
           <BasicInfoView profile={profile} />
