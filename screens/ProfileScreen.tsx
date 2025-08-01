@@ -92,15 +92,23 @@ export default function ProfileScreen() {
   useEffect(() => {
     const fetchImages = async () => {
       if (!userId) {
+        console.log("[ProfileScreen] No userId provided, skipping image fetch");
         setImageLoading(false);
         return;
       }
       try {
         console.log("[ProfileScreen] Fetching images for userId:", userId);
+        console.log("[ProfileScreen] userId type:", typeof userId);
+        console.log("[ProfileScreen] userId length:", userId.length);
+        console.log("[ProfileScreen] About to call getImages...");
+
         const images = await getImages(userId);
+        console.log("[ProfileScreen] getImages returned:", images);
         setImagesWithBlur(images);
       } catch (error: any) {
+        console.error("[ProfileScreen] Error in fetchImages:", error);
         if (error?.code === "not-found") {
+          console.log("[ProfileScreen] User not found, setting empty images");
           setImagesWithBlur([]);
           setImageLoading(false);
           setProfile(null); // Will show 'Profile not found' message

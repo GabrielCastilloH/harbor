@@ -297,6 +297,8 @@ export const getImages = functions.https.onCall(
       }
       const { targetUserId } = request.data;
       const currentUserId = request.auth.uid;
+      console.log("[getImages] targetUserId:", targetUserId);
+      console.log("[getImages] currentUserId:", currentUserId);
       if (!targetUserId) {
         throw new functions.https.HttpsError(
           "invalid-argument",
@@ -308,7 +310,9 @@ export const getImages = functions.https.onCall(
         .collection("users")
         .doc(targetUserId)
         .get();
+      console.log("[getImages] targetUserDoc.exists:", targetUserDoc.exists);
       if (!targetUserDoc.exists) {
+        console.log("[getImages] User not found in Firestore:", targetUserId);
         throw new functions.https.HttpsError(
           "not-found",
           "Target user not found"
@@ -363,4 +367,5 @@ export const getImages = functions.https.onCall(
 export const imageFunctions = {
   uploadImage,
   getImageUrl,
+  getImages,
 };
