@@ -124,11 +124,7 @@ export default function AccountSetupScreen({
       if (imagesToUpload.length === 0) setProgress(1 / 3);
 
       // Extract filenames from Cloud Function results
-      const imageFilenames = uploadResults.map((r) => {
-        // Extract filename from the URL
-        const urlParts = r.originalUrl.split("/");
-        return urlParts[urlParts.length - 1];
-      });
+      const imageFilenames = uploadResults.map((r) => r.filename);
       console.log(
         "AccountSetupScreen - All images uploaded. imageFilenames:",
         imageFilenames
