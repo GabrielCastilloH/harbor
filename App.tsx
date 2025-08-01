@@ -9,6 +9,7 @@ import AccountSetupScreen from "./screens/AccountSetupScreen";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
+import LoadingScreen from "./components/LoadingScreen";
 
 // Configure Google Sign-In
 GoogleSignin.configure({
@@ -20,7 +21,14 @@ GoogleSignin.configure({
 });
 
 function AppContent() {
-  const { isAuthenticated, userId } = useAppContext();
+  const { isAuthenticated, userId, isInitialized } = useAppContext();
+
+  console.log("AppContent - isInitialized:", isInitialized, "isAuthenticated:", isAuthenticated, "userId:", userId);
+
+  // Show loading screen while Firebase Auth is determining the auth state
+  if (!isInitialized) {
+    return <LoadingScreen loadingText="Initializing..." />;
+  }
 
   // If not signed in, show SignIn.
   // Once authenticated:
