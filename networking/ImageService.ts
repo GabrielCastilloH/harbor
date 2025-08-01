@@ -56,6 +56,42 @@ export const getBlurredImageUrl = async (
 };
 
 /**
+ * Gets personal images for a user (unblurred) - only accessible by the user themselves
+ */
+export const getPersonalImages = async (
+  userId: string
+): Promise<Array<{ url: string; blurLevel: number }>> => {
+  try {
+    console.log(
+      "[ImageService] Calling getPersonalImages with userId:",
+      userId
+    );
+
+    const imageFunctions = httpsCallable(
+      functions,
+      "imageFunctions-getPersonalImages"
+    );
+    console.log("[ImageService] httpsCallable created, calling function...");
+
+    const response = await imageFunctions({ userId });
+    console.log(
+      "[ImageService] Function call successful, response:",
+      response.data
+    );
+
+    return (response.data as any).images;
+  } catch (error) {
+    console.error("[ImageService] Error getting personal images:", error);
+    console.error("[ImageService] Error details:", {
+      code: (error as any)?.code,
+      message: (error as any)?.message,
+      details: (error as any)?.details,
+    });
+    throw error;
+  }
+};
+
+/**
  * Gets all images for a user, each with the correct URL and blurLevel/messageCount
  */
 export const getImages = async (

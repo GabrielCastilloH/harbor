@@ -13,7 +13,7 @@ import { useAppContext } from "../context/AppContext";
 import { uploadImagesSequentially } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 import Colors from "../constants/Colors";
-import { UserService } from "../networking";
+import { UserService, getPersonalImages } from "../networking";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRef, useCallback } from "react";
@@ -60,7 +60,7 @@ export default function EditProfileScreen() {
   } = useAppContext();
   const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] = useState<Profile>(
-    contextProfile || emptyProfile
+    contextProfile || { ...emptyProfile, images: [] }
   );
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -79,14 +79,17 @@ export default function EditProfileScreen() {
         const response = await UserService.getUserById(currentUser.uid);
         const userData = response.user || response;
 
-        // Images are now stored as string URLs
+        // Get personal images (unblurred) for editing
+        const personalImagesResponse = await getPersonalImages(currentUser.uid);
+        const personalImages = personalImagesResponse.map((img) => img.url);
+
         const profileWithImages = {
           ...userData,
-          images: userData.images || [],
+          images: personalImages,
         };
 
         console.log(
-          "[EditProfileScreen] Setting profile data with images:",
+          "[EditProfileScreen] Setting profile data with personal images:",
           profileWithImages.images
         );
         setProfileData(profileWithImages);
