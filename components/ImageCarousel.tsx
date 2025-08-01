@@ -34,138 +34,149 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   showIndicators = true,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const flatListRef = useRef<FlatList>(null);
+  const windowWidth = Dimensions.get("window").width;
 
-  // Tap navigation
-  const handleLeftTap = () => {
-    if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
-  };
-  const handleRightTap = () => {
-    if (currentIndex < images.length - 1) setCurrentIndex(currentIndex + 1);
-  };
-  // Main render
-  const current = images[currentIndex];
-  return (
-    <View
-      style={{
-        paddingTop: spacing,
-        paddingBottom: spacing,
-        paddingHorizontal: spacing,
-        alignItems: "center",
-        width: "100%",
-      }}
-    >
-      {/* Image with shadow and tap areas */}
+  const renderImageItem = ({ item }: { item: ImageItem }) => {
+    return (
       <View
-        style={[
-          styles.shadowContainer,
-          {
-            width: imageSize,
-            height: imageSize,
-            borderRadius,
-            marginTop: 0,
-          },
-        ]}
+        style={{
+          width: windowWidth,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: spacing,
+        }}
       >
-        {/* Indicator OVER the image */}
         <View
           style={[
-            styles.indicatorContainer,
+            styles.shadowContainer,
             {
-              width: imageSize - 32,
-              left: "50%",
-              transform: [{ translateX: -(imageSize - 32) / 2 }],
-              top: 12, // a little padding from the top
+              width: imageSize,
+              height: imageSize,
+              borderRadius,
             },
           ]}
-          pointerEvents="none"
         >
-          {images.map((_, idx) => (
-            <View
-              key={idx}
-              style={[
-                styles.dot,
-                {
-                  backgroundColor:
-                    idx === currentIndex
-                      ? Colors.primary500
-                      : "rgba(255,255,255,0.7)",
-                  flex: 1,
-                  marginHorizontal: 4,
-                },
-              ]}
-            />
-          ))}
-        </View>
-
-        {/* Tap left */}
-        <Pressable
-          style={[
-            styles.tapHalf,
-            {
-              left: 0,
-              borderTopLeftRadius: borderRadius,
-              borderBottomLeftRadius: borderRadius,
-            },
-          ]}
-          onPress={handleLeftTap}
-        />
-        {/* Tap right */}
-        <Pressable
-          style={[
-            styles.tapHalf,
-            {
-              right: 0,
-              borderTopRightRadius: borderRadius,
-              borderBottomRightRadius: borderRadius,
-            },
-          ]}
-          onPress={handleRightTap}
-        />
-
-        {/* Image/Blur */}
-        {current?.url ? (
-          current.blurLevel && current.blurLevel > 0 ? (
-            <BlurView
-              intensity={current.blurLevel * 2}
-              style={[
-                StyleSheet.absoluteFill,
-                { borderRadius, overflow: "hidden" },
-              ]}
-            >
+          {item?.url ? (
+            item.blurLevel && item.blurLevel > 0 ? (
+              <BlurView
+                intensity={item.blurLevel * 2}
+                style={[
+                  StyleSheet.absoluteFill,
+                  { borderRadius, overflow: "hidden" },
+                ]}
+              >
+                <Image
+                  source={{ uri: item.url }}
+                  style={{
+                    width: imageSize,
+                    height: imageSize,
+                    borderRadius,
+                  }}
+                  resizeMode="cover"
+                  fadeDuration={0}
+                />
+              </BlurView>
+            ) : (
               <Image
-                source={{ uri: current.url }}
+                source={{ uri: item.url }}
                 style={{
                   width: imageSize,
                   height: imageSize,
                   borderRadius,
                 }}
                 resizeMode="cover"
+                fadeDuration={0}
               />
-            </BlurView>
+            )
           ) : (
-            <Image
-              source={{ uri: current.url }}
-              style={{
-                width: imageSize,
-                height: imageSize,
-                borderRadius,
-              }}
-              resizeMode="cover"
-            />
-          )
-        ) : (
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                backgroundColor: "#eee",
-                borderRadius,
-                alignItems: "center",
-                justifyContent: "center",
-              },
-            ]}
-          >
-            <Text style={{ color: "#888" }}>No Image</Text>
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: "#eee",
+                  borderRadius,
+                  alignItems: "center",
+                  justifyContent: "center",
+                },
+              ]}
+            >
+              <Text style={{ color: "#888" }}>No Image</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  const handleScroll = (event: any) => {
+    const index = Math.round(event.nativeEvent.contentOffset.x / windowWidth);
+    setCurrentIndex(index);
+  };
+
+  const handleLeftTap = () => {
+    if (currentIndex > 0) {
+      const newIndex = currentIndex - 1;
+      setCurrentIndex(newIndex);
+      flatListRef.current?.scrollToIndex({
+        index: newIndex,
+        animated: false,
+      });
+    }
+  };
+
+  const handleRightTap = () => {
+    if (currentIndex < images.length - 1) {
+      const newIndex = currentIndex + 1;
+      setCurrentIndex(newIndex);
+      flatListRef.current?.scrollToIndex({
+        index: newIndex,
+        animated: false,
+      });
+    }
+  };
+
+  return (
+    <View
+      style={{
+        paddingTop: spacing,
+        paddingBottom: spacing,
+        width: "100%",
+      }}
+    >
+      <View style={styles.container}>
+        <FlatList
+          ref={flatListRef}
+          data={images}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          bounces={false}
+          overScrollMode="never"
+          keyExtractor={(item, index) => `${item.id}-${index}`}
+          renderItem={renderImageItem}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          scrollEnabled={false}
+        />
+
+        {/* Left tap area */}
+        <Pressable style={styles.leftTapArea} onPress={handleLeftTap} />
+
+        {/* Right tap area */}
+        <Pressable style={styles.rightTapArea} onPress={handleRightTap} />
+
+        {/* Page indicator */}
+        {showIndicators && (
+          <View style={styles.pageIndicatorContainer}>
+            <View style={styles.pageIndicator}>
+              {images.map((_, idx) => (
+                <View
+                  key={idx}
+                  style={[styles.dot, idx === currentIndex && styles.activeDot]}
+                />
+              ))}
+            </View>
           </View>
         )}
       </View>
@@ -174,6 +185,9 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
 };
 
 const styles = StyleSheet.create({
+  container: {
+    position: "relative",
+  },
   shadowContainer: {
     justifyContent: "center",
     alignItems: "center",
@@ -182,28 +196,56 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 16,
     elevation: 16,
-    backgroundColor: "#fff", // for iOS shadow
+    backgroundColor: "#fff",
     overflow: "visible",
   },
-  tapHalf: {
+  leftTapArea: {
     position: "absolute",
+    left: 0,
     top: 0,
     width: "50%",
     height: "100%",
-    zIndex: 2,
+    zIndex: 1,
   },
-  indicatorContainer: {
+  rightTapArea: {
     position: "absolute",
+    right: 0,
+    top: 0,
+    width: "50%",
+    height: "100%",
+    zIndex: 1,
+  },
+  pageIndicatorContainer: {
+    position: "absolute",
+    top: 20,
+    width: 310,
+    left: "50%",
+    transform: [{ translateX: -155 }],
+    zIndex: 2,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    elevation: 15,
+  },
+  pageIndicator: {
     flexDirection: "row",
-    height: 8,
-    zIndex: 10,
-    backgroundColor: "transparent",
-    marginTop: 5,
-    alignSelf: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    gap: 8,
+    width: 310,
   },
   dot: {
+    width: "30%",
     height: 4,
     borderRadius: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+  },
+  activeDot: {
+    backgroundColor: Colors.primary500,
   },
 });
 
