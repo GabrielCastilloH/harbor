@@ -45,6 +45,8 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           alignItems: "center",
           justifyContent: "center",
           paddingHorizontal: spacing,
+          height: imageSize + 80,
+          // backgroundColor: "red",
         }}
       >
         <View
@@ -187,6 +189,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: "relative",
+    overflow: "visible",
   },
   shadowContainer: {
     justifyContent: "center",
