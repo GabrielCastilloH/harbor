@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     width: "30%",
     height: 4,
     borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    backgroundColor: "rgba(200, 230, 235, 0.7)",
   },
   activeDot: {
     backgroundColor: Colors.primary500,
