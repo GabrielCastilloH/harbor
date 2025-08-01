@@ -60,11 +60,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isAuthDetermined, setIsAuthDetermined] = useState(false);
 
-  // Debug: Log when userId changes
-  useEffect(() => {
-    console.log("AppContext - userId changed to:", userId);
-  }, [userId]);
-
   // Listen to Firebase Auth state changes
   useEffect(() => {
     console.log("AppContext - Setting up auth state listener");
