@@ -210,10 +210,25 @@ export const getPersonalImages = functions.https.onCall(
       const personalImages = [];
       for (const filename of images) {
         const originalPath = `users/${userId}/images/${filename}`;
+        console.log(`[getPersonalImages] 🔍 DEBUG - Path:`, originalPath);
+        console.log(`[getPersonalImages] 🔍 DEBUG - Filename:`, filename);
+        console.log(`[getPersonalImages] 🔍 DEBUG - UserId:`, userId);
+
         const [originalUrl] = await bucket.file(originalPath).getSignedUrl({
           action: "read",
           expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+          version: "v4",
         });
+        console.log(`[getPersonalImages] Generated URL:`, originalUrl);
+        console.log(
+          `[getPersonalImages] 🔍 DEBUG - URL contains %252F:`,
+          originalUrl.includes("%252F")
+        );
+        console.log(
+          `[getPersonalImages] 🔍 DEBUG - URL contains %2F:`,
+          originalUrl.includes("%2F")
+        );
+
         personalImages.push({
           url: originalUrl,
           blurLevel: 0, // No blur for personal images
@@ -326,7 +341,7 @@ export const getImages = functions.https.onCall(
         let effectiveBlurLevel = blurLevel;
 
         if (typeof img === "string") {
-          // Images are now stored as filenames only
+          // The data in Firestore is now filenames from uploadImageViaCloudFunction
           const filename = img;
           console.log(`[getImages] Processing filename:`, filename);
 
@@ -341,12 +356,28 @@ export const getImages = functions.https.onCall(
           if (bothConsented && blurLevel < 80) {
             // Both consented and low blur - generate signed URL for original image
             const originalPath = `users/${targetUserId}/images/${filename}`;
+            console.log(`[getImages] 🔍 DEBUG - Original path:`, originalPath);
+            console.log(`[getImages] 🔍 DEBUG - Filename:`, filename);
+            console.log(`[getImages] 🔍 DEBUG - TargetUserId:`, targetUserId);
+
             const [originalUrl] = await bucket.file(originalPath).getSignedUrl({
               action: "read",
               expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+              version: "v4",
             });
             url = originalUrl;
-            console.log(`[getImages] ✅ Generated unblurred signed URL`);
+            console.log(
+              `[getImages] ✅ Generated unblurred signed URL:`,
+              originalUrl
+            );
+            console.log(
+              `[getImages] 🔍 DEBUG - URL contains %252F:`,
+              originalUrl.includes("%252F")
+            );
+            console.log(
+              `[getImages] 🔍 DEBUG - URL contains %2F:`,
+              originalUrl.includes("%2F")
+            );
           } else {
             // Not consented or high blur - generate signed URL for blurred image
             const blurredFilename = filename.replace(
@@ -354,12 +385,30 @@ export const getImages = functions.https.onCall(
               "_blurred.jpg"
             );
             const blurredPath = `users/${targetUserId}/images/${blurredFilename}`;
+            console.log(`[getImages] 🔍 DEBUG - Blurred path:`, blurredPath);
+            console.log(
+              `[getImages] 🔍 DEBUG - Blurred filename:`,
+              blurredFilename
+            );
+
             const [blurredUrl] = await bucket.file(blurredPath).getSignedUrl({
               action: "read",
               expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+              version: "v4",
             });
             url = blurredUrl;
-            console.log(`[getImages] 🔒 Generated blurred signed URL`);
+            console.log(
+              `[getImages] 🔒 Generated blurred signed URL:`,
+              blurredUrl
+            );
+            console.log(
+              `[getImages] 🔍 DEBUG - URL contains %252F:`,
+              blurredUrl.includes("%252F")
+            );
+            console.log(
+              `[getImages] 🔍 DEBUG - URL contains %2F:`,
+              blurredUrl.includes("%2F")
+            );
 
             // For server-side blurred images, reduce the client-side blur
             if (blurLevel >= 80) {
