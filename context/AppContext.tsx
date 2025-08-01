@@ -106,9 +106,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             setUserId(null);
             setProfile(null);
           }
-                } catch (error: any) {
+        } catch (error: any) {
           console.log("AppContext - Error checking user profile:", error);
-          
+
           if (
             error?.code === "functions/not-found" ||
             error?.code === "not-found" ||
