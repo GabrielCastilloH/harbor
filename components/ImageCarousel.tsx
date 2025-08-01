@@ -130,7 +130,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
       setCurrentIndex(newIndex);
       flatListRef.current?.scrollToIndex({
         index: newIndex,
-        animated: true,
+        animated: false,
       });
     }
   };
@@ -141,7 +141,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
       setCurrentIndex(newIndex);
       flatListRef.current?.scrollToIndex({
         index: newIndex,
-        animated: true,
+        animated: false,
       });
     }
   };
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     top: 0,
-    width: 60,
+    width: "50%",
     height: "100%",
     zIndex: 1,
   },
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0,
     top: 0,
-    width: 60,
+    width: "50%",
     height: "100%",
     zIndex: 1,
   },
