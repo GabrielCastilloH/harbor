@@ -96,10 +96,12 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!userId || !isAuthenticated || !currentUser) {
-        console.log("HomeScreen - Skipping user profile fetch, not authenticated");
+        console.log(
+          "HomeScreen - Skipping user profile fetch, not authenticated"
+        );
         return;
       }
-      
+
       console.log("HomeScreen - Fetching user profile for:", userId);
       setLoadingProfile(true);
       try {
@@ -107,8 +109,15 @@ export default function HomeScreen() {
         if (response) {
           setUserProfile(response.user || response);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching user profile:", error);
+
+        // If user not found, don't show error - they might be setting up their account
+        if (error?.code === "not-found") {
+          console.log(
+            "HomeScreen - User not found, skipping user profile fetch"
+          );
+        }
       } finally {
         setLoadingProfile(false);
       }
@@ -120,10 +129,12 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchRecommendations = async () => {
       if (!userId || !isAuthenticated || !currentUser) {
-        console.log("HomeScreen - Skipping recommendations fetch, not authenticated");
+        console.log(
+          "HomeScreen - Skipping recommendations fetch, not authenticated"
+        );
         return;
       }
-      
+
       console.log("HomeScreen - Fetching recommendations for user:", userId);
       setLoadingRecommendations(true);
       try {
@@ -137,7 +148,10 @@ export default function HomeScreen() {
                 // but we can add secure image URLs later if needed
                 return profile;
               } catch (error) {
-                console.error("Error fetching secure images for profile:", error);
+                console.error(
+                  "Error fetching secure images for profile:",
+                  error
+                );
                 return profile;
               }
             })
@@ -147,8 +161,15 @@ export default function HomeScreen() {
             setCurrentProfile(recommendationsWithSecureImages[0]);
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching recommendations:", error);
+
+        // If user not found, don't show error - they might be setting up their account
+        if (error?.code === "not-found") {
+          console.log(
+            "HomeScreen - User not found, skipping recommendations fetch"
+          );
+        }
       } finally {
         setLoadingRecommendations(false);
       }
@@ -183,17 +204,22 @@ export default function HomeScreen() {
   const handleSwipeRight = async (profile: Profile) => {
     // Generate unique ID for this swipe attempt
     const swipeId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+
     if (swipeInProgress || lastSwipedProfile === profile.uid) {
-      console.log(`HomeScreen - [${swipeId}] Swipe blocked: duplicate or in progress`);
+      console.log(
+        `HomeScreen - [${swipeId}] Swipe blocked: duplicate or in progress`
+      );
       return;
     }
 
     if (!userId || !profile.uid) {
-      console.log(`HomeScreen - [${swipeId}] Swipe blocked: missing userId or profile.uid`, {
-        userId,
-        profileUid: profile.uid,
-      });
+      console.log(
+        `HomeScreen - [${swipeId}] Swipe blocked: missing userId or profile.uid`,
+        {
+          userId,
+          profileUid: profile.uid,
+        }
+      );
       return;
     }
 
@@ -256,7 +282,10 @@ export default function HomeScreen() {
         setCurrentProfile(null);
       }
     } catch (error) {
-      console.error(`HomeScreen - [${swipeId}] Error handling right swipe:`, error);
+      console.error(
+        `HomeScreen - [${swipeId}] Error handling right swipe:`,
+        error
+      );
     } finally {
       // Increase timeout to prevent race conditions
       setTimeout(() => {

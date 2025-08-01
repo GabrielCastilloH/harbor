@@ -23,19 +23,39 @@ GoogleSignin.configure({
 function AppContent() {
   const { isAuthenticated, userId, isInitialized } = useAppContext();
 
-  console.log("AppContent - isInitialized:", isInitialized, "isAuthenticated:", isAuthenticated, "userId:", userId);
+  console.log(
+    "AppContent - isInitialized:",
+    isInitialized,
+    "isAuthenticated:",
+    isAuthenticated,
+    "userId:",
+    userId
+  );
 
   // Show loading screen while Firebase Auth is determining the auth state
   if (!isInitialized) {
     return <LoadingScreen loadingText="Initializing..." />;
   }
 
+  // Security check: Only allow access to main app if user exists in Firestore
   // If not signed in, show SignIn.
   // Once authenticated:
-  //  - if a userId exists, the user already exists so show the TabNavigator.
-  //  - otherwise, show the AccountSetupScreen to set up a new profile.
+  //  - if userId exists (user has profile in Firestore), show TabNavigator
+  //  - if authenticated but no userId (no profile in Firestore), show AccountSetupScreen
 
   console.log("userId:", userId);
+  console.log("isAuthenticated:", isAuthenticated);
+  console.log("isInitialized:", isInitialized);
+  
+  // Debug: Log the decision
+  if (!isAuthenticated) {
+    console.log("AppContent - Showing SignIn (not authenticated)");
+  } else if (userId) {
+    console.log("AppContent - Showing TabNavigator (authenticated with userId)");
+  } else {
+    console.log("AppContent - Showing AccountSetupScreen (authenticated but no userId)");
+  }
+  
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>

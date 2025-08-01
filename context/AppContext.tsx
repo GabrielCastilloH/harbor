@@ -60,32 +60,83 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isAuthDetermined, setIsAuthDetermined] = useState(false);
 
+  // Debug: Log when userId changes
+  useEffect(() => {
+    console.log("AppContext - userId changed to:", userId);
+  }, [userId]);
+
   // Listen to Firebase Auth state changes
   useEffect(() => {
     console.log("AppContext - Setting up auth state listener");
-    
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log("AppContext - Auth state changed:", user?.uid, "Auth determined:", isAuthDetermined);
-      
+      console.log(
+        "AppContext - Auth state changed:",
+        user?.uid,
+        "Auth determined:",
+        isAuthDetermined
+      );
+
       // Prevent multiple rapid state changes during initialization
       if (isAuthDetermined && user?.uid === currentUser?.uid) {
         console.log("AppContext - Ignoring duplicate auth state change");
         return;
       }
-      
+
       if (user) {
         // User is signed in
         console.log("AppContext - User authenticated:", user.uid);
         setCurrentUser(user);
         setIsAuthenticated(true);
-        setUserId(user.uid);
-        
+
+        // Check if user exists in Firestore before setting userId
+        try {
+          const { UserService } = await import("../networking");
+          const response = await UserService.getUserById(user.uid);
+          if (response && response.user) {
+            console.log(
+              "AppContext - User exists in Firestore, setting userId"
+            );
+            setUserId(user.uid);
+            setProfile(response.user);
+          } else {
+            console.log(
+              "AppContext - User authenticated but no profile in Firestore"
+            );
+            setUserId(null);
+            setProfile(null);
+          }
+                } catch (error: any) {
+          console.log("AppContext - Error checking user profile:", error);
+          
+          if (
+            error?.code === "functions/not-found" ||
+            error?.code === "not-found" ||
+            error?.message?.includes("not found")
+          ) {
+            console.log(
+              "AppContext - User not found in Firestore, setting userId to null"
+            );
+            setUserId(null);
+            setProfile(null);
+          } else {
+            // For other errors, still set userId but log the error
+            console.error(
+              "AppContext - Unexpected error checking user profile:",
+              error
+            );
+            setUserId(user.uid);
+          }
+        }
+
         // Load cached Stream credentials
         try {
-          const [storedStreamApiKey, storedStreamUserToken] = await Promise.all([
-            AsyncStorage.getItem("@streamApiKey"),
-            AsyncStorage.getItem("@streamUserToken"),
-          ]);
+          const [storedStreamApiKey, storedStreamUserToken] = await Promise.all(
+            [
+              AsyncStorage.getItem("@streamApiKey"),
+              AsyncStorage.getItem("@streamUserToken"),
+            ]
+          );
 
           if (storedStreamApiKey) {
             setStreamApiKey(storedStreamApiKey);
@@ -105,7 +156,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setProfile(null);
         setStreamApiKey(null);
         setStreamUserToken(null);
-        
+
         // Clear stored data
         try {
           await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
@@ -113,7 +164,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           console.error("Error clearing stored data:", error);
         }
       }
-      
+
       setIsAuthDetermined(true);
       setIsInitialized(true);
     });
