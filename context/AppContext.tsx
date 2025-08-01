@@ -58,14 +58,24 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [streamApiKey, setStreamApiKey] = useState<string | null>(null);
   const [streamUserToken, setStreamUserToken] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isAuthDetermined, setIsAuthDetermined] = useState(false);
 
   // Listen to Firebase Auth state changes
   useEffect(() => {
+    console.log("AppContext - Setting up auth state listener");
+    
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log("AppContext - Auth state changed:", user?.uid);
+      console.log("AppContext - Auth state changed:", user?.uid, "Auth determined:", isAuthDetermined);
+      
+      // Prevent multiple rapid state changes during initialization
+      if (isAuthDetermined && user?.uid === currentUser?.uid) {
+        console.log("AppContext - Ignoring duplicate auth state change");
+        return;
+      }
       
       if (user) {
         // User is signed in
+        console.log("AppContext - User authenticated:", user.uid);
         setCurrentUser(user);
         setIsAuthenticated(true);
         setUserId(user.uid);
@@ -88,6 +98,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         }
       } else {
         // User is signed out
+        console.log("AppContext - User signed out");
         setCurrentUser(null);
         setIsAuthenticated(false);
         setUserId(null);
@@ -103,11 +114,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         }
       }
       
+      setIsAuthDetermined(true);
       setIsInitialized(true);
     });
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      console.log("AppContext - Cleaning up auth state listener");
+      unsubscribe();
+    };
+  }, [currentUser?.uid, isAuthDetermined]);
 
   return (
     <AppContext.Provider
