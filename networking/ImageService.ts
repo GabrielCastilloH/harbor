@@ -61,11 +61,30 @@ export const getImages = async (
   targetUserId: string
 ): Promise<Array<{ url: string; blurLevel: number; messageCount: number }>> => {
   try {
+    console.log(
+      "[ImageService] Calling getImages with targetUserId:",
+      targetUserId
+    );
+    console.log("[ImageService] Function name: imageFunctions-getImages");
+    console.log("[ImageService] Functions region: us-central1");
+
     const imageFunctions = httpsCallable(functions, "imageFunctions-getImages");
+    console.log("[ImageService] httpsCallable created, calling function...");
+
     const response = await imageFunctions({ targetUserId });
+    console.log(
+      "[ImageService] Function call successful, response:",
+      response.data
+    );
+
     return (response.data as any).images;
   } catch (error) {
-    console.error("Error getting images:", error);
+    console.error("[ImageService] Error getting images:", error);
+    console.error("[ImageService] Error details:", {
+      code: (error as any)?.code,
+      message: (error as any)?.message,
+      details: (error as any)?.details,
+    });
     throw error;
   }
 };
