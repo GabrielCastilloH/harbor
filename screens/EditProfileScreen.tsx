@@ -14,6 +14,7 @@ import { uploadImagesSequentially } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 import Colors from "../constants/Colors";
 import { UserService } from "../networking";
+import { getOriginalImages } from "../networking/ImageService";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRef, useCallback } from "react";
@@ -79,10 +80,21 @@ export default function EditProfileScreen() {
         const response = await UserService.getUserById(currentUser.uid);
         const userData = response.user || response;
 
-        // Ensure images are properly populated
+        // Fetch original (non-blurred) images for the user's own profile
+        let originalImageUrls: string[] = [];
+        try {
+          const originalImages = await getOriginalImages(currentUser.uid);
+          originalImageUrls = originalImages.map((img) => img.url);
+        } catch (imageError) {
+          console.error("Error fetching original images:", imageError);
+          // Fallback to user data images if original images fetch fails
+          originalImageUrls = userData.images || [];
+        }
+
+        // Ensure images are properly populated with original URLs
         const profileWithImages = {
           ...userData,
-          images: userData.images || [],
+          images: originalImageUrls,
         };
 
         setProfileData(profileWithImages);
@@ -99,7 +111,11 @@ export default function EditProfileScreen() {
     if (!contextProfile && isInitialized) {
       fetchUserProfile();
     } else if (contextProfile) {
-      // If we have context profile, just set image loading to false
+      // If we have context profile, fetch original images and update
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        fetchUserProfile();
+      }
     }
   }, [contextProfile, setProfile, isInitialized]);
 
