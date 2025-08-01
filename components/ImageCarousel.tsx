@@ -90,9 +90,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         width: "100%",
       }}
     >
-      {/* Indicator */}
-      {renderIndicator()}
-
       {/* Image with shadow and tap areas */}
       <View
         style={[
@@ -101,10 +98,41 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
             width: imageSize,
             height: imageSize,
             borderRadius,
-            marginTop: 24,
+            marginTop: 0,
           },
         ]}
       >
+        {/* Indicator OVER the image */}
+        <View
+          style={[
+            styles.indicatorContainer,
+            {
+              width: imageSize - 32,
+              left: "50%",
+              transform: [{ translateX: -(imageSize - 32) / 2 }],
+              top: 12, // a little padding from the top
+            },
+          ]}
+          pointerEvents="none"
+        >
+          {images.map((_, idx) => (
+            <View
+              key={idx}
+              style={[
+                styles.dot,
+                {
+                  backgroundColor:
+                    idx === currentIndex
+                      ? Colors.primary500
+                      : "rgba(255,255,255,0.7)",
+                  flex: 1,
+                  marginHorizontal: 4,
+                },
+              ]}
+            />
+          ))}
+        </View>
+
         {/* Tap left */}
         <Pressable
           style={[
@@ -206,7 +234,7 @@ const styles = StyleSheet.create({
     height: 8,
     zIndex: 10,
     backgroundColor: "transparent",
-    marginTop: 0,
+    marginTop: 5,
     alignSelf: "center",
   },
   dot: {
