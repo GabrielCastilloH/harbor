@@ -62,8 +62,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Listen to Firebase Auth state changes
   useEffect(() => {
-    console.log("AppContext - Setting up auth state listener");
-
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log(
         "AppContext - Auth state changed:",
@@ -74,13 +72,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       // Prevent multiple rapid state changes during initialization
       if (isAuthDetermined && user?.uid === currentUser?.uid) {
-        console.log("AppContext - Ignoring duplicate auth state change");
         return;
       }
 
       if (user) {
         // User is signed in
-        console.log("AppContext - User authenticated:", user.uid);
         setCurrentUser(user);
         setIsAuthenticated(true);
 
@@ -89,29 +85,18 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           const { UserService } = await import("../networking");
           const response = await UserService.getUserById(user.uid);
           if (response && response.user) {
-            console.log(
-              "AppContext - User exists in Firestore, setting userId"
-            );
             setUserId(user.uid);
             setProfile(response.user);
           } else {
-            console.log(
-              "AppContext - User authenticated but no profile in Firestore"
-            );
             setUserId(null);
             setProfile(null);
           }
         } catch (error: any) {
-          console.log("AppContext - Error checking user profile:", error);
-
           if (
             error?.code === "functions/not-found" ||
             error?.code === "not-found" ||
             error?.message?.includes("not found")
           ) {
-            console.log(
-              "AppContext - User not found in Firestore, setting userId to null"
-            );
             setUserId(null);
             setProfile(null);
           } else {
@@ -144,7 +129,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         }
       } else {
         // User is signed out
-        console.log("AppContext - User signed out");
         setCurrentUser(null);
         setIsAuthenticated(false);
         setUserId(null);
@@ -165,7 +149,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     });
 
     return () => {
-      console.log("AppContext - Cleaning up auth state listener");
       unsubscribe();
     };
   }, [currentUser?.uid, isAuthDetermined]);
