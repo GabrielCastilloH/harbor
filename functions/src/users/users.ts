@@ -284,10 +284,15 @@ export const getAllUsers = functions.https.onCall(
       }
 
       const usersSnapshot = await db.collection("users").get();
-      const users = usersSnapshot.docs.map((doc) => ({
-        _id: doc.id,
-        ...doc.data(),
-      }));
+      const users = usersSnapshot.docs.map((doc) => {
+        const userData = doc.data();
+        // Remove images from each user for security
+        const { images, ...userDataWithoutImages } = userData;
+        return {
+          _id: doc.id,
+          ...userDataWithoutImages,
+        };
+      });
 
       return { users };
     } catch (error: any) {
@@ -359,6 +364,13 @@ export const getUserById = functions.https.onCall(
       }
 
       // console.log("getUserById - User found:", userData);
+
+      // Remove images from the response for security - images should only be fetched via getImages
+      if (userData) {
+        const { images, ...userDataWithoutImages } = userData;
+        return { user: userDataWithoutImages };
+      }
+
       return { user: userData };
     } catch (error: any) {
       console.error("Error getting user by ID:", error);
