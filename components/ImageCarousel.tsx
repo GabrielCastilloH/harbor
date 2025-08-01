@@ -157,7 +157,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   };
 
   return (
-    <View style={{ marginVertical: 20 }}>
+    <View style={{ marginBottom: 20 }}>
       <FlatList
         data={images}
         horizontal
