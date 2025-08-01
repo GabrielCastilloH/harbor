@@ -24,6 +24,7 @@ import { BlurService } from "../networking";
 import { getImages } from "../networking/ImageService";
 import { BlurView } from "expo-blur";
 import LoadingScreen from "../components/LoadingScreen";
+import { auth } from "../firebaseConfig";
 
 type ProfileScreenParams = {
   ProfileScreen: {
@@ -96,6 +97,17 @@ export default function ProfileScreen() {
         setImageLoading(false);
         return;
       }
+
+      // Check if user is authenticated with Firebase Auth
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        console.log(
+          "[ProfileScreen] User not authenticated with Firebase Auth"
+        );
+        setImageLoading(false);
+        return;
+      }
+
       try {
         console.log("[ProfileScreen] Fetching images for userId:", userId);
         console.log("[ProfileScreen] userId type:", typeof userId);

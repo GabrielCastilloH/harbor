@@ -163,8 +163,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   cornellLogo: {
-    width: 30,
-    height: 30,
+    width: 34,
+    height: 34,
     marginRight: 10,
   },
 });
