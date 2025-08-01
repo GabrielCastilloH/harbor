@@ -47,6 +47,7 @@ export default function ProfileScreen() {
     Array<{ url: string; blurLevel: number; messageCount: number }>
   >([]);
   const [imageLoading, setImageLoading] = useState(true);
+
   const route = useRoute<RouteProp<ProfileScreenParams, "ProfileScreen">>();
   const navigation = useNavigation();
   const { userId: currentUserId } = useAppContext();
@@ -90,7 +91,7 @@ export default function ProfileScreen() {
     fetchProfile();
   }, [userId]);
 
-  // Fetch images with blur info
+  // Fetch images with blur info - this ensures proper consent and blur levels
   useEffect(() => {
     const fetchImages = async () => {
       if (!userId) {
@@ -111,12 +112,9 @@ export default function ProfileScreen() {
 
       try {
         console.log("[ProfileScreen] Fetching images for userId:", userId);
-        console.log("[ProfileScreen] userId type:", typeof userId);
-        console.log("[ProfileScreen] userId length:", userId.length);
-        console.log("[ProfileScreen] About to call getImages...");
-
         const images = await getImages(userId);
         console.log("[ProfileScreen] getImages returned:", images);
+        console.log("[ProfileScreen] imagesWithBlur will be set to:", images);
         setImagesWithBlur(images);
       } catch (error: any) {
         console.error("[ProfileScreen] Error in fetchImages:", error);
@@ -237,12 +235,15 @@ export default function ProfileScreen() {
         <ImageCarousel
           images={
             imagesWithBlur.length > 0
-              ? imagesWithBlur.map((img, index) => ({
-                  id: `${index}`,
-                  url: img.url,
-                  title: `Image ${index + 1}`,
-                  blurLevel: img.blurLevel,
-                }))
+              ? imagesWithBlur.map((img, index) => {
+                  console.log(`[ProfileScreen] Mapping image ${index}:`, img);
+                  return {
+                    id: `${index}`,
+                    url: img.url,
+                    title: `Image ${index + 1}`,
+                    blurLevel: img.blurLevel,
+                  };
+                })
               : [
                   {
                     id: "placeholder",
