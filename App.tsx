@@ -44,18 +44,7 @@ function AppContent() {
   //  - if authenticated but no userId (no profile in Firestore), show AccountSetupScreen
 
   console.log("userId:", userId);
-  console.log("isAuthenticated:", isAuthenticated);
-  console.log("isInitialized:", isInitialized);
-  
-  // Debug: Log the decision
-  if (!isAuthenticated) {
-    console.log("AppContent - Showing SignIn (not authenticated)");
-  } else if (userId) {
-    console.log("AppContent - Showing TabNavigator (authenticated with userId)");
-  } else {
-    console.log("AppContent - Showing AccountSetupScreen (authenticated but no userId)");
-  }
-  
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
