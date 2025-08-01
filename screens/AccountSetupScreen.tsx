@@ -36,7 +36,6 @@ export default function AccountSetupScreen({
     setUserId,
     setProfile,
     setIsAuthenticated,
-    setAuthToken,
     setStreamApiKey,
     setStreamUserToken,
   } = useAppContext();
@@ -65,8 +64,7 @@ export default function AccountSetupScreen({
       setUserId(null);
       setProfile(null);
       setIsAuthenticated(false);
-      setAuthToken(null);
-      await AsyncStorage.multiRemove(["@authToken", "@user"]);
+      await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
     } catch (error) {
       console.error("Error signing out:", error);
     }

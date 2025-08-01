@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
-import { uploadImageToServer } from "../util/imageUtils";
+import { uploadImagesSequentially } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 import Colors from "../constants/Colors";
 import { UserService } from "../networking";
@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRef, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { auth } from "../firebaseConfig";
 
 const emptyProfile: Profile = {
   email: "",
@@ -67,14 +68,15 @@ export default function EditProfileScreen() {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (!userId) {
-        Alert.alert("Error", "User ID is missing. Please log in again.");
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        Alert.alert("Error", "User not authenticated. Please log in again.");
         return;
       }
 
       setLoading(true);
       try {
-        const response = await UserService.getUserById(userId);
+        const response = await UserService.getUserById(currentUser.uid);
         const userData = response.user || response;
 
         // Ensure images are properly populated
@@ -94,12 +96,12 @@ export default function EditProfileScreen() {
     };
 
     // Only fetch if we don't have profile data in context and app is initialized
-    if (!contextProfile && userId && isInitialized) {
+    if (!contextProfile && isInitialized) {
       fetchUserProfile();
     } else if (contextProfile) {
       // If we have context profile, just set image loading to false
     }
-  }, [userId, contextProfile, setProfile, isInitialized]);
+  }, [contextProfile, setProfile, isInitialized]);
 
   // Store the initial profile data only once (on mount)
   useEffect(() => {
@@ -139,8 +141,9 @@ export default function EditProfileScreen() {
   const handleSave = async (images?: string[]) => {
     setLoading(true);
     try {
-      if (!userId) {
-        Alert.alert("Error", "User ID is missing. Please log in again.");
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        Alert.alert("Error", "User not authenticated. Please log in again.");
         setLoading(false);
         return;
       }
@@ -153,9 +156,15 @@ export default function EditProfileScreen() {
         const img = updatedImages[i];
         if (img && (img.startsWith("file:") || img.startsWith("data:"))) {
           try {
-            const fileId = await uploadImageToServer(userId, img);
-            updatedImages[i] = fileId;
-            hasChanges = true;
+            // Upload the image using the new sequential upload function
+            const uploadResults = await uploadImagesSequentially(
+              currentUser.uid,
+              [img]
+            );
+            if (uploadResults.length > 0) {
+              updatedImages[i] = uploadResults[0].originalUrl;
+              hasChanges = true;
+            }
           } catch (error) {
             console.error("Error uploading image during update:", error);
           }
@@ -173,7 +182,10 @@ export default function EditProfileScreen() {
         images: updatedImages,
       };
 
-      const response = await UserService.updateUser(userId, finalProfileData);
+      const response = await UserService.updateUser(
+        currentUser.uid,
+        finalProfileData
+      );
 
       // Store the updated full user profile in context
       setProfile(response.user);
