@@ -11,6 +11,7 @@ import {
   Alert,
   Image,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import BasicInfoView from "../components/BasicInfoView";
@@ -153,25 +154,6 @@ export default function ProfileScreen() {
     checkBlurWarning();
   }, [userId, currentUserId]);
 
-  useEffect(() => {
-    if (userId === currentUserId) return;
-
-    navigation.setOptions({
-      headerRight: () =>
-        matchId ? (
-          <Pressable
-            onPress={() => handleUnmatch()}
-            style={({ pressed }) => [
-              styles.unmatchButton,
-              pressed && styles.unmatchButtonPressed,
-            ]}
-          >
-            <Text style={styles.unmatchButtonText}>Unmatch</Text>
-          </Pressable>
-        ) : null,
-    });
-  }, [navigation, userId, currentUserId, matchId]);
-
   const handleUnmatch = async () => {
     if (!userId || !currentUserId || !matchId) return;
 
@@ -226,7 +208,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.secondary100 }}>
       <ScrollView
         style={styles.scrollView}
         bounces={false}
@@ -295,7 +277,10 @@ export default function ProfileScreen() {
               </Text>
               <View style={styles.warningButtons}>
                 <Pressable
-                  style={[styles.warningButton, styles.unmatchButton]}
+                  style={[
+                    styles.warningButton,
+                    { backgroundColor: Colors.primary500 },
+                  ]}
                   onPress={handleUnmatch}
                 >
                   <Text style={styles.warningButtonText}>Unmatch</Text>
@@ -316,7 +301,7 @@ export default function ProfileScreen() {
           <PersonalView profile={profile} />
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -342,19 +327,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: Colors.secondary100,
   },
-  unmatchButton: {
-    marginRight: 15,
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: Colors.primary500,
-  },
-  unmatchButtonPressed: {
-    opacity: 0.7,
-  },
-  unmatchButtonText: {
-    color: Colors.secondary100,
-    fontWeight: "bold",
-  },
+
   warningModalBackground: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.7)",
