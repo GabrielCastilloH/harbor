@@ -55,6 +55,10 @@ export default function ProfileForm({
 
   // Keep imagesWithKeys in sync with profileData.images if profileData changes (e.g., on load)
   React.useEffect(() => {
+    console.log(
+      "[ProfileForm] profileData.images changed:",
+      profileData.images
+    );
     setImagesWithKeys(wrapImagesWithKeys(profileData.images));
   }, [profileData.images]);
 
@@ -294,6 +298,10 @@ export default function ProfileForm({
             Profile Images
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {(() => {
+              console.log("[ProfileForm] Rendering images:", imagesWithKeys);
+              return null;
+            })()}
             {imagesWithKeys
               .filter(
                 (image) =>
