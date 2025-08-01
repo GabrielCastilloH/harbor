@@ -303,10 +303,6 @@ export default function ProfileForm({
             Profile Images
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {(() => {
-              console.log("[ProfileForm] Rendering images:", imagesWithKeys);
-              return null;
-            })()}
             {imagesWithKeys
               .filter(
                 (image) =>
