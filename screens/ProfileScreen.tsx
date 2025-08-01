@@ -24,6 +24,7 @@ import { BlurService } from "../networking";
 import { getImages } from "../networking/ImageService";
 import { BlurView } from "expo-blur";
 import LoadingScreen from "../components/LoadingScreen";
+import ImageCarousel from "../components/ImageCarousel";
 import { auth } from "../firebaseConfig";
 
 type ProfileScreenParams = {
@@ -227,50 +228,31 @@ export default function ProfileScreen() {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView style={styles.scrollView}>
-        <ScrollView
-          horizontal
-          style={styles.photoScroll}
-          showsHorizontalScrollIndicator={false}
-        >
-          {imageLoading
-            ? profile.images.map((_, index) => (
-                <View
-                  key={index}
-                  style={[styles.thumbnail, styles.loadingThumbnail]}
-                >
-                  <ActivityIndicator size="small" color={Colors.primary500} />
-                </View>
-              ))
-            : imagesWithBlur.map((img, index) => (
-                <Pressable
-                  key={index}
-                  onPress={() => {
-                    setSelectedPhoto(img.url);
-                    setModalVisible(true);
-                  }}
-                >
-                  {img.blurLevel > 0 ? (
-                    <BlurView
-                      intensity={img.blurLevel * 2}
-                      style={styles.thumbnail}
-                    >
-                      <Image
-                        source={{ uri: img.url }}
-                        style={styles.thumbnail}
-                        resizeMode="cover"
-                      />
-                    </BlurView>
-                  ) : (
-                    <Image
-                      source={{ uri: img.url }}
-                      style={styles.thumbnail}
-                      resizeMode="cover"
-                    />
-                  )}
-                </Pressable>
-              ))}
-        </ScrollView>
-        <BasicInfoView profile={profile} />
+        {imageLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary500} />
+          </View>
+        ) : (
+          <ImageCarousel
+            images={imagesWithBlur.map((img, index) => ({
+              id: `${index}`,
+              url: img.url,
+              title: `Image ${index + 1}`,
+              blurLevel: img.blurLevel,
+            }))}
+            imageHeight={340}
+            imageWidth={340}
+            borderRadius={12}
+            showIndicators={true}
+            onImagePress={(image, index) => {
+              setSelectedPhoto(image.url);
+              setModalVisible(true);
+            }}
+          />
+        )}
+        <View style={{ paddingHorizontal: 24 }}>
+          <BasicInfoView profile={profile} />
+        </View>
 
         {/* Image Modal */}
         <Modal
@@ -324,8 +306,10 @@ export default function ProfileScreen() {
           </View>
         </Modal>
 
-        <AcademicView profile={profile} />
-        <PersonalView profile={profile} />
+        <View style={{ paddingHorizontal: 24 }}>
+          <AcademicView profile={profile} />
+          <PersonalView profile={profile} />
+        </View>
       </ScrollView>
     </View>
   );
@@ -335,18 +319,8 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     backgroundColor: Colors.secondary100,
-    paddingHorizontal: 24,
   },
-  photoScroll: {
-    marginVertical: 10,
-    padding: 10,
-  },
-  thumbnail: {
-    width: 150,
-    height: 150,
-    borderRadius: 8,
-    marginRight: 8,
-  },
+
   modalBackground: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.9)",
@@ -422,10 +396,5 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     fontSize: 16,
-  },
-  loadingThumbnail: {
-    backgroundColor: Colors.secondary200,
-    justifyContent: "center",
-    alignItems: "center",
   },
 });
