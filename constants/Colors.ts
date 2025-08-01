@@ -7,6 +7,7 @@ export default {
   secondary100: "#FeFeFe", // almost white
   green: "#0b9c81bb",
   red: "#c4485fbb",
+  strongRed: "#c4485f",
   black: "#231f20",
 };
 
