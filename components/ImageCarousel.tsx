@@ -96,7 +96,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               style={[
                 StyleSheet.absoluteFill,
                 {
-                  backgroundColor: "#eee",
+                  backgroundColor: "#f0f0f0",
                   borderRadius,
                   alignItems: "center",
                   justifyContent: "center",
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 12,
-    backgroundColor: "#fff",
+    backgroundColor: "#f0f0f0",
     overflow: "visible",
   },
   leftTapArea: {
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     width: "30%",
     height: 4,
     borderRadius: 4,
-    backgroundColor: "rgba(200, 230, 235, 0.7)",
+    backgroundColor: "rgba(220, 240, 245, 0.8)",
   },
   activeDot: {
     backgroundColor: Colors.primary500,
