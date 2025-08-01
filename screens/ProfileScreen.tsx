@@ -246,7 +246,7 @@ export default function ProfileScreen() {
               title: `Image ${index + 1}`,
               blurLevel: img.blurLevel,
             }))}
-            imageSize={350}
+            imageSize={360}
             borderRadius={12}
             spacing={0}
             showIndicators={true}
