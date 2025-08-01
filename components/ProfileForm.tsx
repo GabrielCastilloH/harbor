@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, AntDesign } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
-import { Profile } from "../types/App";
+import { Profile, ProfileImage } from "../types/App";
 import * as ImagePicker from "expo-image-picker";
 import { getImageSource } from "../util/imageUtils";
 
@@ -34,10 +34,10 @@ const truncateForLog = (str: string): string => {
 };
 
 // Utility to wrap URIs with keys
-function wrapImagesWithKeys(images: string[]) {
-  return images.map((uri) => ({
+function wrapImagesWithKeys(images: any[]) {
+  return images.map((img) => ({
     key: Date.now().toString() + Math.random(),
-    uri,
+    uri: typeof img === "string" ? img : img.originalUrl,
   }));
 }
 
@@ -141,10 +141,15 @@ export default function ProfileForm({
       return;
     }
 
-    // Update profileData.images before saving
+    // Update profileData.images before saving - save in new object format
     const updatedProfile = {
       ...profileData,
-      images: imagesWithKeys.map((img) => img.uri),
+      images: imagesWithKeys.map(
+        (img): ProfileImage => ({
+          originalUrl: img.uri,
+          blurredUrl: img.uri, // For now, use same URL for both
+        })
+      ),
     };
 
     onProfileChange(updatedProfile);
