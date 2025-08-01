@@ -102,7 +102,11 @@ export default function AccountSetupScreen({
         return;
       }
       const firebaseUid = currentUser.uid;
-      const imagesToUpload = images || profileData.images;
+      const imagesToUpload =
+        images ||
+        profileData.images.map((img) =>
+          typeof img === "string" ? img : img.originalUrl
+        );
       console.log(
         "AccountSetupScreen - Starting sequential image uploads. Count:",
         imagesToUpload.length
