@@ -412,33 +412,50 @@ export const getImages = functions.https.onCall(
         console.log("[getImages] No match found, using defaults");
       }
       // For each image, return the correct URL and blurLevel
-      const result = images.map((img: any, index: number) => {
+      const result = [];
+      for (let index = 0; index < images.length; index++) {
+        const img = images[index];
         console.log(`[getImages] Processing image ${index}:`, img);
         console.log(`[getImages] Image ${index} type:`, typeof img);
 
-        // All images are now stored as string URLs
-        let url = img;
+        // Images are stored as file paths (not full URLs)
+        let url = null;
         let effectiveBlurLevel = blurLevel;
 
         if (typeof img === "string") {
-          console.log(`[getImages] Image ${index} is string URL:`, img);
-          // Always return blurred URL if blur level >= 80, regardless of consent
-          if (blurLevel >= 80) {
-            // Convert original URL to blurred URL
-            url = img.replace(/\.jpg\?/, "-blurred.jpg?");
-            console.log(`[getImages] Converting to blurred URL:`, url);
-            // For server-side blurred images, reduce the client-side blur to make them visible
-            effectiveBlurLevel = Math.min(blurLevel, 50); // Cap at 50% for visibility
-            console.log(
-              `[getImages] Server-side blur applied, reducing client blur to:`,
-              effectiveBlurLevel
-            );
+          console.log(`[getImages] Image ${index} is string path:`, img);
+
+          // Check if both users have consented to see unblurred images
+          const bothConsented = user1Consented && user2Consented;
+          console.log(`[getImages] Both users consented:`, bothConsented);
+
+          // Generate signed URLs based on consent and blur level
+          if (bothConsented && blurLevel < 80) {
+            // Both consented and low blur - generate signed URL for original image
+            const originalPath = `users/${targetUserId}/images/${img}`;
+            const [originalUrl] = await bucket.file(originalPath).getSignedUrl({
+              action: "read",
+              expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+            });
+            url = originalUrl;
+            console.log(`[getImages] Generated signed URL for original image`);
           } else {
-            url = img;
-            console.log(
-              `[getImages] Using original URL, blur level:`,
-              effectiveBlurLevel
-            );
+            // Not consented or high blur - generate signed URL for blurred image
+            const blurredPath = `users/${targetUserId}/images/${img.replace(
+              ".jpg",
+              "-blurred.jpg"
+            )}`;
+            const [blurredUrl] = await bucket.file(blurredPath).getSignedUrl({
+              action: "read",
+              expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+            });
+            url = blurredUrl;
+            console.log(`[getImages] Generated signed URL for blurred image`);
+
+            // For server-side blurred images, reduce the client-side blur
+            if (blurLevel >= 80) {
+              effectiveBlurLevel = Math.min(blurLevel, 50);
+            }
           }
         } else {
           console.log(`[getImages] Image ${index} is not a string:`, img);
@@ -452,12 +469,12 @@ export const getImages = functions.https.onCall(
           effectiveBlurLevel
         );
 
-        return {
+        result.push({
           url,
           blurLevel: effectiveBlurLevel,
           messageCount,
-        };
-      });
+        });
+      }
       return { images: result };
     } catch (error: any) {
       console.error("Error in getImages:", error);
