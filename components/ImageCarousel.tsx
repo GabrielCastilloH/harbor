@@ -42,42 +42,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   const handleRightTap = () => {
     if (currentIndex < images.length - 1) setCurrentIndex(currentIndex + 1);
   };
-
-  // Indicator
-  const renderIndicator = () => {
-    if (!showIndicators || images.length <= 1) return null;
-    return (
-      <View
-        style={[
-          styles.indicatorContainer,
-          {
-            width: imageSize - 32, // indicator is a bit narrower than the image
-            left: "50%",
-            transform: [{ translateX: -(imageSize - 32) / 2 }],
-            top: 0,
-          },
-        ]}
-      >
-        {images.map((_, idx) => (
-          <View
-            key={idx}
-            style={[
-              styles.dot,
-              {
-                backgroundColor:
-                  idx === currentIndex
-                    ? Colors.primary500
-                    : "rgba(255,255,255,0.7)",
-                flex: 1,
-                marginHorizontal: 4,
-              },
-            ]}
-          />
-        ))}
-      </View>
-    );
-  };
-
   // Main render
   const current = images[currentIndex];
   return (
