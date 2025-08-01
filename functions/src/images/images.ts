@@ -107,49 +107,25 @@ export const uploadImage = functions.https.onCall(
         metadata: { contentType: "image/jpeg" },
       });
 
-      // Create image object
-      const imageHash = require("crypto")
-        .createHash("md5")
-        .update(imageBuffer)
-        .digest("hex");
-
-      const imageObject = {
-        baseName,
-        originalUrl: `https://storage.googleapis.com/${bucket.name}/${originalFilePath}`,
-        blurredUrl: `https://storage.googleapis.com/${bucket.name}/${blurredFilePath}`,
-        imageHash,
-      };
+      // Store only the original URL as a string - we'll generate blurred URLs on-demand
+      const originalUrl = `https://storage.googleapis.com/${bucket.name}/${originalFilePath}`;
+      const blurredUrl = `https://storage.googleapis.com/${bucket.name}/${blurredFilePath}`;
 
       // Update user document if user exists
       const userDoc = await db.collection("users").doc(userId).get();
       if (userDoc.exists) {
-        // Check for duplicates
-        const userData = userDoc.data();
-        const existingImages = userData?.images || [];
-        const isDuplicate = existingImages.some(
-          (img: any) => img.imageHash === imageHash
-        );
-
-        if (isDuplicate) {
-          throw new functions.https.HttpsError(
-            "already-exists",
-            "This image has already been uploaded"
-          );
-        }
-
-        // Add to user's images
+        // Add to user's images as string URLs
         await db
           .collection("users")
           .doc(userId)
           .update({
-            images: admin.firestore.FieldValue.arrayUnion(imageObject),
+            images: admin.firestore.FieldValue.arrayUnion(originalUrl),
           });
       }
 
       const result = {
-        url: imageObject.originalUrl,
-        blurredUrl: imageObject.blurredUrl,
-        imageObject,
+        url: originalUrl,
+        blurredUrl: blurredUrl,
         message: "Image uploaded successfully",
       };
 
@@ -369,33 +345,25 @@ export const getImages = functions.https.onCall(
         console.log(`[getImages] Processing image ${index}:`, img);
         console.log(`[getImages] Image ${index} type:`, typeof img);
 
-        // Handle both string URLs and object format
+        // All images are now stored as string URLs
         let url = img;
         let effectiveBlurLevel = blurLevel;
 
-        // If img is an object with originalUrl/blurredUrl properties
-        if (typeof img === "object" && img !== null) {
-          console.log(
-            `[getImages] Image ${index} is object, has originalUrl:`,
-            !!img.originalUrl
-          );
-          console.log(
-            `[getImages] Image ${index} is object, has blurredUrl:`,
-            !!img.blurredUrl
-          );
-          url =
-            user1Consented && user2Consented ? img.originalUrl : img.blurredUrl;
-          effectiveBlurLevel = user1Consented && user2Consented ? 0 : blurLevel;
-        } else if (typeof img === "string") {
+        if (typeof img === "string") {
           console.log(`[getImages] Image ${index} is string URL:`, img);
-          // If img is a string URL, use it directly
-          url = img;
-          effectiveBlurLevel = user1Consented && user2Consented ? 0 : blurLevel;
+          // Always return blurred URL if blur level >= 80, regardless of consent
+          if (blurLevel >= 80) {
+            // Convert original URL to blurred URL
+            url = img.replace(/\.jpg\?/, "-blurred.jpg?");
+            console.log(`[getImages] Converting to blurred URL:`, url);
+          } else {
+            url = img;
+          }
+          effectiveBlurLevel = blurLevel;
         } else {
-          console.log(
-            `[getImages] Image ${index} is neither object nor string:`,
-            img
-          );
+          console.log(`[getImages] Image ${index} is not a string:`, img);
+          url = null;
+          effectiveBlurLevel = blurLevel;
         }
 
         console.log(`[getImages] Final URL for image ${index}:`, url);

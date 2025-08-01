@@ -102,11 +102,7 @@ export default function AccountSetupScreen({
         return;
       }
       const firebaseUid = currentUser.uid;
-      const imagesToUpload =
-        images ||
-        profileData.images.map((img) =>
-          typeof img === "string" ? img : img.originalUrl
-        );
+      const imagesToUpload = images || profileData.images;
       console.log(
         "AccountSetupScreen - Starting sequential image uploads. Count:",
         imagesToUpload.length
@@ -125,14 +121,10 @@ export default function AccountSetupScreen({
       }
       // If no images, progress is 1/3 after this step
       if (imagesToUpload.length === 0) setProgress(1 / 3);
-      const imageObjects = uploadResults.map(({ originalUrl, blurredUrl }) => ({
-        originalUrl,
-        blurredUrl,
-      }));
       const imageUrls = uploadResults.map((r) => r.originalUrl);
       console.log(
-        "AccountSetupScreen - All images uploaded. imageObjects:",
-        imageObjects
+        "AccountSetupScreen - All images uploaded. imageUrls:",
+        imageUrls
       );
       console.log(
         "AccountSetupScreen - All images uploaded. imageUrls:",
