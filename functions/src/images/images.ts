@@ -390,6 +390,97 @@ export const getImages = functions.https.onCall(
 );
 
 /**
+ * Generates a blurred version of an uploaded image
+ */
+export const generateBlurred = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "1GiB",
+    timeoutSeconds: 300,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { userId, filename } = request.data;
+      const currentUserId = request.auth.uid;
+
+      if (!userId || !filename) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "userId and filename are required"
+        );
+      }
+
+      // Ensure user can only process their own images
+      if (userId !== currentUserId) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "Can only process own images"
+        );
+      }
+
+      console.log("🔀 Generating blurred version for:", filename);
+
+      // Get the original image from Storage
+      const originalPath = `users/${userId}/images/${filename}`;
+      const originalFile = bucket.file(originalPath);
+
+      // Check if original exists
+      const [exists] = await originalFile.exists();
+      if (!exists) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "Original image not found"
+        );
+      }
+
+      // Download original image
+      const [originalBuffer] = await originalFile.download();
+
+      // Generate blurred version
+      const blurredBuffer = await blurImageBuffer(originalBuffer, 70);
+
+      // Upload blurred version
+      const blurredFilename = filename.replace("_original.jpg", "_blurred.jpg");
+      const blurredPath = `users/${userId}/images/${blurredFilename}`;
+      const blurredFile = bucket.file(blurredPath);
+
+      await blurredFile.save(blurredBuffer, {
+        metadata: { contentType: "image/jpeg" },
+      });
+
+      console.log("✅ Blurred version generated:", blurredFilename);
+
+      return {
+        success: true,
+        blurredFilename: blurredFilename,
+      };
+    } catch (error: any) {
+      console.error("Error generating blurred version:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to generate blurred version"
+      );
+    }
+  }
+);
+
+/**
  * Returns original (non-blurred) images for the current user's own profile
  */
 export const getOriginalImages = functions.https.onCall(
@@ -466,6 +557,7 @@ export const getOriginalImages = functions.https.onCall(
 
 export const imageFunctions = {
   uploadImage,
+  generateBlurred,
   getImages,
   getPersonalImages,
   getOriginalImages,
