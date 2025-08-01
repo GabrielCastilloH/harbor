@@ -1,6 +1,6 @@
 import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
-import { CallableRequest } from "firebase-functions/v2/https";
+
 import sharp from "sharp";
 
 const db = admin.firestore();
@@ -147,113 +147,6 @@ export const uploadImage = functions.https.onCall(
       throw new functions.https.HttpsError(
         "internal",
         "Failed to upload image"
-      );
-    }
-  }
-);
-
-/**
- * Gets the appropriate image URL based on match state and consent
- */
-export const getImageUrl = functions.https.onCall(
-  {
-    region: "us-central1",
-    memory: "256MiB",
-    timeoutSeconds: 30,
-    minInstances: 0,
-    maxInstances: 10,
-    concurrency: 80,
-    cpu: 1,
-    ingressSettings: "ALLOW_ALL",
-    invoker: "public",
-  },
-  async (
-    request: CallableRequest<{
-      targetUserId: string;
-      imageIndex: number;
-    }>
-  ) => {
-    try {
-      if (!request.auth) {
-        throw new functions.https.HttpsError(
-          "unauthenticated",
-          "User must be authenticated"
-        );
-      }
-
-      const { targetUserId, imageIndex } = request.data;
-      const currentUserId = request.auth.uid;
-
-      if (!targetUserId || imageIndex === undefined) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "Target user ID and image index are required"
-        );
-      }
-
-      // Get target user's images
-      const targetUserDoc = await db
-        .collection("users")
-        .doc(targetUserId)
-        .get();
-      if (!targetUserDoc.exists) {
-        throw new functions.https.HttpsError(
-          "not-found",
-          "Target user not found"
-        );
-      }
-
-      const targetUserData = targetUserDoc.data();
-      const images = targetUserData?.images || [];
-
-      if (imageIndex >= images.length) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "Image index out of range"
-        );
-      }
-
-      const imageData = images[imageIndex];
-
-      // Check if users are matched and have consented
-      const matchQuery = await db
-        .collection("matches")
-        .where("user1Id", "in", [currentUserId, targetUserId])
-        .where("user2Id", "in", [currentUserId, targetUserId])
-        .where("isActive", "==", true)
-        .limit(1)
-        .get();
-
-      if (matchQuery.empty) {
-        // No match - return blurred version
-        return { url: imageData.blurredUrl };
-      }
-
-      // Users are matched - check consent
-      const matchDoc = matchQuery.docs[0];
-      const matchData = matchDoc.data();
-
-      // Check if both users have consented to see unblurred images
-      const user1Consented = matchData?.user1Consented || false;
-      const user2Consented = matchData?.user2Consented || false;
-
-      if (user1Consented && user2Consented) {
-        // Both consented - return original
-        return { url: imageData.originalUrl };
-      } else {
-        // Not both consented - return blurred
-        return { url: imageData.blurredUrl };
-      }
-    } catch (error: any) {
-      console.error("Error getting image URL:", error);
-
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
-      }
-
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to get image URL"
       );
     }
   }
@@ -573,7 +466,6 @@ export const getOriginalImages = functions.https.onCall(
 
 export const imageFunctions = {
   uploadImage,
-  getImageUrl,
   getImages,
   getPersonalImages,
   getOriginalImages,
