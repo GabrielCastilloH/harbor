@@ -49,11 +49,8 @@ export default function HomeScreen() {
   // Initialize socket connection
   useEffect(() => {
     if (!userId || !isAuthenticated || !currentUser) {
-      console.log("HomeScreen - Skipping socket connection, not authenticated");
       return;
     }
-
-    console.log("HomeScreen - Setting up socket connection for user:", userId);
     const socketService = SocketService.getInstance();
     socketService.connect();
 
@@ -62,16 +59,11 @@ export default function HomeScreen() {
 
     // Set up match event handler
     socketService.onMatch(async (matchData) => {
-      console.log("HomeScreen - [SOCKET] Match event received:", matchData);
       try {
         const chatResponse = await ChatFunctions.createChannel({
           userId1: userId,
           userId2: matchData.matchedProfile.uid,
         });
-        console.log(
-          "HomeScreen - [SOCKET][CHAT] Chat channel created:",
-          chatResponse
-        );
       } catch (chatError) {
         console.error(
           "HomeScreen - [SOCKET][CHAT] Error creating chat channel:",
@@ -80,10 +72,6 @@ export default function HomeScreen() {
       } finally {
         setMatchedProfile(matchData.matchedProfile);
         setShowMatch(true);
-        console.log(
-          "HomeScreen - [SOCKET][MODAL] Match modal shown for:",
-          matchData.matchedProfile.uid
-        );
       }
     });
 
@@ -96,13 +84,8 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!userId || !isAuthenticated || !currentUser) {
-        console.log(
-          "HomeScreen - Skipping user profile fetch, not authenticated"
-        );
         return;
       }
-
-      console.log("HomeScreen - Fetching user profile for:", userId);
       setLoadingProfile(true);
       try {
         const response = await UserService.getUserById(userId);
@@ -115,9 +98,7 @@ export default function HomeScreen() {
           error?.code === "not-found" ||
           error?.code === "functions/not-found"
         ) {
-          console.log(
-            "HomeScreen - User not found, skipping user profile fetch"
-          );
+          // User not found, skipping user profile fetch
         } else {
           console.error("Error fetching user profile:", error);
         }
@@ -132,13 +113,8 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchRecommendations = async () => {
       if (!userId || !isAuthenticated || !currentUser) {
-        console.log(
-          "HomeScreen - Skipping recommendations fetch, not authenticated"
-        );
         return;
       }
-
-      console.log("HomeScreen - Fetching recommendations for user:", userId);
       setLoadingRecommendations(true);
       try {
         const response = await RecommendationService.getRecommendations(userId);

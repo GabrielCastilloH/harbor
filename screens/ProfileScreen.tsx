@@ -95,7 +95,6 @@ export default function ProfileScreen() {
   useEffect(() => {
     const fetchImages = async () => {
       if (!userId) {
-        console.log("[ProfileScreen] No userId provided, skipping image fetch");
         setImageLoading(false);
         return;
       }
@@ -103,23 +102,28 @@ export default function ProfileScreen() {
       // Check if user is authenticated with Firebase Auth
       const currentUser = auth.currentUser;
       if (!currentUser) {
-        console.log(
-          "[ProfileScreen] User not authenticated with Firebase Auth"
-        );
         setImageLoading(false);
         return;
       }
 
       try {
-        console.log("[ProfileScreen] Fetching images for userId:", userId);
         const images = await getImages(userId);
-        console.log("[ProfileScreen] getImages returned:", images);
-        console.log("[ProfileScreen] imagesWithBlur will be set to:", images);
+        console.log("🔍 [ProfileScreen] Images fetched successfully");
+        console.log("🔍 [ProfileScreen] Image count:", images.length);
+        
+        // Log blur information for each image
+        images.forEach((img, index) => {
+          console.log(`🔍 [ProfileScreen] Image ${index + 1}:`);
+          console.log(`   URL: ${img.url}`);
+          console.log(`   Blur Level: ${img.blurLevel}%`);
+          console.log(`   Is Server Blurred: ${img.url?.includes("-blurred.jpg") ? "Yes" : "No"}`);
+          console.log(`   Client Blur Intensity: ${img.url?.includes("-blurred.jpg") ? Math.min(img.blurLevel || 0, 20) : Math.min(img.blurLevel, 100)}`);
+        });
+        
         setImagesWithBlur(images);
       } catch (error: any) {
         console.error("[ProfileScreen] Error in fetchImages:", error);
         if (error?.code === "not-found") {
-          console.log("[ProfileScreen] User not found, setting empty images");
           setImagesWithBlur([]);
           setImageLoading(false);
           setProfile(null); // Will show 'Profile not found' message
@@ -236,7 +240,7 @@ export default function ProfileScreen() {
           images={
             imagesWithBlur.length > 0
               ? imagesWithBlur.map((img, index) => {
-                  console.log(`[ProfileScreen] Mapping image ${index}:`, img);
+          
                   return {
                     id: `${index}`,
                     url: img.url,

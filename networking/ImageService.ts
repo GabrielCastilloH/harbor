@@ -62,31 +62,16 @@ export const getPersonalImages = async (
   userId: string
 ): Promise<Array<{ url: string; blurLevel: number }>> => {
   try {
-    console.log(
-      "[ImageService] Calling getPersonalImages with userId:",
-      userId
-    );
-
     const imageFunctions = httpsCallable(
       functions,
       "imageFunctions-getPersonalImages"
     );
-    console.log("[ImageService] httpsCallable created, calling function...");
 
     const response = await imageFunctions({ userId });
-    console.log(
-      "[ImageService] Function call successful, response:",
-      response.data
-    );
 
     return (response.data as any).images;
   } catch (error) {
     console.error("[ImageService] Error getting personal images:", error);
-    console.error("[ImageService] Error details:", {
-      code: (error as any)?.code,
-      message: (error as any)?.message,
-      details: (error as any)?.details,
-    });
     throw error;
   }
 };
@@ -98,30 +83,13 @@ export const getImages = async (
   targetUserId: string
 ): Promise<Array<{ url: string; blurLevel: number; messageCount: number }>> => {
   try {
-    console.log(
-      "[ImageService] Calling getImages with targetUserId:",
-      targetUserId
-    );
-    console.log("[ImageService] Function name: imageFunctions-getImages");
-    console.log("[ImageService] Functions region: us-central1");
-
     const imageFunctions = httpsCallable(functions, "imageFunctions-getImages");
-    console.log("[ImageService] httpsCallable created, calling function...");
 
     const response = await imageFunctions({ targetUserId });
-    console.log(
-      "[ImageService] Function call successful, response:",
-      response.data
-    );
 
     return (response.data as any).images;
   } catch (error) {
     console.error("[ImageService] Error getting images:", error);
-    console.error("[ImageService] Error details:", {
-      code: (error as any)?.code,
-      message: (error as any)?.message,
-      details: (error as any)?.details,
-    });
     throw error;
   }
 };
@@ -133,15 +101,6 @@ export const getOriginalImages = async (
   userId: string
 ): Promise<Array<{ url: string; blurLevel: number; messageCount: number }>> => {
   try {
-    console.log(
-      "[ImageService] Calling getOriginalImages with userId:",
-      userId
-    );
-    console.log(
-      "[ImageService] Function name: imageFunctions-getOriginalImages"
-    );
-    console.log("[ImageService] Functions region: us-central1");
-
     // Get current user to ensure authentication
     const auth = getAuth();
     const currentUser = auth.currentUser;
@@ -153,34 +112,20 @@ export const getOriginalImages = async (
     // Force token refresh to ensure we have a valid token
     try {
       await currentUser.getIdToken(true);
-      console.log("[ImageService] Token refreshed successfully");
     } catch (tokenError) {
       console.error("[ImageService] Error refreshing token:", tokenError);
     }
-
-    console.log("[ImageService] Current user:", currentUser.uid);
-    console.log("[ImageService] Target user:", userId);
 
     const imageFunctions = httpsCallable(
       functions,
       "imageFunctions-getOriginalImages"
     );
-    console.log("[ImageService] httpsCallable created, calling function...");
 
     const response = await imageFunctions({ userId });
-    console.log(
-      "[ImageService] Function call successful, response:",
-      response.data
-    );
 
     return (response.data as any).images;
   } catch (error) {
     console.error("[ImageService] Error getting original images:", error);
-    console.error("[ImageService] Error details:", {
-      code: (error as any)?.code,
-      message: (error as any)?.message,
-      details: (error as any)?.details,
-    });
     throw error;
   }
 };

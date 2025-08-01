@@ -28,55 +28,23 @@ export const createUserProfile = async (userData: {
   email: string;
   [key: string]: any;
 }) => {
-  console.log("createUserProfile - Starting user profile creation");
-  console.log("createUserProfile - userData:", userData);
-  
   // await logToNtfy(`createUserProfile - Starting to create user profile`);
   // await logToNtfy(
   //   `createUserProfile - User data: ${JSON.stringify(userData)}`
   // );
 
   const currentUser = auth.currentUser;
-  console.log("createUserProfile - currentUser:", currentUser);
-  console.log("createUserProfile - auth.currentUser?.uid:", auth.currentUser?.uid);
-  
+
   if (!currentUser) {
-    console.error("createUserProfile - No authenticated user found!");
-    // await logToNtfy(`createUserProfile - No authenticated user found`);
     throw new Error("No authenticated user found");
   }
-
-  console.log("createUserProfile - User is authenticated with UID:", currentUser.uid);
-  console.log(
-    "createUserProfile - About to call UserService.createUser with data:",
-    userData
-  );
   // await logToNtfy(`createUserProfile - About to call UserService.createUser`);
 
   try {
-    console.log("createUserProfile - Calling UserService.createUser...");
     const result = await UserService.createUser(userData);
-    console.log("createUserProfile - UserService.createUser result:", result);
-    console.log(
-      "createUserProfile - UserService.createUser completed successfully"
-    );
-    // await logToNtfy(
-    //   `createUserProfile - UserService.createUser completed successfully`
-    // );
-    // await logToNtfy(`createUserProfile - Result: ${JSON.stringify(result)}`);
-
     return { success: true };
   } catch (error) {
     console.error("createUserProfile - Error creating user profile:", error);
-    console.error("createUserProfile - Error details:", {
-      message: error instanceof Error ? error.message : String(error),
-      code: error instanceof Error ? (error as any).code : undefined,
-      stack: error instanceof Error ? error.stack : undefined
-    });
-    // await logToNtfy(
-    //   `createUserProfile - Error creating user profile: ${error}`
-    // );
-    console.error("Error creating user profile:", error);
     throw error;
   }
 };
