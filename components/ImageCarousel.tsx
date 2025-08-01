@@ -234,11 +234,11 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: 6,
+      height: 2,
     },
-    shadowOpacity: 0.8,
+    shadowOpacity: 0.9,
     shadowRadius: 12,
-    elevation: 15,
+    elevation: 10,
   },
   pageIndicator: {
     flexDirection: "row",
