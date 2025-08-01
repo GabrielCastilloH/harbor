@@ -73,7 +73,7 @@ export class UserService {
       // console.log("UserService - User fetched:", data);
       return data;
     } catch (error) {
-      console.error("UserService - Error getting user by ID:", error);
+      // Don't log as error since this is expected for new users
       throw error;
     }
   }
