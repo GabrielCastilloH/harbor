@@ -87,7 +87,7 @@ export const uploadImage = functions.https.onCall(
         imageBuffer.length
       );
 
-      // Generate file paths
+      // Generate file paths with _original and _blurred suffixes
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 8);
       const baseName = `users/${userId}/images/${timestamp}-${randomId}`;
