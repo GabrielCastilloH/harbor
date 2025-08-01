@@ -202,8 +202,9 @@ const styles = StyleSheet.create({
   pageIndicatorContainer: {
     position: "absolute",
     top: 20,
-    left: 0,
-    right: 0,
+    width: 310, // Match the width of the pageIndicator
+    left: "50%",
+    transform: [{ translateX: -155 }], // Half of 310
     zIndex: 2,
     shadowColor: "#000",
     shadowOffset: {
@@ -217,8 +218,9 @@ const styles = StyleSheet.create({
   pageIndicator: {
     flexDirection: "row",
     justifyContent: "center",
-    paddingHorizontal: 15,
+    paddingHorizontal: 20,
     gap: 8,
+    width: 310, // 350 - 40 (20px padding on each side)
   },
   dot: {
     width: "30%",
