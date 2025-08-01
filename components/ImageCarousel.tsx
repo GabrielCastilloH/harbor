@@ -109,14 +109,18 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           bottom: 20,
           left: "50%",
           transform: [{ translateX: -50 }],
-          borderRadius: 12,
+          borderRadius: 25,
           overflow: "hidden",
         }}
       >
         <BlurView
-          intensity={50}
+          intensity={80}
           tint="light"
-          style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+          style={{
+            paddingHorizontal: 20,
+            paddingVertical: 12,
+            backgroundColor: "rgba(255, 255, 255, 0.1)",
+          }}
         >
           <View
             style={{
@@ -133,8 +137,16 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
                   width: 8,
                   borderRadius: 4,
                   marginHorizontal: 4,
-                  backgroundColor: "black",
-                  opacity: index === currentIndex ? 1 : 0.3,
+                  backgroundColor: "white",
+                  opacity: index === currentIndex ? 1 : 0.4,
+                  shadowColor: "#000",
+                  shadowOffset: {
+                    width: 0,
+                    height: 1,
+                  },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 2,
+                  elevation: 3,
                 }}
               />
             ))}
@@ -145,7 +157,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   };
 
   return (
-    <View className="relative">
+    <View style={{ marginVertical: 20 }}>
       <FlatList
         data={images}
         horizontal
@@ -157,7 +169,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         renderItem={renderImageItem}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        className="mb-4"
       />
       {renderScrollIndicator()}
     </View>
