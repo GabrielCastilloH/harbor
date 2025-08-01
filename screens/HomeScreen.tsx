@@ -110,13 +110,16 @@ export default function HomeScreen() {
           setUserProfile(response.user || response);
         }
       } catch (error: any) {
-        console.error("Error fetching user profile:", error);
-
         // If user not found, don't show error - they might be setting up their account
-        if (error?.code === "not-found") {
+        if (
+          error?.code === "not-found" ||
+          error?.code === "functions/not-found"
+        ) {
           console.log(
             "HomeScreen - User not found, skipping user profile fetch"
           );
+        } else {
+          console.error("Error fetching user profile:", error);
         }
       } finally {
         setLoadingProfile(false);

@@ -99,10 +99,11 @@ export default function EditProfileScreen() {
         setProfileData(profileWithImages);
         setProfile(profileWithImages);
       } catch (error: any) {
-        console.error("Error fetching user profile:", error);
-
         // If user not found, don't show error - they might be setting up their account
-        if (error?.code === "not-found") {
+        if (
+          error?.code === "not-found" ||
+          error?.code === "functions/not-found"
+        ) {
           console.log(
             "[EditProfileScreen] User not found, skipping profile fetch"
           );
@@ -110,6 +111,7 @@ export default function EditProfileScreen() {
           return;
         }
 
+        console.error("Error fetching user profile:", error);
         Alert.alert("Error", "Failed to load profile data. Please try again.");
       } finally {
         setLoading(false);
