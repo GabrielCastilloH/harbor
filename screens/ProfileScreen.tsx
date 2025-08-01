@@ -157,6 +157,7 @@ export default function ProfileScreen() {
     if (userId === currentUserId) return;
 
     navigation.setOptions({
+      headerBackTitle: "Back",
       headerRight: () =>
         matchId ? (
           <Pressable
@@ -341,15 +342,14 @@ const styles = StyleSheet.create({
   unmatchButton: {
     marginRight: 15,
     padding: 8,
-    borderRadius: 8,
-    backgroundColor: Colors.primary500,
   },
   unmatchButtonPressed: {
     opacity: 0.7,
   },
   unmatchButtonText: {
-    color: Colors.secondary100,
+    color: Colors.strongRed,
     fontWeight: "bold",
+    fontSize: 16,
   },
   warningModalBackground: {
     flex: 1,
