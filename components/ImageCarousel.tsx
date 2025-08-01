@@ -117,8 +117,8 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           intensity={80}
           tint="light"
           style={{
-            paddingHorizontal: 20,
-            paddingVertical: 12,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
             backgroundColor: "rgba(255, 255, 255, 0.1)",
           }}
         >
