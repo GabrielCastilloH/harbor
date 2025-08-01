@@ -333,6 +333,7 @@ export const getImages = functions.https.onCall(
     cpu: 1,
     ingressSettings: "ALLOW_ALL",
     invoker: "public",
+    serviceAccount: "firebase-adminsdk-fbsvc@harbor-ch.iam.gserviceaccount.com",
   },
   async (request) => {
     try {
@@ -344,42 +345,36 @@ export const getImages = functions.https.onCall(
       }
       const { targetUserId } = request.data;
       const currentUserId = request.auth.uid;
-      console.log("[getImages] targetUserId:", targetUserId);
-      console.log("[getImages] currentUserId:", currentUserId);
+      console.log("🎯 PROFILE VIEW LOADED ***********");
+      console.log("[getImages] Fetching images for user:", targetUserId);
+
       if (!targetUserId) {
         throw new functions.https.HttpsError(
           "invalid-argument",
           "Target user ID is required"
         );
       }
+
       // Get target user's images
       const targetUserDoc = await db
         .collection("users")
         .doc(targetUserId)
         .get();
-      console.log("[getImages] targetUserDoc.exists:", targetUserDoc.exists);
+
       if (!targetUserDoc.exists) {
-        console.log("[getImages] User not found in Firestore:", targetUserId);
+        console.log("[getImages] ❌ User not found:", targetUserId);
         throw new functions.https.HttpsError(
           "not-found",
           "Target user not found"
         );
       }
+
       const targetUserData = targetUserDoc.data();
-      console.log("[getImages] targetUserData:", targetUserData);
-
       const images = targetUserData?.images || [];
-      console.log("[getImages] images array:", images);
-      console.log("[getImages] images type:", typeof images);
-      console.log("[getImages] images length:", images.length);
-      if (images.length > 0) {
-        console.log("[getImages] First image:", images[0]);
-        console.log("[getImages] First image type:", typeof images[0]);
-      }
+      console.log(`[getImages] 📸 Found ${images.length} images`);
 
-      console.log("[getImages] About to get match info...");
       // Get match info
-      console.log("[getImages] Executing match query...");
+      console.log("[getImages] 🔍 Checking match status...");
       const matchQuery = await db
         .collection("matches")
         .where("user1Id", "in", [currentUserId, targetUserId])
@@ -387,70 +382,69 @@ export const getImages = functions.https.onCall(
         .where("isActive", "==", true)
         .limit(1)
         .get();
-      console.log(
-        "[getImages] Match query completed, empty:",
-        matchQuery.empty
-      );
       let user1Consented = false;
       let user2Consented = false;
       let blurLevel = 100;
       let messageCount = 0;
+
       if (!matchQuery.empty) {
-        console.log("[getImages] Match found, getting match data...");
         const matchData = matchQuery.docs[0].data();
         user1Consented = matchData?.user1Consented || false;
         user2Consented = matchData?.user2Consented || false;
         blurLevel = matchData?.blurPercentage ?? 100;
         messageCount = matchData?.messageCount ?? 0;
-        console.log("[getImages] Match data:", {
-          user1Consented,
-          user2Consented,
-          blurLevel,
-          messageCount,
-        });
+        console.log(
+          `[getImages] ✅ Match found - Consent: ${
+            user1Consented && user2Consented
+          }, Blur: ${blurLevel}%`
+        );
       } else {
-        console.log("[getImages] No match found, using defaults");
+        console.log(
+          `[getImages] ❌ No match found - Using default blur: ${blurLevel}%`
+        );
       }
       // For each image, return the correct URL and blurLevel
       const result = [];
       for (let index = 0; index < images.length; index++) {
         const img = images[index];
-        console.log(`[getImages] Processing image ${index}:`, img);
-        console.log(`[getImages] Image ${index} type:`, typeof img);
-
         // Images are stored as file paths (not full URLs)
         let url = null;
         let effectiveBlurLevel = blurLevel;
 
         if (typeof img === "string") {
-          console.log(`[getImages] Image ${index} is string path:`, img);
+          // Extract just the filename from the full URL
+          const urlParts = img.split("/");
+          const filename = urlParts[urlParts.length - 1].split("?")[0]; // Remove query params
+
+          console.log(`[getImages] Processing image ${index}:`, filename);
 
           // Check if both users have consented to see unblurred images
           const bothConsented = user1Consented && user2Consented;
-          console.log(`[getImages] Both users consented:`, bothConsented);
+          console.log(`[getImages] Consent check:`, {
+            bothConsented,
+            blurLevel,
+          });
 
           // Generate signed URLs based on consent and blur level
           if (bothConsented && blurLevel < 80) {
             // Both consented and low blur - generate signed URL for original image
-            const originalPath = `users/${targetUserId}/images/${img}`;
+            const originalPath = `users/${targetUserId}/images/${filename}`;
             const [originalUrl] = await bucket.file(originalPath).getSignedUrl({
               action: "read",
               expires: Date.now() + 15 * 60 * 1000, // 15 minutes
             });
             url = originalUrl;
-            console.log(`[getImages] Generated signed URL for original image`);
+            console.log(`[getImages] ✅ Generated unblurred signed URL`);
           } else {
             // Not consented or high blur - generate signed URL for blurred image
-            const blurredPath = `users/${targetUserId}/images/${img.replace(
-              ".jpg",
-              "-blurred.jpg"
-            )}`;
+            const blurredFilename = filename.replace(".jpg", "-blurred.jpg");
+            const blurredPath = `users/${targetUserId}/images/${blurredFilename}`;
             const [blurredUrl] = await bucket.file(blurredPath).getSignedUrl({
               action: "read",
               expires: Date.now() + 15 * 60 * 1000, // 15 minutes
             });
             url = blurredUrl;
-            console.log(`[getImages] Generated signed URL for blurred image`);
+            console.log(`[getImages] 🔒 Generated blurred signed URL`);
 
             // For server-side blurred images, reduce the client-side blur
             if (blurLevel >= 80) {
@@ -458,16 +452,10 @@ export const getImages = functions.https.onCall(
             }
           }
         } else {
-          console.log(`[getImages] Image ${index} is not a string:`, img);
+          console.log(`[getImages] ❌ Invalid image format:`, img);
           url = null;
           effectiveBlurLevel = blurLevel;
         }
-
-        console.log(`[getImages] Final URL for image ${index}:`, url);
-        console.log(
-          `[getImages] Final blurLevel for image ${index}:`,
-          effectiveBlurLevel
-        );
 
         result.push({
           url,
