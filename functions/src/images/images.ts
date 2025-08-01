@@ -94,32 +94,45 @@ export const uploadImage = functions.https.onCall(
       const originalFilePath = `${baseName}_original.jpg`;
       const blurredFilePath = `${baseName}_blurred.jpg`;
 
+      console.log("🚀 UPLOAD FUNCTION - File paths:");
+      console.log("Original path:", originalFilePath);
+      console.log("Blurred path:", blurredFilePath);
+
       // Upload original image first (simpler, more reliable)
-      console.log("imageFunctions-uploadImage - Uploading original image...");
+      console.log("📤 Uploading original image...");
       await bucket.file(originalFilePath).save(imageBuffer, {
         metadata: { contentType: "image/jpeg" },
       });
+      console.log("✅ Original image uploaded successfully");
 
       // Generate and upload blurred version
-      console.log("imageFunctions-uploadImage - Generating blurred version...");
+      console.log("🔀 Generating blurred version...");
       const blurredBuffer = await blurImageBuffer(imageBuffer, 70);
       await bucket.file(blurredFilePath).save(blurredBuffer, {
         metadata: { contentType: "image/jpeg" },
       });
+      console.log("✅ Blurred image uploaded successfully");
 
       // Store only the filename as a string - we'll generate signed URLs on-demand
       const filename = `${timestamp}-${randomId}_original.jpg`;
+      console.log("💾 Storing filename in Firestore:", filename);
 
       // Update user document if user exists
       const userDoc = await db.collection("users").doc(userId).get();
       if (userDoc.exists) {
         // Add to user's images as filename strings
+        console.log("📝 Updating user document with filename:", filename);
         await db
           .collection("users")
           .doc(userId)
           .update({
             images: admin.firestore.FieldValue.arrayUnion(filename),
           });
+        console.log("✅ User document updated successfully");
+      } else {
+        console.log(
+          "⚠️ User document does not exist, skipping Firestore update"
+        );
       }
 
       const result = {
@@ -127,7 +140,7 @@ export const uploadImage = functions.https.onCall(
         message: "Image uploaded successfully",
       };
 
-      console.log("imageFunctions-uploadImage - Upload completed successfully");
+      console.log("🎉 UPLOAD COMPLETED - Final filename:", filename);
       return result;
     } catch (error) {
       console.error("imageFunctions-uploadImage - Error:", error);
