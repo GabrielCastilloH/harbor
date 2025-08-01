@@ -8,7 +8,7 @@ import {
   Text,
   TouchableOpacity,
 } from "react-native";
-import { Profile, ProfileImage } from "../types/App";
+import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
 import { uploadImagesSequentially } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
@@ -43,13 +43,10 @@ function isProfileDirty(current: Profile, initial: Profile): boolean {
   const { images: initialImages, ...restInitial } = initial;
   const restDirty = JSON.stringify(restCurrent) !== JSON.stringify(restInitial);
 
-  // Compare images by originalUrl
+  // Compare images by URL
   const imagesDirty =
     currentImages.length !== initialImages.length ||
-    currentImages.some(
-      (img: ProfileImage, i: number) =>
-        img.originalUrl !== initialImages[i]?.originalUrl
-    );
+    currentImages.some((img: string, i: number) => img !== initialImages[i]);
 
   return restDirty || imagesDirty;
 }
@@ -82,14 +79,10 @@ export default function EditProfileScreen() {
         const response = await UserService.getUserById(currentUser.uid);
         const userData = response.user || response;
 
-        // Extract original URLs from image objects
-        const originalImageUrls = (userData.images || []).map(
-          (img: any) => img.originalUrl
-        );
-
+        // Images are now stored as string URLs
         const profileWithImages = {
           ...userData,
-          images: originalImageUrls,
+          images: userData.images || [],
         };
 
         console.log(
@@ -170,8 +163,7 @@ export default function EditProfileScreen() {
       }
 
       // Check if there are any local image URIs that need to be uploaded
-      const updatedImages =
-        images || profileData.images.map((img) => img.originalUrl);
+      const updatedImages = images || profileData.images;
       let hasChanges = false;
 
       for (let i = 0; i < updatedImages.length; i++) {
@@ -197,20 +189,14 @@ export default function EditProfileScreen() {
       if (hasChanges) {
         setProfileData((prev) => ({
           ...prev,
-          images: updatedImages.map((url) => ({
-            originalUrl: url,
-            blurredUrl: url,
-          })),
+          images: updatedImages,
         }));
       }
 
       // Create final data to send to server
       const finalProfileData = {
         ...profileData,
-        images: updatedImages.map((url) => ({
-          originalUrl: url,
-          blurredUrl: url,
-        })),
+        images: updatedImages,
       };
 
       const response = await UserService.updateUser(

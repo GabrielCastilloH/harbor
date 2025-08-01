@@ -62,7 +62,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           {item?.url ? (
             item.blurLevel && item.blurLevel > 0 ? (
               <BlurView
-                intensity={item.blurLevel * 2}
+                intensity={Math.min(item.blurLevel, 100)}
                 style={[
                   StyleSheet.absoluteFill,
                   { borderRadius, overflow: "hidden" },
