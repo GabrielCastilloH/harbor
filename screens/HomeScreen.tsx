@@ -25,7 +25,7 @@ import {
 import { getBlurredImageUrl } from "../networking/ImageService";
 
 export default function HomeScreen() {
-  const { userId } = useAppContext();
+  const { userId, isAuthenticated, currentUser } = useAppContext();
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] =
     useState<boolean>(false);
@@ -48,8 +48,12 @@ export default function HomeScreen() {
 
   // Initialize socket connection
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !isAuthenticated || !currentUser) {
+      console.log("HomeScreen - Skipping socket connection, not authenticated");
+      return;
+    }
 
+    console.log("HomeScreen - Setting up socket connection for user:", userId);
     const socketService = SocketService.getInstance();
     socketService.connect();
 
@@ -87,11 +91,16 @@ export default function HomeScreen() {
     return () => {
       socketService.disconnect();
     };
-  }, [userId]);
+  }, [userId, isAuthenticated, currentUser]);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (!userId) return;
+      if (!userId || !isAuthenticated || !currentUser) {
+        console.log("HomeScreen - Skipping user profile fetch, not authenticated");
+        return;
+      }
+      
+      console.log("HomeScreen - Fetching user profile for:", userId);
       setLoadingProfile(true);
       try {
         const response = await UserService.getUserById(userId);
@@ -106,11 +115,16 @@ export default function HomeScreen() {
     };
 
     fetchUserProfile();
-  }, [userId]);
+  }, [userId, isAuthenticated, currentUser]);
 
   useEffect(() => {
     const fetchRecommendations = async () => {
-      if (!userId) return;
+      if (!userId || !isAuthenticated || !currentUser) {
+        console.log("HomeScreen - Skipping recommendations fetch, not authenticated");
+        return;
+      }
+      
+      console.log("HomeScreen - Fetching recommendations for user:", userId);
       setLoadingRecommendations(true);
       try {
         const response = await RecommendationService.getRecommendations(userId);
@@ -141,7 +155,7 @@ export default function HomeScreen() {
     };
 
     fetchRecommendations();
-  }, [userId]);
+  }, [userId, isAuthenticated, currentUser]);
 
   const handleTouchStart = (event: GestureResponderEvent) => {
     setTouchStart({
