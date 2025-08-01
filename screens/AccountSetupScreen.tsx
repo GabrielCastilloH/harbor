@@ -153,7 +153,7 @@ export default function AccountSetupScreen({
         q4: profileData.q4,
         q5: profileData.q5,
         q6: profileData.q6,
-        images: imageObjects,
+        images: imageUrls, // Send the URLs as strings, not objects
       };
       console.log(
         "AccountSetupScreen - About to call createUserProfile with data:",
