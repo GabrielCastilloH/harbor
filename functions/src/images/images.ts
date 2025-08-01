@@ -320,6 +320,14 @@ export const getImages = functions.https.onCall(
       }
       const targetUserData = targetUserDoc.data();
       const images = targetUserData?.images || [];
+      console.log("[getImages] targetUserData:", targetUserData);
+      console.log("[getImages] images array:", images);
+      console.log("[getImages] images type:", typeof images);
+      console.log("[getImages] images length:", images.length);
+      if (images.length > 0) {
+        console.log("[getImages] First image:", images[0]);
+        console.log("[getImages] First image type:", typeof images[0]);
+      }
       // Get match info
       const matchQuery = await db
         .collection("matches")
@@ -340,13 +348,45 @@ export const getImages = functions.https.onCall(
         messageCount = matchData?.messageCount ?? 0;
       }
       // For each image, return the correct URL and blurLevel
-      const result = images.map((img: any) => {
-        let url = img.blurredUrl;
+      const result = images.map((img: any, index: number) => {
+        console.log(`[getImages] Processing image ${index}:`, img);
+        console.log(`[getImages] Image ${index} type:`, typeof img);
+
+        // Handle both string URLs and object format
+        let url = img;
         let effectiveBlurLevel = blurLevel;
-        if (user1Consented && user2Consented) {
-          url = img.originalUrl;
-          effectiveBlurLevel = 0;
+
+        // If img is an object with originalUrl/blurredUrl properties
+        if (typeof img === "object" && img !== null) {
+          console.log(
+            `[getImages] Image ${index} is object, has originalUrl:`,
+            !!img.originalUrl
+          );
+          console.log(
+            `[getImages] Image ${index} is object, has blurredUrl:`,
+            !!img.blurredUrl
+          );
+          url =
+            user1Consented && user2Consented ? img.originalUrl : img.blurredUrl;
+          effectiveBlurLevel = user1Consented && user2Consented ? 0 : blurLevel;
+        } else if (typeof img === "string") {
+          console.log(`[getImages] Image ${index} is string URL:`, img);
+          // If img is a string URL, use it directly
+          url = img;
+          effectiveBlurLevel = user1Consented && user2Consented ? 0 : blurLevel;
+        } else {
+          console.log(
+            `[getImages] Image ${index} is neither object nor string:`,
+            img
+          );
         }
+
+        console.log(`[getImages] Final URL for image ${index}:`, url);
+        console.log(
+          `[getImages] Final blurLevel for image ${index}:`,
+          effectiveBlurLevel
+        );
+
         return {
           url,
           blurLevel: effectiveBlurLevel,
