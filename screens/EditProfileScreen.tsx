@@ -8,7 +8,7 @@ import {
   Text,
   TouchableOpacity,
 } from "react-native";
-import { Profile } from "../types/App";
+import { Profile, ProfileImage } from "../types/App";
 import { useAppContext } from "../context/AppContext";
 import { uploadImagesSequentially } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
@@ -43,10 +43,13 @@ function isProfileDirty(current: Profile, initial: Profile): boolean {
   const { images: initialImages, ...restInitial } = initial;
   const restDirty = JSON.stringify(restCurrent) !== JSON.stringify(restInitial);
 
-  // Compare images by URI (ignore keys)
+  // Compare images by originalUrl
   const imagesDirty =
     currentImages.length !== initialImages.length ||
-    currentImages.some((uri: string, i: number) => uri !== initialImages[i]);
+    currentImages.some(
+      (img: ProfileImage, i: number) =>
+        img.originalUrl !== initialImages[i]?.originalUrl
+    );
 
   return restDirty || imagesDirty;
 }
@@ -80,20 +83,9 @@ export default function EditProfileScreen() {
         const userData = response.user || response;
 
         // Extract original URLs from image objects
-        const originalImageUrls = (userData.images || [])
-          .map((img: any) => {
-            // If img is an object with originalUrl, use that
-            if (typeof img === "object" && img.originalUrl) {
-              return img.originalUrl;
-            }
-            // If img is already a string, use it as is
-            if (typeof img === "string") {
-              return img;
-            }
-            // Fallback to empty string
-            return "";
-          })
-          .filter((url: string) => url !== "");
+        const originalImageUrls = (userData.images || []).map(
+          (img: any) => img.originalUrl
+        );
 
         const profileWithImages = {
           ...userData,
@@ -166,7 +158,8 @@ export default function EditProfileScreen() {
       }
 
       // Check if there are any local image URIs that need to be uploaded
-      const updatedImages = images || [...profileData.images];
+      const updatedImages =
+        images || profileData.images.map((img) => img.originalUrl);
       let hasChanges = false;
 
       for (let i = 0; i < updatedImages.length; i++) {
@@ -190,13 +183,22 @@ export default function EditProfileScreen() {
 
       // If we processed any local images, update the profileData
       if (hasChanges) {
-        setProfileData((prev) => ({ ...prev, images: updatedImages }));
+        setProfileData((prev) => ({
+          ...prev,
+          images: updatedImages.map((url) => ({
+            originalUrl: url,
+            blurredUrl: url,
+          })),
+        }));
       }
 
       // Create final data to send to server
       const finalProfileData = {
         ...profileData,
-        images: updatedImages,
+        images: updatedImages.map((url) => ({
+          originalUrl: url,
+          blurredUrl: url,
+        })),
       };
 
       const response = await UserService.updateUser(
