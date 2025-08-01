@@ -294,26 +294,33 @@ export default function ProfileForm({
             Profile Images
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {imagesWithKeys.map((image) => (
-              <View key={image.key} style={styles.imageContainer}>
-                <View style={styles.imageBackground}>
-                  <Image
-                    source={getImageSource(image.uri)}
-                    style={styles.image}
-                  />
+            {imagesWithKeys
+              .filter(
+                (image) =>
+                  image.uri &&
+                  typeof image.uri === "string" &&
+                  image.uri.trim() !== ""
+              )
+              .map((image) => (
+                <View key={image.key} style={styles.imageContainer}>
+                  <View style={styles.imageBackground}>
+                    <Image
+                      source={getImageSource(image.uri)}
+                      style={styles.image}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.removeButton}
+                    onPress={() => removeImage(image.key)}
+                  >
+                    <Ionicons
+                      name="close"
+                      size={24}
+                      color={Colors.secondary100}
+                    />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  style={styles.removeButton}
-                  onPress={() => removeImage(image.key)}
-                >
-                  <Ionicons
-                    name="close"
-                    size={24}
-                    color={Colors.secondary100}
-                  />
-                </TouchableOpacity>
-              </View>
-            ))}
+              ))}
             <TouchableOpacity style={styles.addButton} onPress={pickImage}>
               <AntDesign name="plus" size={40} color={Colors.primary500} />
             </TouchableOpacity>
