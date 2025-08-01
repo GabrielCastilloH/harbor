@@ -1,6 +1,8 @@
 import React, { useState, ReactNode, useEffect } from "react";
 import { Profile } from "../types/App";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { auth } from "../firebaseConfig";
+import { onAuthStateChanged, User } from "firebase/auth";
 
 interface AppContextType {
   channel: any;
@@ -13,8 +15,7 @@ interface AppContextType {
   setUserId: (userId: string | null) => void;
   profile: Profile | null;
   setProfile: (profile: Profile | null) => void;
-  authToken: string | null;
-  setAuthToken: (token: string | null) => void;
+  currentUser: User | null;
   streamApiKey: string | null;
   setStreamApiKey: (key: string | null) => void;
   streamUserToken: string | null;
@@ -29,12 +30,11 @@ const defaultValue: AppContextType = {
   setThread: () => {},
   isAuthenticated: false,
   setIsAuthenticated: () => {},
-  userId: "",
+  userId: null,
   setUserId: () => {},
   profile: null,
   setProfile: () => {},
-  authToken: null,
-  setAuthToken: () => {},
+  currentUser: null,
   streamApiKey: null,
   setStreamApiKey: () => {},
   streamUserToken: null,
@@ -54,48 +54,60 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [streamApiKey, setStreamApiKey] = useState<string | null>(null);
   const [streamUserToken, setStreamUserToken] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize app state from AsyncStorage
+  // Listen to Firebase Auth state changes
   useEffect(() => {
-    const initializeAppState = async () => {
-      try {
-        const [storedToken, storedUser, storedStreamApiKey, storedStreamUserToken] = await Promise.all([
-          AsyncStorage.getItem("@authToken"),
-          AsyncStorage.getItem("@user"),
-          AsyncStorage.getItem("@streamApiKey"),
-          AsyncStorage.getItem("@streamUserToken"),
-        ]);
-
-        if (storedToken && storedUser) {
-          const userData = JSON.parse(storedUser);
-          setAuthToken(storedToken);
-          setIsAuthenticated(true);
-          setUserId(userData.uid);
-          setProfile(userData);
-        }
-
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log("AppContext - Auth state changed:", user?.uid);
+      
+      if (user) {
+        // User is signed in
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+        setUserId(user.uid);
+        
         // Load cached Stream credentials
-        if (storedStreamApiKey) {
-          setStreamApiKey(storedStreamApiKey);
+        try {
+          const [storedStreamApiKey, storedStreamUserToken] = await Promise.all([
+            AsyncStorage.getItem("@streamApiKey"),
+            AsyncStorage.getItem("@streamUserToken"),
+          ]);
+
+          if (storedStreamApiKey) {
+            setStreamApiKey(storedStreamApiKey);
+          }
+          if (storedStreamUserToken) {
+            setStreamUserToken(storedStreamUserToken);
+          }
+        } catch (error) {
+          console.error("Error loading Stream credentials:", error);
         }
-        if (storedStreamUserToken) {
-          setStreamUserToken(storedStreamUserToken);
+      } else {
+        // User is signed out
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+        setUserId(null);
+        setProfile(null);
+        setStreamApiKey(null);
+        setStreamUserToken(null);
+        
+        // Clear stored data
+        try {
+          await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
+        } catch (error) {
+          console.error("Error clearing stored data:", error);
         }
-      } catch (error) {
-        console.error("Error initializing app state:", error);
-      } finally {
-        setIsInitialized(true);
       }
-    };
+      
+      setIsInitialized(true);
+    });
 
-    initializeAppState();
+    return () => unsubscribe();
   }, []);
-
-  // Firebase Functions use direct HTTP calls, no interceptors needed
 
   return (
     <AppContext.Provider
@@ -110,8 +122,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setUserId,
         profile,
         setProfile,
-        authToken,
-        setAuthToken,
+        currentUser,
         streamApiKey,
         setStreamApiKey,
         streamUserToken,

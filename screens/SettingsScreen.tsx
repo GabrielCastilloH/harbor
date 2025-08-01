@@ -18,7 +18,7 @@ import { useAppContext } from "../context/AppContext";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
-  const { setIsAuthenticated, setUserId, setAuthToken } = useAppContext();
+  const { setIsAuthenticated, setUserId } = useAppContext();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [locationServices, setLocationServices] = useState(true);
@@ -37,7 +37,6 @@ export default function SettingsScreen() {
             await AsyncStorage.removeItem("@authToken");
             setIsAuthenticated(false);
             setUserId("");
-            setAuthToken(null);
           } catch (error) {
             console.error("Error signing out:", error);
           }

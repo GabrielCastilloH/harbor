@@ -16,16 +16,18 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { preloadChatCredentials, clearChatCredentials } from "../util/chatPreloader";
+import {
+  preloadChatCredentials,
+  clearChatCredentials,
+} from "../util/chatPreloader";
 
 export default function SignIn() {
-  const { 
-    setIsAuthenticated, 
-    setUserId, 
-    setProfile, 
-    setAuthToken,
+  const {
+    setIsAuthenticated,
+    setUserId,
+    setProfile,
     setStreamApiKey,
-    setStreamUserToken 
+    setStreamUserToken,
   } = useAppContext();
   const [isLoading, setIsLoading] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
@@ -44,31 +46,39 @@ export default function SignIn() {
         setUserId(null);
         setProfile(null);
         setIsAuthenticated(false);
-        setAuthToken(null);
         setStreamApiKey(null);
         setStreamUserToken(null);
 
         // Clear stored data from AsyncStorage
-        await AsyncStorage.multiRemove(["@authToken", "@user"]);
-        
+        await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
+
         // Clear chat credentials
         await clearChatCredentials();
       } catch (error) {}
     };
 
     cleanupAuth();
-  }, [setUserId, setProfile, setIsAuthenticated, setAuthToken, setStreamApiKey, setStreamUserToken]);
+  }, [
+    setUserId,
+    setProfile,
+    setIsAuthenticated,
+    setStreamApiKey,
+    setStreamUserToken,
+  ]);
 
   const handleExistingUser = async (userData: any) => {
     try {
       // Pre-load chat credentials for existing users
-      console.log("SignIn - Pre-loading chat credentials for existing user:", userData.uid);
+      console.log(
+        "SignIn - Pre-loading chat credentials for existing user:",
+        userData.uid
+      );
       const { apiKey, userToken } = await preloadChatCredentials(userData.uid);
-      
+
       // Update context with pre-loaded credentials
       setStreamApiKey(apiKey);
       setStreamUserToken(userToken);
-      
+
       console.log("SignIn - Successfully pre-loaded chat credentials");
     } catch (error) {
       console.error("SignIn - Error pre-loading chat credentials:", error);
@@ -196,7 +206,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: Colors.primary500,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
   },
 });
