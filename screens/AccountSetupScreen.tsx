@@ -5,7 +5,7 @@ import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
 import { auth } from "../firebaseConfig";
 import { createUserProfile } from "../util/userBackend";
-import { uploadImagesSequentially } from "../util/imageUtils";
+import { uploadImageViaCloudFunction } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 import LoadingScreen from "../components/LoadingScreen";
 import { signOut } from "firebase/auth";
@@ -112,23 +112,26 @@ export default function AccountSetupScreen({
       if (imagesToUpload.length > 0) {
         for (let i = 0; i < imagesToUpload.length; i++) {
           // Upload one image at a time
-          const singleResult = await uploadImagesSequentially(firebaseUid, [
-            imagesToUpload[i],
-          ]);
-          uploadResults.push(singleResult[0]);
+          const singleResult = await uploadImageViaCloudFunction(
+            firebaseUid,
+            imagesToUpload[i]
+          );
+          uploadResults.push(singleResult);
           setProgress((i + 1) / (imagesToUpload.length + 2)); // +2 for profile and chat steps
         }
       }
       // If no images, progress is 1/3 after this step
       if (imagesToUpload.length === 0) setProgress(1 / 3);
-      const imageUrls = uploadResults.map((r) => r.originalUrl);
+
+      // Extract filenames from Cloud Function results
+      const imageFilenames = uploadResults.map((r) => {
+        // Extract filename from the URL
+        const urlParts = r.originalUrl.split("/");
+        return urlParts[urlParts.length - 1];
+      });
       console.log(
-        "AccountSetupScreen - All images uploaded. imageUrls:",
-        imageUrls
-      );
-      console.log(
-        "AccountSetupScreen - All images uploaded. imageUrls:",
-        imageUrls
+        "AccountSetupScreen - All images uploaded. imageFilenames:",
+        imageFilenames
       );
       setProgress(imagesToUpload.length / (imagesToUpload.length + 2));
       // STEP 2: Create the user profile in Firestore
@@ -145,7 +148,7 @@ export default function AccountSetupScreen({
         q4: profileData.q4,
         q5: profileData.q5,
         q6: profileData.q6,
-        images: imageUrls, // Send the URLs as strings, not objects
+        images: imageFilenames, // Send the filenames as strings, not URLs
       };
       console.log(
         "AccountSetupScreen - About to call createUserProfile with data:",
@@ -175,7 +178,7 @@ export default function AccountSetupScreen({
       setProfile({
         ...profileData,
         email: currentUser.email || "",
-        images: imageUrls,
+        images: imageFilenames,
       });
     } catch (error) {
       console.error("Error creating profile:", error);
