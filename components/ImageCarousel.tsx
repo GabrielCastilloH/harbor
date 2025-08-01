@@ -72,39 +72,58 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           ]}
         >
           {item?.url ? (
-            // TEMPORARILY COMMENTED OUT CLIENT-SIDE BLUR TO TEST
-            // item.blurLevel && item.blurLevel > 0 ? (
-            //   <BlurView
-            //     intensity={Math.min(item.blurLevel, 100)}
-            //     style={[
-            //       StyleSheet.absoluteFill,
-            //       { borderRadius, overflow: "hidden" },
-            //     ]}
-            //   >
-            //     <Image
-            //       source={{ uri: item.url }}
-            //       style={{
-            //         width: imageSize,
-            //         height: imageSize,
-            //         borderRadius,
-            //       }}
-            //       resizeMode="cover"
-            //       fadeDuration={0}
-            //     />
-            //   </BlurView>
-            // ) : (
-            <Image
-              source={{ uri: item.url }}
-              style={{
-                width: imageSize,
-                height: imageSize,
-                borderRadius,
-              }}
-              resizeMode="cover"
-              fadeDuration={0}
-            />
+            // If the URL already contains "-blurred.jpg", it's server-side blurred, so apply minimal client blur
+            item.url.includes("-blurred.jpg") ? (
+              <BlurView
+                intensity={Math.min(item.blurLevel || 0, 20)} // Very low blur for server-blurred images
+                style={[
+                  StyleSheet.absoluteFill,
+                  { borderRadius, overflow: "hidden" },
+                ]}
+              >
+                <Image
+                  source={{ uri: item.url }}
+                  style={{
+                    width: imageSize,
+                    height: imageSize,
+                    borderRadius,
+                  }}
+                  resizeMode="cover"
+                  fadeDuration={0}
+                />
+              </BlurView>
+            ) : item.blurLevel && item.blurLevel > 0 ? (
+              <BlurView
+                intensity={Math.min(item.blurLevel, 100)}
+                style={[
+                  StyleSheet.absoluteFill,
+                  { borderRadius, overflow: "hidden" },
+                ]}
+              >
+                <Image
+                  source={{ uri: item.url }}
+                  style={{
+                    width: imageSize,
+                    height: imageSize,
+                    borderRadius,
+                  }}
+                  resizeMode="cover"
+                  fadeDuration={0}
+                />
+              </BlurView>
+            ) : (
+              <Image
+                source={{ uri: item.url }}
+                style={{
+                  width: imageSize,
+                  height: imageSize,
+                  borderRadius,
+                }}
+                resizeMode="cover"
+                fadeDuration={0}
+              />
+            )
           ) : (
-            // )
             <View
               style={[
                 StyleSheet.absoluteFill,
