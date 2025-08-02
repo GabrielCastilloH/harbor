@@ -1,6 +1,7 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getAuth } from "firebase/auth";
 import app from "../firebaseConfig";
+import { ImageCache } from "./ImageCache";
 
 const functions = getFunctions(app, "us-central1");
 
@@ -62,14 +63,29 @@ export const getPersonalImages = async (
   userId: string
 ): Promise<Array<{ url: string; blurLevel: number }>> => {
   try {
+    // Try to get cached original images first
+    const cachedOriginal = await ImageCache.getCachedImage(userId, "original");
+    if (cachedOriginal) {
+      console.log(
+        `📦 [ImageService] Using cached original image for user ${userId}`
+      );
+      return [{ url: cachedOriginal, blurLevel: 0 }];
+    }
+
     const imageFunctions = httpsCallable(
       functions,
       "imageFunctions-getPersonalImages"
     );
 
     const response = await imageFunctions({ userId });
+    const images = (response.data as any).images;
 
-    return (response.data as any).images;
+    // Cache the original images
+    images.forEach(async (image: any) => {
+      await ImageCache.cacheImage(userId, image.url, "original");
+    });
+
+    return images;
   } catch (error) {
     console.error("[ImageService] Error getting personal images:", error);
     throw error;
@@ -93,8 +109,20 @@ export const getImages = async (
     const imageFunctions = httpsCallable(functions, "imageFunctions-getImages");
 
     const response = await imageFunctions({ targetUserId });
+    const images = (response.data as any).images;
 
-    return (response.data as any).images;
+    // Cache the images based on consent status
+    images.forEach(async (image: any) => {
+      if (image.bothConsented) {
+        // Cache original images when both users have consented
+        await ImageCache.cacheImage(targetUserId, image.url, "original");
+      } else {
+        // Cache blurred images when not consented
+        await ImageCache.cacheImage(targetUserId, image.url, "blurred");
+      }
+    });
+
+    return images;
   } catch (error) {
     console.error("[ImageService] Error getting images:", error);
     throw error;
