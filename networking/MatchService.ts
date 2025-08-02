@@ -104,4 +104,18 @@ export class MatchService {
       throw error;
     }
   }
+
+  static async migrateMatchConsent(matchId: string) {
+    try {
+      const migrateMatchConsent = httpsCallable(
+        functions,
+        "matchFunctions-migrateMatchConsent"
+      );
+      const result = await migrateMatchConsent({ matchId });
+      return result.data as any;
+    } catch (error) {
+      console.error("MatchService - Error migrating match consent:", error);
+      throw error;
+    }
+  }
 }
