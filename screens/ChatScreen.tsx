@@ -14,6 +14,8 @@ export default function ChatScreen() {
   const [isChatFrozen, setIsChatFrozen] = useState(false);
   const [userConsented, setUserConsented] = useState(false);
   const [consentStatus, setConsentStatus] = useState<{
+    user1Id: string;
+    user2Id: string;
     user1Consented: boolean;
     user2Consented: boolean;
     bothConsented: boolean;
@@ -50,11 +52,17 @@ export default function ChatScreen() {
         }
 
         // Check if current user has consented
-        const currentUserConsented =
-          userId === status.user1Consented
-            ? status.user1Consented
-            : status.user2Consented;
+        // Determine if current user is user1 or user2
+        const isUser1 = status.user1Id === userId;
+        const currentUserConsented = isUser1
+          ? status.user1Consented
+          : status.user2Consented;
         setUserConsented(currentUserConsented);
+
+        // Don't show modal if current user has already consented
+        if (currentUserConsented) {
+          setShowConsentModal(false);
+        }
       } catch (error) {
         console.error("Error checking consent state:", error);
       }
@@ -120,10 +128,17 @@ export default function ChatScreen() {
           const status = await ConsentService.getConsentStatus(matchId);
           setConsentStatus(status);
 
-          if (status.shouldShowConsentScreen) {
+          // Determine if current user has already consented
+          const isUser1 = status.user1Id === userId;
+          const currentUserConsented = isUser1
+            ? status.user1Consented
+            : status.user2Consented;
+
+          if (status.shouldShowConsentScreen && !currentUserConsented) {
             setShowConsentModal(true);
             setIsChatFrozen(true);
           } else if (status.bothConsented) {
+            setShowConsentModal(false);
             setIsChatFrozen(false);
           }
         } catch (error) {
