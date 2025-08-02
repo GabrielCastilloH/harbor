@@ -44,7 +44,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           alignItems: "center",
           justifyContent: "center",
           paddingHorizontal: spacing,
-          height: imageSize + 60,
+          height: imageSize + 40,
         }}
       >
         <View
@@ -161,7 +161,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
             style={[
               styles.pageIndicatorContainer,
               {
-                top: 50,
+                top: 35,
                 left: (windowWidth - imageSize) / 2, // Center it with the image
                 width: imageSize,
               },
@@ -191,10 +191,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
     backgroundColor: "#f0f0f0",
     overflow: "visible",
   },
