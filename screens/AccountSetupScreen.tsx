@@ -16,9 +16,7 @@ import { preloadChatCredentials } from "../util/chatPreloader";
 export default function AccountSetupScreen({
   showProgressBar = true,
 }: { showProgressBar?: boolean } = {}) {
-  console.log(
-    "🚨 ACCOUNT SETUP SCREEN IS BEING SHOWN - USER SHOULD NOT BE HERE IF THEY EXIST IN FIRESTORE"
-  );
+
   const {
     setUserId,
     setProfile,
@@ -52,9 +50,7 @@ export default function AccountSetupScreen({
       setProfile(null);
       setIsAuthenticated(false);
       await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
+
   };
 
   useEffect(() => {
@@ -68,9 +64,7 @@ export default function AccountSetupScreen({
             email: currentUser.email || "",
           }));
         }
-      } catch (error) {
-        console.error("Error loading user info:", error);
-      }
+
     };
     loadUserInfo();
   }, []);
