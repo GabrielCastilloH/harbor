@@ -220,10 +220,8 @@ export const createSwipe = functions.https.onCall(
             matchDate: admin.firestore.FieldValue.serverTimestamp(),
             isActive: true,
             messageCount: 0,
-            blurPercentage: 100,
-            warningShown: false,
-            user1Agreed: false,
-            user2Agreed: false,
+            user1Consented: false,
+            user2Consented: false,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };

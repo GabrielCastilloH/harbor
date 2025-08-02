@@ -1,12 +1,12 @@
 export const BLUR_CONFIG = {
-  // Server-side blur for _blurred.jpg images
-  SERVER_BLUR_PERCENT: 100,
+  // Server-side blur for _blurred.jpg images (highly blurred)
+  SERVER_BLUR_PERCENT: 90,
 
   // Client-side blur levels
-  CLIENT_INITIAL_BLUR_PERCENT: 90, // Initial client-side blur after consent
+  CLIENT_INITIAL_BLUR_PERCENT: 90, // Matches server-side blur after consent
 
-  // Message thresholds
-  MESSAGES_TO_CLEAR_BLUR: 30, // Messages to fully reveal _blurred.jpg
+  // Message thresholds for progressive reveal
+  MESSAGES_TO_CLEAR_BLUR: 30, // Messages to fully reveal _blurred.jpg (fake reveal)
   MESSAGES_TO_CLEAR_ORIGINAL: 50, // Messages to fully reveal _original.jpg after consent
 
   // Consent thresholds
@@ -21,14 +21,16 @@ export function getClientBlurLevel({
   bothConsented: boolean;
 }): number {
   if (!bothConsented) {
-    // Progressively reveal _blurred.jpg
+    // Phase 1: Progressive reveal of _blurred.jpg (fake reveal)
+    // Blur goes from 100% to 0% over MESSAGES_TO_CLEAR_BLUR messages
     const progress = Math.min(
       messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR,
       1
     );
-    return Math.round(BLUR_CONFIG.SERVER_BLUR_PERCENT * (1 - progress));
+    return Math.round(100 * (1 - progress)); // 100% to 0%
   } else {
-    // Progressively reveal _original.jpg
+    // Phase 2: Progressive reveal of _original.jpg after consent
+    // Start at CLIENT_INITIAL_BLUR_PERCENT (90%) and go to 0% over MESSAGES_TO_CLEAR_ORIGINAL messages
     const progress = Math.min(
       messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL,
       1
