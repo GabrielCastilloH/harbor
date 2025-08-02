@@ -649,6 +649,8 @@ export const getConsentStatus = functions.https.onCall(
       const shouldShowConsentScreen = messageCount >= 30 && !bothConsented;
 
       return {
+        user1Id,
+        user2Id,
         user1Consented,
         user2Consented,
         bothConsented,
