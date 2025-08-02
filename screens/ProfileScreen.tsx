@@ -113,8 +113,6 @@ export default function ProfileScreen() {
 
       try {
         const images = await getImages(userId);
-        console.log("🔍 [ProfileScreen] Images fetched successfully");
-        console.log("🔍 [ProfileScreen] Image count:", images.length);
 
         // Calculate blur levels based on consent and message count
         const processedImages = images.map((img) => {
@@ -126,12 +124,6 @@ export default function ProfileScreen() {
             messageCount,
             bothConsented,
           });
-
-          console.log(`🔍 [ProfileScreen] Image processing:`);
-          console.log(`   URL: ${img.url}`);
-          console.log(`   Both Consented: ${bothConsented}`);
-          console.log(`   Message Count: ${messageCount}`);
-          console.log(`   Client Blur Level: ${clientBlurLevel}%`);
 
           return {
             ...img,
@@ -180,7 +172,16 @@ export default function ProfileScreen() {
   }, [navigation, userId, currentUserId, matchId]);
 
   const handleUnmatch = async () => {
-    if (!userId || !currentUserId || !matchId) return;
+    console.log("🔍 [DEBUG] handleUnmatch called with:", {
+      userId,
+      currentUserId,
+      matchId,
+    });
+
+    if (!userId || !currentUserId || !matchId) {
+      console.log("❌ [DEBUG] handleUnmatch - Missing required data");
+      return;
+    }
 
     Alert.alert(
       "Unmatch",
@@ -194,12 +195,15 @@ export default function ProfileScreen() {
           text: "Unmatch",
           style: "destructive",
           onPress: async () => {
+            console.log("🔍 [DEBUG] User confirmed unmatch");
             try {
+              console.log("🔍 [DEBUG] Calling MatchService.unmatch");
               await MatchService.unmatch(currentUserId, matchId);
+              console.log("✅ [DEBUG] Unmatch successful, navigating back");
               navigation.goBack();
               navigation.goBack();
             } catch (error) {
-              console.error("Error unmatching:", error);
+              console.error("❌ [DEBUG] Unmatch error:", error);
               Alert.alert(
                 "Error",
                 "Failed to unmatch. Please try again later."
