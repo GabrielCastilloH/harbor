@@ -211,25 +211,9 @@ export default function ProfileScreen() {
     );
   };
 
-  if (!matchId) {
-    // Show loading screen while fetching matchId
+  // Show consistent loading screen for all loading states
+  if (!matchId || loading || !profile) {
     return <LoadingScreen loadingText="Loading..." />;
-  }
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary500} />
-      </View>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text>Profile not found</Text>
-      </View>
-    );
   }
 
   return (
