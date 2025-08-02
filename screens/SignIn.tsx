@@ -88,9 +88,10 @@ export default function SignIn() {
 
     // Handle existing user - navigate to main app
     setSignInSuccessful(true);
-    setIsLoading(false); // Stop loading when navigation occurs
     setIsAuthenticated(true);
     setUserId(userData.uid);
+    // Stop loading after we have definitive answer that user exists
+    setIsLoading(false);
   };
 
   const handleNewUser = (user: any) => {
@@ -98,9 +99,10 @@ export default function SignIn() {
     // Don't pre-load chat credentials for new users since they need to complete setup first
     setSignInSuccessful(true);
     setIsNewUser(true);
-    setIsLoading(false); // Stop loading when navigation occurs
     setIsAuthenticated(true);
     setUserId(null); // This will trigger AccountSetupScreen
+    // Stop loading after we have definitive answer that user is new
+    setIsLoading(false);
   };
 
   const handleError = (error: any) => {
@@ -114,14 +116,6 @@ export default function SignIn() {
   const handleSignInStart = () => {
     setIsLoading(true);
     setIsNewUser(false);
-  };
-
-  const handleSignInComplete = () => {
-    // Stop loading if sign-in was not successful (user cancelled)
-    if (!signInSuccessful) {
-      setIsLoading(false);
-    }
-    // If sign-in was successful, let the navigation handle stopping the loading
   };
 
   if (isLoading) {
@@ -155,7 +149,6 @@ export default function SignIn() {
             onNewUser={handleNewUser}
             onError={handleError}
             onSignInStart={handleSignInStart}
-            onSignInComplete={handleSignInComplete}
             buttonText="Continue with Cornell"
             buttonStyle={styles.button}
             textStyle={styles.buttonText}
