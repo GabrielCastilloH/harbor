@@ -107,7 +107,7 @@ export const uploadImage = functions.https.onCall(
 
       // Generate and upload blurred version
       console.log("🔀 Generating blurred version...");
-      const blurredBuffer = await blurImageBuffer(imageBuffer, 70);
+      const blurredBuffer = await blurImageBuffer(imageBuffer, 90);
       await bucket.file(blurredFilePath).save(blurredBuffer, {
         metadata: { contentType: "image/jpeg" },
       });
@@ -349,12 +349,12 @@ export const getImages = functions.https.onCall(
           const bothConsented = user1Consented && user2Consented;
           console.log(`[getImages] Consent check:`, {
             bothConsented,
-            blurLevel,
+            messageCount,
           });
 
-          // Generate signed URLs based on consent and blur level
-          if (bothConsented && blurLevel < 80) {
-            // Both consented and low blur - generate signed URL for original image
+          // Generate signed URLs based on consent
+          if (bothConsented) {
+            // Both consented - generate signed URL for original image
             const originalPath = `users/${targetUserId}/images/${filename}`;
             console.log(`[getImages] 🔍 DEBUG - Original path:`, originalPath);
             console.log(`[getImages] 🔍 DEBUG - Filename:`, filename);
@@ -379,7 +379,7 @@ export const getImages = functions.https.onCall(
               originalUrl.includes("%2F")
             );
           } else {
-            // Not consented or high blur - generate signed URL for blurred image
+            // Not consented - generate signed URL for blurred image
             const blurredFilename = filename.replace(
               "_original.jpg",
               "_blurred.jpg"
@@ -409,11 +409,6 @@ export const getImages = functions.https.onCall(
               `[getImages] 🔍 DEBUG - URL contains %2F:`,
               blurredUrl.includes("%2F")
             );
-
-            // For server-side blurred images, reduce the client-side blur
-            if (blurLevel >= 80) {
-              effectiveBlurLevel = Math.min(blurLevel, 50);
-            }
           }
         } else {
           console.log(`[getImages] ❌ Invalid image format:`, img);
@@ -425,6 +420,7 @@ export const getImages = functions.https.onCall(
           url,
           blurLevel: effectiveBlurLevel,
           messageCount,
+          bothConsented: user1Consented && user2Consented,
         });
       }
       return { images: result };
@@ -499,7 +495,7 @@ export const generateBlurred = functions.https.onCall(
       const [originalBuffer] = await originalFile.download();
 
       // Generate blurred version
-      const blurredBuffer = await blurImageBuffer(originalBuffer, 70);
+      const blurredBuffer = await blurImageBuffer(originalBuffer, 90);
 
       // Upload blurred version
       const blurredFilename = filename.replace("_original.jpg", "_blurred.jpg");

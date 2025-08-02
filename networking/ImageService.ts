@@ -81,7 +81,14 @@ export const getPersonalImages = async (
  */
 export const getImages = async (
   targetUserId: string
-): Promise<Array<{ url: string; blurLevel: number; messageCount: number }>> => {
+): Promise<
+  Array<{
+    url: string;
+    blurLevel: number;
+    messageCount: number;
+    bothConsented: boolean;
+  }>
+> => {
   try {
     const imageFunctions = httpsCallable(functions, "imageFunctions-getImages");
 
