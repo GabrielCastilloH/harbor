@@ -30,8 +30,3 @@ import app from "../firebaseConfig";
 
 // Initialize Firebase Functions
 const functions = getFunctions(app, "us-central1");
-
-console.log("[Networking] Firebase Functions initialized with:");
-console.log("[Networking] Project ID:", app.options.projectId);
-console.log("[Networking] Functions region: us-central1");
-console.log("[Networking] Functions instance:", functions);

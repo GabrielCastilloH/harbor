@@ -35,9 +35,8 @@ export default function ChatScreen() {
         // TEMPORARY: Migrate existing match to new consent fields
         try {
           await MatchService.migrateMatchConsent(matchId);
-          console.log("✅ Match migrated successfully");
         } catch (migrationError) {
-          console.log("Migration result:", migrationError);
+          // Migration failed, continue anyway
         }
 
         const status = await ConsentService.getConsentStatus(matchId);
@@ -107,26 +106,12 @@ export default function ChatScreen() {
   useEffect(() => {
     if (!channel) return;
 
-    console.log("🔍 [ChatScreen] Channel data:", {
-      id: channel.id,
-      matchId: channel.data?.matchId,
-    });
-
     // Set up message listener
     const handleNewMessage = async (event: any) => {
-      console.log("📨 [ChatScreen] New message received:", {
-        messageId: event?.message?.id,
-        matchId: channel.data?.matchId,
-      });
-
       const matchId = channel.data?.matchId;
       if (matchId) {
         try {
           // First increment the message count
-          console.log(
-            "ChatScreen - Updating message count for match:",
-            matchId
-          );
           await updateMessageCount(matchId);
 
           // Check if we need to show consent screen
@@ -160,10 +145,6 @@ export default function ChatScreen() {
             error
           );
         }
-      } else {
-        console.warn(
-          "❌ [ChatScreen] Match ID is missing from channel data - cannot update message count"
-        );
       }
     };
 
@@ -172,7 +153,6 @@ export default function ChatScreen() {
 
     // Cleanup listener on unmount
     return () => {
-      console.log("ChatScreen - Cleaning up message listener");
       channel.off("message.new", handleNewMessage);
     };
   }, [channel, userId]);
