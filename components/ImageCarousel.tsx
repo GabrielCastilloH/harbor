@@ -85,7 +85,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
                 fadeDuration={0}
                 blurRadius={
                   item.blurLevel && item.blurLevel > 0
-                    ? Math.min(item.blurLevel * 2, 50)
+                    ? Math.min(item.blurLevel / 10, 10)
                     : 0
                 }
               />
