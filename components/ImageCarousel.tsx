@@ -70,7 +70,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               width: imageSize,
               height: imageSize,
               borderRadius,
-              backgroundColor: "red", // Debug color
             },
           ]}
         >
@@ -175,7 +174,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
                 top: 50,
                 left: (windowWidth - imageSize) / 2, // Center it with the image
                 width: imageSize,
-                backgroundColor: "blue", // Debug color
               },
             ]}
             onLayout={(event) => {
@@ -185,23 +183,11 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               );
             }}
           >
-            <View
-              style={[
-                styles.pageIndicator,
-                { width: imageSize, backgroundColor: "green" },
-              ]}
-            >
+            <View style={[styles.pageIndicator, { width: imageSize }]}>
               {images.map((_, idx) => (
                 <View
                   key={idx}
-                  style={[
-                    styles.dot,
-                    idx === currentIndex && styles.activeDot,
-                    {
-                      backgroundColor:
-                        idx === currentIndex ? "yellow" : "orange",
-                    }, // Debug colors
-                  ]}
+                  style={[styles.dot, idx === currentIndex && styles.activeDot]}
                 />
               ))}
             </View>
@@ -263,10 +249,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   dot: {
-    width: 8,
+    flex: 1,
     height: 4,
     borderRadius: 2,
     backgroundColor: "rgba(220, 240, 245, 0.8)",
+    marginHorizontal: 2,
   },
   activeDot: {
     backgroundColor: Colors.primary500,
