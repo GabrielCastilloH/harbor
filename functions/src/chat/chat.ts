@@ -136,7 +136,8 @@ export const generateUserToken = functions.https.onCall(
       ]);
 
       const apiKey = streamApiKeyVersion[0].payload?.data?.toString() || "";
-      const apiSecret = streamApiSecretVersion[0].payload?.data?.toString() || "";
+      const apiSecret =
+        streamApiSecretVersion[0].payload?.data?.toString() || "";
 
       if (!apiKey || !apiSecret) {
         throw new functions.https.HttpsError(
@@ -209,7 +210,8 @@ export const generateToken = functions.https.onCall(
       ]);
 
       const apiKey = streamApiKeyVersion[0].payload?.data?.toString() || "";
-      const apiSecret = streamApiSecretVersion[0].payload?.data?.toString() || "";
+      const apiSecret =
+        streamApiSecretVersion[0].payload?.data?.toString() || "";
 
       if (!apiKey || !apiSecret) {
         throw new functions.https.HttpsError(
@@ -298,9 +300,13 @@ export const createChatChannel = functions.https.onCall(
       let matchId = null;
       if (!matchQuery.empty) {
         matchId = matchQuery.docs[0].id;
-        console.log(`Found match ${matchId} for users ${userId1} and ${userId2}`);
+        console.log(
+          `Found match ${matchId} for users ${userId1} and ${userId2}`
+        );
       } else {
-        console.log(`No active match found for users ${userId1} and ${userId2}`);
+        console.log(
+          `No active match found for users ${userId1} and ${userId2}`
+        );
       }
 
       // Create or get the channel with matchId in the data
@@ -311,7 +317,6 @@ export const createChatChannel = functions.https.onCall(
 
       try {
         await channel.create();
-        // Store matchId in channel data for later retrieval
         console.log(`Channel created with matchId: ${matchId}`);
       } catch (err: any) {
         if (err && err.code === 16) {
@@ -320,6 +325,19 @@ export const createChatChannel = functions.https.onCall(
           console.log(`Channel already exists, using existing channel`);
         } else {
           throw err;
+        }
+      }
+
+      // Store matchId in channel data after creation
+      if (matchId) {
+        try {
+          await channel.update({
+            // @ts-ignore - Adding custom field to channel data
+            matchId: matchId,
+          });
+          console.log(`Updated channel with matchId: ${matchId}`);
+        } catch (updateErr) {
+          console.warn(`Failed to update channel with matchId: ${updateErr}`);
         }
       }
 
