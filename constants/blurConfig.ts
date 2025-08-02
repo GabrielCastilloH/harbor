@@ -3,7 +3,7 @@ export const BLUR_CONFIG = {
   SERVER_BLUR_PERCENT: 80,
 
   // Max blur on client-side (used for theatrical phase 1 + real blur in phase 2)
-  CLIENT_MAX_BLUR_RADIUS: 50,
+  CLIENT_MAX_BLUR_RADIUS: 80,
 
   // Message thresholds
   MESSAGES_TO_CLEAR_BLUR: 30, // 100% → 0% fake unblur (really 100% → 80%)
