@@ -43,8 +43,13 @@ export default function ChatScreen() {
         const status = await ConsentService.getConsentStatus(matchId);
         setConsentStatus(status);
 
-        // Show consent modal if needed
-        if (status.shouldShowConsentScreen) {
+        // Check if channel is frozen due to unmatch
+        const isChannelFrozen = channel.data?.frozen || false;
+
+        if (isChannelFrozen) {
+          setIsChatFrozen(true);
+          setShowConsentModal(false); // Don't show consent modal if chat is frozen due to unmatch
+        } else if (status.shouldShowConsentScreen) {
           setShowConsentModal(true);
           setIsChatFrozen(true);
         } else if (status.bothConsented) {
@@ -128,18 +133,26 @@ export default function ChatScreen() {
           const status = await ConsentService.getConsentStatus(matchId);
           setConsentStatus(status);
 
-          // Determine if current user has already consented
-          const isUser1 = status.user1Id === userId;
-          const currentUserConsented = isUser1
-            ? status.user1Consented
-            : status.user2Consented;
+          // Check if channel is frozen due to unmatch
+          const isChannelFrozen = channel.data?.frozen || false;
 
-          if (status.shouldShowConsentScreen && !currentUserConsented) {
-            setShowConsentModal(true);
+          if (isChannelFrozen) {
             setIsChatFrozen(true);
-          } else if (status.bothConsented) {
-            setShowConsentModal(false);
-            setIsChatFrozen(false);
+            setShowConsentModal(false); // Don't show consent modal if chat is frozen due to unmatch
+          } else {
+            // Determine if current user has already consented
+            const isUser1 = status.user1Id === userId;
+            const currentUserConsented = isUser1
+              ? status.user1Consented
+              : status.user2Consented;
+
+            if (status.shouldShowConsentScreen && !currentUserConsented) {
+              setShowConsentModal(true);
+              setIsChatFrozen(true);
+            } else if (status.bothConsented) {
+              setShowConsentModal(false);
+              setIsChatFrozen(false);
+            }
           }
         } catch (error) {
           console.error(
@@ -211,7 +224,9 @@ export default function ChatScreen() {
         {isChatFrozen ? (
           <View style={styles.disabledContainer}>
             <Text style={styles.disabledText}>
-              {userConsented
+              {channel.data?.frozen
+                ? "This chat has been frozen because one of the users unmatched."
+                : userConsented
                 ? "Waiting for the other person to continue the chat..."
                 : "Chat is paused until both users agree to continue."}
             </Text>
