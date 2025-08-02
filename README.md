@@ -86,12 +86,14 @@ A unique dating app that focuses on meaningful connections through progressive p
 The app uses a **two-phase progressive blur system** that creates intrigue while maintaining privacy:
 
 #### Phase 1: Pre-Consent (Theatrical Reveal)
+
 - **Server-side**: `_blurred.jpg` images are pre-blurred to 80% server-side
 - **Client-side**: Fake 100% → 0% blur applied on top of the already-blurred image
 - **Effect**: Creates the illusion of gradual reveal while the image remains heavily obscured
 - **Transition**: At 0% client blur, the image still appears 80% blurred due to server-side blur
 
 #### Phase 2: Post-Consent (Real Reveal)
+
 - **Server-side**: Switch to `_original.jpg` (completely unblurred)
 - **Client-side**: Start at 80% blur (matching Phase 1's final appearance) → 0% blur
 - **Effect**: Seamless transition with actual image clarity improvement
@@ -100,16 +102,18 @@ The app uses a **two-phase progressive blur system** that creates intrigue while
 ### Technical Implementation
 
 #### Blur Configuration (`constants/blurConfig.ts`)
+
 ```typescript
 export const BLUR_CONFIG = {
-  SERVER_BLUR_PERCENT: 80,           // Server-side blur for _blurred.jpg
-  CLIENT_MAX_BLUR_RADIUS: 50,        // Max React Native blur radius
-  MESSAGES_TO_CLEAR_BLUR: 30,        // Phase 1: 100% → 0% fake unblur
-  MESSAGES_TO_CLEAR_ORIGINAL: 50,    // Phase 2: 80% → 0% real unblur
+  SERVER_BLUR_PERCENT: 80, // Server-side blur for _blurred.jpg
+  CLIENT_MAX_BLUR_RADIUS: 50, // Max React Native blur radius
+  MESSAGES_TO_CLEAR_BLUR: 30, // Phase 1: 100% → 0% fake unblur
+  MESSAGES_TO_CLEAR_ORIGINAL: 50, // Phase 2: 80% → 0% real unblur
 };
 ```
 
 #### Blur Calculation Logic
+
 ```typescript
 export function getClientBlurLevel({
   messageCount,
@@ -123,12 +127,18 @@ export function getClientBlurLevel({
 
   if (!bothConsented) {
     // Phase 1: Fake reveal on _blurred.jpg
-    const progress = Math.min(messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR, 1);
+    const progress = Math.min(
+      messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR,
+      1
+    );
     const blurPercent = 100 * (1 - progress); // 100% → 0%
     return percentageToBlurRadius(blurPercent);
   } else {
     // Phase 2: Real reveal on _original.jpg
-    const progress = Math.min(messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL, 1);
+    const progress = Math.min(
+      messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL,
+      1
+    );
     const blurPercent = 80 * (1 - progress); // 80% → 0%
     return percentageToBlurRadius(blurPercent);
   }
@@ -138,13 +148,15 @@ export function getClientBlurLevel({
 ### Security Rules
 
 #### Firebase Function (`getImages`) Rules:
+
 - **ALWAYS return blurred URLs when blur level >= 80** - This is a constant that never changes
 - For string URLs: Convert `original.jpg` to `original-blurred.jpg` when blur level >= 80
 - For object URLs: Use `blurredUrl` property when blur level >= 80
 - **Never return unblurred URLs when blur level >= 80, regardless of consent**
 
 #### Expo BlurView Rules:
-- **Blur intensity = blurLevel (capped at 50)** - If blur level is 100, Expo should blur as much as possible
+
+- **Blur intensity = blurLevel (capped at 80)** - If blur level is 100, Expo should blur as much as possible
 - **Blur level 100 = Maximum Expo blur** - This is not rocket science, 100% blur means maximum blur
 - **Blur level 80+ = Always use blurred URLs + Expo blur** - Double protection
 - **Blur level < 80 = Use consent logic** - Only show unblurred if both users consented
