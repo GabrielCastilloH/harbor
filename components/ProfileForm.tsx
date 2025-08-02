@@ -61,7 +61,9 @@ export default function ProfileForm({
       "[ProfileForm] profileData.images changed:",
       profileData.images
     );
-    setImagesWithKeys(wrapImagesWithKeys(profileData.images));
+    const wrappedImages = wrapImagesWithKeys(profileData.images);
+    console.log("[ProfileForm] 🔍 DEBUG - wrappedImages:", wrappedImages);
+    setImagesWithKeys(wrappedImages);
   }, [profileData.images]);
 
   const handleChange = (
@@ -300,6 +302,13 @@ export default function ProfileForm({
             Profile Images
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {(() => {
+              console.log(
+                "[ProfileForm] 🔍 DEBUG - imagesWithKeys:",
+                imagesWithKeys
+              );
+              return null;
+            })()}
             {imagesWithKeys
               .filter(
                 (image) =>
@@ -307,26 +316,42 @@ export default function ProfileForm({
                   typeof image.uri === "string" &&
                   image.uri.trim() !== ""
               )
-              .map((image) => (
-                <View key={image.key} style={styles.imageContainer}>
-                  <View style={styles.imageBackground}>
-                    <Image
-                      source={getImageSource(image.uri)}
-                      style={styles.image}
-                    />
+              .map((image) => {
+                console.log("[ProfileForm] 🔍 DEBUG - rendering image:", image);
+                return (
+                  <View key={image.key} style={styles.imageContainer}>
+                    <View style={styles.imageBackground}>
+                      <Image
+                        source={getImageSource(image.uri)}
+                        style={styles.image}
+                        onError={(error) => {
+                          console.log(
+                            "[ProfileForm] 🔍 DEBUG - Image loading error:",
+                            error
+                          );
+                        }}
+                        onLoad={() => {
+                          console.log(
+                            "[ProfileForm] 🔍 DEBUG - Image loaded successfully"
+                          );
+                        }}
+                        resizeMode="cover"
+                        fadeDuration={0}
+                      />
+                    </View>
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={() => removeImage(image.key)}
+                    >
+                      <Ionicons
+                        name="close"
+                        size={24}
+                        color={Colors.secondary100}
+                      />
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    style={styles.removeButton}
-                    onPress={() => removeImage(image.key)}
-                  >
-                    <Ionicons
-                      name="close"
-                      size={24}
-                      color={Colors.secondary100}
-                    />
-                  </TouchableOpacity>
-                </View>
-              ))}
+                );
+              })}
             <TouchableOpacity style={styles.addButton} onPress={pickImage}>
               <AntDesign name="plus" size={40} color={Colors.primary500} />
             </TouchableOpacity>
