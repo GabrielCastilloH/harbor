@@ -30,6 +30,14 @@ export default function ChatScreen() {
       if (!matchId) return;
 
       try {
+        // TEMPORARY: Migrate existing match to new consent fields
+        try {
+          await MatchService.migrateMatchConsent(matchId);
+          console.log("✅ Match migrated successfully");
+        } catch (migrationError) {
+          console.log("Migration result:", migrationError);
+        }
+
         const status = await ConsentService.getConsentStatus(matchId);
         setConsentStatus(status);
 
