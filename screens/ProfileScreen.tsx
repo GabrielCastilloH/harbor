@@ -186,14 +186,7 @@ export default function ProfileScreen() {
   }, [navigation, userId, currentUserId, matchId]);
 
   const handleUnmatch = async () => {
-    console.log("🔍 [DEBUG] handleUnmatch called with:", {
-      userId,
-      currentUserId,
-      matchId,
-    });
-
     if (!userId || !currentUserId || !matchId) {
-      console.log("❌ [DEBUG] handleUnmatch - Missing required data");
       return;
     }
 
@@ -209,16 +202,13 @@ export default function ProfileScreen() {
           text: "Unmatch",
           style: "destructive",
           onPress: async () => {
-            console.log("🔍 [DEBUG] User confirmed unmatch");
             setUnmatchLoading(true);
             try {
-              console.log("🔍 [DEBUG] Calling MatchService.unmatch");
               await MatchService.unmatch(currentUserId, matchId);
-              console.log("✅ [DEBUG] Unmatch successful, navigating back");
+
               navigation.goBack();
               navigation.goBack();
             } catch (error) {
-              console.error("❌ [DEBUG] Unmatch error:", error);
               Alert.alert(
                 "Error",
                 "Failed to unmatch. Please try again later."
