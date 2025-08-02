@@ -33,9 +33,13 @@ export const getRecommendations = functions.https.onCall(
     invoker: "public",
   },
   async (request: CallableRequest<{ userId: string }>) => {
+    console.log("🔍 [DEBUG] getRecommendations function called");
+    console.log("🔍 [DEBUG] Request auth:", request.auth?.uid);
+    console.log("🔍 [DEBUG] Request data:", request.data);
+
     try {
       if (!request.auth) {
-        // await logToNtfy("getRecommendations - User not authenticated");
+        console.log("❌ [DEBUG] getRecommendations - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -43,30 +47,31 @@ export const getRecommendations = functions.https.onCall(
       }
 
       const userId = request.auth.uid;
-      // await logToNtfy("getRecommendations - User authenticated with UID: " + userId);
-      // await logToNtfy("getRecommendations - Extracted userId: " + userId);
-      // await logToNtfy("getRecommendations - userId type: " + typeof userId);
-      // await logToNtfy("getRecommendations - userId length: " + userId.length);
+      console.log(
+        "🔍 [DEBUG] getRecommendations - User authenticated with UID:",
+        userId
+      );
 
       if (!userId) {
-        // await logToNtfy("getRecommendations - No userId provided");
+        console.log("❌ [DEBUG] getRecommendations - No userId provided");
         throw new functions.https.HttpsError(
           "invalid-argument",
           "User ID is required"
         );
       }
 
-      // await logToNtfy("getRecommendations - About to fetch user data");
-      // await logToNtfy("getRecommendations - About to query Firestore");
+      console.log("🔍 [DEBUG] getRecommendations - About to fetch user data");
 
       // Get the current user's data
       const userDoc = await db.collection("users").doc(userId).get();
       if (!userDoc.exists) {
-        // await logToNtfy("getRecommendations - Current user not found");
+        console.log("❌ [DEBUG] getRecommendations - Current user not found");
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
-      // await logToNtfy("getRecommendations - Current user data retrieved");
+      console.log(
+        "✅ [DEBUG] getRecommendations - Current user data retrieved"
+      );
 
       // Get all other users
       const allUsersSnapshot = await db.collection("users").get();
@@ -75,12 +80,17 @@ export const getRecommendations = functions.https.onCall(
         ...doc.data(),
       }));
 
-      // await logToNtfy("getRecommendations - All users fetched");
+      console.log(
+        "✅ [DEBUG] getRecommendations - All users fetched, count:",
+        allUsers.length
+      );
 
       // Filter out the current user and users they've already swiped on
       const otherUsers = allUsers.filter((user) => user.uid !== userId);
-
-      // await logToNtfy("getRecommendations - Filtered other users");
+      console.log(
+        "🔍 [DEBUG] getRecommendations - Other users count:",
+        otherUsers.length
+      );
 
       // Get swipes by the current user
       const swipesSnapshot = await db
@@ -92,14 +102,20 @@ export const getRecommendations = functions.https.onCall(
         (doc) => doc.data().swipedId
       );
 
-      // await logToNtfy("getRecommendations - Swipes fetched");
+      console.log(
+        "✅ [DEBUG] getRecommendations - Swipes fetched, count:",
+        swipedUserIds.length
+      );
 
       // Filter out users the current user has already swiped on
       const availableUsers = otherUsers.filter(
         (user) => !swipedUserIds.includes(user.uid)
       );
 
-      // await logToNtfy("getRecommendations - Available users filtered");
+      console.log(
+        "🔍 [DEBUG] getRecommendations - Available users count:",
+        availableUsers.length
+      );
 
       // Get all active matches to filter out users who are already matched
       const activeMatchesSnapshot = await db
@@ -117,29 +133,34 @@ export const getRecommendations = functions.https.onCall(
         }
       });
 
+      console.log(
+        "✅ [DEBUG] getRecommendations - Active matches fetched, count:",
+        matchedUserIds.size
+      );
+
       // Filter out users who are already in active matches
       const trulyAvailableUsers = availableUsers.filter(
         (user) => !matchedUserIds.has(user.uid)
       );
 
+      console.log(
+        "🔍 [DEBUG] getRecommendations - Truly available users count:",
+        trulyAvailableUsers.length
+      );
+
       if (trulyAvailableUsers.length === 0) {
-        // await logToNtfy("getRecommendations - No other users found");
+        console.log("⚠️ [DEBUG] getRecommendations - No other users found");
         return { recommendations: [] };
       }
 
-      // For now, return all available users
-      // In the future, you can implement more sophisticated recommendation logic
-      // await logToNtfy("getRecommendations - Returning recommendations");
-      // await logToNtfy("getRecommendations - Number of recommendations: " + trulyAvailableUsers.length);
+      console.log(
+        "✅ [DEBUG] getRecommendations - Returning recommendations, count:",
+        trulyAvailableUsers.length
+      );
 
       return { recommendations: trulyAvailableUsers };
     } catch (error: any) {
-      // await logToNtfy("=== getRecommendations FUNCTION ERROR ===");
-      // await logToNtfy("getRecommendations - Error: " + error);
-      // await logToNtfy("getRecommendations - Error message: " + error.message);
-      // await logToNtfy("getRecommendations - Error code: " + error.code);
-
-      console.error("Error getting recommendations:", error);
+      console.error("❌ [DEBUG] Error getting recommendations:", error);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
