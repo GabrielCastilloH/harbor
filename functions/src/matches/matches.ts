@@ -182,10 +182,13 @@ export const unmatchUsers = functions.https.onCall(
   async (request: CallableRequest<{ userId: string; matchId: string }>) => {
     console.log("🔍 [DEBUG] unmatchUsers function called with:", request.data);
     console.log("🔍 [DEBUG] Auth user:", request.auth?.uid);
+    console.log("🔍 [DEBUG] Auth object:", request.auth);
+    console.log("🔍 [DEBUG] Request headers:", request.rawRequest?.headers);
 
     try {
       if (!request.auth) {
         console.log("❌ [DEBUG] User not authenticated");
+        console.log("❌ [DEBUG] Request auth is null/undefined");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
