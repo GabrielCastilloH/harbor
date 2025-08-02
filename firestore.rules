@@ -27,14 +27,14 @@ service cloud.firestore {
     // Secure consent management - users can only update their own consent status
     match /matches/{matchId} {
       allow update: if request.auth != null && (
-        // User1 can only update user1Consented
+        // User1 can only update user1Consented, user2Consented must remain unchanged
         (resource.data.user1Id == request.auth.uid && 
-         request.resource.data.user1Consented == request.resource.data.user1Consented &&
-         request.resource.data.user2Consented == resource.data.user2Consented) ||
-        // User2 can only update user2Consented  
+         request.resource.data.user2Consented == resource.data.user2Consented &&
+         resource.data.diff(request.resource.data).affectedKeys().hasOnly(['user1Consented'])) ||
+        // User2 can only update user2Consented, user1Consented must remain unchanged
         (resource.data.user2Id == request.auth.uid && 
-         request.resource.data.user2Consented == request.resource.data.user2Consented &&
-         request.resource.data.user1Consented == resource.data.user1Consented)
+         request.resource.data.user1Consented == resource.data.user1Consented &&
+         resource.data.diff(request.resource.data).affectedKeys().hasOnly(['user2Consented']))
       );
     }
     
