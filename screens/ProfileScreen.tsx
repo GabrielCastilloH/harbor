@@ -23,6 +23,7 @@ import { MatchService, UserService } from "../networking";
 import { BlurService } from "../networking";
 import { getImages } from "../networking/ImageService";
 import { BlurView } from "expo-blur";
+import { getClientBlurLevel, BLUR_CONFIG } from "../constants/blurConfig";
 import LoadingScreen from "../components/LoadingScreen";
 import ImageCarousel from "../components/ImageCarousel";
 import { auth } from "../firebaseConfig";
@@ -44,7 +45,12 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [showBlurWarning, setShowBlurWarning] = useState(false);
   const [imagesWithBlur, setImagesWithBlur] = useState<
-    Array<{ url: string; blurLevel: number; messageCount: number }>
+    Array<{
+      url: string;
+      blurLevel: number;
+      messageCount: number;
+      bothConsented: boolean;
+    }>
   >([]);
   const [imageLoading, setImageLoading] = useState(true);
 
@@ -110,17 +116,31 @@ export default function ProfileScreen() {
         const images = await getImages(userId);
         console.log("🔍 [ProfileScreen] Images fetched successfully");
         console.log("🔍 [ProfileScreen] Image count:", images.length);
-        
-        // Log blur information for each image
-        images.forEach((img, index) => {
-          console.log(`🔍 [ProfileScreen] Image ${index + 1}:`);
+
+        // Calculate blur levels based on consent and message count
+        const processedImages = images.map((img) => {
+          const bothConsented = img.bothConsented || false;
+          const messageCount = img.messageCount || 0;
+
+          // Calculate client-side blur level
+          const clientBlurLevel = getClientBlurLevel({
+            messageCount,
+            bothConsented,
+          });
+
+          console.log(`🔍 [ProfileScreen] Image processing:`);
           console.log(`   URL: ${img.url}`);
-          console.log(`   Blur Level: ${img.blurLevel}%`);
-          console.log(`   Is Server Blurred: ${img.url?.includes("-blurred.jpg") ? "Yes" : "No"}`);
-          console.log(`   Client Blur Intensity: ${img.url?.includes("-blurred.jpg") ? Math.min(img.blurLevel || 0, 20) : Math.min(img.blurLevel, 100)}`);
+          console.log(`   Both Consented: ${bothConsented}`);
+          console.log(`   Message Count: ${messageCount}`);
+          console.log(`   Client Blur Level: ${clientBlurLevel}%`);
+
+          return {
+            ...img,
+            blurLevel: clientBlurLevel,
+          };
         });
-        
-        setImagesWithBlur(images);
+
+        setImagesWithBlur(processedImages);
       } catch (error: any) {
         console.error("[ProfileScreen] Error in fetchImages:", error);
         if (error?.code === "not-found") {
@@ -240,7 +260,6 @@ export default function ProfileScreen() {
           images={
             imagesWithBlur.length > 0
               ? imagesWithBlur.map((img, index) => {
-          
                   return {
                     id: `${index}`,
                     url: img.url,
