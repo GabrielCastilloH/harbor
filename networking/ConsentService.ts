@@ -34,6 +34,8 @@ export class ConsentService {
    * Gets consent status for a match
    */
   static async getConsentStatus(matchId: string): Promise<{
+    user1Id: string;
+    user2Id: string;
     user1Consented: boolean;
     user2Consented: boolean;
     bothConsented: boolean;
@@ -47,6 +49,8 @@ export class ConsentService {
       );
       const result = await getConsentStatus({ matchId });
       return result.data as {
+        user1Id: string;
+        user2Id: string;
         user1Consented: boolean;
         user2Consented: boolean;
         bothConsented: boolean;
