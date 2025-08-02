@@ -21,6 +21,8 @@ interface AppContextType {
   streamUserToken: string | null;
   setStreamUserToken: (token: string | null) => void;
   isInitialized: boolean;
+  isSignInInProgress: boolean;
+  setIsSignInInProgress: (isSignInInProgress: boolean) => void;
 }
 
 const defaultValue: AppContextType = {
@@ -40,6 +42,8 @@ const defaultValue: AppContextType = {
   streamUserToken: null,
   setStreamUserToken: () => {},
   isInitialized: false,
+  isSignInInProgress: false,
+  setIsSignInInProgress: () => {},
 };
 
 export const AppContext = React.createContext<AppContextType>(defaultValue);
@@ -59,6 +63,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [streamUserToken, setStreamUserToken] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isAuthDetermined, setIsAuthDetermined] = useState(false);
+  const [isSignInInProgress, setIsSignInInProgress] = useState(false);
 
   // Listen to Firebase Auth state changes
   useEffect(() => {
@@ -80,37 +85,60 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setCurrentUser(user);
         setIsAuthenticated(true);
 
-        // Only check Firestore if we don't already have a userId set
+        // Only check Firestore if we don't already have a userId set AND we're not in the middle of a sign-in
         // This prevents race conditions during sign-in
-        if (!userId) {
-          try {
-            const { UserService } = await import("../networking");
-            const response = await UserService.getUserById(user.uid);
-            if (response && response.user) {
-              setUserId(user.uid);
-              setProfile(response.user);
-            } else {
-              setUserId(null);
-              setProfile(null);
-            }
-          } catch (error: any) {
-            if (
-              error?.code === "functions/not-found" ||
-              error?.code === "not-found" ||
-              error?.message?.includes("not found")
-            ) {
-              setUserId(null);
-              setProfile(null);
-            } else {
-              // For other errors, still set userId but log the error
-              console.error(
-                "AppContext - Unexpected error checking user profile:",
-                error
+        console.log("🔍 [AppContext] Checking if should run Firestore check:", {
+          userId,
+          isSignInInProgress,
+        });
+
+        // Add a small delay to allow SignIn screen to set isSignInInProgress
+        const checkFirestore = async () => {
+          // Wait a bit to let SignIn screen set the flag
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          if (!userId && !isSignInInProgress) {
+            try {
+              console.log(
+                "🔍 [AppContext] Running Firestore check for user:",
+                user.uid
               );
-              setUserId(user.uid);
+              const { UserService } = await import("../networking");
+              const response = await UserService.getUserById(user.uid);
+              if (response && response.user) {
+                console.log(
+                  "🔍 [AppContext] User found in Firestore, setting userId"
+                );
+                setUserId(user.uid);
+                setProfile(response.user);
+              } else {
+                console.log(
+                  "🔍 [AppContext] User not found in Firestore, setting userId to null"
+                );
+                setUserId(null);
+                setProfile(null);
+              }
+            } catch (error: any) {
+              if (
+                error?.code === "functions/not-found" ||
+                error?.code === "not-found" ||
+                error?.message?.includes("not found")
+              ) {
+                setUserId(null);
+                setProfile(null);
+              } else {
+                // For other errors, still set userId but log the error
+                console.error(
+                  "AppContext - Unexpected error checking user profile:",
+                  error
+                );
+                setUserId(user.uid);
+              }
             }
           }
-        }
+        };
+
+        checkFirestore();
 
         // Load cached Stream credentials
         try {
@@ -175,6 +203,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         streamUserToken,
         setStreamUserToken,
         isInitialized,
+        isSignInInProgress,
+        setIsSignInInProgress,
       }}
     >
       {children}
