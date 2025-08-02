@@ -1,16 +1,13 @@
 export const BLUR_CONFIG = {
-  // Server-side blur for _blurred.jpg images (highly blurred)
-  SERVER_BLUR_PERCENT: 90,
+  // Server-side blur level for _blurred.jpg
+  SERVER_BLUR_PERCENT: 80,
 
-  // Client-side blur levels
-  CLIENT_INITIAL_BLUR_PERCENT: 90, // Matches server-side blur after consent
+  // Max blur on client-side (used for theatrical phase 1 + real blur in phase 2)
+  CLIENT_MAX_BLUR_RADIUS: 50,
 
-  // Message thresholds for progressive reveal
-  MESSAGES_TO_CLEAR_BLUR: 30, // Messages to fully reveal _blurred.jpg (fake reveal)
-  MESSAGES_TO_CLEAR_ORIGINAL: 50, // Messages to fully reveal _original.jpg after consent
-
-  // Consent thresholds
-  CONSENT_REQUIRED_MESSAGES: 30, // Messages needed before consent screen appears
+  // Message thresholds
+  MESSAGES_TO_CLEAR_BLUR: 30, // 100% → 0% fake unblur (really 100% → 80%)
+  MESSAGES_TO_CLEAR_ORIGINAL: 50, // 80% → 0% real unblur after consent
 };
 
 export function getClientBlurLevel({
@@ -20,21 +17,27 @@ export function getClientBlurLevel({
   messageCount: number;
   bothConsented: boolean;
 }): number {
+  const MAX_CLIENT_BLUR_RADIUS = BLUR_CONFIG.CLIENT_MAX_BLUR_RADIUS;
+  const percentageToBlurRadius = (percent: number) =>
+    Math.round((percent / 100) * MAX_CLIENT_BLUR_RADIUS);
+
   if (!bothConsented) {
-    // Phase 1: Progressive reveal of _blurred.jpg (fake reveal)
-    // Blur goes from 100% to 0% over MESSAGES_TO_CLEAR_BLUR messages
+    // Phase 1: Fake reveal on _blurred.jpg
     const progress = Math.min(
       messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR,
       1
     );
-    return Math.round(100 * (1 - progress)); // 100% to 0%
+    // 100% → 0% (theatrical blur, still lands at 80% because server blur remains)
+    const blurPercent = 100 * (1 - progress);
+    return percentageToBlurRadius(blurPercent);
   } else {
-    // Phase 2: Progressive reveal of _original.jpg after consent
-    // Start at CLIENT_INITIAL_BLUR_PERCENT (90%) and go to 0% over MESSAGES_TO_CLEAR_ORIGINAL messages
+    // Phase 2: Real reveal on _original.jpg
     const progress = Math.min(
       messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL,
       1
     );
-    return Math.round(BLUR_CONFIG.CLIENT_INITIAL_BLUR_PERCENT * (1 - progress));
+    // 80% → 0%
+    const blurPercent = 80 * (1 - progress);
+    return percentageToBlurRadius(blurPercent);
   }
 }

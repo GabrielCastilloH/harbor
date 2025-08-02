@@ -107,7 +107,7 @@ export const uploadImage = functions.https.onCall(
 
       // Generate and upload blurred version
       console.log("🔀 Generating blurred version...");
-      const blurredBuffer = await blurImageBuffer(imageBuffer, 90);
+      const blurredBuffer = await blurImageBuffer(imageBuffer, 80);
       await bucket.file(blurredFilePath).save(blurredBuffer, {
         metadata: { contentType: "image/jpeg" },
       });
