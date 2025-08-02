@@ -5,7 +5,6 @@ import { Channel, MessageInput, MessageList } from "stream-chat-expo";
 import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
 import { updateMessageCount } from "../networking";
-import { BlurService } from "../networking";
 import { MatchService } from "../networking";
 
 export default function ChatScreen() {
@@ -14,57 +13,8 @@ export default function ChatScreen() {
   const [isChatFrozen, setIsChatFrozen] = useState(false);
   const [userAgreed, setUserAgreed] = useState(false);
 
-  // Check warning state when component mounts
-  useEffect(() => {
-    const checkWarningState = async () => {
-      if (!channel || !userId) return;
-
-      const otherMembers = channel.state?.members || {};
-      const otherUserId = Object.keys(otherMembers).find(
-        (key) => key !== userId
-      );
-
-      if (otherUserId) {
-        try {
-          const response = await BlurService.getBlurLevel(userId, otherUserId);
-          const { hasShownWarning, blurPercentage, messageCount } = response;
-
-          // For now, we'll handle the warning logic differently
-          // since the response structure is different
-        } catch (error) {
-          console.error("Error checking warning state:", error);
-        }
-      }
-    };
-
-    checkWarningState();
-  }, [channel, userId]);
-
-  const handleWarningResponse = async (agreed: boolean) => {
-    try {
-      const matchId = channel?.data?.matchId;
-      if (!matchId || !userId) return;
-
-      const response = await BlurService.handleWarningResponse(
-        matchId,
-        userId,
-        agreed
-      );
-
-      if (agreed) {
-        setUserAgreed(true);
-        // For now, we'll handle the agreement logic differently
-        setShowWarning(false);
-        setIsChatFrozen(false);
-      } else {
-        // If user chose to unmatch, keep chat frozen
-        setIsChatFrozen(true);
-      }
-      setShowWarning(false);
-    } catch (error) {
-      console.error("Error handling warning response:", error);
-    }
-  };
+  // Note: Blur logic is now handled dynamically in ProfileScreen
+  // No need to check warning state here anymore
 
   useEffect(() => {
     if (!channel) return;

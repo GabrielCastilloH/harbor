@@ -61,10 +61,8 @@ export const createMatch = functions.https.onCall(
         matchDate: admin.firestore.FieldValue.serverTimestamp(),
         isActive: true,
         messageCount: 0,
-        blurPercentage: 100,
-        warningShown: false,
-        user1Agreed: false,
-        user2Agreed: false,
+        user1Consented: false,
+        user2Consented: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
@@ -81,7 +79,10 @@ export const createMatch = functions.https.onCall(
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-      throw new functions.https.HttpsError("internal", "Failed to create match");
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to create match"
+      );
     }
   }
 );
