@@ -80,32 +80,35 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setCurrentUser(user);
         setIsAuthenticated(true);
 
-        // Check if user exists in Firestore before setting userId
-        try {
-          const { UserService } = await import("../networking");
-          const response = await UserService.getUserById(user.uid);
-          if (response && response.user) {
-            setUserId(user.uid);
-            setProfile(response.user);
-          } else {
-            setUserId(null);
-            setProfile(null);
-          }
-        } catch (error: any) {
-          if (
-            error?.code === "functions/not-found" ||
-            error?.code === "not-found" ||
-            error?.message?.includes("not found")
-          ) {
-            setUserId(null);
-            setProfile(null);
-          } else {
-            // For other errors, still set userId but log the error
-            console.error(
-              "AppContext - Unexpected error checking user profile:",
-              error
-            );
-            setUserId(user.uid);
+        // Only check Firestore if we don't already have a userId set
+        // This prevents race conditions during sign-in
+        if (!userId) {
+          try {
+            const { UserService } = await import("../networking");
+            const response = await UserService.getUserById(user.uid);
+            if (response && response.user) {
+              setUserId(user.uid);
+              setProfile(response.user);
+            } else {
+              setUserId(null);
+              setProfile(null);
+            }
+          } catch (error: any) {
+            if (
+              error?.code === "functions/not-found" ||
+              error?.code === "not-found" ||
+              error?.message?.includes("not found")
+            ) {
+              setUserId(null);
+              setProfile(null);
+            } else {
+              // For other errors, still set userId but log the error
+              console.error(
+                "AppContext - Unexpected error checking user profile:",
+                error
+              );
+              setUserId(user.uid);
+            }
           }
         }
 
