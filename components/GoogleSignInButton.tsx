@@ -163,12 +163,12 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "white",
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "600",
   },
   cornellLogo: {
-    width: 34,
-    height: 34,
-    marginRight: 10,
+    width: 32,
+    height: 32,
+    marginRight: 12,
   },
 });
