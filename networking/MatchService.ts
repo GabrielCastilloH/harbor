@@ -43,17 +43,23 @@ export class MatchService {
   }
 
   static async unmatch(userId: string, matchId: string) {
-    // console.log("MatchService - unmatch called with:", { userId, matchId });
+    console.log("🔍 [DEBUG] MatchService.unmatch called with:", {
+      userId,
+      matchId,
+    });
 
     try {
       const unmatch = httpsCallable(functions, "matchFunctions-unmatchUsers");
+      console.log(
+        "🔍 [DEBUG] Calling Firebase function: matchFunctions-unmatchUsers"
+      );
       const result = await unmatch({ userId, matchId });
       const data = result.data as any;
 
-      // console.log("MatchService - Users unmatched:", data);
+      console.log("✅ [DEBUG] MatchService.unmatch successful:", data);
       return data;
     } catch (error) {
-      console.error("MatchService - Error unmatching users:", error);
+      console.error("❌ [DEBUG] MatchService.unmatch error:", error);
       throw error;
     }
   }

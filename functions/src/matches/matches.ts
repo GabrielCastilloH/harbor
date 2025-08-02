@@ -180,8 +180,12 @@ export const unmatchUsers = functions.https.onCall(
     invoker: "public",
   },
   async (request: CallableRequest<{ userId: string; matchId: string }>) => {
+    console.log("🔍 [DEBUG] unmatchUsers function called with:", request.data);
+    console.log("🔍 [DEBUG] Auth user:", request.auth?.uid);
+
     try {
       if (!request.auth) {
+        console.log("❌ [DEBUG] User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -189,8 +193,10 @@ export const unmatchUsers = functions.https.onCall(
       }
 
       const { userId, matchId } = request.data;
+      console.log("🔍 [DEBUG] Extracted data:", { userId, matchId });
 
       if (!userId || !matchId) {
+        console.log("❌ [DEBUG] Missing required data:", { userId, matchId });
         throw new functions.https.HttpsError(
           "invalid-argument",
           "User ID and match ID are required"
