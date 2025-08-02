@@ -465,10 +465,215 @@ async function findMatchByUsers(user1Id: string, user2Id: string) {
   return null;
 }
 
+/**
+ * Updates user's consent status for a match
+ */
+export const updateConsent = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (
+    request: CallableRequest<{
+      matchId: string;
+      userId: string;
+      consented: boolean;
+    }>
+  ) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { matchId, userId, consented } = request.data;
+      const currentUserId = request.auth.uid;
+
+      if (!matchId || !userId || consented === undefined) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Match ID, user ID, and consent status are required"
+        );
+      }
+
+      // Verify the requesting user is updating their own consent
+      if (userId !== currentUserId) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User can only update their own consent"
+        );
+      }
+
+      // Get the match document
+      const matchDoc = await db.collection("matches").doc(matchId).get();
+      if (!matchDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Match not found");
+      }
+
+      const matchData = matchDoc.data();
+      if (!matchData) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "Match data not found"
+        );
+      }
+      const user1Id = matchData.user1Id;
+      const user2Id = matchData.user2Id;
+
+      // Verify the user is part of this match
+      if (userId !== user1Id && userId !== user2Id) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User not part of this match"
+        );
+      }
+
+      // Update the appropriate consent field
+      const updateData: any = {};
+      if (userId === user1Id) {
+        updateData.user1Consented = consented;
+      } else {
+        updateData.user2Consented = consented;
+      }
+
+      await db
+        .collection("matches")
+        .doc(matchId)
+        .update({
+          ...updateData,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      // Check if both users have consented
+      const updatedMatchDoc = await db.collection("matches").doc(matchId).get();
+      const updatedMatchData = updatedMatchDoc.data();
+      if (!updatedMatchData) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "Updated match data not found"
+        );
+      }
+      const bothConsented =
+        updatedMatchData.user1Consented && updatedMatchData.user2Consented;
+
+      return {
+        success: true,
+        bothConsented,
+      };
+    } catch (error: any) {
+      console.error("Error updating consent:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to update consent"
+      );
+    }
+  }
+);
+
+/**
+ * Gets consent status for a match
+ */
+export const getConsentStatus = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ matchId: string }>) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { matchId } = request.data;
+      const currentUserId = request.auth.uid;
+
+      if (!matchId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Match ID is required"
+        );
+      }
+
+      // Get the match document
+      const matchDoc = await db.collection("matches").doc(matchId).get();
+      if (!matchDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Match not found");
+      }
+
+      const matchData = matchDoc.data();
+      if (!matchData) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "Match data not found"
+        );
+      }
+      const user1Id = matchData.user1Id;
+      const user2Id = matchData.user2Id;
+
+      // Verify the requesting user is part of this match
+      if (currentUserId !== user1Id && currentUserId !== user2Id) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User not part of this match"
+        );
+      }
+
+      const user1Consented = matchData.user1Consented || false;
+      const user2Consented = matchData.user2Consented || false;
+      const bothConsented = user1Consented && user2Consented;
+      const messageCount = matchData.messageCount || 0;
+
+      // Check if consent screen should be shown (30 messages threshold)
+      const shouldShowConsentScreen = messageCount >= 30 && !bothConsented;
+
+      return {
+        user1Consented,
+        user2Consented,
+        bothConsented,
+        messageCount,
+        shouldShowConsentScreen,
+      };
+    } catch (error: any) {
+      console.error("Error getting consent status:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to get consent status"
+      );
+    }
+  }
+);
+
 export const matchFunctions = {
   createMatch,
   getActiveMatches,
   unmatchUsers,
   updateMatchChannel,
   getMatchId,
+  updateConsent,
+  getConsentStatus,
 };
