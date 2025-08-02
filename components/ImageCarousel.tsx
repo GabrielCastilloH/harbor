@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import Colors from "../constants/Colors";
+import { getClientBlurLevel } from "../constants/blurConfig";
 
 interface ImageItem {
   id: string;
@@ -38,7 +39,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   const windowWidth = Dimensions.get("window").width;
 
   const renderImageItem = ({ item }: { item: ImageItem }) => {
-
     return (
       <View
         style={{
@@ -61,27 +61,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           ]}
         >
           {item?.url ? (
-            // If the URL already contains "-blurred.jpg", it's server-side blurred, so apply minimal client blur
-            item.url.includes("-blurred.jpg") ? (
-              <BlurView
-                intensity={Math.min(item.blurLevel || 0, 20)} // Very low blur for server-blurred images
-                style={[
-                  StyleSheet.absoluteFill,
-                  { borderRadius, overflow: "hidden" },
-                ]}
-              >
-                <Image
-                  source={{ uri: item.url }}
-                  style={{
-                    width: imageSize,
-                    height: imageSize,
-                    borderRadius,
-                  }}
-                  resizeMode="cover"
-                  fadeDuration={0}
-                />
-              </BlurView>
-            ) : item.blurLevel && item.blurLevel > 0 ? (
+            item.blurLevel && item.blurLevel > 0 ? (
               <BlurView
                 intensity={Math.min(item.blurLevel, 100)}
                 style={[

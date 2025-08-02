@@ -1,4 +1,4 @@
-rules_version = '2';
+ules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -12,9 +12,9 @@ service cloud.firestore {
       allow read: if request.auth != null;
     }
     
-    // Allow users to read and write their own matches
+    // Allow users to read their own matches
     match /matches/{matchId} {
-      allow read, write: if request.auth != null && 
+      allow read: if request.auth != null && 
         (resource.data.user1Id == request.auth.uid || resource.data.user2Id == request.auth.uid);
     }
     
@@ -22,6 +22,20 @@ service cloud.firestore {
     match /matches/{matchId} {
       allow create: if request.auth != null && 
         (request.resource.data.user1Id == request.auth.uid || request.resource.data.user2Id == request.auth.uid);
+    }
+    
+    // Secure consent management - users can only update their own consent status
+    match /matches/{matchId} {
+      allow update: if request.auth != null && (
+        // User1 can only update user1Consented
+        (resource.data.user1Id == request.auth.uid && 
+         request.resource.data.user1Consented == request.resource.data.user1Consented &&
+         request.resource.data.user2Consented == resource.data.user2Consented) ||
+        // User2 can only update user2Consented  
+        (resource.data.user2Id == request.auth.uid && 
+         request.resource.data.user2Consented == request.resource.data.user2Consented &&
+         request.resource.data.user1Consented == resource.data.user1Consented)
+      );
     }
     
     // Allow users to read and write their own swipes
@@ -60,4 +74,4 @@ service cloud.firestore {
         (request.resource.data.user1Id == request.auth.uid || request.resource.data.user2Id == request.auth.uid);
     }
   }
-}
+} 
