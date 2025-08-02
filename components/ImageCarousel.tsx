@@ -8,9 +8,7 @@ import {
   FlatList,
   Text,
 } from "react-native";
-import { BlurView } from "expo-blur";
 import Colors from "../constants/Colors";
-import { getClientBlurLevel } from "../constants/blurConfig";
 
 interface ImageItem {
   id: string;
