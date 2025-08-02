@@ -497,41 +497,6 @@ export const getMatchId = functions.https.onCall(
 );
 
 /**
- * Helper function to find a match between two users
- * @param user1Id First user ID
- * @param user2Id Second user ID
- * @returns Promise<any> Match document or null
- */
-async function findMatchByUsers(user1Id: string, user2Id: string) {
-  // Check both possible combinations
-  const match1 = await db
-    .collection("matches")
-    .where("user1Id", "==", user1Id)
-    .where("user2Id", "==", user2Id)
-    .where("isActive", "==", true)
-    .limit(1)
-    .get();
-
-  if (!match1.empty) {
-    return { id: match1.docs[0].id, ...match1.docs[0].data() };
-  }
-
-  const match2 = await db
-    .collection("matches")
-    .where("user1Id", "==", user2Id)
-    .where("user2Id", "==", user1Id)
-    .where("isActive", "==", true)
-    .limit(1)
-    .get();
-
-  if (!match2.empty) {
-    return { id: match2.docs[0].id, ...match2.docs[0].data() };
-  }
-
-  return null;
-}
-
-/**
  * Updates user's consent status for a match
  */
 export const updateConsent = functions.https.onCall(
