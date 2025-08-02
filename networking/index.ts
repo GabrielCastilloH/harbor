@@ -7,6 +7,7 @@ export * from "./ChatFunctions";
 export * from "./ImageService";
 export * from "./RecommendationService";
 export * from "./ConsentService";
+export * from "./ImageCache";
 
 // Re-export specific services for easier imports
 export { AuthService } from "./AuthService";
@@ -16,6 +17,7 @@ export { MatchService } from "./MatchService";
 export { ImageService } from "./ImageService";
 export { RecommendationService } from "./RecommendationService";
 export { ConsentService } from "./ConsentService";
+export { ImageCache } from "./ImageCache";
 
 // Re-export specific functions for easier imports
 export {
