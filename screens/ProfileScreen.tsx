@@ -227,29 +227,12 @@ export default function ProfileScreen() {
         <ImageCarousel
           images={
             imagesWithBlur.length > 0
-              ? imagesWithBlur.flatMap((img, index) => {
-                  const baseImage = {
-                    id: `${index}`,
-                    url: img.url,
-                    title: `Image ${index + 1}`,
-                    blurLevel: img.blurLevel,
-                  };
-
-                  // If image has blur, add a non-blurred version for comparison
-                  if (img.blurLevel && img.blurLevel > 0) {
-                    return [
-                      baseImage, // blurred version
-                      {
-                        id: `${index}_no_blur`,
-                        url: img.url,
-                        title: `Image ${index + 1} (No Blur)`,
-                        blurLevel: 0, // no blur for comparison
-                      },
-                    ];
-                  }
-
-                  return [baseImage]; // no blur version needed
-                })
+              ? imagesWithBlur.map((img, index) => ({
+                  id: `${index}`,
+                  url: img.url,
+                  title: `Image ${index + 1}`,
+                  blurLevel: img.blurLevel,
+                }))
               : [
                   {
                     id: "placeholder",
