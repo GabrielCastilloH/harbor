@@ -95,7 +95,7 @@ export default function GoogleSignInButton({
       // 5. Sign in to Firebase
       const userCredential = await signInWithCredential(auth, googleCredential);
 
-      // 6. Check if user exists in your database
+      // 6. Check if user exists in your database - wait for definitive answer
       const userExists = await checkUserExists(userCredential.user.uid);
 
       if (userExists) {
@@ -113,8 +113,8 @@ export default function GoogleSignInButton({
         onNewUser(userCredential.user);
       }
 
-      // Call onSignInComplete if provided
-      onSignInComplete?.();
+      // Don't call onSignInComplete here - let the callbacks (onUserExists/onNewUser) handle completion
+      // This ensures the loading screen stays until we have a definitive answer
     } catch (error: any) {
       // console.log(
       //   "GoogleSignInButton - Error during Google sign-in:",
