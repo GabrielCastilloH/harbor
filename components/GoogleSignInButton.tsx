@@ -103,8 +103,11 @@ export default function GoogleSignInButton({
           "No Internet Connection",
           "Please check your internet connection and try again."
         );
-      } else if (error.code === "SIGN_IN_CANCELLED") {
-        // User cancelled sign-in - ensure we're completely signed out
+      } else if (
+        error.code === "SIGN_IN_CANCELLED" ||
+        error.message?.includes("getTokens requires a token")
+      ) {
+        // User cancelled sign-in or there was a token issue - ensure we're completely signed out
         try {
           await GoogleSignin.signOut();
           await signOut(auth);
@@ -114,6 +117,7 @@ export default function GoogleSignInButton({
           //   signOutError
           // );
         }
+        // Don't show any error for cancellation - just complete silently
         onSignInComplete?.();
         return;
       } else {
@@ -159,7 +163,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "white",
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: "600",
   },
   cornellLogo: {
