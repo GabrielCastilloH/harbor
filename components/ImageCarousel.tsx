@@ -44,8 +44,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           alignItems: "center",
           justifyContent: "center",
           paddingHorizontal: spacing,
-          height: imageSize + 40,
-          backgroundColor: "red",
+          height: imageSize + 60,
         }}
       >
         <View
@@ -130,7 +129,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   return (
     <View
       style={{
-        paddingTop: spacing,
         paddingBottom: spacing,
         width: "100%",
       }}
