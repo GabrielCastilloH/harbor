@@ -165,7 +165,7 @@ export const getActiveMatches = functions.https.onCall(
 );
 
 /**
- * Unmatches two users
+ * Unmatches two users and freezes their chat
  */
 export const unmatchUsers = functions.https.onCall(
   {
@@ -179,7 +179,7 @@ export const unmatchUsers = functions.https.onCall(
     ingressSettings: "ALLOW_ALL",
     invoker: "public",
   },
-  async (request: CallableRequest<{ user1Id: string; user2Id: string }>) => {
+  async (request: CallableRequest<{ userId: string; matchId: string }>) => {
     try {
       if (!request.auth) {
         throw new functions.https.HttpsError(
@@ -188,24 +188,39 @@ export const unmatchUsers = functions.https.onCall(
         );
       }
 
-      const { user1Id, user2Id } = request.data;
+      const { userId, matchId } = request.data;
 
-      if (!user1Id || !user2Id) {
+      if (!userId || !matchId) {
         throw new functions.https.HttpsError(
           "invalid-argument",
-          "Both user IDs are required"
+          "User ID and match ID are required"
         );
       }
 
-      // Find the match between these users
-      const match = await findMatchByUsers(user1Id, user2Id);
-
-      if (!match) {
+      // Get the match document
+      const matchDoc = await db.collection("matches").doc(matchId).get();
+      if (!matchDoc.exists) {
         throw new functions.https.HttpsError("not-found", "Match not found");
       }
 
+      const matchData = matchDoc.data();
+      if (!matchData) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "Match data not found"
+        );
+      }
+
+      // Verify the requesting user is part of this match
+      if (userId !== matchData.user1Id && userId !== matchData.user2Id) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User not part of this match"
+        );
+      }
+
       // Deactivate the match
-      await db.collection("matches").doc(match.id).update({
+      await db.collection("matches").doc(matchId).update({
         isActive: false,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -214,23 +229,78 @@ export const unmatchUsers = functions.https.onCall(
       await Promise.all([
         db
           .collection("users")
-          .doc(user1Id)
+          .doc(matchData.user1Id)
           .update({
-            currentMatches: admin.firestore.FieldValue.arrayRemove(match.id),
+            currentMatches: admin.firestore.FieldValue.arrayRemove(matchId),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           }),
         db
           .collection("users")
-          .doc(user2Id)
+          .doc(matchData.user2Id)
           .update({
-            currentMatches: admin.firestore.FieldValue.arrayRemove(match.id),
+            currentMatches: admin.firestore.FieldValue.arrayRemove(matchId),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           }),
       ]);
 
+      // Freeze the chat channel and send system message
+      try {
+        const { StreamChat } = await import("stream-chat");
+        const { SecretManagerServiceClient } = await import(
+          "@google-cloud/secret-manager"
+        );
+
+        const secretManager = new SecretManagerServiceClient();
+
+        // Get Stream API credentials from Secret Manager
+        const [streamApiKeyVersion, streamApiSecretVersion] = await Promise.all(
+          [
+            secretManager.accessSecretVersion({
+              name: "projects/harbor-ch/secrets/STREAM_API_KEY/versions/latest",
+            }),
+            secretManager.accessSecretVersion({
+              name: "projects/harbor-ch/secrets/STREAM_API_SECRET/versions/latest",
+            }),
+          ]
+        );
+
+        const apiKey = streamApiKeyVersion[0].payload?.data?.toString() || "";
+        const apiSecret =
+          streamApiSecretVersion[0].payload?.data?.toString() || "";
+
+        if (apiKey && apiSecret) {
+          const serverClient = StreamChat.getInstance(apiKey, apiSecret);
+
+          // Create channel ID (sorted to ensure consistency)
+          const channelId = [matchData.user1Id, matchData.user2Id]
+            .sort()
+            .join("-");
+          const channel = serverClient.channel("messaging", channelId);
+
+          // Freeze the channel
+          await channel.update({ frozen: true });
+
+          // Send system message about unmatch
+          await channel.sendMessage({
+            text: "This chat has been frozen because one of the users unmatched.",
+            user_id: "system",
+          });
+
+          console.log(
+            `✅ [MATCH] Chat frozen and system message sent for match ${matchId}`
+          );
+        }
+      } catch (streamError) {
+        console.error(
+          "Error freezing chat or sending system message:",
+          streamError
+        );
+        // Don't fail the unmatch operation if Stream Chat operations fail
+      }
+
       return {
         message: "Users unmatched successfully",
-        matchId: match.id,
+        matchId: matchId,
       };
     } catch (error: any) {
       console.error("Error unmatching users:", error);
