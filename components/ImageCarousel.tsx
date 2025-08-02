@@ -39,6 +39,16 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   const windowWidth = Dimensions.get("window").width;
 
   const renderImageItem = ({ item }: { item: ImageItem }) => {
+    console.log(
+      `🔍 [ImageCarousel] Rendering image with blurLevel: ${item.blurLevel}`
+    );
+    console.log(`🔍 [ImageCarousel] Image URL: ${item.url}`);
+    console.log(
+      `🔍 [ImageCarousel] Will apply blur: ${
+        item.blurLevel && item.blurLevel > 0
+      }`
+    );
+
     return (
       <View
         style={{
@@ -61,26 +71,8 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           ]}
         >
           {item?.url ? (
-            item.blurLevel && item.blurLevel > 0 ? (
-              <BlurView
-                intensity={Math.min(item.blurLevel, 100)}
-                style={[
-                  StyleSheet.absoluteFill,
-                  { borderRadius, overflow: "hidden" },
-                ]}
-              >
-                <Image
-                  source={{ uri: item.url }}
-                  style={{
-                    width: imageSize,
-                    height: imageSize,
-                    borderRadius,
-                  }}
-                  resizeMode="cover"
-                  fadeDuration={0}
-                />
-              </BlurView>
-            ) : (
+            <>
+              {/* Render image with blurRadius for more reliable blur effect */}
               <Image
                 source={{ uri: item.url }}
                 style={{
@@ -90,8 +82,13 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
                 }}
                 resizeMode="cover"
                 fadeDuration={0}
+                blurRadius={
+                  item.blurLevel && item.blurLevel > 0
+                    ? Math.min(item.blurLevel / 10, 10)
+                    : 0
+                }
               />
-            )
+            </>
           ) : (
             <View
               style={[
@@ -172,12 +169,12 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               styles.pageIndicatorContainer,
               {
                 top: 50,
-                width: imageSize * 0.9,
-                transform: [{ translateX: -(imageSize * 0.95) / 2 }],
+                width: imageSize,
+                transform: [{ translateX: -imageSize / 2 }],
               },
             ]}
           >
-            <View style={[styles.pageIndicator, { width: imageSize * 0.95 }]}>
+            <View style={[styles.pageIndicator, { width: imageSize }]}>
               {images.map((_, idx) => (
                 <View
                   key={idx}
@@ -242,7 +239,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 20,
     gap: 8,
-    width: 310,
   },
   dot: {
     width: "30%",
