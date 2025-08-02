@@ -29,7 +29,6 @@ export class ImageCache {
       };
 
       await AsyncStorage.setItem(cacheKey, JSON.stringify(cachedImage));
-      console.log(`📦 [ImageCache] Cached ${type} image for user ${userId}`);
     } catch (error) {
       console.error(`❌ [ImageCache] Error caching ${type} image:`, error);
     }
@@ -81,9 +80,6 @@ export class ImageCache {
     try {
       const cacheKey = `${this.CACHE_PREFIX}${userId}_${type}`;
       await AsyncStorage.removeItem(cacheKey);
-      console.log(
-        `🗑️ [ImageCache] Removed cached ${type} image for user ${userId}`
-      );
     } catch (error) {
       console.error(
         `❌ [ImageCache] Error removing cached ${type} image:`,
@@ -104,9 +100,6 @@ export class ImageCache {
 
       if (userKeys.length > 0) {
         await AsyncStorage.multiRemove(userKeys);
-        console.log(
-          `🗑️ [ImageCache] Cleared all cached images for user ${userId}`
-        );
       }
     } catch (error) {
       console.error(`❌ [ImageCache] Error clearing user cache:`, error);
@@ -123,7 +116,6 @@ export class ImageCache {
 
       if (cacheKeys.length > 0) {
         await AsyncStorage.multiRemove(cacheKeys);
-        console.log(`🗑️ [ImageCache] Cleared all cached images`);
       }
     } catch (error) {
       console.error(`❌ [ImageCache] Error clearing all cache:`, error);
