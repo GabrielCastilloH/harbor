@@ -28,7 +28,6 @@ export default function SignIn() {
     setProfile,
     setStreamApiKey,
     setStreamUserToken,
-    setIsSignInInProgress,
   } = useAppContext();
   const [isLoading, setIsLoading] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
@@ -82,13 +81,9 @@ export default function SignIn() {
     }
 
     // Handle existing user - navigate to main app
-    console.log(
-      "🔍 [SignIn] User exists, setting userId and clearing isSignInInProgress"
-    );
     setSignInSuccessful(true);
     setIsAuthenticated(true);
     setUserId(userData.uid);
-    setIsSignInInProgress(false);
     // Stop loading after we have definitive answer that user exists
     setIsLoading(false);
   };
@@ -96,21 +91,16 @@ export default function SignIn() {
   const handleNewUser = (user: any) => {
     // Handle new user - navigate to setup/onboarding
     // Don't pre-load chat credentials for new users since they need to complete setup first
-    console.log(
-      "🔍 [SignIn] User is new, setting userId to null and clearing isSignInInProgress"
-    );
     setSignInSuccessful(true);
     setIsNewUser(true);
     setIsAuthenticated(true);
     setUserId(null); // This will trigger AccountSetupScreen
-    setIsSignInInProgress(false);
     // Stop loading after we have definitive answer that user is new
     setIsLoading(false);
   };
 
   const handleError = (error: any) => {
     setIsLoading(false);
-    setIsSignInInProgress(false);
     Alert.alert(
       "Sign In Error",
       error.message || "Failed to sign in with Google"
@@ -118,12 +108,8 @@ export default function SignIn() {
   };
 
   const handleSignInStart = () => {
-    console.log(
-      "🔍 [SignIn] Starting sign-in process, setting isSignInInProgress = true"
-    );
     setIsLoading(true);
     setIsNewUser(false);
-    setIsSignInInProgress(true);
   };
 
   if (isLoading) {

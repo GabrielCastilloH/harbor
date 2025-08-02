@@ -10,8 +10,6 @@ export async function preloadChatCredentials(userId: string): Promise<{
   userToken: string;
 }> {
   try {
-    console.log("ChatPreloader - Starting to pre-load chat credentials for user:", userId);
-    
     // Fetch Stream API key and user token in parallel
     const [apiKey, userToken] = await Promise.all([
       ChatFunctions.getStreamApiKey(),
@@ -24,11 +22,8 @@ export async function preloadChatCredentials(userId: string): Promise<{
       AsyncStorage.setItem("@streamUserToken", userToken),
     ]);
 
-    console.log("ChatPreloader - Successfully pre-loaded chat credentials");
-    
     return { apiKey, userToken };
   } catch (error) {
-    console.error("ChatPreloader - Error pre-loading chat credentials:", error);
     throw error;
   }
 }
@@ -43,8 +38,5 @@ export async function clearChatCredentials(): Promise<void> {
       AsyncStorage.removeItem("@streamApiKey"),
       AsyncStorage.removeItem("@streamUserToken"),
     ]);
-    console.log("ChatPreloader - Cleared cached chat credentials");
-  } catch (error) {
-    console.error("ChatPreloader - Error clearing chat credentials:", error);
-  }
-} 
+  } catch (error) {}
+}
