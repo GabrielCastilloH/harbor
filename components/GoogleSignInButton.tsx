@@ -59,7 +59,31 @@ export default function GoogleSignInButton({
 
       // 3. Sign in with Google
       await GoogleSignin.signIn();
-      const { accessToken } = await GoogleSignin.getTokens();
+
+      // Get tokens - handle cancellation gracefully
+      let accessToken;
+      try {
+        const tokens = await GoogleSignin.getTokens();
+        accessToken = tokens.accessToken;
+      } catch (tokenError: any) {
+        // If user cancelled or there's a token issue, handle gracefully
+        if (
+          tokenError.message?.includes(
+            "getTokens requires a user to be signed in"
+          ) ||
+          tokenError.code === "SIGN_IN_CANCELLED"
+        ) {
+          try {
+            await GoogleSignin.signOut();
+            await signOut(auth);
+          } catch (signOutError) {
+            // Ignore sign out errors
+          }
+          onSignInComplete?.();
+          return;
+        }
+        throw tokenError;
+      }
 
       if (!accessToken) {
         throw new Error("No access token found");
@@ -105,7 +129,8 @@ export default function GoogleSignInButton({
         );
       } else if (
         error.code === "SIGN_IN_CANCELLED" ||
-        error.message?.includes("getTokens requires a token")
+        error.message?.includes("getTokens requires a token") ||
+        error.message?.includes("getTokens requires a user to be signed in")
       ) {
         // User cancelled sign-in or there was a token issue - ensure we're completely signed out
         try {
