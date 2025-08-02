@@ -10,20 +10,12 @@ export class SwipeService {
     direction: "left" | "right"
   ) {
     try {
-      console.log("SwipeService - Starting createSwipe with:", {
-        swiperId,
-        swipedId,
-        direction,
-      });
-
       const createSwipe = httpsCallable(
         functions,
         "swipeFunctions-createSwipe"
       );
       const result = await createSwipe({ swiperId, swipedId, direction });
       const data = result.data as any;
-
-      console.log("SwipeService - createSwipe result:", data);
       return data;
     } catch (error: any) {
       console.error("SwipeService - Error creating swipe:", error);

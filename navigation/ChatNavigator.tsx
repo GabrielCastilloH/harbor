@@ -40,10 +40,6 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
   const otherUserId = Object.keys(otherMembers).find((key) => key !== userId);
   const isFrozen = channel?.data?.frozen;
 
-  // Debug: Check if MatchService is properly imported
-  console.log("[DEBUG] MatchService:", MatchService);
-  console.log("[DEBUG] MatchService.getMatchId:", MatchService?.getMatchId);
-
   return (
     <TouchableOpacity
       onPress={() => {
@@ -127,12 +123,10 @@ export default function ChatNavigator() {
   useEffect(() => {
     const fetchApiKey = async () => {
       if (chatApiKey) {
-        console.log("ChatNavigator - Using pre-loaded API key");
         return;
       }
 
       try {
-        console.log("ChatNavigator - Fetching API key (not pre-loaded)");
         const apiKey = await ChatFunctions.getStreamApiKey();
         setChatApiKey(apiKey);
         setStreamApiKey(apiKey); // Store in context for future use
@@ -148,14 +142,10 @@ export default function ChatNavigator() {
   useEffect(() => {
     const fetchToken = async () => {
       if (chatUserToken || !userId) {
-        if (chatUserToken) {
-          console.log("ChatNavigator - Using pre-loaded user token");
-        }
         return;
       }
 
       try {
-        console.log("ChatNavigator - Fetching user token (not pre-loaded)");
         const token = await ChatFunctions.generateToken(userId);
         setChatUserToken(token);
         setStreamUserToken(token); // Store in context for future use
