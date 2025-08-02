@@ -1,9 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
-import PageIndicator from './PageIndicator';
-import { Profile } from '../types/App';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import Colors from "../constants/Colors";
+import PageIndicator from "./PageIndicator";
+import { Profile } from "../types/App";
 
 export interface ViewProps {
   profile: Profile;
@@ -70,47 +70,49 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 24,
+    marginTop: 0,
   },
   profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 20,
+    marginTop: 0,
   },
   nameAgeContainer: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   nameText: {
     fontSize: 36,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.black,
     marginBottom: 4,
   },
   ageText: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.black,
     opacity: 0.8,
   },
   infoContainer: {
     gap: 10,
     height: 50,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
     backgroundColor: Colors.primary100,
     borderRadius: 10,
     paddingHorizontal: 10,
   },
   infoItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
   },
   infoText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     color: Colors.primary500,
     marginLeft: 4,
   },
@@ -124,15 +126,15 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 20,
     flex: 1,
-    flexWrap: 'wrap',
-    fontWeight: '600',
+    flexWrap: "wrap",
+    fontWeight: "600",
     color: Colors.primary500,
     marginLeft: 12,
   },
@@ -145,9 +147,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingBottom: 0,
+    paddingTop: 0,
   },
   sectionsContainer: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
 });
