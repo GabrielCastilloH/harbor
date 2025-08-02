@@ -313,24 +313,20 @@ export const getImages = functions.https.onCall(
         .get();
       let user1Consented = false;
       let user2Consented = false;
-      let blurLevel = 100;
       let messageCount = 0;
 
       if (!matchQuery.empty) {
         const matchData = matchQuery.docs[0].data();
         user1Consented = matchData?.user1Consented || false;
         user2Consented = matchData?.user2Consented || false;
-        blurLevel = matchData?.blurPercentage ?? 100;
         messageCount = matchData?.messageCount ?? 0;
         console.log(
           `[getImages] ✅ Match found - Consent: ${
             user1Consented && user2Consented
-          }, Blur: ${blurLevel}%`
+          }, Messages: ${messageCount}`
         );
       } else {
-        console.log(
-          `[getImages] ❌ No match found - Using default blur: ${blurLevel}%`
-        );
+        console.log(`[getImages] ❌ No match found - Using default values`);
       }
       // For each image, return the correct URL and blurLevel
       const result = [];
@@ -338,7 +334,6 @@ export const getImages = functions.https.onCall(
         const img = images[index];
         // Images are stored as file paths (not full URLs)
         let url = null;
-        let effectiveBlurLevel = blurLevel;
 
         if (typeof img === "string") {
           // The data in Firestore is now filenames from uploadImageViaCloudFunction
@@ -413,12 +408,11 @@ export const getImages = functions.https.onCall(
         } else {
           console.log(`[getImages] ❌ Invalid image format:`, img);
           url = null;
-          effectiveBlurLevel = blurLevel;
         }
 
         result.push({
           url,
-          blurLevel: effectiveBlurLevel,
+          blurLevel: 0, // Client-side blur will be calculated on frontend
           messageCount,
           bothConsented: user1Consented && user2Consented,
         });

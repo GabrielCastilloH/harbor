@@ -5,7 +5,6 @@ export * from "./SwipeService";
 export * from "./MatchService";
 export * from "./ChatFunctions";
 export * from "./ImageService";
-export * from "./BlurService";
 export * from "./RecommendationService";
 export * from "./ConsentService";
 
@@ -15,7 +14,6 @@ export { UserService } from "./UserService";
 export { SwipeService } from "./SwipeService";
 export { MatchService } from "./MatchService";
 export { ImageService } from "./ImageService";
-export { BlurService } from "./BlurService";
 export { RecommendationService } from "./RecommendationService";
 export { ConsentService } from "./ConsentService";
 
