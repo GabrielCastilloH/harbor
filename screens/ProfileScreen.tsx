@@ -60,6 +60,7 @@ export default function ProfileScreen() {
   const matchIdParam = route.params?.matchId;
   const [matchId, setMatchId] = useState<string | null>(matchIdParam ?? null);
   const [matchLoading, setMatchLoading] = useState(false);
+  const [unmatchLoading, setUnmatchLoading] = useState(false);
 
   // Fetch matchId if not provided
   useEffect(() => {
@@ -160,12 +161,25 @@ export default function ProfileScreen() {
         matchId ? (
           <Pressable
             onPress={() => handleUnmatch()}
+            disabled={unmatchLoading}
             style={({ pressed }) => [
               styles.unmatchButton,
               pressed && styles.unmatchButtonPressed,
+              unmatchLoading && styles.unmatchButtonDisabled,
             ]}
           >
-            <Text style={styles.unmatchButtonText}>Unmatch</Text>
+            {unmatchLoading ? (
+              <View style={styles.unmatchLoadingContainer}>
+                <ActivityIndicator size="small" color={Colors.strongRed} />
+                <Text
+                  style={[styles.unmatchButtonText, styles.unmatchLoadingText]}
+                >
+                  Unmatching...
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.unmatchButtonText}>Unmatch</Text>
+            )}
           </Pressable>
         ) : null,
     });
@@ -196,6 +210,7 @@ export default function ProfileScreen() {
           style: "destructive",
           onPress: async () => {
             console.log("🔍 [DEBUG] User confirmed unmatch");
+            setUnmatchLoading(true);
             try {
               console.log("🔍 [DEBUG] Calling MatchService.unmatch");
               await MatchService.unmatch(currentUserId, matchId);
@@ -208,6 +223,8 @@ export default function ProfileScreen() {
                 "Error",
                 "Failed to unmatch. Please try again later."
               );
+            } finally {
+              setUnmatchLoading(false);
             }
           },
         },
@@ -344,10 +361,21 @@ const styles = StyleSheet.create({
   unmatchButtonPressed: {
     opacity: 0.7,
   },
+  unmatchButtonDisabled: {
+    opacity: 0.5,
+  },
   unmatchButtonText: {
     color: Colors.strongRed,
     fontWeight: "bold",
     fontSize: 16,
+  },
+  unmatchLoadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  unmatchLoadingText: {
+    opacity: 0.8,
   },
   warningModalBackground: {
     flex: 1,
