@@ -129,7 +129,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   return (
     <View
       style={{
-        paddingBottom: spacing,
         width: "100%",
       }}
     >
