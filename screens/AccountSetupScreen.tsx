@@ -16,7 +16,6 @@ import { preloadChatCredentials } from "../util/chatPreloader";
 export default function AccountSetupScreen({
   showProgressBar = true,
 }: { showProgressBar?: boolean } = {}) {
-
   const {
     setUserId,
     setProfile,
@@ -50,7 +49,9 @@ export default function AccountSetupScreen({
       setProfile(null);
       setIsAuthenticated(false);
       await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
-
+    } catch (error) {
+      // Handle logout error silently
+    }
   };
 
   useEffect(() => {
@@ -64,7 +65,9 @@ export default function AccountSetupScreen({
             email: currentUser.email || "",
           }));
         }
-
+      } catch (error) {
+        // Handle error silently
+      }
     };
     loadUserInfo();
   }, []);
