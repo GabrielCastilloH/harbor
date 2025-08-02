@@ -63,15 +63,8 @@ export const getPersonalImages = async (
   userId: string
 ): Promise<Array<{ url: string; blurLevel: number }>> => {
   try {
-    // Try to get cached original images first
-    const cachedOriginal = await ImageCache.getCachedImage(userId, "original");
-    if (cachedOriginal) {
-      console.log(
-        `📦 [ImageService] Using cached original image for user ${userId}`
-      );
-      return [{ url: cachedOriginal, blurLevel: 0 }];
-    }
-
+    // For personal images, we don't use the regular cache to avoid interfering with other users' images
+    // Personal images are always fetched fresh from the server
     const imageFunctions = httpsCallable(
       functions,
       "imageFunctions-getPersonalImages"
@@ -79,11 +72,6 @@ export const getPersonalImages = async (
 
     const response = await imageFunctions({ userId });
     const images = (response.data as any).images;
-
-    // Cache the original images
-    images.forEach(async (image: any) => {
-      await ImageCache.cacheImage(userId, image.url, "original");
-    });
 
     return images;
   } catch (error) {
