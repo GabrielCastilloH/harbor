@@ -89,65 +89,12 @@ export class MatchService {
     }
   }
 
-  static async updateBlurLevel(
-    userId: string,
-    matchedUserId: string,
-    blurPercentage: number
-  ) {
-    // console.log("MatchService - updateBlurLevel called with:", {
-    //   userId,
-    //   matchedUserId,
-    //   blurPercentage,
-    // });
-
+  static async getMatchId(
+    userId1: string,
+    userId2: string
+  ): Promise<string | null> {
     try {
-      const updateBlurLevel = httpsCallable(
-        functions,
-        "blurFunctions-updateBlurLevelForMessage"
-      );
-      const result = await updateBlurLevel({
-        userId,
-        matchedUserId,
-        blurPercentage,
-      });
-      const data = result.data as any;
-
-      // console.log("MatchService - Blur level updated:", data);
-      return data;
-    } catch (error) {
-      console.error("MatchService - Error updating blur level:", error);
-      throw error;
-    }
-  }
-
-  static async getBlurLevel(userId: string, matchedUserId: string) {
-    // console.log("MatchService - getBlurLevel called with:", {
-    //   userId,
-    //   matchedUserId,
-    // });
-
-    try {
-      const getBlurLevel = httpsCallable(
-        functions,
-        "blurFunctions-getBlurLevel"
-      );
-      const result = await getBlurLevel({ userId, matchedUserId });
-      const data = result.data as any;
-
-      // console.log("MatchService - Blur level:", data);
-      return data;
-    } catch (error) {
-      console.error("MatchService - Error getting blur level:", error);
-      throw error;
-    }
-  }
-
-  static async getMatchId(userId1: string, userId2: string): Promise<string | null> {
-    try {
-      const getMatchId = httpsCallable(
-        functions,
-        "matchFunctions-getMatchId"
-      );
+      const getMatchId = httpsCallable(functions, "matchFunctions-getMatchId");
       const result = await getMatchId({ userId1, userId2 });
       const data = result.data as { matchId: string | null };
 

@@ -20,7 +20,6 @@ import { getImageSource } from "../util/imageUtils";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
 import { MatchService, UserService } from "../networking";
-import { BlurService } from "../networking";
 import { getImages } from "../networking/ImageService";
 import { BlurView } from "expo-blur";
 import { getClientBlurLevel, BLUR_CONFIG } from "../constants/blurConfig";
@@ -172,23 +171,8 @@ export default function ProfileScreen() {
     fetchImages();
   }, [userId]);
 
-  // Check for blur warning
-  useEffect(() => {
-    const checkBlurWarning = async () => {
-      if (!userId || !currentUserId || userId === currentUserId) return;
-
-      try {
-        const response = await BlurService.getBlurLevel(currentUserId, userId);
-        if (response.hasShownWarning) {
-          setShowBlurWarning(true);
-        }
-      } catch (error) {
-        console.error("Error checking blur warning:", error);
-      }
-    };
-
-    checkBlurWarning();
-  }, [userId, currentUserId]);
+  // Note: Blur logic is now handled dynamically in the image processing
+  // No need to check blur warning state here anymore
 
   useEffect(() => {
     if (userId === currentUserId) return;
