@@ -5,85 +5,128 @@ import { Channel, MessageInput, MessageList } from "stream-chat-expo";
 import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
 import { updateMessageCount } from "../networking";
-import { MatchService } from "../networking";
+import { MatchService, ConsentService } from "../networking";
+import { BLUR_CONFIG } from "../constants/blurConfig";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
-  const [showWarning, setShowWarning] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
   const [isChatFrozen, setIsChatFrozen] = useState(false);
-  const [userAgreed, setUserAgreed] = useState(false);
+  const [userConsented, setUserConsented] = useState(false);
+  const [consentStatus, setConsentStatus] = useState<{
+    user1Consented: boolean;
+    user2Consented: boolean;
+    bothConsented: boolean;
+    messageCount: number;
+    shouldShowConsentScreen: boolean;
+  } | null>(null);
 
-  // Note: Blur logic is now handled dynamically in ProfileScreen
-  // No need to check warning state here anymore
+  // Check consent state when component mounts
+  useEffect(() => {
+    const checkConsentState = async () => {
+      if (!channel || !userId) return;
+
+      const matchId = channel.data?.matchId;
+      if (!matchId) return;
+
+      try {
+        const status = await ConsentService.getConsentStatus(matchId);
+        setConsentStatus(status);
+
+        // Show consent modal if needed
+        if (status.shouldShowConsentScreen) {
+          setShowConsentModal(true);
+          setIsChatFrozen(true);
+        } else if (status.bothConsented) {
+          setIsChatFrozen(false);
+        }
+
+        // Check if current user has consented
+        const currentUserConsented =
+          userId === status.user1Consented
+            ? status.user1Consented
+            : status.user2Consented;
+        setUserConsented(currentUserConsented);
+      } catch (error) {
+        console.error("Error checking consent state:", error);
+      }
+    };
+
+    checkConsentState();
+  }, [channel, userId]);
+
+  const handleConsentResponse = async (consented: boolean) => {
+    try {
+      const matchId = channel?.data?.matchId;
+      if (!matchId || !userId) return;
+
+      const response = await ConsentService.updateConsent(
+        matchId,
+        userId,
+        consented
+      );
+
+      if (consented) {
+        setUserConsented(true);
+        // Only hide modal and unfreeze chat if both users have consented
+        if (response.bothConsented) {
+          setShowConsentModal(false);
+          setIsChatFrozen(false);
+        }
+      } else {
+        // If user chose to unmatch, keep chat frozen
+        setIsChatFrozen(true);
+        // TODO: Implement unmatch logic
+      }
+    } catch (error) {
+      console.error("Error handling consent response:", error);
+    }
+  };
 
   useEffect(() => {
     if (!channel) return;
 
+    console.log("ChatScreen - Setting up message listener for channel:", {
+      id: channel.id,
+      matchId: channel.data?.matchId,
+    });
+
+    // Set up message listener
     const handleNewMessage = async (event: any) => {
-      try {
-        console.log("ChatScreen - New message received:", event);
+      console.log("ChatScreen - New message received:", {
+        messageId: event?.message?.id,
+        matchId: channel.data?.matchId,
+        userId: event?.user?.id,
+      });
 
-        // Get the channel ID and extract user IDs
-        const channelId = channel.id;
-        const userIds = channelId.split("-");
-
-        console.log(
-          `ChatScreen - Channel ID: ${channelId}, User IDs:`,
-          userIds
-        );
-
-        if (userIds.length === 2 && userId) {
-          // Find the match between these users
-          const matchId = await MatchService.getMatchId(userIds[0], userIds[1]);
-
-          console.log(`ChatScreen - Match lookup result: ${matchId}`);
-
-          if (matchId) {
-            console.log(`Found matchId: ${matchId} for channel: ${channelId}`);
-
-            // First increment the message count
-            await updateMessageCount(matchId);
-            console.log(
-              `ChatScreen - Message count updated for match: ${matchId}`
-            );
-
-            // Get the other user's ID from the channel members
-            const otherMembers = channel.state?.members || {};
-            const otherUserId = Object.keys(otherMembers).find(
-              (key) => key !== userId
-            );
-
-            console.log(`ChatScreen - Other user ID: ${otherUserId}`);
-
-            if (otherUserId && userId) {
-              // Then update the blur level
-              const response = await BlurService.updateBlurLevelForMessage(
-                userId,
-                otherUserId
-              );
-
-              console.log(`ChatScreen - Blur level update response:`, response);
-
-              // Handle warning state
-              if (response.shouldShowWarning) {
-                setShowWarning(true);
-                setIsChatFrozen(true);
-                console.log(`ChatScreen - Warning shown, chat frozen`);
-              }
-            }
-          } else {
-            console.log(`No match found for channel: ${channelId}`);
-          }
-        } else {
+      const matchId = channel.data?.matchId;
+      if (matchId) {
+        try {
+          // First increment the message count
           console.log(
-            `ChatScreen - Invalid channel ID format or missing userId`
+            "ChatScreen - Updating message count for match:",
+            matchId
+          );
+          await updateMessageCount(matchId);
+
+          // Check if we need to show consent screen
+          const status = await ConsentService.getConsentStatus(matchId);
+          setConsentStatus(status);
+
+          if (status.shouldShowConsentScreen) {
+            setShowConsentModal(true);
+            setIsChatFrozen(true);
+          } else if (status.bothConsented) {
+            setIsChatFrozen(false);
+          }
+        } catch (error) {
+          console.error(
+            "ChatScreen - Failed to update message count or check consent:",
+            error
           );
         }
-      } catch (error) {
-        console.error(
-          "ChatScreen - Failed to update message count or blur level:",
-          error
-        );
+      } else {
+        console.warn("ChatScreen - Match ID is missing from channel data");
       }
     };
 
@@ -92,6 +135,7 @@ export default function ChatScreen() {
 
     // Cleanup listener on unmount
     return () => {
+      console.log("ChatScreen - Cleaning up message listener");
       channel.off("message.new", handleNewMessage);
     };
   }, [channel, userId]);
@@ -108,12 +152,10 @@ export default function ChatScreen() {
     <>
       <Channel channel={channel}>
         <MessageList />
-        {isChatFrozen || channel.data?.frozen ? (
+        {isChatFrozen ? (
           <View style={styles.disabledContainer}>
             <Text style={styles.disabledText}>
-              {channel.data?.frozen
-                ? "This chat has been frozen because one of the users unmatched."
-                : userAgreed
+              {userConsented
                 ? "Waiting for the other person to continue the chat..."
                 : "Chat is paused until both users agree to continue."}
             </Text>
@@ -123,25 +165,25 @@ export default function ChatScreen() {
         )}
       </Channel>
 
-      <Modal visible={showWarning} transparent={true} animationType="fade">
+      <Modal visible={showConsentModal} transparent={true} animationType="fade">
         <View style={styles.warningModalBackground}>
           <View style={styles.warningModalContent}>
             <Text style={styles.warningTitle}>Photos Will Be Revealed</Text>
             <Text style={styles.warningText}>
-              You've exchanged enough messages that your photos will start
-              becoming clearer. This is your last chance to unmatch while
-              remaining anonymous.
+              You've exchanged {consentStatus?.messageCount || 0} messages. Your
+              photos will start becoming clearer. This is your last chance to
+              unmatch while remaining anonymous.
             </Text>
             <View style={styles.warningButtons}>
               <Pressable
                 style={[styles.warningButton, styles.unmatchButton]}
-                onPress={() => handleWarningResponse(false)}
+                onPress={() => handleConsentResponse(false)}
               >
                 <Text style={styles.warningButtonText}>Unmatch</Text>
               </Pressable>
               <Pressable
                 style={[styles.warningButton, styles.continueButton]}
-                onPress={() => handleWarningResponse(true)}
+                onPress={() => handleConsentResponse(true)}
               >
                 <Text style={styles.warningButtonText}>Continue</Text>
               </Pressable>
