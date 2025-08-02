@@ -140,43 +140,20 @@ export default function ProfileScreen() {
           };
         });
 
-        // Add test images to verify client-side blur
-        const testImages = [
-          {
-            id: "test-high-blur",
-            url: "https://media.istockphoto.com/id/1410538853/photo/young-man-in-the-public-park.jpg?s=612x612&w=0&k=20&c=EtRJGnNOFPJ2HniBSLWKzsL9Xf7GHinHd5y2Tx3da0E=",
-            blurLevel: 90, // Very high blur
-            messageCount: 0,
-            bothConsented: false,
-          },
-          {
-            id: "test-medium-blur",
-            url: "https://media.istockphoto.com/id/1410538853/photo/young-man-in-the-public-park.jpg?s=612x612&w=0&k=20&c=EtRJGnNOFPJ2HniBSLWKzsL9Xf7GHinHd5y2Tx3da0E=",
-            blurLevel: 50, // Medium blur
-            messageCount: 15,
-            bothConsented: false,
-          },
-          {
-            id: "test-low-blur",
-            url: "https://media.istockphoto.com/id/1410538853/photo/young-man-in-the-public-park.jpg?s=612x612&w=0&k=20&c=EtRJGnNOFPJ2HniBSLWKzsL9Xf7GHinHd5y2Tx3da0E=",
-            blurLevel: 20, // Low blur
-            messageCount: 25,
-            bothConsented: false,
-          },
-          {
-            id: "test-no-blur",
-            url: "https://media.istockphoto.com/id/1410538853/photo/young-man-in-the-public-park.jpg?s=612x612&w=0&k=20&c=EtRJGnNOFPJ2HniBSLWKzsL9Xf7GHinHd5y2Tx3da0E=",
-            blurLevel: 0, // No blur
-            messageCount: 35,
-            bothConsented: true,
-          },
-        ];
+        // Add placeholder image to test carousel with more than 3 images
+        const placeholderImage = {
+          id: "placeholder-1",
+          url: "https://media.istockphoto.com/id/1410538853/photo/young-man-in-the-public-park.jpg?s=612x612&w=0&k=20&c=EtRJGnNOFPJ2HniBSLWKzsL9Xf7GHinHd5y2Tx3da0E=",
+          blurLevel: 90,
+          messageCount: 0,
+          bothConsented: false,
+        };
 
         console.log(
-          `🔍 [ProfileScreen] Test images added with different blur levels`
+          `🔍 [ProfileScreen] Adding 1 placeholder image for testing`
         );
 
-        setImagesWithBlur([...testImages, ...processedImages]);
+        setImagesWithBlur([...processedImages, placeholderImage]);
       } catch (error: any) {
         console.error("[ProfileScreen] Error in fetchImages:", error);
         if (error?.code === "not-found") {

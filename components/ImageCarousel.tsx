@@ -42,12 +42,15 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
     console.log(
       `🔍 [ImageCarousel] Rendering image with blurLevel: ${item.blurLevel}`
     );
-    console.log(`🔍 [ImageCarousel] Image URL: ${item.url}`);
     console.log(
       `🔍 [ImageCarousel] Will apply blur: ${
         item.blurLevel && item.blurLevel > 0
       }`
     );
+    console.log(
+      `🔍 [ImageCarousel] Image size: ${imageSize}, Window width: ${windowWidth}`
+    );
+    console.log(`🔍 [ImageCarousel] Number of images: ${images.length}`);
 
     return (
       <View
@@ -67,6 +70,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               width: imageSize,
               height: imageSize,
               borderRadius,
+              backgroundColor: "red", // Debug color
             },
           ]}
         >
@@ -169,16 +173,35 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               styles.pageIndicatorContainer,
               {
                 top: 50,
+                left: (windowWidth - imageSize) / 2, // Center it with the image
                 width: imageSize,
-                transform: [{ translateX: -imageSize / 2 }],
+                backgroundColor: "blue", // Debug color
               },
             ]}
+            onLayout={(event) => {
+              console.log(
+                `🔍 [ImageCarousel] Indicator container layout:`,
+                event.nativeEvent.layout
+              );
+            }}
           >
-            <View style={[styles.pageIndicator, { width: imageSize }]}>
+            <View
+              style={[
+                styles.pageIndicator,
+                { width: imageSize, backgroundColor: "green" },
+              ]}
+            >
               {images.map((_, idx) => (
                 <View
                   key={idx}
-                  style={[styles.dot, idx === currentIndex && styles.activeDot]}
+                  style={[
+                    styles.dot,
+                    idx === currentIndex && styles.activeDot,
+                    {
+                      backgroundColor:
+                        idx === currentIndex ? "yellow" : "orange",
+                    }, // Debug colors
+                  ]}
                 />
               ))}
             </View>
@@ -236,14 +259,13 @@ const styles = StyleSheet.create({
   },
   pageIndicator: {
     flexDirection: "row",
-    justifyContent: "center",
-    paddingHorizontal: 20,
-    gap: 8,
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
   },
   dot: {
-    width: "30%",
+    width: 8,
     height: 4,
-    borderRadius: 4,
+    borderRadius: 2,
     backgroundColor: "rgba(220, 240, 245, 0.8)",
   },
   activeDot: {
