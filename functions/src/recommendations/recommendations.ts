@@ -101,7 +101,40 @@ export const getRecommendations = functions.https.onCall(
 
       // await logToNtfy("getRecommendations - Available users filtered");
 
-      if (availableUsers.length === 0) {
+      // Get all active matches to filter out users who are already matched
+      const activeMatchesSnapshot = await db
+        .collection("matches")
+        .where("isActive", "==", true)
+        .get();
+
+      const matchedUserIds = new Set<string>();
+
+      activeMatchesSnapshot.docs.forEach((doc) => {
+        const matchData = doc.data();
+        if (matchData.user1Id && matchData.user2Id) {
+          matchedUserIds.add(matchData.user1Id);
+          matchedUserIds.add(matchData.user2Id);
+        }
+      });
+
+      // Filter out users who are already in active matches
+      const trulyAvailableUsers = availableUsers.filter(
+        (user) => !matchedUserIds.has(user.uid)
+      );
+
+      console.log(`🔍 [RECOMMENDATIONS] Total users: ${allUsers.length}`);
+      console.log(
+        `🔍 [RECOMMENDATIONS] After swipe filter: ${availableUsers.length}`
+      );
+      console.log(
+        `🔍 [RECOMMENDATIONS] After match filter: ${trulyAvailableUsers.length}`
+      );
+      console.log(
+        `🔍 [RECOMMENDATIONS] Matched user IDs:`,
+        Array.from(matchedUserIds)
+      );
+
+      if (trulyAvailableUsers.length === 0) {
         // await logToNtfy("getRecommendations - No other users found");
         return { recommendations: [] };
       }
@@ -109,9 +142,9 @@ export const getRecommendations = functions.https.onCall(
       // For now, return all available users
       // In the future, you can implement more sophisticated recommendation logic
       // await logToNtfy("getRecommendations - Returning recommendations");
-      // await logToNtfy("getRecommendations - Number of recommendations: " + availableUsers.length);
+      // await logToNtfy("getRecommendations - Number of recommendations: " + trulyAvailableUsers.length);
 
-      return { recommendations: availableUsers };
+      return { recommendations: trulyAvailableUsers };
     } catch (error: any) {
       // await logToNtfy("=== getRecommendations FUNCTION ERROR ===");
       // await logToNtfy("getRecommendations - Error: " + error);
