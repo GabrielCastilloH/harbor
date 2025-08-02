@@ -180,15 +180,8 @@ export const unmatchUsers = functions.https.onCall(
     invoker: "public",
   },
   async (request: CallableRequest<{ userId: string; matchId: string }>) => {
-    console.log("🔍 [DEBUG] unmatchUsers function called with:", request.data);
-    console.log("🔍 [DEBUG] Auth user:", request.auth?.uid);
-    console.log("🔍 [DEBUG] Auth object:", request.auth);
-    console.log("🔍 [DEBUG] Request headers:", request.rawRequest?.headers);
-
     try {
       if (!request.auth) {
-        console.log("❌ [DEBUG] User not authenticated");
-        console.log("❌ [DEBUG] Request auth is null/undefined");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -196,10 +189,8 @@ export const unmatchUsers = functions.https.onCall(
       }
 
       const { userId, matchId } = request.data;
-      console.log("🔍 [DEBUG] Extracted data:", { userId, matchId });
 
       if (!userId || !matchId) {
-        console.log("❌ [DEBUG] Missing required data:", { userId, matchId });
         throw new functions.https.HttpsError(
           "invalid-argument",
           "User ID and match ID are required"
@@ -294,10 +285,6 @@ export const unmatchUsers = functions.https.onCall(
             text: "This chat has been frozen because one of the users unmatched.",
             user_id: "system",
           });
-
-          console.log(
-            `✅ [MATCH] Chat frozen and system message sent for match ${matchId}`
-          );
         }
       } catch (streamError) {
         console.error(

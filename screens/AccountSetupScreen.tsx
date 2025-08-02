@@ -16,6 +16,9 @@ import { preloadChatCredentials } from "../util/chatPreloader";
 export default function AccountSetupScreen({
   showProgressBar = true,
 }: { showProgressBar?: boolean } = {}) {
+  console.log(
+    "🚨 ACCOUNT SETUP SCREEN IS BEING SHOWN - USER SHOULD NOT BE HERE IF THEY EXIST IN FIRESTORE"
+  );
   const {
     setUserId,
     setProfile,

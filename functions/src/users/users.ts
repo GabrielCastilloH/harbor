@@ -135,7 +135,6 @@ export const createUser = functions.https.onCall(
     invoker: "public",
   },
   async (request: functions.https.CallableRequest<CreateUserData>) => {
-    console.log("createUser called", request.data);
     try {
       if (!request.auth) {
         // await logToNtfy("createUser - User not authenticated");
@@ -166,7 +165,7 @@ export const createUser = functions.https.onCall(
       const existingUser = await db.collection("users").doc(firebaseUid).get();
       if (existingUser.exists) {
         // User exists, update the document with the new data
-        console.log("createUser - User already exists, updating:", firebaseUid);
+
         const existingData = existingUser.data();
 
         // Merge existing data with new data, preserving existing images
@@ -318,13 +317,8 @@ export const getUserById = functions.https.onCall(
     invoker: "public",
   },
   async (request: functions.https.CallableRequest<{ id: string }>) => {
-    console.log("🔍 [DEBUG] getUserById function called");
-    console.log("🔍 [DEBUG] Request auth:", request.auth?.uid);
-    console.log("🔍 [DEBUG] Request data:", request.data);
-
     try {
       if (!request.auth) {
-        console.log("❌ [DEBUG] getUserById - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -333,14 +327,11 @@ export const getUserById = functions.https.onCall(
 
       const { id } = request.data;
       if (!id) {
-        console.log("❌ [DEBUG] getUserById - No id provided");
         throw new functions.https.HttpsError(
           "invalid-argument",
           "User ID is required"
         );
       }
-
-      console.log("🔍 [DEBUG] getUserById - Fetching user with ID:", id);
 
       // Try to get user by UID first
       let userDoc = await db.collection("users").doc(id).get();
@@ -348,12 +339,7 @@ export const getUserById = functions.https.onCall(
 
       if (userDoc.exists) {
         userData = userDoc.data();
-        console.log("✅ [DEBUG] getUserById - User found by UID:", id);
       } else {
-        console.log(
-          "🔍 [DEBUG] getUserById - User not found by UID, trying email lookup"
-        );
-
         // If not found by UID, try to find by email
         const emailQuery = await db
           .collection("users")
@@ -362,29 +348,21 @@ export const getUserById = functions.https.onCall(
           .get();
 
         if (!emailQuery.empty) {
-          console.log("✅ [DEBUG] getUserById - User found by email:", id);
           userData = emailQuery.docs[0].data();
         } else {
-          console.log("❌ [DEBUG] getUserById - User not found:", id);
           throw new functions.https.HttpsError("not-found", "User not found");
         }
       }
 
-      console.log("🔍 [DEBUG] getUserById - User data:", userData);
-
       // Remove images from the response for security - images should only be fetched via getImages
       if (userData) {
         const { images, ...userDataWithoutImages } = userData;
-        console.log(
-          "✅ [DEBUG] getUserById - Returning user data without images"
-        );
+
         return { user: userDataWithoutImages };
       }
 
-      console.log("✅ [DEBUG] getUserById - Returning user data");
       return { user: userData };
     } catch (error: any) {
-      console.error("❌ [DEBUG] Error getting user by ID:", error);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }

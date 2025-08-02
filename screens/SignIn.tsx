@@ -70,19 +70,13 @@ export default function SignIn() {
   const handleExistingUser = async (userData: any) => {
     try {
       // Pre-load chat credentials for existing users
-      console.log(
-        "SignIn - Pre-loading chat credentials for existing user:",
-        userData.uid
-      );
+
       const { apiKey, userToken } = await preloadChatCredentials(userData.uid);
 
       // Update context with pre-loaded credentials
       setStreamApiKey(apiKey);
       setStreamUserToken(userToken);
-
-      console.log("SignIn - Successfully pre-loaded chat credentials");
     } catch (error) {
-      console.error("SignIn - Error pre-loading chat credentials:", error);
       // Don't block sign-in if chat pre-loading fails
     }
 
