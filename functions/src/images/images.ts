@@ -18,8 +18,8 @@ async function blurImageBuffer(
   try {
     // Calculate sigma based on blur percentage
     // Higher blur percentage = higher sigma (more blur)
-    // For 70% blur, we want a significant blur effect
-    const sigma = Math.max(5, blurPercent / 10); // 70% = sigma of 7
+    // Map blur percentage to sigma to match React Native client blur
+    const sigma = Math.max(6, blurPercent / 10); // 80% = sigma of 8
 
     console.log(
       `blurImageBuffer - Using sigma: ${sigma} for ${blurPercent}% blur`
