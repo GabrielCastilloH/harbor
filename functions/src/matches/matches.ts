@@ -668,6 +668,105 @@ export const getConsentStatus = functions.https.onCall(
   }
 );
 
+/**
+ * Migrates existing match documents to use new consent fields
+ */
+export const migrateMatchConsent = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ matchId: string }>) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { matchId } = request.data;
+
+      if (!matchId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Match ID is required"
+        );
+      }
+
+      // Get the match document
+      const matchDoc = await db.collection("matches").doc(matchId).get();
+      if (!matchDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Match not found");
+      }
+
+      const matchData = matchDoc.data();
+      if (!matchData) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "Match data not found"
+        );
+      }
+
+      // Check if migration is needed (has old fields)
+      const needsMigration =
+        matchData.hasOwnProperty("blurPercentage") ||
+        matchData.hasOwnProperty("user1Agreed") ||
+        matchData.hasOwnProperty("user2Agreed") ||
+        matchData.hasOwnProperty("warningShown");
+
+      if (!needsMigration) {
+        return { message: "Match already uses new consent fields" };
+      }
+
+      // Migrate to new consent fields
+      const updateData: any = {
+        user1Consented: matchData.user1Agreed || false,
+        user2Consented: matchData.user2Agreed || false,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      // Remove old fields
+      updateData.blurPercentage = admin.firestore.FieldValue.delete();
+      updateData.user1Agreed = admin.firestore.FieldValue.delete();
+      updateData.user2Agreed = admin.firestore.FieldValue.delete();
+      updateData.warningShown = admin.firestore.FieldValue.delete();
+
+      await db.collection("matches").doc(matchId).update(updateData);
+
+      return {
+        message: "Match migrated successfully",
+        oldFields: {
+          blurPercentage: matchData.blurPercentage,
+          user1Agreed: matchData.user1Agreed,
+          user2Agreed: matchData.user2Agreed,
+          warningShown: matchData.warningShown,
+        },
+        newFields: {
+          user1Consented: updateData.user1Consented,
+          user2Consented: updateData.user2Consented,
+        },
+      };
+    } catch (error: any) {
+      console.error("Error migrating match consent:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to migrate match consent"
+      );
+    }
+  }
+);
+
 export const matchFunctions = {
   createMatch,
   getActiveMatches,
@@ -676,4 +775,5 @@ export const matchFunctions = {
   getMatchId,
   updateConsent,
   getConsentStatus,
+  migrateMatchConsent,
 };
