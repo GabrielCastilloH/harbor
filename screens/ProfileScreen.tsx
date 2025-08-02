@@ -271,31 +271,40 @@ export default function ProfileScreen() {
         overScrollMode="never"
         showsVerticalScrollIndicator={false}
       >
-        <ImageCarousel
-          images={
-            imagesWithBlur.length > 0
-              ? imagesWithBlur.map((img, index) => {
-                  return {
-                    id: `${index}`,
-                    url: img.url,
-                    title: `Image ${index + 1}`,
-                    blurLevel: img.blurLevel,
-                  };
-                })
-              : [
+        {imageLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary500} />
+          </View>
+        ) : (
+          <ImageCarousel
+            images={imagesWithBlur.flatMap((img, index) => {
+              const baseImage = {
+                id: `${index}`,
+                url: img.url,
+                title: `Image ${index + 1}`,
+                blurLevel: img.blurLevel,
+              };
+
+              // If image has blur, add a non-blurred version for comparison
+              if (img.blurLevel && img.blurLevel > 0) {
+                return [
+                  baseImage, // blurred version
                   {
-                    id: "placeholder",
-                    url: "",
-                    title: "Loading...",
-                    blurLevel: 0,
+                    id: `${index}_no_blur`,
+                    url: img.url,
+                    title: `Image ${index + 1} (No Blur)`,
+                    blurLevel: 0, // no blur for comparison
                   },
-                ]
-          }
-          imageSize={360}
-          borderRadius={12}
-          spacing={0}
-          showIndicators={imagesWithBlur.length > 1}
-        />
+                ];
+              }
+
+              return [baseImage]; // no blur version needed
+            })}
+            imageSize={350}
+            borderRadius={12}
+            showIndicators={true}
+          />
+        )}
         <View style={{ paddingHorizontal: 24 }}>
           <BasicInfoView profile={profile} />
         </View>
