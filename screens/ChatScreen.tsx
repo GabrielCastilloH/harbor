@@ -161,6 +161,38 @@ export default function ChatScreen() {
     <>
       <Channel channel={channel}>
         <MessageList />
+
+        {/* Consent Modal - Inside the Channel view */}
+        {showConsentModal && (
+          <View style={styles.modalOverlay}>
+            <View style={styles.warningModalContent}>
+              <Text style={styles.warningTitle}>Photos Will Be Revealed</Text>
+              <Text style={styles.warningText}>
+                You've exchanged {consentStatus?.messageCount || 0} messages.
+                Your photos will start becoming clearer. This is your last
+                chance to unmatch while remaining anonymous.
+              </Text>
+              <View style={styles.warningButtons}>
+                <Pressable
+                  style={[styles.warningButton, styles.unmatchButton]}
+                  onPress={() => handleConsentResponse(false)}
+                >
+                  <Text style={styles.warningButtonText}>Unmatch</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.warningButton, styles.continueButton]}
+                  onPress={() => {
+                    setShowConsentModal(false);
+                    handleConsentResponse(true);
+                  }}
+                >
+                  <Text style={styles.warningButtonText}>Continue</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )}
+
         {isChatFrozen ? (
           <View style={styles.disabledContainer}>
             <Text style={styles.disabledText}>
@@ -173,33 +205,6 @@ export default function ChatScreen() {
           <MessageInput />
         )}
       </Channel>
-
-      <Modal visible={showConsentModal} transparent={true} animationType="fade">
-        <View style={styles.warningModalBackground}>
-          <View style={styles.warningModalContent}>
-            <Text style={styles.warningTitle}>Photos Will Be Revealed</Text>
-            <Text style={styles.warningText}>
-              You've exchanged {consentStatus?.messageCount || 0} messages. Your
-              photos will start becoming clearer. This is your last chance to
-              unmatch while remaining anonymous.
-            </Text>
-            <View style={styles.warningButtons}>
-              <Pressable
-                style={[styles.warningButton, styles.unmatchButton]}
-                onPress={() => handleConsentResponse(false)}
-              >
-                <Text style={styles.warningButtonText}>Unmatch</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.warningButton, styles.continueButton]}
-                onPress={() => handleConsentResponse(true)}
-              >
-                <Text style={styles.warningButtonText}>Continue</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </>
   );
 }
@@ -215,6 +220,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: Colors.primary500,
     fontStyle: "italic",
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
   },
   warningModalBackground: {
     flex: 1,
