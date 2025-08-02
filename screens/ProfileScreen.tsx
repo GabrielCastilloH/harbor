@@ -263,7 +263,7 @@ export default function ProfileScreen() {
           borderRadius={12}
           showIndicators={imagesWithBlur.length > 0}
         />
-        <View style={{ paddingHorizontal: 24, paddingTop: 0 }}>
+        <View style={{ paddingHorizontal: 24, paddingTop: 0, marginTop: 0 }}>
           <BasicInfoView profile={profile} />
         </View>
 
