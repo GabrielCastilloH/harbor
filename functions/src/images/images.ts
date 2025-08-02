@@ -202,25 +202,47 @@ export const getPersonalImages = functions.https.onCall(
       const userData = userDoc.data();
       const images = userData?.images || [];
 
-      // Generate signed URLs for personal images (unblurred)
+      // Generate direct download URLs for personal images (unblurred)
       const personalImages = [];
       for (const filename of images) {
         // For personal images (edit profile), we want the original unblurred version
-        // The filename stored in Firestore is the base name, we need to append _original
-        const originalPath = `users/${userId}/images/${filename}_original`;
+        // The filename stored in Firestore already has _original suffix, so use it directly
+        const originalPath = `users/${userId}/images/${filename}`;
 
-        const [originalUrl] = await bucket.file(originalPath).getSignedUrl({
-          action: "read",
-          expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-          version: "v4",
-        });
+        try {
+          // Check if file exists first
+          const [exists] = await bucket.file(originalPath).exists();
+          if (!exists) {
+            console.log(`[getPersonalImages] File not found: ${originalPath}`);
+            continue;
+          }
 
-        personalImages.push({
-          url: originalUrl,
-          blurLevel: 0, // No blur for personal images
-        });
+          // Get signed URL with longer expiration for personal images
+          const [originalUrl] = await bucket.file(originalPath).getSignedUrl({
+            action: "read",
+            expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+            version: "v4",
+          });
+
+          personalImages.push({
+            url: originalUrl,
+            blurLevel: 0, // No blur for personal images
+          });
+        } catch (error) {
+          console.error(
+            `[getPersonalImages] Error processing file ${originalPath}:`,
+            error
+          );
+        }
       }
 
+      console.log(
+        "[getPersonalImages] 🔍 DEBUG - personalImages array:",
+        personalImages
+      );
+      console.log("[getPersonalImages] 🔍 DEBUG - returning structure:", {
+        images: personalImages,
+      });
       return {
         images: personalImages,
       };
