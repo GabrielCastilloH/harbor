@@ -122,18 +122,6 @@ export const getRecommendations = functions.https.onCall(
         (user) => !matchedUserIds.has(user.uid)
       );
 
-      console.log(`🔍 [RECOMMENDATIONS] Total users: ${allUsers.length}`);
-      console.log(
-        `🔍 [RECOMMENDATIONS] After swipe filter: ${availableUsers.length}`
-      );
-      console.log(
-        `🔍 [RECOMMENDATIONS] After match filter: ${trulyAvailableUsers.length}`
-      );
-      console.log(
-        `🔍 [RECOMMENDATIONS] Matched user IDs:`,
-        Array.from(matchedUserIds)
-      );
-
       if (trulyAvailableUsers.length === 0) {
         // await logToNtfy("getRecommendations - No other users found");
         return { recommendations: [] };
