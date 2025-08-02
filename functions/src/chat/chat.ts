@@ -289,6 +289,9 @@ export const createChatChannel = functions.https.onCall(
       const channelId = [userId1, userId2].sort().join("-");
 
       // Find the match between these users
+      console.log(
+        `🔍 [CHAT] Searching for match between users: ${userId1} and ${userId2}`
+      );
       const matchQuery = await db
         .collection("matches")
         .where("user1Id", "in", [userId1, userId2])
@@ -297,19 +300,24 @@ export const createChatChannel = functions.https.onCall(
         .limit(1)
         .get();
 
+      console.log(
+        `🔍 [CHAT] Match query result: ${matchQuery.size} matches found`
+      );
+
       let matchId = null;
       if (!matchQuery.empty) {
         matchId = matchQuery.docs[0].id;
         console.log(
-          `Found match ${matchId} for users ${userId1} and ${userId2}`
+          `✅ [CHAT] Found match ${matchId} for users ${userId1} and ${userId2}`
         );
       } else {
         console.log(
-          `No active match found for users ${userId1} and ${userId2}`
+          `❌ [CHAT] No active match found for users ${userId1} and ${userId2}`
         );
       }
 
       // Create or get the channel with matchId in the data
+      console.log(`🔧 [CHAT] Creating/getting channel with ID: ${channelId}`);
       const channel = serverClient.channel("messaging", channelId, {
         members: [userId1, userId2],
         created_by_id: request.auth.uid,
@@ -317,29 +325,55 @@ export const createChatChannel = functions.https.onCall(
 
       try {
         await channel.create();
-        console.log(`Channel created with matchId: ${matchId}`);
+        console.log(`✅ [CHAT] Channel created successfully`);
       } catch (err: any) {
         if (err && err.code === 16) {
           // Channel already exists, just use it
+          console.log(
+            `🔄 [CHAT] Channel already exists, watching existing channel`
+          );
           await channel.watch();
-          console.log(`Channel already exists, using existing channel`);
+          console.log(
+            `✅ [CHAT] Channel already exists, using existing channel`
+          );
         } else {
+          console.error(`❌ [CHAT] Channel creation error:`, err);
           throw err;
         }
       }
 
-      // Store matchId in channel data after creation
+      // Always try to update channel with matchId (for both new and existing channels)
       if (matchId) {
         try {
+          console.log(
+            `🔧 [CHAT] Attempting to update channel with matchId: ${matchId}`
+          );
+          console.log(
+            `🔧 [CHAT] Current channel data before update:`,
+            channel.data
+          );
+
           await channel.update({
             // @ts-ignore - Adding custom field to channel data
             matchId: matchId,
           });
-          console.log(`Updated channel with matchId: ${matchId}`);
+
+          console.log(
+            `✅ [CHAT] Successfully updated channel with matchId: ${matchId}`
+          );
+          console.log(`🔧 [CHAT] Channel data after update:`, channel.data);
         } catch (updateErr) {
-          console.warn(`Failed to update channel with matchId: ${updateErr}`);
+          console.error(
+            `❌ [CHAT] Failed to update channel with matchId: ${updateErr}`
+          );
+          console.error(`❌ [CHAT] Update error details:`, updateErr);
         }
+      } else {
+        console.log(`⚠️ [CHAT] No matchId to store in channel data`);
       }
+
+      console.log(`📤 [CHAT] Final channel data being returned:`, channel.data);
+      return { channel: channel.data };
 
       return { channel: channel.data };
     } catch (error) {
