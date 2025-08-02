@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   description: {
-    fontSize: 16,
+    fontSize: 18,
     color: Colors.primary500,
     textAlign: "center",
     marginBottom: 40,
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: Colors.primary500,
-    fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "500",
+    fontSize: 20,
   },
 });
