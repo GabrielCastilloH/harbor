@@ -362,6 +362,22 @@ export const createChatChannel = functions.https.onCall(
             `✅ [CHAT] Successfully updated channel with matchId: ${matchId}`
           );
           console.log(`🔧 [CHAT] Channel data after update:`, channel.data);
+
+          // Send system message for new matches
+          try {
+            await channel.sendMessage({
+              text: "You've matched! Start chatting now.",
+              user_id: "system",
+            });
+            console.log(
+              `✅ [CHAT] System message sent for new match: ${matchId}`
+            );
+          } catch (messageErr) {
+            console.error(
+              `❌ [CHAT] Failed to send system message: ${messageErr}`
+            );
+            // Don't fail the channel creation if system message fails
+          }
         } catch (updateErr) {
           console.error(
             `❌ [CHAT] Failed to update channel with matchId: ${updateErr}`
@@ -373,8 +389,6 @@ export const createChatChannel = functions.https.onCall(
       }
 
       console.log(`📤 [CHAT] Final channel data being returned:`, channel.data);
-      return { channel: channel.data };
-
       return { channel: channel.data };
     } catch (error) {
       console.error("Error creating chat channel:", error);
