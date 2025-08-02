@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Image,
@@ -120,6 +120,13 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
     }
   };
 
+  // Update current index when images change
+  useEffect(() => {
+    if (images.length > 0 && currentIndex >= images.length) {
+      setCurrentIndex(0);
+    }
+  }, [images, currentIndex]);
+
   return (
     <View
       style={{
@@ -161,12 +168,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
                 width: imageSize,
               },
             ]}
-            onLayout={(event) => {
-              console.log(
-                `🔍 [ImageCarousel] Indicator container layout:`,
-                event.nativeEvent.layout
-              );
-            }}
           >
             <View style={[styles.pageIndicator, { width: imageSize }]}>
               {images.map((_, idx) => (

@@ -139,22 +139,7 @@ export default function ProfileScreen() {
           };
         });
 
-        // Add one placeholder image for testing
-        const placeholderImages = [
-          {
-            id: "placeholder-1",
-            url: "https://media.istockphoto.com/id/1410538853/photo/young-man-in-the-public-park.jpg?s=612x612&w=0&k=20&c=EtRJGnNOFPJ2HniBSLWKzsL9Xf7GHinHd5y2Tx3da0E=",
-            blurLevel: 90,
-            messageCount: 0,
-            bothConsented: false,
-          },
-        ];
-
-        console.log(
-          `🔍 [ProfileScreen] Adding ${placeholderImages.length} placeholder image for testing`
-        );
-
-        setImagesWithBlur([...processedImages, ...placeholderImages]);
+        setImagesWithBlur(processedImages);
       } catch (error: any) {
         console.error("[ProfileScreen] Error in fetchImages:", error);
         if (error?.code === "not-found") {
@@ -255,40 +240,45 @@ export default function ProfileScreen() {
         overScrollMode="never"
         showsVerticalScrollIndicator={false}
       >
-        {imageLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.primary500} />
-          </View>
-        ) : (
-          <ImageCarousel
-            images={imagesWithBlur.flatMap((img, index) => {
-              const baseImage = {
-                id: `${index}`,
-                url: img.url,
-                title: `Image ${index + 1}`,
-                blurLevel: img.blurLevel,
-              };
-
-              // If image has blur, add a non-blurred version for comparison
-              if (img.blurLevel && img.blurLevel > 0) {
-                return [
-                  baseImage, // blurred version
-                  {
-                    id: `${index}_no_blur`,
+        <ImageCarousel
+          images={
+            imagesWithBlur.length > 0
+              ? imagesWithBlur.flatMap((img, index) => {
+                  const baseImage = {
+                    id: `${index}`,
                     url: img.url,
-                    title: `Image ${index + 1} (No Blur)`,
-                    blurLevel: 0, // no blur for comparison
-                  },
-                ];
-              }
+                    title: `Image ${index + 1}`,
+                    blurLevel: img.blurLevel,
+                  };
 
-              return [baseImage]; // no blur version needed
-            })}
-            imageSize={350}
-            borderRadius={12}
-            showIndicators={true}
-          />
-        )}
+                  // If image has blur, add a non-blurred version for comparison
+                  if (img.blurLevel && img.blurLevel > 0) {
+                    return [
+                      baseImage, // blurred version
+                      {
+                        id: `${index}_no_blur`,
+                        url: img.url,
+                        title: `Image ${index + 1} (No Blur)`,
+                        blurLevel: 0, // no blur for comparison
+                      },
+                    ];
+                  }
+
+                  return [baseImage]; // no blur version needed
+                })
+              : [
+                  {
+                    id: "placeholder",
+                    url: "", // Empty URL will show background color
+                    title: "No Images",
+                    blurLevel: 0,
+                  },
+                ]
+          }
+          imageSize={350}
+          borderRadius={12}
+          showIndicators={imagesWithBlur.length > 0}
+        />
         <View style={{ paddingHorizontal: 24 }}>
           <BasicInfoView profile={profile} />
         </View>
