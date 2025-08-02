@@ -1,6 +1,6 @@
 export const BLUR_CONFIG = {
   // Server-side blur for _blurred.jpg images
-  SERVER_BLUR_PERCENT: 90,
+  SERVER_BLUR_PERCENT: 100,
 
   // Client-side blur levels
   CLIENT_INITIAL_BLUR_PERCENT: 90, // Initial client-side blur after consent
