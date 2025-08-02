@@ -44,11 +44,6 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
   console.log("[DEBUG] MatchService:", MatchService);
   console.log("[DEBUG] MatchService.getMatchId:", MatchService?.getMatchId);
 
-  // Don't show the profile button if channel is frozen
-  if (isFrozen) {
-    return null;
-  }
-
   return (
     <TouchableOpacity
       onPress={() => {
@@ -64,8 +59,14 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
           );
         }
       }}
+      disabled={isFrozen}
+      style={{ opacity: isFrozen ? 0.3 : 1 }}
     >
-      <Ionicons name="person" size={24} color={Colors.primary500} />
+      <Ionicons
+        name="person"
+        size={24}
+        color={isFrozen ? Colors.secondary500 : Colors.primary500}
+      />
     </TouchableOpacity>
   );
 }
