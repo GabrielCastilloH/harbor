@@ -31,6 +31,7 @@ export default function SignIn() {
   } = useAppContext();
   const [isLoading, setIsLoading] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
+  const [signInSuccessful, setSignInSuccessful] = useState(false);
 
   // Clean up any existing authentication state when the SignIn screen loads
   useEffect(() => {
@@ -86,6 +87,7 @@ export default function SignIn() {
     }
 
     // Handle existing user - navigate to main app
+    setSignInSuccessful(true);
     setIsLoading(false); // Stop loading when navigation occurs
     setIsAuthenticated(true);
     setUserId(userData.uid);
@@ -94,6 +96,7 @@ export default function SignIn() {
   const handleNewUser = (user: any) => {
     // Handle new user - navigate to setup/onboarding
     // Don't pre-load chat credentials for new users since they need to complete setup first
+    setSignInSuccessful(true);
     setIsNewUser(true);
     setIsLoading(false); // Stop loading when navigation occurs
     setIsAuthenticated(true);
@@ -114,8 +117,11 @@ export default function SignIn() {
   };
 
   const handleSignInComplete = () => {
-    // Don't stop loading here - let the navigation handle it
-    // The loading will continue until the user is navigated to the next screen
+    // Stop loading if sign-in was not successful (user cancelled)
+    if (!signInSuccessful) {
+      setIsLoading(false);
+    }
+    // If sign-in was successful, let the navigation handle stopping the loading
   };
 
   if (isLoading) {
