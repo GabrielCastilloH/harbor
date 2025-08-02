@@ -202,32 +202,18 @@ export const getPersonalImages = functions.https.onCall(
       const userData = userDoc.data();
       const images = userData?.images || [];
 
-      console.log(
-        `[getPersonalImages] Returning ${images.length} images for user ${userId}`
-      );
-
       // Generate signed URLs for personal images (unblurred)
       const personalImages = [];
       for (const filename of images) {
-        const originalPath = `users/${userId}/images/${filename}`;
-        console.log(`[getPersonalImages] 🔍 DEBUG - Path:`, originalPath);
-        console.log(`[getPersonalImages] 🔍 DEBUG - Filename:`, filename);
-        console.log(`[getPersonalImages] 🔍 DEBUG - UserId:`, userId);
+        // For personal images (edit profile), we want the original unblurred version
+        // The filename stored in Firestore is the base name, we need to append _original
+        const originalPath = `users/${userId}/images/${filename}_original`;
 
         const [originalUrl] = await bucket.file(originalPath).getSignedUrl({
           action: "read",
           expires: Date.now() + 15 * 60 * 1000, // 15 minutes
           version: "v4",
         });
-        console.log(`[getPersonalImages] Generated URL:`, originalUrl);
-        console.log(
-          `[getPersonalImages] 🔍 DEBUG - URL contains %252F:`,
-          originalUrl.includes("%252F")
-        );
-        console.log(
-          `[getPersonalImages] 🔍 DEBUG - URL contains %2F:`,
-          originalUrl.includes("%2F")
-        );
 
         personalImages.push({
           url: originalUrl,
