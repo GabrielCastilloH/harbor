@@ -124,7 +124,7 @@ interface UpdateUserData {
 }
 
 /**
- * Creates a new user profile
+ * Creates a new user profile with atomic operations
  */
 export const createUser = functions.https.onCall(
   {
@@ -141,7 +141,6 @@ export const createUser = functions.https.onCall(
   async (request: functions.https.CallableRequest<CreateUserData>) => {
     try {
       if (!request.auth) {
-        // await logToNtfy("createUser - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -151,13 +150,6 @@ export const createUser = functions.https.onCall(
       const firebaseUid = request.auth.uid;
       const userData = request.data;
 
-      // await logToNtfy(
-      //   `createUser - Received request with firebaseUid: ${firebaseUid}`
-      // );
-      // await logToNtfy(
-      //   `createUser - Received request with userData: ${JSON.stringify(userData)}`
-      // );
-
       if (!userData || !userData.firstName || !userData.email) {
         throw new functions.https.HttpsError(
           "invalid-argument",
@@ -165,96 +157,83 @@ export const createUser = functions.https.onCall(
         );
       }
 
-      // Check if user already exists
-      const existingUser = await db.collection("users").doc(firebaseUid).get();
-      if (existingUser.exists) {
-        // User exists, update the document with the new data
+      // Use a transaction to ensure atomicity
+      const result = await db.runTransaction(async (transaction) => {
+        // Check if user already exists
+        const existingUser = await transaction.get(
+          db.collection("users").doc(firebaseUid)
+        );
 
-        const existingData = existingUser.data();
+        if (existingUser.exists) {
+          // User exists, update the document with the new data
+          const existingData = existingUser.data();
 
-        // Merge existing data with new data, preserving existing images
-        const updatedUserDoc = {
-          uid: firebaseUid,
-          firstName: userData.firstName,
-          yearLevel: userData.yearLevel || existingData?.yearLevel || "",
-          age: userData.age || existingData?.age || 0,
-          major: userData.major || existingData?.major || "",
-          gender: userData.gender || existingData?.gender || "",
-          sexualOrientation:
-            userData.sexualOrientation || existingData?.sexualOrientation || "",
-          images: existingData?.images || userData.images || [], // Preserve existing images
-          aboutMe: userData.aboutMe || existingData?.aboutMe || "",
-          q1: userData.q1 || existingData?.q1 || "",
-          q2: userData.q2 || existingData?.q2 || "",
-          q3: userData.q3 || existingData?.q3 || "",
-          q4: userData.q4 || existingData?.q4 || "",
-          q5: userData.q5 || existingData?.q5 || "",
-          q6: userData.q6 || existingData?.q6 || "",
-          email: userData.email,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        };
+          const updatedUserDoc = {
+            uid: firebaseUid,
+            firstName: userData.firstName,
+            yearLevel: userData.yearLevel || existingData?.yearLevel || "",
+            age: userData.age || existingData?.age || 0,
+            major: userData.major || existingData?.major || "",
+            gender: userData.gender || existingData?.gender || "",
+            sexualOrientation:
+              userData.sexualOrientation ||
+              existingData?.sexualOrientation ||
+              "",
+            images: existingData?.images || userData.images || [],
+            aboutMe: userData.aboutMe || existingData?.aboutMe || "",
+            q1: userData.q1 || existingData?.q1 || "",
+            q2: userData.q2 || existingData?.q2 || "",
+            q3: userData.q3 || existingData?.q3 || "",
+            q4: userData.q4 || existingData?.q4 || "",
+            q5: userData.q5 || existingData?.q5 || "",
+            q6: userData.q6 || existingData?.q6 || "",
+            email: userData.email,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          };
 
-        await db.collection("users").doc(firebaseUid).update(updatedUserDoc);
+          transaction.update(
+            db.collection("users").doc(firebaseUid),
+            updatedUserDoc
+          );
+          return { message: "User updated successfully", user: updatedUserDoc };
+        } else {
+          // Create new user document
+          const userDoc = {
+            uid: firebaseUid,
+            firstName: userData.firstName,
+            yearLevel: userData.yearLevel || "",
+            age: userData.age || 0,
+            major: userData.major || "",
+            gender: userData.gender || "",
+            sexualOrientation: userData.sexualOrientation || "",
+            images: userData.images || [],
+            aboutMe: userData.aboutMe || "",
+            q1: userData.q1 || "",
+            q2: userData.q2 || "",
+            q3: userData.q3 || "",
+            q4: userData.q4 || "",
+            q5: userData.q5 || "",
+            q6: userData.q6 || "",
+            email: userData.email,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          };
 
-        // Create Stream Chat user if not already created
+          transaction.set(db.collection("users").doc(firebaseUid), userDoc);
+          return { message: "User created successfully", user: userDoc };
+        }
+      });
+
+      // Create Stream Chat user after successful Firestore transaction
+      try {
         await createStreamUser(firebaseUid, userData.firstName);
-
-        return {
-          message: "User updated successfully",
-          user: updatedUserDoc,
-        };
+      } catch (streamError) {
+        console.error("Failed to create Stream Chat user:", streamError);
+        // Don't fail the entire operation if Stream Chat fails
+        // The user can still use the app, just without chat functionality
       }
 
-      // Create user document in Firestore
-      const userDoc = {
-        uid: firebaseUid,
-        firstName: userData.firstName,
-        yearLevel: userData.yearLevel || "",
-        age: userData.age || 0,
-        major: userData.major || "",
-        images: userData.images || [], // This will include any images uploaded during setup
-        aboutMe: userData.aboutMe || "",
-        q1: userData.q1 || "",
-        q2: userData.q2 || "",
-        q3: userData.q3 || "",
-        q4: userData.q4 || "",
-        q5: userData.q5 || "",
-        q6: userData.q6 || "",
-        email: userData.email,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      };
-
-      // await logToNtfy(
-      //   `createUser - About to save user to Firestore with data: ${JSON.stringify(userDoc)}`
-      // );
-      // await logToNtfy("createUser - Saving user to Firestore:", firebaseUid);
-
-      await db.collection("users").doc(firebaseUid).set(userDoc);
-
-      // await logToNtfy(
-      //   `createUser - User saved to Firestore successfully: ${firebaseUid}`
-      // );
-      // await logToNtfy(
-      //   `createUser - About to create Stream Chat user for: ${firebaseUid}`
-      // );
-
-      // Create Stream Chat user
-      // await logToNtfy("createUser - CALLING createStreamUser NOW");
-      await createStreamUser(firebaseUid, userData.firstName);
-      // await logToNtfy("createUser - createStreamUser CALL COMPLETED");
-
-      // await logToNtfy(
-      //   `createUser - Stream Chat user created successfully: ${firebaseUid}`
-      // );
-      // await logToNtfy(
-      //   `createUser - User creation completed successfully: ${firebaseUid}`
-      // );
-
-      return {
-        message: "User created successfully",
-        user: userDoc,
-      };
+      return result;
     } catch (error: any) {
       console.error("Error creating user:", error);
       if (error instanceof functions.https.HttpsError) {
