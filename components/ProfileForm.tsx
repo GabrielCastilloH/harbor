@@ -17,6 +17,7 @@ import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import * as ImagePicker from "expo-image-picker";
 import { getImageSource } from "../util/imageUtils";
+import GenderPicker from "./GenderPicker";
 
 interface ProfileFormProps {
   profileData: Profile;
@@ -86,6 +87,8 @@ export default function ProfileForm({
       "firstName",
       "yearLevel",
       "major",
+      "gender",
+      "interestedIn",
       "aboutMe",
       "q1",
       "q2",
@@ -225,6 +228,27 @@ export default function ProfileForm({
             value={profileData.major}
             onChangeText={(text) => handleChange("major", text)}
           />
+
+          <View style={styles.genderContainer}>
+            <View style={styles.genderField}>
+              <Text style={styles.label}>Your Gender</Text>
+              <GenderPicker
+                value={profileData.gender || ""}
+                onValueChange={(value) => handleChange("gender", value)}
+                placeholder="Select gender"
+                style={styles.genderPicker}
+              />
+            </View>
+            <View style={styles.genderField}>
+              <Text style={styles.label}>I'm looking for</Text>
+              <GenderPicker
+                value={profileData.interestedIn || ""}
+                onValueChange={(value) => handleChange("interestedIn", value)}
+                placeholder="Select preference"
+                style={styles.genderPicker}
+              />
+            </View>
+          </View>
 
           <Text style={styles.label}>About Me</Text>
           <TextInput
@@ -474,5 +498,17 @@ const styles = StyleSheet.create({
   },
   profileImagesTitle: {
     marginBottom: 8,
+  },
+  genderContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 15,
+  },
+  genderField: {
+    flex: 1,
+    marginRight: 10,
+  },
+  genderPicker: {
+    flex: 1,
   },
 });
