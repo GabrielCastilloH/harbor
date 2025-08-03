@@ -91,7 +91,7 @@ export default function GenderPicker({
                 >
                   <Text style={styles.cancelText}>Cancel</Text>
                 </TouchableOpacity>
-                <Text style={styles.modalTitle}>Select {placeholder}</Text>
+                <Text style={styles.modalTitle}>Select Option</Text>
                 <TouchableOpacity
                   onPress={() => {
                     setModalVisible(false);
@@ -138,8 +138,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: Colors.secondary200,
-    borderWidth: 1,
-    borderColor: Colors.secondary500,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
