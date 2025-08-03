@@ -219,29 +219,25 @@ export const unmatchUsers = functions.https.onCall(
         );
       }
 
-      // Deactivate the match
-      await db.collection("matches").doc(matchId).update({
-        isActive: false,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      // Use transaction for atomic unmatch operations
+      await db.runTransaction(async (transaction) => {
+        // Deactivate the match
+        transaction.update(db.collection("matches").doc(matchId), {
+          isActive: false,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
 
-      // Remove match from both users' currentMatches arrays
-      await Promise.all([
-        db
-          .collection("users")
-          .doc(matchData.user1Id)
-          .update({
-            currentMatches: admin.firestore.FieldValue.arrayRemove(matchId),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }),
-        db
-          .collection("users")
-          .doc(matchData.user2Id)
-          .update({
-            currentMatches: admin.firestore.FieldValue.arrayRemove(matchId),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }),
-      ]);
+        // Remove match from both users' currentMatches arrays atomically
+        transaction.update(db.collection("users").doc(matchData.user1Id), {
+          currentMatches: admin.firestore.FieldValue.arrayRemove(matchId),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        transaction.update(db.collection("users").doc(matchData.user2Id), {
+          currentMatches: admin.firestore.FieldValue.arrayRemove(matchId),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      });
 
       // Freeze the chat channel and send system message
       try {

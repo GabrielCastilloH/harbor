@@ -196,8 +196,6 @@ export const createSwipe = functions.https.onCall(
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-      await db.collection("swipes").add(swipeData);
-
       // If it's a right swipe, check for a match
       if (direction === "right") {
         // Check if the other user has also swiped right on this user
@@ -213,51 +211,55 @@ export const createSwipe = functions.https.onCall(
           await logToNtfy(
             `[${requestId}] MATCH MADE: ${request.data.swiperId} <-> ${request.data.swipedId}`
           );
-          // Both users swiped right on each other - it's a match!
-          const matchData = {
-            user1Id: swiperId,
-            user2Id: swipedId,
-            matchDate: admin.firestore.FieldValue.serverTimestamp(),
-            isActive: true,
-            messageCount: 0,
-            user1Consented: false,
-            user2Consented: false,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          };
+          
+          // Use transaction for atomic match creation
+          const matchResult = await db.runTransaction(async (transaction) => {
+            // Create the swipe first
+            const swipeRef = db.collection("swipes").doc();
+            transaction.set(swipeRef, swipeData);
+            
+            // Create match data
+            const matchData = {
+              user1Id: swiperId,
+              user2Id: swipedId,
+              matchDate: admin.firestore.FieldValue.serverTimestamp(),
+              isActive: true,
+              messageCount: 0,
+              user1Consented: false,
+              user2Consented: false,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
 
-          const matchRef = await db.collection("matches").add(matchData);
+            // Create match document
+            const matchRef = db.collection("matches").doc();
+            transaction.set(matchRef, matchData);
 
-          // Update both users' currentMatches arrays
-          await Promise.all([
-            db
-              .collection("users")
-              .doc(swiperId)
-              .update({
-                currentMatches: admin.firestore.FieldValue.arrayUnion(
-                  matchRef.id
-                ),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-              }),
-            db
-              .collection("users")
-              .doc(swipedId)
-              .update({
-                currentMatches: admin.firestore.FieldValue.arrayUnion(
-                  matchRef.id
-                ),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-              }),
-          ]);
+            // Update both users' currentMatches arrays atomically
+            transaction.update(db.collection("users").doc(swiperId), {
+              currentMatches: admin.firestore.FieldValue.arrayUnion(matchRef.id),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
 
-          return {
-            message: "Swipe recorded and match created",
-            swipe: swipeData,
-            match: true,
-            matchId: matchRef.id,
-          };
+            transaction.update(db.collection("users").doc(swipedId), {
+              currentMatches: admin.firestore.FieldValue.arrayUnion(matchRef.id),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
+            return {
+              message: "Swipe recorded and match created",
+              swipe: swipeData,
+              match: true,
+              matchId: matchRef.id,
+            };
+          });
+
+          return matchResult;
         }
       }
+
+      // If no match, just create the swipe
+      await db.collection("swipes").add(swipeData);
 
       return {
         message: "Swipe recorded",
