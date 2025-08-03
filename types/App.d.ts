@@ -1,3 +1,5 @@
+import { Timestamp } from "firebase/firestore";
+
 export type Profile = {
   uid?: string; // Firebase UID
   email: string;
@@ -15,6 +17,9 @@ export type Profile = {
   q4: string; // "I chose my major because..."
   q5: string; // "My favorite study spot is:"
   q6: string; // "Some of my hobbies are:"
+  currentMatches?: string[];
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 };
 
 export interface CardViewProps {
