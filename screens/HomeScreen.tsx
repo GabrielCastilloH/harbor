@@ -327,6 +327,7 @@ export default function HomeScreen() {
         </View>
         <View style={styles.buttonsContainer}>
           <TouchableOpacity
+            activeOpacity={1}
             style={[
               styles.button,
               styles.noButton,
@@ -348,6 +349,7 @@ export default function HomeScreen() {
             />
           </TouchableOpacity>
           <TouchableOpacity
+            activeOpacity={1}
             style={[
               styles.button,
               styles.yesButton,
