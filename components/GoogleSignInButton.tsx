@@ -36,7 +36,21 @@ export default function GoogleSignInButton({
   textStyle,
   showCornellLogo = false,
 }: GoogleSignInButtonProps) {
+  // Add ref to track if component is mounted
+  const isMountedRef = React.useRef(true);
+
+  // Add useEffect to track component lifecycle
+  React.useEffect(() => {
+    console.log("🔍 [GOOGLE_SIGNIN] GoogleSignInButton component mounted");
+    isMountedRef.current = true;
+    return () => {
+      console.log("🔍 [GOOGLE_SIGNIN] GoogleSignInButton component unmounted");
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const handleGoogleSignIn = async () => {
+    console.log("🔍 [GOOGLE_SIGNIN] Button pressed, starting sign-in process");
     try {
       // Call onSignInStart if provided
       onSignInStart?.();
@@ -103,13 +117,50 @@ export default function GoogleSignInButton({
         const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
+          console.log(
+            "🔍 [GOOGLE_SIGNIN] Calling onUserExists with userData:",
+            userData
+          );
+
+          // Check if component is still mounted before calling callback
+          if (!isMountedRef.current) {
+            console.log(
+              "🚫 [GOOGLE_SIGNIN] Component unmounted, not calling onUserExists callback"
+            );
+            return;
+          }
+
+          console.log("🔍 [GOOGLE_SIGNIN] About to call onUserExists callback");
           onUserExists(userData);
+          console.log("🔍 [GOOGLE_SIGNIN] onUserExists callback completed");
         } else {
           // User exists in auth but not in Firestore - treat as new user
+          console.log(
+            "🔍 [GOOGLE_SIGNIN] Calling onNewUser (user exists in auth but not Firestore)"
+          );
+
+          // Check if component is still mounted before calling callback
+          if (!isMountedRef.current) {
+            console.log(
+              "🚫 [GOOGLE_SIGNIN] Component unmounted, not calling onNewUser callback"
+            );
+            return;
+          }
+
           onNewUser(userCredential.user);
         }
       } else {
         // 7b. New user - call new user callback
+        console.log("🔍 [GOOGLE_SIGNIN] Calling onNewUser (new user)");
+
+        // Check if component is still mounted before calling callback
+        if (!isMountedRef.current) {
+          console.log(
+            "🚫 [GOOGLE_SIGNIN] Component unmounted, not calling onNewUser callback"
+          );
+          return;
+        }
+
         onNewUser(userCredential.user);
       }
 
@@ -143,14 +194,20 @@ export default function GoogleSignInButton({
           // );
         }
         // Don't show any error for cancellation - just complete silently
-        onSignInComplete?.();
+        if (isMountedRef.current) {
+          onSignInComplete?.();
+        }
         return;
       } else {
-        onError(error);
+        if (isMountedRef.current) {
+          onError(error);
+        }
       }
 
       // Call onSignInComplete if provided
-      onSignInComplete?.();
+      if (isMountedRef.current) {
+        onSignInComplete?.();
+      }
     }
   };
 
