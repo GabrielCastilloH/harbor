@@ -140,13 +140,17 @@ const styles = StyleSheet.create({
   },
   infoItem: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
+    flex: 1,
+    minWidth: 0, // Allow flex items to shrink below their content size
   },
   infoText: {
     fontSize: 16,
     fontWeight: "500",
     color: Colors.primary500,
     marginLeft: 4,
+    flex: 1,
+    minWidth: 0, // Allow text to shrink and truncate
   },
   divider: {
     width: 1,
