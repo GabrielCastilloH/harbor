@@ -17,9 +17,12 @@ interface GenderPickerProps {
   onValueChange: (value: string) => void;
   placeholder: string;
   style?: any;
+  type?: "gender" | "orientation";
 }
 
 const genderOptions = ["Male", "Female", "Non-Binary"];
+const orientationOptions = ["Straight", "Homosexual", "Bisexual"];
+
 const { height: screenHeight } = Dimensions.get("window");
 
 export default function GenderPicker({
@@ -27,9 +30,12 @@ export default function GenderPicker({
   onValueChange,
   placeholder,
   style,
+  type = "gender",
 }: GenderPickerProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
+
+  const options = type === "gender" ? genderOptions : orientationOptions;
 
   useEffect(() => {
     if (modalVisible) {
@@ -61,7 +67,11 @@ export default function GenderPicker({
         animationType="none"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setModalVisible(false)}
+        >
           <Animated.View
             style={[
               styles.modalContent,
@@ -70,48 +80,53 @@ export default function GenderPicker({
               },
             ]}
           >
-            <View style={styles.modalHeader}>
-              <TouchableOpacity
-                onPress={() => setModalVisible(false)}
-                style={styles.cancelButton}
-              >
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <Text style={styles.modalTitle}>Select {placeholder}</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setModalVisible(false);
-                }}
-                style={styles.doneButton}
-              >
-                <Text style={styles.doneText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={value}
-                onValueChange={(itemValue) => {
-                  if (itemValue) {
-                    onValueChange(itemValue);
-                  }
-                }}
-                style={styles.picker}
-                itemStyle={styles.pickerItem}
-                mode="dropdown"
-              >
-                <Picker.Item label="Select..." value="" enabled={false} />
-                {genderOptions.map((option) => (
-                  <Picker.Item
-                    key={option}
-                    label={option}
-                    value={option}
-                    color={Colors.primary500}
-                  />
-                ))}
-              </Picker>
-            </View>
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.modalHeader}>
+                <TouchableOpacity
+                  onPress={() => setModalVisible(false)}
+                  style={styles.cancelButton}
+                >
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Select {placeholder}</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setModalVisible(false);
+                  }}
+                  style={styles.doneButton}
+                >
+                  <Text style={styles.doneText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={value}
+                  onValueChange={(itemValue) => {
+                    if (itemValue) {
+                      onValueChange(itemValue);
+                    }
+                  }}
+                  style={styles.picker}
+                  itemStyle={styles.pickerItem}
+                  mode="dropdown"
+                >
+                  <Picker.Item label="Select..." value="" enabled={false} />
+                  {options.map((option) => (
+                    <Picker.Item
+                      key={option}
+                      label={option}
+                      value={option}
+                      color={Colors.primary500}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            </TouchableOpacity>
           </Animated.View>
-        </View>
+        </TouchableOpacity>
       </Modal>
     </>
   );

@@ -94,7 +94,7 @@ interface CreateUserData {
   age?: number;
   major?: string;
   gender?: string;
-  interestedIn?: string;
+  sexualOrientation?: string;
   images?: string[];
   aboutMe?: string;
   q1?: string;
@@ -112,7 +112,7 @@ interface UpdateUserData {
   age?: number;
   major?: string;
   gender?: string;
-  interestedIn?: string;
+  sexualOrientation?: string;
   images?: string[];
   aboutMe?: string;
   q1?: string;
@@ -180,7 +180,8 @@ export const createUser = functions.https.onCall(
           age: userData.age || existingData?.age || 0,
           major: userData.major || existingData?.major || "",
           gender: userData.gender || existingData?.gender || "",
-          interestedIn: userData.interestedIn || existingData?.interestedIn || "",
+          sexualOrientation:
+            userData.sexualOrientation || existingData?.sexualOrientation || "",
           images: existingData?.images || userData.images || [], // Preserve existing images
           aboutMe: userData.aboutMe || existingData?.aboutMe || "",
           q1: userData.q1 || existingData?.q1 || "",
