@@ -88,7 +88,7 @@ export default function ProfileForm({
       "yearLevel",
       "major",
       "gender",
-      "interestedIn",
+      "sexualOrientation",
       "aboutMe",
       "q1",
       "q2",
@@ -240,12 +240,15 @@ export default function ProfileForm({
               />
             </View>
             <View style={styles.genderField}>
-              <Text style={styles.label}>I'm looking for</Text>
+              <Text style={styles.label}>Sexual Orientation</Text>
               <GenderPicker
-                value={profileData.interestedIn || ""}
-                onValueChange={(value) => handleChange("interestedIn", value)}
-                placeholder="Select preference"
+                value={profileData.sexualOrientation || ""}
+                onValueChange={(value) =>
+                  handleChange("sexualOrientation", value)
+                }
+                placeholder="Select orientation"
                 style={styles.genderPicker}
+                type="orientation"
               />
             </View>
           </View>
