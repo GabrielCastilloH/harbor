@@ -60,6 +60,22 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isAuthDetermined, setIsAuthDetermined] = useState(false);
 
+  // Track userId changes for debugging
+  useEffect(() => {
+    console.log("🔄 [AUTH] userId changed to:", userId);
+
+    // Ensure userId is never an empty string - convert to null
+    if (userId === "") {
+      console.log("⚠️ [AUTH] userId is empty string, converting to null");
+      setUserId(null);
+    }
+  }, [userId]);
+
+  // Track isAuthenticated changes for debugging
+  useEffect(() => {
+    console.log("🔄 [AUTH] isAuthenticated changed to:", isAuthenticated);
+  }, [isAuthenticated]);
+
   // Listen to Firebase Auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -73,32 +89,41 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setCurrentUser(user);
         setIsAuthenticated(true);
 
-        // Only check Firestore if we don't already have a userId set
-        // This prevents race conditions during sign-in
-        if (!userId) {
-          try {
-            const { UserService } = await import("../networking");
-            const response = await UserService.getUserById(user.uid);
-            if (response && response.user) {
-              setUserId(user.uid);
-              setProfile(response.user);
-            } else {
-              setUserId(null);
-              setProfile(null);
-            }
-          } catch (error: any) {
-            if (
-              error?.code === "functions/not-found" ||
-              error?.code === "not-found" ||
-              error?.message?.includes("not found")
-            ) {
-              setUserId(null);
-              setProfile(null);
-            } else {
-              // For other errors, still set userId but log the error
-
-              setUserId(user.uid);
-            }
+        // Always check Firestore when user changes to ensure we have the correct profile
+        // This fixes the issue where switching accounts doesn't properly check the new user's profile
+        console.log("🔍 [AUTH] Checking Firestore for user:", user.uid);
+        try {
+          const { UserService } = require("../networking");
+          const response = await UserService.getUserById(user.uid);
+          if (response && response.user) {
+            console.log(
+              "✅ [AUTH] User profile found, setting userId:",
+              user.uid
+            );
+            setUserId(user.uid);
+            setProfile(response.user);
+          } else {
+            console.log(
+              "❌ [AUTH] No user profile found, setting userId to null"
+            );
+            setUserId(null);
+            setProfile(null);
+          }
+        } catch (error: any) {
+          if (
+            error?.code === "functions/not-found" ||
+            error?.code === "not-found" ||
+            error?.message?.includes("not found")
+          ) {
+            console.log(
+              "❌ [AUTH] User not found in Firestore, setting userId to null"
+            );
+            setUserId(null);
+            setProfile(null);
+          } else {
+            // For other errors, still set userId but log the error
+            console.error("⚠️ [AUTH] Error checking user profile:", error);
+            setUserId(user.uid);
           }
         }
 
@@ -120,9 +145,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         } catch (error) {}
       } else {
         // User is signed out
+        console.log("🚪 [AUTH] User signed out, clearing all state");
         setCurrentUser(null);
         setIsAuthenticated(false);
-        setUserId(null);
+        setUserId(null); // Ensure this is null, not empty string
         setProfile(null);
         setStreamApiKey(null);
         setStreamUserToken(null);
@@ -131,7 +157,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         try {
           await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
         } catch (error) {
-          console.error("Error clearing stored data:", error);
+          console.error("⚠️ [AUTH] Error clearing stored data:", error);
         }
       }
 
