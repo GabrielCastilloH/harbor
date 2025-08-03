@@ -90,17 +90,57 @@ export default function AccountSetupScreen({
       const firebaseUid = currentUser.uid;
       const imagesToUpload = images || profileData.images;
 
+      // Validate profile data first before uploading images
+      const validationErrors = [];
+      if (imagesToUpload.length < 3) {
+        validationErrors.push("Please add at least 3 images");
+      }
+      if (!profileData.firstName?.trim()) {
+        validationErrors.push("Please enter your first name");
+      }
+      if (!profileData.age || profileData.age < 18) {
+        validationErrors.push("Please enter a valid age (18+)");
+      }
+      if (!profileData.yearLevel?.trim()) {
+        validationErrors.push("Please select your year level");
+      }
+      if (!profileData.major?.trim()) {
+        validationErrors.push("Please select your major");
+      }
+      if (!profileData.gender?.trim()) {
+        validationErrors.push("Please select your gender");
+      }
+      if (!profileData.sexualOrientation?.trim()) {
+        validationErrors.push("Please select your sexual orientation");
+      }
+
+      if (validationErrors.length > 0) {
+        Alert.alert("Validation Error", validationErrors.join("\n"));
+        setLoading(false);
+        return;
+      }
+
       // Upload all images at once, sequentially, with progress
       let uploadResults: any[] = [];
       if (imagesToUpload.length > 0) {
         for (let i = 0; i < imagesToUpload.length; i++) {
-          // Upload one image at a time
-          const singleResult = await uploadImageViaCloudFunction(
-            firebaseUid,
-            imagesToUpload[i]
-          );
-          uploadResults.push(singleResult);
-          setProgress((i + 1) / (imagesToUpload.length + 2)); // +2 for profile and chat steps
+          try {
+            // Upload one image at a time
+            const singleResult = await uploadImageViaCloudFunction(
+              firebaseUid,
+              imagesToUpload[i]
+            );
+            uploadResults.push(singleResult);
+            setProgress((i + 1) / (imagesToUpload.length + 2)); // +2 for profile and chat steps
+          } catch (uploadError) {
+            console.error(`Failed to upload image ${i + 1}:`, uploadError);
+            Alert.alert(
+              "Upload Error",
+              `Failed to upload image ${i + 1}. Please try again.`
+            );
+            setLoading(false);
+            return;
+          }
         }
       }
       // If no images, progress is 1/3 after this step
@@ -109,7 +149,8 @@ export default function AccountSetupScreen({
       // Extract filenames from Cloud Function results
       const imageFilenames = uploadResults.map((r) => r.filename);
       setProgress(imagesToUpload.length / (imagesToUpload.length + 2));
-      // STEP 2: Create the user profile in Firestore
+      
+      // STEP 2: Create the user profile in Firestore with transaction
       const userData = {
         firstName: profileData.firstName,
         email: currentUser.email || "",
@@ -128,8 +169,19 @@ export default function AccountSetupScreen({
         images: imageFilenames, // Send the filenames as strings, not URLs
       };
 
-      await createUserProfile(userData);
-      setProgress((imagesToUpload.length + 1) / (imagesToUpload.length + 2));
+      try {
+        await createUserProfile(userData);
+        setProgress((imagesToUpload.length + 1) / (imagesToUpload.length + 2));
+      } catch (profileError) {
+        console.error("Failed to create user profile:", profileError);
+        Alert.alert(
+          "Profile Creation Error",
+          "Failed to create your profile. Please try again."
+        );
+        setLoading(false);
+        return;
+      }
+
       try {
         const { apiKey, userToken } = await preloadChatCredentials(firebaseUid);
         setStreamApiKey(apiKey);
@@ -139,7 +191,9 @@ export default function AccountSetupScreen({
           "AccountSetupScreen - Error pre-loading chat credentials:",
           error
         );
+        // Don't fail the entire operation if chat credentials fail
       }
+      
       setProgress(1);
       setUserId(firebaseUid);
       setProfile({
