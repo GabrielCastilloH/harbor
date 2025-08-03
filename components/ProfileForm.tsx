@@ -308,7 +308,12 @@ export default function ProfileForm({
             style={styles.individualPicker}
           />
 
-          <Text style={styles.label}>About Me</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>About Me</Text>
+            <Text style={styles.characterCount}>
+              {profileData.aboutMe?.length || 0}/300
+            </Text>
+          </View>
           <TextInput
             style={[styles.input, styles.multilineInput]}
             placeholder="Tell us about yourself..."
@@ -317,11 +322,13 @@ export default function ProfileForm({
             multiline
             numberOfLines={3}
           />
-          <Text style={styles.characterCount}>
-            {profileData.aboutMe?.length || 0}/300
-          </Text>
 
-          <Text style={styles.label}>This year, I really want to</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>This year, I really want to</Text>
+            <Text style={styles.characterCount}>
+              {profileData.q1?.length || 0}/150
+            </Text>
+          </View>
           <TextInput
             style={[styles.input, styles.multilineInput]}
             placeholder="This year, I want to..."
@@ -330,11 +337,13 @@ export default function ProfileForm({
             multiline
             numberOfLines={3}
           />
-          <Text style={styles.characterCount}>
-            {profileData.q1?.length || 0}/150
-          </Text>
 
-          <Text style={styles.label}>Together we could</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Together we could</Text>
+            <Text style={styles.characterCount}>
+              {profileData.q2?.length || 0}/150
+            </Text>
+          </View>
           <TextInput
             style={[styles.input, styles.multilineInput]}
             placeholder="We could..."
@@ -343,11 +352,13 @@ export default function ProfileForm({
             multiline
             numberOfLines={3}
           />
-          <Text style={styles.characterCount}>
-            {profileData.q2?.length || 0}/150
-          </Text>
 
-          <Text style={styles.label}>Favorite book, movie or song</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Favorite book, movie or song</Text>
+            <Text style={styles.characterCount}>
+              {profileData.q3?.length || 0}/150
+            </Text>
+          </View>
           <TextInput
             style={[styles.input, styles.multilineInput]}
             placeholder="My favorite book/movie/song is..."
@@ -356,11 +367,13 @@ export default function ProfileForm({
             multiline
             numberOfLines={3}
           />
-          <Text style={styles.characterCount}>
-            {profileData.q3?.length || 0}/150
-          </Text>
 
-          <Text style={styles.label}>I chose my major because...</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>I chose my major because...</Text>
+            <Text style={styles.characterCount}>
+              {profileData.q4?.length || 0}/150
+            </Text>
+          </View>
           <TextInput
             style={[styles.input, styles.multilineInput]}
             placeholder="I chose my major because..."
@@ -369,11 +382,13 @@ export default function ProfileForm({
             multiline
             numberOfLines={3}
           />
-          <Text style={styles.characterCount}>
-            {profileData.q4?.length || 0}/150
-          </Text>
 
-          <Text style={styles.label}>My favorite study spot is</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>My favorite study spot is</Text>
+            <Text style={styles.characterCount}>
+              {profileData.q5?.length || 0}/150
+            </Text>
+          </View>
           <TextInput
             style={[styles.input, styles.multilineInput]}
             placeholder="My favorite study spot is..."
@@ -382,11 +397,13 @@ export default function ProfileForm({
             multiline
             numberOfLines={3}
           />
-          <Text style={styles.characterCount}>
-            {profileData.q5?.length || 0}/150
-          </Text>
 
-          <Text style={styles.label}>Some of my hobbies are</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Some of my hobbies are</Text>
+            <Text style={styles.characterCount}>
+              {profileData.q6?.length || 0}/150
+            </Text>
+          </View>
           <TextInput
             style={[styles.input, styles.multilineInput]}
             placeholder="In my free time, I like to..."
@@ -395,9 +412,6 @@ export default function ProfileForm({
             multiline
             numberOfLines={3}
           />
-          <Text style={styles.characterCount}>
-            {profileData.q6?.length || 0}/150
-          </Text>
         </View>
 
         <View style={styles.section}>
@@ -609,7 +623,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.primary500,
     textAlign: "right",
-    marginTop: 4,
-    marginBottom: 10,
+  },
+  labelContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 5,
   },
 });
