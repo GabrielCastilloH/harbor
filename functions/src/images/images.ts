@@ -113,6 +113,17 @@ export const uploadImage = functions.https.onCall(
           );
         }
 
+        // Check image count limits
+        const userData = userDoc.data();
+        const currentImageCount = userData?.images?.length || 0;
+
+        if (currentImageCount >= 6) {
+          throw new functions.https.HttpsError(
+            "resource-exhausted",
+            "Maximum 6 images allowed per user"
+          );
+        }
+
         // Upload original image first (simpler, more reliable)
         console.log("📤 Uploading original image...");
         await bucket.file(originalFilePath).save(imageBuffer, {

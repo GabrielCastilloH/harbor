@@ -147,17 +147,129 @@ export const createUser = functions.https.onCall(
         );
       }
 
-      const firebaseUid = request.auth.uid;
       const userData = request.data;
+      const firebaseUid = request.auth.uid;
 
-      if (!userData || !userData.firstName || !userData.email) {
+      // Backend validation - enforce all client-side rules
+      const validationErrors: string[] = [];
+
+      // Validate required fields
+      if (!userData.firstName?.trim()) {
+        validationErrors.push("First name is required");
+      } else if (userData.firstName.trim().length < 2) {
+        validationErrors.push("First name must be at least 2 characters");
+      } else if (userData.firstName.trim().length > 50) {
+        validationErrors.push("First name must be 50 characters or less");
+      }
+
+      if (!userData.age || userData.age < 18) {
+        validationErrors.push("Age must be 18 or older");
+      }
+
+      if (!userData.gender?.trim()) {
+        validationErrors.push("Gender selection is required");
+      } else {
+        const validGenders = ["Male", "Female", "Non-Binary"];
+        if (!validGenders.includes(userData.gender)) {
+          validationErrors.push("Invalid gender selection");
+        }
+      }
+
+      if (!userData.sexualOrientation?.trim()) {
+        validationErrors.push("Sexual orientation selection is required");
+      } else {
+        const validOrientations = ["Straight", "Homosexual", "Bisexual"];
+        if (!validOrientations.includes(userData.sexualOrientation)) {
+          validationErrors.push("Invalid sexual orientation selection");
+        }
+      }
+
+      if (!userData.yearLevel?.trim()) {
+        validationErrors.push("Year level selection is required");
+      } else {
+        const validYearLevels = ["Freshman", "Sophomore", "Junior", "Senior"];
+        if (!validYearLevels.includes(userData.yearLevel)) {
+          validationErrors.push("Invalid year level selection");
+        }
+      }
+
+      if (!userData.major?.trim()) {
+        validationErrors.push("Major selection is required");
+      }
+
+      // Validate images
+      if (!userData.images || userData.images.length < 3) {
+        validationErrors.push("At least 3 images are required");
+      } else if (userData.images.length > 6) {
+        validationErrors.push("Maximum 6 images allowed");
+      }
+
+      // Validate text fields with character limits
+      const textFieldValidations = [
+        { field: "aboutMe", maxLength: 300, minLength: 5, name: "about me" },
+        {
+          field: "q1",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'This year, I really want to'",
+        },
+        {
+          field: "q2",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'Together we could'",
+        },
+        {
+          field: "q3",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'Favorite book, movie or song'",
+        },
+        {
+          field: "q4",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'I chose my major because'",
+        },
+        {
+          field: "q5",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'My favorite study spot is'",
+        },
+        {
+          field: "q6",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'Some of my hobbies are'",
+        },
+      ];
+
+      textFieldValidations.forEach(({ field, maxLength, minLength, name }) => {
+        const value = (userData as any)[field]?.toString().trim() || "";
+
+        if (value === "") {
+          validationErrors.push(`Please fill in your ${name}`);
+        } else if (value.length < minLength) {
+          validationErrors.push(
+            `Your ${name} must be at least ${minLength} characters long`
+          );
+        } else if (value.length > maxLength) {
+          validationErrors.push(
+            `Your ${name} must be ${maxLength} characters or less`
+          );
+        }
+      });
+
+      // If validation fails, return error
+      if (validationErrors.length > 0) {
         throw new functions.https.HttpsError(
           "invalid-argument",
-          "firstName and email are required"
+          `Validation failed: ${validationErrors.join("; ")}`
         );
       }
 
-      // Use a transaction to ensure atomicity
+      // Use transaction for atomic operations
       const result = await db.runTransaction(async (transaction) => {
         // Check if user already exists
         const existingUser = await transaction.get(
@@ -167,13 +279,12 @@ export const createUser = functions.https.onCall(
         if (existingUser.exists) {
           // User exists, update the document with the new data
           const existingData = existingUser.data();
-
           const updatedUserDoc = {
-            uid: firebaseUid,
             firstName: userData.firstName,
-            yearLevel: userData.yearLevel || existingData?.yearLevel || "",
-            age: userData.age || existingData?.age || 0,
-            major: userData.major || existingData?.major || "",
+            email: userData.email,
+            age: userData.age,
+            yearLevel: userData.yearLevel,
+            major: userData.major,
             gender: userData.gender || existingData?.gender || "",
             sexualOrientation:
               userData.sexualOrientation ||
@@ -187,7 +298,6 @@ export const createUser = functions.https.onCall(
             q4: userData.q4 || existingData?.q4 || "",
             q5: userData.q5 || existingData?.q5 || "",
             q6: userData.q6 || existingData?.q6 || "",
-            email: userData.email,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };
 
@@ -197,15 +307,15 @@ export const createUser = functions.https.onCall(
           );
           return { message: "User updated successfully", user: updatedUserDoc };
         } else {
-          // Create new user document
-          const userDoc = {
-            uid: firebaseUid,
+          // User doesn't exist, create new document
+          const newUserDoc = {
             firstName: userData.firstName,
-            yearLevel: userData.yearLevel || "",
-            age: userData.age || 0,
-            major: userData.major || "",
-            gender: userData.gender || "",
-            sexualOrientation: userData.sexualOrientation || "",
+            email: userData.email,
+            age: userData.age,
+            yearLevel: userData.yearLevel,
+            major: userData.major,
+            gender: userData.gender,
+            sexualOrientation: userData.sexualOrientation,
             images: userData.images || [],
             aboutMe: userData.aboutMe || "",
             q1: userData.q1 || "",
@@ -214,13 +324,13 @@ export const createUser = functions.https.onCall(
             q4: userData.q4 || "",
             q5: userData.q5 || "",
             q6: userData.q6 || "",
-            email: userData.email,
+            currentMatches: [],
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };
 
-          transaction.set(db.collection("users").doc(firebaseUid), userDoc);
-          return { message: "User created successfully", user: userDoc };
+          transaction.set(db.collection("users").doc(firebaseUid), newUserDoc);
+          return { message: "User created successfully", user: newUserDoc };
         }
       });
 
@@ -230,16 +340,25 @@ export const createUser = functions.https.onCall(
       } catch (streamError) {
         console.error("Failed to create Stream Chat user:", streamError);
         // Don't fail the entire operation if Stream Chat fails
-        // The user can still use the app, just without chat functionality
       }
 
       return result;
     } catch (error: any) {
-      console.error("Error creating user:", error);
+      console.error("Error in createUser:", error);
+      await logToNtfy(
+        `USER CREATION ERROR: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-      throw new functions.https.HttpsError("internal", "Failed to create user");
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to create user profile"
+      );
     }
   }
 );
@@ -392,6 +511,137 @@ export const updateUser = functions.https.onCall(
         throw new functions.https.HttpsError(
           "invalid-argument",
           "User ID and user data are required"
+        );
+      }
+
+      // Backend validation for updates
+      const validationErrors: string[] = [];
+
+      // Validate first name if provided
+      if (userData.firstName !== undefined) {
+        if (!userData.firstName?.trim()) {
+          validationErrors.push("First name is required");
+        } else if (userData.firstName.trim().length < 2) {
+          validationErrors.push("First name must be at least 2 characters");
+        } else if (userData.firstName.trim().length > 50) {
+          validationErrors.push("First name must be 50 characters or less");
+        }
+      }
+
+      // Validate age if provided
+      if (userData.age !== undefined && userData.age < 18) {
+        validationErrors.push("Age must be 18 or older");
+      }
+
+      // Validate gender if provided
+      if (userData.gender !== undefined) {
+        if (!userData.gender?.trim()) {
+          validationErrors.push("Gender selection is required");
+        } else {
+          const validGenders = ["Male", "Female", "Non-Binary"];
+          if (!validGenders.includes(userData.gender)) {
+            validationErrors.push("Invalid gender selection");
+          }
+        }
+      }
+
+      // Validate sexual orientation if provided
+      if (userData.sexualOrientation !== undefined) {
+        if (!userData.sexualOrientation?.trim()) {
+          validationErrors.push("Sexual orientation selection is required");
+        } else {
+          const validOrientations = ["Straight", "Homosexual", "Bisexual"];
+          if (!validOrientations.includes(userData.sexualOrientation)) {
+            validationErrors.push("Invalid sexual orientation selection");
+          }
+        }
+      }
+
+      // Validate year level if provided
+      if (userData.yearLevel !== undefined) {
+        if (!userData.yearLevel?.trim()) {
+          validationErrors.push("Year level selection is required");
+        } else {
+          const validYearLevels = ["Freshman", "Sophomore", "Junior", "Senior"];
+          if (!validYearLevels.includes(userData.yearLevel)) {
+            validationErrors.push("Invalid year level selection");
+          }
+        }
+      }
+
+      // Validate images if provided
+      if (userData.images !== undefined) {
+        if (userData.images.length < 3) {
+          validationErrors.push("At least 3 images are required");
+        } else if (userData.images.length > 6) {
+          validationErrors.push("Maximum 6 images allowed");
+        }
+      }
+
+      // Validate text fields if provided
+      const textFieldValidations = [
+        { field: "aboutMe", maxLength: 300, minLength: 5, name: "about me" },
+        {
+          field: "q1",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'This year, I really want to'",
+        },
+        {
+          field: "q2",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'Together we could'",
+        },
+        {
+          field: "q3",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'Favorite book, movie or song'",
+        },
+        {
+          field: "q4",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'I chose my major because'",
+        },
+        {
+          field: "q5",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'My favorite study spot is'",
+        },
+        {
+          field: "q6",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'Some of my hobbies are'",
+        },
+      ];
+
+      textFieldValidations.forEach(({ field, maxLength, minLength, name }) => {
+        if ((userData as any)[field] !== undefined) {
+          const value = (userData as any)[field]?.toString().trim() || "";
+
+          if (value === "") {
+            validationErrors.push(`Please fill in your ${name}`);
+          } else if (value.length < minLength) {
+            validationErrors.push(
+              `Your ${name} must be at least ${minLength} characters long`
+            );
+          } else if (value.length > maxLength) {
+            validationErrors.push(
+              `Your ${name} must be ${maxLength} characters or less`
+            );
+          }
+        }
+      });
+
+      // If validation fails, return error
+      if (validationErrors.length > 0) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          `Validation failed: ${validationErrors.join("; ")}`
         );
       }
 

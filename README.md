@@ -1,6 +1,7 @@
 # 🌊 Harbor
 
 A unique dating app that focuses on meaningful connections through progressive photo reveal and limited daily interactions.
+TODO: Add button on match modal to go to the chat. Make blurry photo lower quality on backend to make it harder to makeout face.
 
 ## 📋 Validation Rules
 
