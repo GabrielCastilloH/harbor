@@ -45,7 +45,7 @@ export default function BasicInfoView({ profile }: ViewProps) {
           </View>
           <View style={styles.infoContainer}>
             <View style={styles.infoItem}>
-              <Ionicons name="school" size={20} color={Colors.primary500} />
+              <Ionicons name="school" size={16} color={Colors.primary500} />
               <Text
                 style={styles.infoText}
                 numberOfLines={1}
@@ -55,10 +55,10 @@ export default function BasicInfoView({ profile }: ViewProps) {
               </Text>
             </View>
             <View style={styles.divider} />
-            <View style={styles.infoItem}>
-              <Ionicons name="book" size={20} color={Colors.primary500} />
+            <View style={styles.majorInfoItem}>
+              <Ionicons name="book" size={16} color={Colors.primary500} />
               <Text
-                style={styles.infoText}
+                style={styles.majorInfoText}
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
@@ -141,14 +141,25 @@ const styles = StyleSheet.create({
   infoItem: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
-    minWidth: 0, // Allow flex items to shrink below their content size
+    flexShrink: 0, // Don't shrink the year level item
   },
   infoText: {
     fontSize: 16,
     fontWeight: "500",
     color: Colors.primary500,
-    marginLeft: 4,
+    marginLeft: 8,
+  },
+  majorInfoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1, // Take remaining space
+    minWidth: 0, // Allow shrinking
+  },
+  majorInfoText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: Colors.primary500,
+    marginLeft: 8,
     flex: 1,
     minWidth: 0, // Allow text to shrink and truncate
   },
