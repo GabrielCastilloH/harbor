@@ -363,20 +363,37 @@ export const createChatChannel = functions.https.onCall(
           );
           console.log(`🔧 [CHAT] Channel data after update:`, channel.data);
 
-          // Send system message for new matches
-          try {
-            await channel.sendMessage({
-              text: "You've matched! Start chatting now.",
-              user_id: "system",
-            });
+          // Check if intro message was already sent by checking channel data
+          const hasIntroMessage =
+            (channel.data as any)?.introMessageSent === true;
+
+          // Send system message for new matches only if it hasn't been sent before
+          if (!hasIntroMessage) {
+            try {
+              await channel.sendMessage({
+                text: "You've matched! Start chatting now.",
+                user_id: "system",
+              });
+
+              // Mark that intro message has been sent
+              await channel.update({
+                // @ts-ignore - Adding custom field to channel data
+                introMessageSent: true,
+              });
+
+              console.log(
+                `✅ [CHAT] System message sent for new match: ${matchId}`
+              );
+            } catch (messageErr) {
+              console.error(
+                `❌ [CHAT] Failed to send system message: ${messageErr}`
+              );
+              // Don't fail the channel creation if system message fails
+            }
+          } else {
             console.log(
-              `✅ [CHAT] System message sent for new match: ${matchId}`
+              `🔄 [CHAT] Intro message already sent, skipping duplicate`
             );
-          } catch (messageErr) {
-            console.error(
-              `❌ [CHAT] Failed to send system message: ${messageErr}`
-            );
-            // Don't fail the channel creation if system message fails
           }
         } catch (updateErr) {
           console.error(
