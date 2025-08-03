@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 20,
-    height: 350,
+    height: 300,
   },
   modalHeader: {
     flexDirection: "row",
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   },
   picker: {
     backgroundColor: Colors.secondary100,
-    height: 250,
+    height: 180,
     width: "100%",
   },
   pickerItem: {
