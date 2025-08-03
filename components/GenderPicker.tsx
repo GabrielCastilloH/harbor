@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: Colors.secondary100,
+    backgroundColor: Colors.secondary200,
     borderWidth: 1,
     borderColor: Colors.secondary500,
     borderRadius: 8,
@@ -147,10 +147,10 @@ const styles = StyleSheet.create({
   },
   pickerText: {
     fontSize: 16,
-    color: Colors.primary500,
+    color: "gray",
   },
   placeholderText: {
-    color: Colors.secondary500,
+    color: "gray",
   },
   arrow: {
     fontSize: 12,
@@ -208,6 +208,6 @@ const styles = StyleSheet.create({
   },
   pickerItem: {
     fontSize: 16,
-    color: Colors.primary500,
+    color: "gray",
   },
 });
