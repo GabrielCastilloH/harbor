@@ -36,8 +36,6 @@ export default function SettingsScreen() {
         text: "Sign Out",
         onPress: async () => {
           try {
-            console.log("🚪 [SETTINGS] Starting sign out process");
-
             // Sign out from Google Sign-In
             await GoogleSignin.signOut();
 
@@ -55,8 +53,6 @@ export default function SettingsScreen() {
             // Clear app context state
             setIsAuthenticated(false);
             setUserId(null); // Use null instead of empty string
-
-            console.log("✅ [SETTINGS] Sign out completed successfully");
           } catch (error) {
             console.error("❌ [SETTINGS] Error signing out:", error);
           }
