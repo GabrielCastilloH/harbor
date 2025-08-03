@@ -184,19 +184,35 @@ export default function ChatNavigator() {
       try {
         const response = await UserService.getUserById(userId);
 
-        // Check if the response has data directly or within a user property
+        // Handle different response formats from Firebase
+        let profileData = null;
+
         if (response) {
           // If response contains data directly as the user object
-          if (response.uid) {
-            setProfile(response);
+          if (response.firstName || response.uid) {
+            profileData = response;
           }
           // If response contains data in the user property
-          else if (response.user && response.user.uid) {
-            setProfile(response.user);
+          else if (
+            response.user &&
+            (response.user.firstName || response.user.uid)
+          ) {
+            profileData = response.user;
           } else {
             console.error(
               "ChatNavigator - Invalid profile data format:",
               response
+            );
+            return;
+          }
+
+          // Ensure we have the required fields for the chat user
+          if (profileData && profileData.firstName) {
+            setProfile(profileData);
+          } else {
+            console.error(
+              "ChatNavigator - Missing required profile fields:",
+              profileData
             );
           }
         } else {
