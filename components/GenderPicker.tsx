@@ -55,7 +55,12 @@ export default function GenderPicker({
         style={[styles.pickerButton, style]}
         onPress={() => setModalVisible(true)}
       >
-        <Text style={[styles.pickerText, !value && styles.placeholderText]}>
+        <Text
+          style={[
+            styles.pickerText,
+            !value ? styles.placeholderText : styles.selectedText,
+          ]}
+        >
           {value || placeholder}
         </Text>
         <Text style={styles.arrow}>▼</Text>
@@ -149,6 +154,11 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     color: "gray",
+    opacity: 0.7,
+  },
+  selectedText: {
+    color: "gray",
+    opacity: 1,
   },
   arrow: {
     fontSize: 12,
