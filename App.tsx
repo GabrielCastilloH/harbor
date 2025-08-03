@@ -10,6 +10,7 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
 import LoadingScreen from "./components/LoadingScreen";
+import UnviewedMatchesHandler from "./components/UnviewedMatchesHandler";
 
 // Configure Google Sign-In
 GoogleSignin.configure({
@@ -42,6 +43,7 @@ function AppContent() {
         <NavigationContainer>
           <StatusBar style="dark" />
           <TabNavigator />
+          <UnviewedMatchesHandler />
         </NavigationContainer>
       </GestureHandlerRootView>
     );
