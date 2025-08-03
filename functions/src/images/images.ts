@@ -93,57 +93,67 @@ export const uploadImage = functions.https.onCall(
       const baseName = `users/${userId}/images/${timestamp}-${randomId}`;
       const originalFilePath = `${baseName}_original.jpg`;
       const blurredFilePath = `${baseName}_blurred.jpg`;
+      const filename = `${timestamp}-${randomId}_original.jpg`;
 
       console.log("🚀 UPLOAD FUNCTION - File paths:");
       console.log("Original path:", originalFilePath);
       console.log("Blurred path:", blurredFilePath);
 
-      // Upload original image first (simpler, more reliable)
-      console.log("📤 Uploading original image...");
-      await bucket.file(originalFilePath).save(imageBuffer, {
-        metadata: { contentType: "image/jpeg" },
-      });
-      console.log("✅ Original image uploaded successfully");
-
-      // Generate and upload blurred version
-      console.log("🔀 Generating blurred version...");
-      const blurredBuffer = await blurImageBuffer(imageBuffer, 80);
-      await bucket.file(blurredFilePath).save(blurredBuffer, {
-        metadata: { contentType: "image/jpeg" },
-      });
-      console.log("✅ Blurred image uploaded successfully");
-
-      // Store only the filename as a string - we'll generate signed URLs on-demand
-      const filename = `${timestamp}-${randomId}_original.jpg`;
-      console.log("💾 Storing filename in Firestore:", filename);
-
-      // Update user document if user exists
-      const userDoc = await db.collection("users").doc(userId).get();
-      if (userDoc.exists) {
-        // Add to user's images as filename strings
-        console.log("📝 Updating user document with filename:", filename);
-        await db
-          .collection("users")
-          .doc(userId)
-          .update({
-            images: admin.firestore.FieldValue.arrayUnion(filename),
-          });
-        console.log("✅ User document updated successfully");
-      } else {
-        console.log(
-          "⚠️ User document does not exist, skipping Firestore update"
+      // Use transaction to ensure atomicity
+      const result = await db.runTransaction(async (transaction) => {
+        // Check if user exists first
+        const userDoc = await transaction.get(
+          db.collection("users").doc(userId)
         );
-      }
 
-      const result = {
-        filename: filename,
-        message: "Image uploaded successfully",
-      };
+        if (!userDoc.exists) {
+          throw new functions.https.HttpsError(
+            "not-found",
+            "User profile must be created before uploading images"
+          );
+        }
+
+        // Upload original image first (simpler, more reliable)
+        console.log("📤 Uploading original image...");
+        await bucket.file(originalFilePath).save(imageBuffer, {
+          metadata: { contentType: "image/jpeg" },
+        });
+        console.log("✅ Original image uploaded successfully");
+
+        // Generate and upload blurred version
+        console.log("🔀 Generating blurred version...");
+        const blurredBuffer = await blurImageBuffer(imageBuffer, 80);
+        await bucket.file(blurredFilePath).save(blurredBuffer, {
+          metadata: { contentType: "image/jpeg" },
+        });
+        console.log("✅ Blurred image uploaded successfully");
+
+        // Update user document atomically
+        console.log("💾 Storing filename in Firestore:", filename);
+        transaction.update(db.collection("users").doc(userId), {
+          images: admin.firestore.FieldValue.arrayUnion(filename),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return {
+          filename: filename,
+          message: "Image uploaded successfully",
+        };
+      });
 
       console.log("🎉 UPLOAD COMPLETED - Final filename:", filename);
       return result;
     } catch (error) {
       console.error("imageFunctions-uploadImage - Error:", error);
+
+      // If it's a not-found error, provide helpful message
+      if (
+        error instanceof functions.https.HttpsError &&
+        error.code === "not-found"
+      ) {
+        throw error;
+      }
+
       throw new functions.https.HttpsError(
         "internal",
         "Failed to upload image"
