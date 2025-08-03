@@ -124,4 +124,36 @@ export class MatchService {
       throw error;
     }
   }
+
+  static async getUnviewedMatches(userId: string) {
+    try {
+      const getUnviewedMatches = httpsCallable(
+        functions,
+        "matchFunctions-getUnviewedMatches"
+      );
+      const result = await getUnviewedMatches({ userId });
+      const data = result.data as any;
+
+      return data;
+    } catch (error) {
+      console.error("MatchService - Error getting unviewed matches:", error);
+      throw error;
+    }
+  }
+
+  static async markMatchAsViewed(matchId: string, userId: string) {
+    try {
+      const markMatchAsViewed = httpsCallable(
+        functions,
+        "matchFunctions-markMatchAsViewed"
+      );
+      const result = await markMatchAsViewed({ matchId, userId });
+      const data = result.data as any;
+
+      return data;
+    } catch (error) {
+      console.error("MatchService - Error marking match as viewed:", error);
+      throw error;
+    }
+  }
 }
