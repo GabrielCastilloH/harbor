@@ -35,25 +35,8 @@ function AppContent() {
   //  - if userId exists (user has profile in Firestore), show TabNavigator
   //  - if authenticated but no userId (no profile in Firestore), show AccountSetupScreen
 
-  console.log("🎯 [APP] Navigation decision:", {
-    isAuthenticated,
-    userId,
-    isInitialized,
-    view: !isAuthenticated
-      ? "SignIn"
-      : userId && userId.trim() !== ""
-      ? "TabNavigator"
-      : "AccountSetupScreen",
-  });
-
-  // Log when SignIn screen is about to be rendered
-  if (!isAuthenticated) {
-    console.log("🔍 [APP] About to render SignIn screen");
-  }
-
   // Don't render SignIn if user is already authenticated
   if (isAuthenticated && userId && userId.trim() !== "") {
-    console.log("🚫 [APP] User authenticated, not rendering SignIn screen");
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
@@ -66,9 +49,6 @@ function AppContent() {
 
   // Additional check: if user is authenticated but userId is not set yet, don't render SignIn
   if (isAuthenticated && (!userId || userId.trim() === "")) {
-    console.log(
-      "🚫 [APP] User authenticated but userId not set, not rendering SignIn screen"
-    );
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
