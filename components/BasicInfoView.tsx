@@ -42,6 +42,17 @@ export default function BasicInfoView({ profile }: ViewProps) {
                 {profile.major}
               </Text>
             </View>
+            <View style={styles.divider} />
+            <View style={styles.infoItem}>
+              <Ionicons name="person" size={20} color={Colors.primary500} />
+              <Text
+                style={styles.infoText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {profile.gender}
+              </Text>
+            </View>
           </View>
         </View>
         <View style={styles.sectionsContainer}>

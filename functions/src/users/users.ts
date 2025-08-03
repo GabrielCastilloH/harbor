@@ -93,6 +93,8 @@ interface CreateUserData {
   yearLevel?: string;
   age?: number;
   major?: string;
+  gender?: string;
+  interestedIn?: string;
   images?: string[];
   aboutMe?: string;
   q1?: string;
@@ -109,6 +111,8 @@ interface UpdateUserData {
   yearLevel?: string;
   age?: number;
   major?: string;
+  gender?: string;
+  interestedIn?: string;
   images?: string[];
   aboutMe?: string;
   q1?: string;
@@ -175,6 +179,8 @@ export const createUser = functions.https.onCall(
           yearLevel: userData.yearLevel || existingData?.yearLevel || "",
           age: userData.age || existingData?.age || 0,
           major: userData.major || existingData?.major || "",
+          gender: userData.gender || existingData?.gender || "",
+          interestedIn: userData.interestedIn || existingData?.interestedIn || "",
           images: existingData?.images || userData.images || [], // Preserve existing images
           aboutMe: userData.aboutMe || existingData?.aboutMe || "",
           q1: userData.q1 || existingData?.q1 || "",
