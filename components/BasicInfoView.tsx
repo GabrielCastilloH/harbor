@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import PageIndicator from "./PageIndicator";
 import { Profile } from "../types/App";
@@ -10,6 +10,19 @@ export interface ViewProps {
 }
 
 export default function BasicInfoView({ profile }: ViewProps) {
+  const getGenderIcon = (gender: string) => {
+    switch (gender.toLowerCase()) {
+      case "male":
+        return "gender-male";
+      case "female":
+        return "gender-female";
+      case "non-binary":
+        return "gender-non-binary";
+      default:
+        return "gender-male-female";
+    }
+  };
+
   return (
     <View style={styles.contentContainer}>
       <View style={styles.content}>
@@ -18,6 +31,14 @@ export default function BasicInfoView({ profile }: ViewProps) {
             <View style={styles.nameAgeContainer}>
               <Text style={styles.nameText}>{profile.firstName}</Text>
               <Text style={styles.ageText}>{profile.age}</Text>
+              {profile.gender && (
+                <MaterialCommunityIcons
+                  name={getGenderIcon(profile.gender) as any}
+                  size={24}
+                  color={Colors.primary500}
+                  style={styles.genderIcon}
+                />
+              )}
             </View>
           </View>
           <View style={styles.infoContainer}>
@@ -40,17 +61,6 @@ export default function BasicInfoView({ profile }: ViewProps) {
                 ellipsizeMode="tail"
               >
                 {profile.major}
-              </Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.infoItem}>
-              <Ionicons name="person" size={20} color={Colors.primary500} />
-              <Text
-                style={styles.infoText}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {profile.gender}
               </Text>
             </View>
           </View>
@@ -108,6 +118,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.black,
     opacity: 0.8,
+  },
+  genderIcon: {
+    marginLeft: 8,
   },
   infoContainer: {
     gap: 10,
