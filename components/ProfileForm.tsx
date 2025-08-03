@@ -213,22 +213,6 @@ export default function ProfileForm({
             keyboardType="numeric"
           />
 
-          <Text style={styles.label}>Year Level</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Year Level"
-            value={profileData.yearLevel}
-            onChangeText={(text) => handleChange("yearLevel", text)}
-          />
-
-          <Text style={styles.label}>Major</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Major"
-            value={profileData.major}
-            onChangeText={(text) => handleChange("major", text)}
-          />
-
           <View style={styles.genderContainer}>
             <View style={styles.genderField}>
               <Text style={styles.label}>Your Gender</Text>
@@ -252,6 +236,22 @@ export default function ProfileForm({
               />
             </View>
           </View>
+
+          <Text style={styles.label}>Year Level</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Year Level"
+            value={profileData.yearLevel}
+            onChangeText={(text) => handleChange("yearLevel", text)}
+          />
+
+          <Text style={styles.label}>Major</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Major"
+            value={profileData.major}
+            onChangeText={(text) => handleChange("major", text)}
+          />
 
           <Text style={styles.label}>About Me</Text>
           <TextInput
