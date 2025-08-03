@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -20,6 +20,28 @@ export default function LoadingScreen({
   loadingText,
   progressBar,
 }: LoadingScreenProps) {
+  const animatedProgress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (progressBar) {
+      Animated.timing(animatedProgress, {
+        toValue: Math.max(0, Math.min(1, progressBar.progress)),
+        duration: 500, // Smooth animation over 500ms
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [progressBar?.progress, animatedProgress]);
+
+  const progressWidth = animatedProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
+
+  const progressPercentage = animatedProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 100],
+  });
+
   return (
     <View style={styles.container}>
       <Image
@@ -31,20 +53,18 @@ export default function LoadingScreen({
       {progressBar ? (
         <View style={styles.progressBarContainer}>
           <View style={styles.progressBarBackground}>
-            <View
+            <Animated.View
               style={[
                 styles.progressBarFill,
                 {
-                  width: `${
-                    Math.max(0, Math.min(1, progressBar.progress)) * 100
-                  }%`,
+                  width: progressWidth,
                 },
               ]}
             />
           </View>
-          <Text style={styles.progressText}>
-            {Math.round(progressBar.progress * 100)}%
-          </Text>
+          <Animated.Text style={styles.progressText}>
+            {Math.round(progressPercentage)}%
+          </Animated.Text>
         </View>
       ) : (
         <ActivityIndicator
