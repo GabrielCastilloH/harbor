@@ -18,6 +18,7 @@ import { Profile } from "../types/App";
 import * as ImagePicker from "expo-image-picker";
 import { getImageSource } from "../util/imageUtils";
 import GenderPicker from "./GenderPicker";
+import DataPicker from "./DataPicker";
 
 interface ProfileFormProps {
   profileData: Profile;
@@ -238,24 +239,26 @@ export default function ProfileForm({
           </View>
 
           <Text style={styles.label}>Year Level</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Year Level"
-            value={profileData.yearLevel}
-            onChangeText={(text) => handleChange("yearLevel", text)}
+          <DataPicker
+            value={profileData.yearLevel || ""}
+            onValueChange={(value) => handleChange("yearLevel", value)}
+            placeholder="Select year level"
+            type="yearLevel"
+            style={styles.individualPicker}
           />
 
           <Text style={styles.label}>Major</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Major"
-            value={profileData.major}
-            onChangeText={(text) => handleChange("major", text)}
+          <DataPicker
+            value={profileData.major || ""}
+            onValueChange={(value) => handleChange("major", value)}
+            placeholder="Select major"
+            type="major"
+            style={styles.individualPicker}
           />
 
           <Text style={styles.label}>About Me</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="Tell us about yourself..."
             value={profileData.aboutMe}
             onChangeText={(text) => handleChange("aboutMe", text)}
@@ -265,7 +268,7 @@ export default function ProfileForm({
 
           <Text style={styles.label}>This year, I really want to</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="This year, I want to..."
             value={profileData.q1}
             onChangeText={(text) => handleChange("q1", text)}
@@ -275,7 +278,7 @@ export default function ProfileForm({
 
           <Text style={styles.label}>Together we could</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="We could..."
             value={profileData.q2}
             onChangeText={(text) => handleChange("q2", text)}
@@ -285,7 +288,7 @@ export default function ProfileForm({
 
           <Text style={styles.label}>Favorite book, movie or song</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="My favorite book/movie/song is..."
             value={profileData.q3}
             onChangeText={(text) => handleChange("q3", text)}
@@ -295,7 +298,7 @@ export default function ProfileForm({
 
           <Text style={styles.label}>I chose my major because...</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="I chose my major because..."
             value={profileData.q4}
             onChangeText={(text) => handleChange("q4", text)}
@@ -305,7 +308,7 @@ export default function ProfileForm({
 
           <Text style={styles.label}>My favorite study spot is</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="My favorite study spot is..."
             value={profileData.q5}
             onChangeText={(text) => handleChange("q5", text)}
@@ -315,7 +318,7 @@ export default function ProfileForm({
 
           <Text style={styles.label}>Some of my hobbies are</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="In my free time, I like to..."
             value={profileData.q6}
             onChangeText={(text) => handleChange("q6", text)}
@@ -429,6 +432,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 15,
     color: "gray",
+    fontSize: 16,
   },
   imageContainer: {
     position: "relative",
@@ -513,5 +517,13 @@ const styles = StyleSheet.create({
   },
   genderPicker: {
     flex: 1,
+  },
+  individualPicker: {
+    marginBottom: 15,
+  },
+  multilineInput: {
+    height: 80,
+    textAlignVertical: "top",
+    paddingTop: 15,
   },
 });
