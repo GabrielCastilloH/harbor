@@ -171,6 +171,7 @@ export function getClientBlurLevel({
 
 ### In Progress 🚧
 
+- [ ] Add button to go to chat under the match modal.
 - [ ] Integrate Stripe for payment processing
 - [ ] Premium features through Stripe integration
 - [ ] Change number to only allow three swipes per day.

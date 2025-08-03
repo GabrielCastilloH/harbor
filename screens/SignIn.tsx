@@ -112,6 +112,10 @@ export default function SignIn() {
     setIsNewUser(false);
   };
 
+  const handleSignInComplete = () => {
+    setIsLoading(false);
+  };
+
   if (isLoading) {
     const loadingText = isNewUser
       ? "Setting up your account..."
@@ -143,6 +147,7 @@ export default function SignIn() {
             onNewUser={handleNewUser}
             onError={handleError}
             onSignInStart={handleSignInStart}
+            onSignInComplete={handleSignInComplete}
             buttonText="Continue with Cornell"
             buttonStyle={styles.button}
             textStyle={styles.buttonText}
