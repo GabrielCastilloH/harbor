@@ -211,13 +211,13 @@ export const createSwipe = functions.https.onCall(
           await logToNtfy(
             `[${requestId}] MATCH MADE: ${request.data.swiperId} <-> ${request.data.swipedId}`
           );
-          
+
           // Use transaction for atomic match creation
           const matchResult = await db.runTransaction(async (transaction) => {
             // Create the swipe first
             const swipeRef = db.collection("swipes").doc();
             transaction.set(swipeRef, swipeData);
-            
+
             // Create match data
             const matchData = {
               user1Id: swiperId,
@@ -227,6 +227,9 @@ export const createSwipe = functions.https.onCall(
               messageCount: 0,
               user1Consented: false,
               user2Consented: false,
+              // Track unviewed status for both users
+              user1Viewed: false,
+              user2Viewed: false,
               createdAt: admin.firestore.FieldValue.serverTimestamp(),
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             };
@@ -237,14 +240,68 @@ export const createSwipe = functions.https.onCall(
 
             // Update both users' currentMatches arrays atomically
             transaction.update(db.collection("users").doc(swiperId), {
-              currentMatches: admin.firestore.FieldValue.arrayUnion(matchRef.id),
+              currentMatches: admin.firestore.FieldValue.arrayUnion(
+                matchRef.id
+              ),
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
             transaction.update(db.collection("users").doc(swipedId), {
-              currentMatches: admin.firestore.FieldValue.arrayUnion(matchRef.id),
+              currentMatches: admin.firestore.FieldValue.arrayUnion(
+                matchRef.id
+              ),
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
+
+            // ========================================
+            // NOTIFICATION GROUNDWORK (COMMENTED OUT)
+            // ========================================
+            // TODO: When implementing push notifications, uncomment this section
+            //
+            // // Send push notification to the matched user
+            // try {
+            //   const matchedUserDoc = await db.collection("users").doc(swipedId).get();
+            //   const matchedUser = matchedUserDoc.data();
+            //
+            //   if (matchedUser?.fcmToken) {
+            //     // Send notification using Firebase Cloud Messaging
+            //     const message = {
+            //       token: matchedUser.fcmToken,
+            //       notification: {
+            //         title: "New Match! 💕",
+            //         body: `You matched with ${swiperUser?.firstName || "someone"}!`,
+            //       },
+            //       data: {
+            //         type: "new_match",
+            //         matchId: matchRef.id,
+            //         matchedUserId: swiperId,
+            //         click_action: "FLUTTER_NOTIFICATION_CLICK",
+            //       },
+            //       android: {
+            //         notification: {
+            //           channelId: "matches",
+            //           priority: "high",
+            //         },
+            //       },
+            //       apns: {
+            //         payload: {
+            //           aps: {
+            //             sound: "default",
+            //             badge: 1,
+            //           },
+            //         },
+            //       },
+            //     };
+            //
+            //     // Send using Firebase Admin SDK
+            //     await admin.messaging().send(message);
+            //     await logToNtfy(`[${requestId}] NOTIFICATION SENT: ${swipedId}`);
+            //   }
+            // } catch (notificationError) {
+            //   await logToNtfy(`[${requestId}] NOTIFICATION ERROR: ${notificationError}`);
+            //   // Don't fail the match creation if notification fails
+            // }
+            // ========================================
 
             return {
               message: "Swipe recorded and match created",
