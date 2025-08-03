@@ -83,27 +83,79 @@ export default function ProfileForm({
       errors.push("Please add at least 3 images");
     }
 
-    // Check text fields
-    const textFields: (keyof Profile)[] = [
-      "firstName",
+    // Check required dropdown fields
+    const dropdownFields: (keyof Profile)[] = [
       "yearLevel",
       "major",
       "gender",
       "sexualOrientation",
-      "aboutMe",
-      "q1",
-      "q2",
-      "q3",
-      "q4",
-      "q5",
-      "q6",
     ];
 
-    textFields.forEach((field) => {
+    dropdownFields.forEach((field) => {
       if (!profileData[field] || profileData[field].toString().trim() === "") {
+        const fieldName = field.replace(/([A-Z])/g, " $1").toLowerCase();
+        errors.push(`Please select your ${fieldName}`);
+      }
+    });
+
+    // Check text fields with character limits
+    const textFields: {
+      field: keyof Profile;
+      maxLength: number;
+      minLength: number;
+      name: string;
+    }[] = [
+      { field: "firstName", maxLength: 50, minLength: 2, name: "first name" },
+      { field: "aboutMe", maxLength: 300, minLength: 5, name: "about me" },
+      {
+        field: "q1",
+        maxLength: 150,
+        minLength: 5,
+        name: "answer to 'This year, I really want to'",
+      },
+      {
+        field: "q2",
+        maxLength: 150,
+        minLength: 5,
+        name: "answer to 'Together we could'",
+      },
+      {
+        field: "q3",
+        maxLength: 150,
+        minLength: 5,
+        name: "answer to 'Favorite book, movie or song'",
+      },
+      {
+        field: "q4",
+        maxLength: 150,
+        minLength: 5,
+        name: "answer to 'I chose my major because'",
+      },
+      {
+        field: "q5",
+        maxLength: 150,
+        minLength: 5,
+        name: "answer to 'My favorite study spot is'",
+      },
+      {
+        field: "q6",
+        maxLength: 150,
+        minLength: 5,
+        name: "answer to 'Some of my hobbies are'",
+      },
+    ];
+
+    textFields.forEach(({ field, maxLength, minLength, name }) => {
+      const value = profileData[field]?.toString().trim() || "";
+
+      if (value === "") {
+        errors.push(`Please fill in your ${name}`);
+      } else if (value.length < minLength) {
         errors.push(
-          `Please fill in ${field.replace(/([A-Z])/g, " $1").toLowerCase()}`
+          `Your ${name} must be at least ${minLength} characters long`
         );
+      } else if (value.length > maxLength) {
+        errors.push(`Your ${name} must be ${maxLength} characters or less`);
       }
     });
 
@@ -265,6 +317,9 @@ export default function ProfileForm({
             multiline
             numberOfLines={3}
           />
+          <Text style={styles.characterCount}>
+            {profileData.aboutMe?.length || 0}/300
+          </Text>
 
           <Text style={styles.label}>This year, I really want to</Text>
           <TextInput
@@ -275,6 +330,9 @@ export default function ProfileForm({
             multiline
             numberOfLines={3}
           />
+          <Text style={styles.characterCount}>
+            {profileData.q1?.length || 0}/150
+          </Text>
 
           <Text style={styles.label}>Together we could</Text>
           <TextInput
@@ -285,6 +343,9 @@ export default function ProfileForm({
             multiline
             numberOfLines={3}
           />
+          <Text style={styles.characterCount}>
+            {profileData.q2?.length || 0}/150
+          </Text>
 
           <Text style={styles.label}>Favorite book, movie or song</Text>
           <TextInput
@@ -295,6 +356,9 @@ export default function ProfileForm({
             multiline
             numberOfLines={3}
           />
+          <Text style={styles.characterCount}>
+            {profileData.q3?.length || 0}/150
+          </Text>
 
           <Text style={styles.label}>I chose my major because...</Text>
           <TextInput
@@ -305,6 +369,9 @@ export default function ProfileForm({
             multiline
             numberOfLines={3}
           />
+          <Text style={styles.characterCount}>
+            {profileData.q4?.length || 0}/150
+          </Text>
 
           <Text style={styles.label}>My favorite study spot is</Text>
           <TextInput
@@ -315,6 +382,9 @@ export default function ProfileForm({
             multiline
             numberOfLines={3}
           />
+          <Text style={styles.characterCount}>
+            {profileData.q5?.length || 0}/150
+          </Text>
 
           <Text style={styles.label}>Some of my hobbies are</Text>
           <TextInput
@@ -325,6 +395,9 @@ export default function ProfileForm({
             multiline
             numberOfLines={3}
           />
+          <Text style={styles.characterCount}>
+            {profileData.q6?.length || 0}/150
+          </Text>
         </View>
 
         <View style={styles.section}>
@@ -531,5 +604,12 @@ const styles = StyleSheet.create({
     height: 80,
     textAlignVertical: "top",
     paddingTop: 15,
+  },
+  characterCount: {
+    fontSize: 12,
+    color: Colors.primary500,
+    textAlign: "right",
+    marginTop: 4,
+    marginBottom: 10,
   },
 });
