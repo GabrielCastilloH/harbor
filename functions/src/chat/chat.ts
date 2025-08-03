@@ -363,9 +363,10 @@ export const createChatChannel = functions.https.onCall(
           );
           console.log(`🔧 [CHAT] Channel data after update:`, channel.data);
 
-          // Check if intro message was already sent by checking channel data
-          const hasIntroMessage =
-            (channel.data as any)?.introMessageSent === true;
+          // Check if intro message was already sent by checking the match document
+          const matchDoc = await db.collection("matches").doc(matchId).get();
+          const matchData = matchDoc.data();
+          const hasIntroMessage = matchData?.introMessageSent === true;
 
           // Send system message for new matches only if it hasn't been sent before
           if (!hasIntroMessage) {
@@ -375,10 +376,10 @@ export const createChatChannel = functions.https.onCall(
                 user_id: "system",
               });
 
-              // Mark that intro message has been sent
-              await channel.update({
-                // @ts-ignore - Adding custom field to channel data
+              // Mark that intro message has been sent in the match document
+              await db.collection("matches").doc(matchId).update({
                 introMessageSent: true,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               });
 
               console.log(
