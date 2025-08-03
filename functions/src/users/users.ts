@@ -390,6 +390,7 @@ export const getAllUsers = functions.https.onCall(
       const usersSnapshot = await db.collection("users").get();
       const users = usersSnapshot.docs.map((doc) => {
         const userData = doc.data();
+
         // Remove images from each user for security
         const { images, ...userDataWithoutImages } = userData;
         return {
@@ -462,7 +463,6 @@ export const getUserById = functions.https.onCall(
       // Remove images from the response for security - images should only be fetched via getImages
       if (userData) {
         const { images, ...userDataWithoutImages } = userData;
-
         return { user: userDataWithoutImages };
       }
 
