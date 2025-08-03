@@ -88,6 +88,173 @@ export const createMatch = functions.https.onCall(
 );
 
 /**
+ * Gets unviewed matches for a user (for showing match modal on app open)
+ */
+export const getUnviewedMatches = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ userId: string }>) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { userId } = request.data;
+
+      if (!userId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "User ID is required"
+        );
+      }
+
+      // Get matches where this user hasn't viewed the match yet
+      const unviewedMatches = await db
+        .collection("matches")
+        .where("isActive", "==", true)
+        .where("user1Id", "==", userId)
+        .where("user1Viewed", "==", false)
+        .get();
+
+      const unviewedMatches2 = await db
+        .collection("matches")
+        .where("isActive", "==", true)
+        .where("user2Id", "==", userId)
+        .where("user2Viewed", "==", false)
+        .get();
+
+      const allUnviewedMatches = [
+        ...unviewedMatches.docs,
+        ...unviewedMatches2.docs,
+      ];
+
+      const matches = [];
+      for (const doc of allUnviewedMatches) {
+        const matchData = doc.data();
+
+        // Get the other user's profile
+        const otherUserId =
+          matchData.user1Id === userId ? matchData.user2Id : matchData.user1Id;
+        const otherUserDoc = await db
+          .collection("users")
+          .doc(otherUserId)
+          .get();
+
+        if (otherUserDoc.exists) {
+          matches.push({
+            matchId: doc.id,
+            match: matchData,
+            matchedProfile: otherUserDoc.data(),
+          });
+        }
+      }
+
+      return {
+        matches,
+        count: matches.length,
+      };
+    } catch (error: any) {
+      console.error("Error getting unviewed matches:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to get unviewed matches"
+      );
+    }
+  }
+);
+
+/**
+ * Marks a match as viewed by a user
+ */
+export const markMatchAsViewed = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ matchId: string; userId: string }>) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { matchId, userId } = request.data;
+
+      if (!matchId || !userId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Match ID and User ID are required"
+        );
+      }
+
+      // Update the match to mark it as viewed by this user
+      const matchRef = db.collection("matches").doc(matchId);
+      const matchDoc = await matchRef.get();
+
+      if (!matchDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Match not found");
+      }
+
+      const matchData = matchDoc.data();
+      const updateData: any = {};
+
+      if (matchData?.user1Id === userId) {
+        updateData.user1Viewed = true;
+      } else if (matchData?.user2Id === userId) {
+        updateData.user2Viewed = true;
+      } else {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User is not part of this match"
+        );
+      }
+
+      updateData.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+
+      await matchRef.update(updateData);
+
+      return {
+        message: "Match marked as viewed",
+        success: true,
+      };
+    } catch (error: any) {
+      console.error("Error marking match as viewed:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to mark match as viewed"
+      );
+    }
+  }
+);
+
+/**
  * Gets active matches for a user
  */
 export const getActiveMatches = functions.https.onCall(
@@ -805,4 +972,6 @@ export const matchFunctions = {
   updateConsent,
   getConsentStatus,
   migrateMatchConsent,
+  getUnviewedMatches,
+  markMatchAsViewed,
 };
