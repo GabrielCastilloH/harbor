@@ -31,14 +31,16 @@ export default function BasicInfoView({ profile }: ViewProps) {
             <View style={styles.nameAgeContainer}>
               <Text style={styles.nameText}>{profile.firstName}</Text>
               <Text style={styles.ageText}>{profile.age}</Text>
-              {profile.gender && (
-                <MaterialCommunityIcons
-                  name={getGenderIcon(profile.gender) as any}
-                  size={24}
-                  color={Colors.primary500}
-                  style={styles.genderIcon}
-                />
-              )}
+              <View style={styles.genderIconContainer}>
+                {profile.gender && (
+                  <MaterialCommunityIcons
+                    name={getGenderIcon(profile.gender) as any}
+                    size={36}
+                    color={Colors.primary500}
+                    style={styles.genderIcon}
+                  />
+                )}
+              </View>
             </View>
           </View>
           <View style={styles.infoContainer}>
@@ -120,7 +122,11 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   genderIcon: {
-    marginLeft: 8,
+    marginRight: 5,
+  },
+  genderIconContainer: {
+    marginLeft: "auto", // Push the icon to the right
+    padding: 2,
   },
   infoContainer: {
     gap: 10,
