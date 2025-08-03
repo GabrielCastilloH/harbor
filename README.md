@@ -60,25 +60,6 @@ A unique dating app that focuses on meaningful connections through progressive p
    npx expo run:ios
    ```
 
-## 🛠 Development Status
-
-### Completed Features ✅
-
-- StreamChat Integration
-  - User creation and token generation
-  - Backend route for user token fetching
-- Match-based chat creation
-- Fixed signup bug.
-- Actually add user info to the top right corner of chats.
-- Add pre-filled data in user settings and add name of the other person individual chats.
-- Make sure you get the matched! screen when matching
-- Only able to talk to one person at a time.
-- Add photo blurring preview screen.
-- Setup progressive photo unblurring
-- Implement authentication route protection
-- Force users to use a square picture in the image picker.
-- Make the images higher quality.
-
 ## 🎭 Progressive Photo Reveal System
 
 ### Core Design Philosophy

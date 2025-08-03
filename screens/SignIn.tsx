@@ -136,7 +136,7 @@ export default function SignIn() {
         </View>
         <Text style={styles.title}>Sign In</Text>
         <Text style={styles.description}>
-          In order to use this app you must sign in with your Cornell NetID via
+          In order to use this app you must sign in with your Cornell email via
           Google.
         </Text>
 
