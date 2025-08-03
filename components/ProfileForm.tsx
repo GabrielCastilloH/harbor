@@ -197,7 +197,7 @@ export default function ProfileForm({
             </Text>
           </View>
 
-          <Text style={styles.label}>First Name</Text>
+          <Text style={styles.firstLabel}>First Name</Text>
           <TextInput
             style={styles.input}
             placeholder="First Name"
@@ -425,6 +425,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.primary500,
     marginBottom: 5,
+  },
+  firstLabel: {
+    fontSize: 16,
+    color: Colors.primary500,
+    marginBottom: 5,
+    marginTop: 10,
   },
   input: {
     backgroundColor: Colors.secondary200,
