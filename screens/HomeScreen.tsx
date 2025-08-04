@@ -10,7 +10,14 @@ import {
   Text,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaView } from "react-native-safe-area-context";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import {
+  useNavigation,
+  NavigationProp,
+  useFocusEffect,
+} from "@react-navigation/native";
 import Colors from "../constants/Colors";
 import AnimatedStack from "../components/AnimatedStack";
 import MatchModal from "./MatchModal";
@@ -28,9 +35,11 @@ import { getBlurredImageUrl } from "../networking/ImageService";
 import { usePlacement } from "expo-superwall";
 import { usePremium } from "../hooks/usePremium";
 import { SwipeLimitService } from "../networking/SwipeLimitService";
+import { RootStackParamList } from "../types/navigation";
 
 export default function HomeScreen() {
   const { userId, isAuthenticated, currentUser } = useAppContext();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] =
     useState<boolean>(false);
@@ -52,6 +61,10 @@ export default function HomeScreen() {
     maxSwipesPerDay: number;
     canSwipe: boolean;
   } | null>(null);
+  const [currentCardProfile, setCurrentCardProfile] = useState<Profile | null>(
+    null
+  );
+  const [shouldRemoveCurrentCard, setShouldRemoveCurrentCard] = useState(false);
   const stackRef = React.useRef<{
     swipeLeft: () => void;
     swipeRight: () => void;
@@ -62,6 +75,17 @@ export default function HomeScreen() {
 
   // Premium features
   const { isPremium, swipesPerDay } = usePremium();
+
+  // Remove card when returning from report screen
+  useFocusEffect(
+    React.useCallback(() => {
+      if (shouldRemoveCurrentCard && stackRef.current) {
+        // Remove the card without animation
+        stackRef.current.swipeLeft();
+        setShouldRemoveCurrentCard(false);
+      }
+    }, [shouldRemoveCurrentCard])
+  );
 
   // Initialize socket connection
   useEffect(() => {
@@ -343,23 +367,35 @@ export default function HomeScreen() {
   };
 
   const handleSwipeLeft = async (profile: Profile) => {
+    // Generate unique ID for this swipe attempt
+    const swipeId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
     // Prevent duplicate swipes while a swipe is in progress
     if (swipeInProgress || lastSwipedProfile === profile.uid) {
       return;
     }
 
-    if (!profile.uid) return;
+    if (!userId || !profile.uid) {
+      return;
+    }
 
     // Check swipe limit for left swipes too
     if (swipeLimit && !swipeLimit.canSwipe) {
       return;
     }
 
-    setSwipeInProgress(true);
-    setLastSwipedProfile(profile.uid);
+    try {
+      setSwipeInProgress(true);
+      setLastSwipedProfile(profile.uid);
 
-    // Increment swipe count for left swipes too
-    if (userId) {
+      // Step 1: Create the swipe
+      const response = await SwipeService.createSwipe(
+        userId,
+        profile.uid,
+        "left"
+      );
+
+      // Step 1.5: Increment swipe count
       try {
         const updatedLimit = await SwipeLimitService.incrementSwipeCount(
           userId
@@ -371,27 +407,66 @@ export default function HomeScreen() {
         });
       } catch (error) {
         console.error(
-          "❌ [HOMESCREEN] Error incrementing left swipe count:",
+          `❌ [HOMESCREEN] [${swipeId}] Error incrementing left swipe count:`,
           error
         );
       }
+
+      // Update current profile to the next one
+      const currentIndex = recommendations.findIndex(
+        (p) => p.uid === profile.uid
+      );
+      if (currentIndex < recommendations.length - 1) {
+        setCurrentProfile(recommendations[currentIndex + 1]);
+      } else {
+        setCurrentProfile(null);
+      }
+    } catch (error) {
+      console.error(
+        `❌ [HOMESCREEN] [${swipeId}] Error creating left swipe:`,
+        error
+      );
+    } finally {
+      // Reset swipe flags after a short delay
+      setTimeout(() => {
+        setSwipeInProgress(false);
+        setLastSwipedProfile(null);
+      }, 1000);
+    }
+  };
+
+  const handleReportCurrentProfile = () => {
+    if (!currentCardProfile || !currentCardProfile.uid) {
+      Alert.alert("Error", "No profile to report");
+      return;
     }
 
-    // Update current profile to the next one
-    const currentIndex = recommendations.findIndex(
-      (p) => p.uid === profile.uid
-    );
-    if (currentIndex < recommendations.length - 1) {
-      setCurrentProfile(recommendations[currentIndex + 1]);
-    } else {
-      setCurrentProfile(null);
-    }
+    // Set flag to remove card when returning from report
+    setShouldRemoveCurrentCard(true);
 
-    // Reset swipe flags after a short delay
-    setTimeout(() => {
-      setSwipeInProgress(false);
-      setLastSwipedProfile(null);
-    }, 1000);
+    // Navigate to report screen
+    navigation.navigate("ReportScreen", {
+      reportedUserId: currentCardProfile.uid,
+      reportedUserEmail: currentCardProfile.email,
+      reportedUserName: currentCardProfile.firstName,
+      matchId: "", // Empty since this is not from a match
+    });
+  };
+
+  const handlePremiumUpgrade = async () => {
+    try {
+      await registerPlacement({
+        placement: "settings_premium",
+        feature: () => {
+          Alert.alert(
+            "Upgrade to Premium",
+            "Get unlimited swipes and more features!"
+          );
+        },
+      });
+    } catch (error) {
+      console.error("Error showing premium paywall:", error);
+    }
   };
 
   if (loadingProfile || loadingRecommendations) {
@@ -399,76 +474,99 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <GestureHandlerRootView style={styles.container}>
-        <View style={styles.headerContainer}>
-          <Image
-            tintColor={Colors.primary500}
-            source={require("../assets/logo.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
-        <View style={styles.cardsContainer}>
-          <AnimatedStack
-            ref={stackRef}
-            data={recommendations}
-            onSwipeRight={handleSwipeRight}
-            onSwipeLeft={handleSwipeLeft}
-          />
-        </View>
-        <View style={styles.buttonsContainer}>
-          <TouchableOpacity
-            activeOpacity={1}
-            style={[
-              styles.button,
-              styles.noButton,
-              isNoPressed && { backgroundColor: Colors.red },
-            ]}
-            onPressIn={(event) => {
-              setIsNoPressed(true);
-              handleTouchStart(event);
-            }}
-            onPressOut={(event) => handleTouchEnd(event, true)}
-          >
-            <Image
-              source={require("../assets/images/shipwreck.png")}
-              style={{
-                height: 40,
-                width: 40,
-                tintColor: isNoPressed ? Colors.primary100 : Colors.red,
-              }}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            activeOpacity={1}
-            style={[
-              styles.button,
-              styles.yesButton,
-              isYesPressed && { backgroundColor: Colors.green },
-            ]}
-            onPressIn={(event) => {
-              setIsYesPressed(true);
-              handleTouchStart(event);
-            }}
-            onPressOut={(event) => handleTouchEnd(event, false)}
-          >
-            <View style={{ marginBottom: 3, marginLeft: 2 }}>
-              <FontAwesome6
-                name="sailboat"
-                size={35}
-                color={isYesPressed ? Colors.primary100 : Colors.green}
+    <View style={{ flex: 1, backgroundColor: Colors.primary100 }}>
+      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+        <GestureHandlerRootView style={styles.container}>
+          <View style={styles.headerContainer}>
+            <TouchableOpacity
+              style={styles.flagButton}
+              onPress={handleReportCurrentProfile}
+            >
+              <Ionicons
+                name="flag-outline"
+                size={24}
+                color={Colors.primary500}
               />
-            </View>
-          </TouchableOpacity>
-        </View>
-        <MatchModal
-          visible={showMatch}
-          onClose={() => setShowMatch(false)}
-          matchedProfile={matchedProfile}
-          currentProfile={userProfile}
-        />
-      </GestureHandlerRootView>
+            </TouchableOpacity>
+            <Image
+              tintColor={Colors.primary500}
+              source={require("../assets/logo.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <TouchableOpacity
+              style={styles.starButton}
+              onPress={handlePremiumUpgrade}
+            >
+              <Ionicons
+                name="star-outline"
+                size={24}
+                color={Colors.primary500}
+              />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.cardsContainer}>
+            <AnimatedStack
+              ref={stackRef}
+              data={recommendations}
+              onSwipeRight={handleSwipeRight}
+              onSwipeLeft={handleSwipeLeft}
+              onCurrentProfileChange={setCurrentCardProfile}
+            />
+          </View>
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[
+                styles.button,
+                styles.noButton,
+                isNoPressed && { backgroundColor: Colors.red },
+              ]}
+              onPressIn={(event) => {
+                setIsNoPressed(true);
+                handleTouchStart(event);
+              }}
+              onPressOut={(event) => handleTouchEnd(event, true)}
+            >
+              <Image
+                source={require("../assets/images/shipwreck.png")}
+                style={{
+                  height: 40,
+                  width: 40,
+                  tintColor: isNoPressed ? Colors.primary100 : Colors.red,
+                }}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[
+                styles.button,
+                styles.yesButton,
+                isYesPressed && { backgroundColor: Colors.green },
+              ]}
+              onPressIn={(event) => {
+                setIsYesPressed(true);
+                handleTouchStart(event);
+              }}
+              onPressOut={(event) => handleTouchEnd(event, false)}
+            >
+              <View style={{ marginBottom: 3, marginLeft: 2 }}>
+                <FontAwesome6
+                  name="sailboat"
+                  size={35}
+                  color={isYesPressed ? Colors.primary100 : Colors.green}
+                />
+              </View>
+            </TouchableOpacity>
+          </View>
+          <MatchModal
+            visible={showMatch}
+            onClose={() => setShowMatch(false)}
+            matchedProfile={matchedProfile}
+            currentProfile={userProfile}
+          />
+        </GestureHandlerRootView>
+      </SafeAreaView>
     </View>
   );
 }
@@ -476,31 +574,55 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.secondary100,
+    backgroundColor: Colors.primary100,
   },
   headerContainer: {
     width: "100%",
-    height: 120,
-    paddingTop: 70,
+    height: 80,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+  },
+  headerButton: {
+    width: 44,
+    height: 44,
     justifyContent: "center",
-    backgroundColor: Colors.primary100,
+    alignItems: "center",
+  },
+  flagButton: {
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 15,
+  },
+  starButton: {
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
   },
   logo: {
-    height: 80,
-    width: 80,
+    height: 60,
+    width: 60,
   },
   cardsContainer: {
     flex: 1,
-    backgroundColor: Colors.primary100,
     paddingHorizontal: 10,
+    paddingTop: 0,
+    paddingBottom: 0,
+    justifyContent: "center",
   },
   buttonsContainer: {
     flexDirection: "row",
     justifyContent: "space-evenly",
+    alignItems: "center",
     paddingBottom: 20,
     paddingHorizontal: 30,
-    backgroundColor: Colors.primary100,
+    paddingTop: 20,
+    minHeight: 120,
   },
   button: {
     width: 80,
