@@ -1,4 +1,5 @@
 export type RootStackParamList = {
+  HomeScreen: undefined;
   Chats: undefined;
   ChatScreen: undefined;
   ProfileScreen: {
