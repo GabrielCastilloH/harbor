@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -21,11 +21,17 @@ export default function LoadingScreen({
   progressBar,
 }: LoadingScreenProps) {
   const animatedProgress = useRef(new Animated.Value(0)).current;
+  const [percentage, setPercentage] = useState(0);
 
   useEffect(() => {
     if (progressBar) {
+      const targetProgress = Math.max(0, Math.min(1, progressBar.progress));
+      const targetPercentage = Math.round(targetProgress * 100);
+
+      setPercentage(targetPercentage);
+
       Animated.timing(animatedProgress, {
-        toValue: Math.max(0, Math.min(1, progressBar.progress)),
+        toValue: targetProgress,
         duration: 500, // Smooth animation over 500ms
         useNativeDriver: false,
       }).start();
@@ -35,11 +41,6 @@ export default function LoadingScreen({
   const progressWidth = animatedProgress.interpolate({
     inputRange: [0, 1],
     outputRange: ["0%", "100%"],
-  });
-
-  const progressPercentage = animatedProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 100],
   });
 
   return (
@@ -63,7 +64,7 @@ export default function LoadingScreen({
             />
           </View>
           <Animated.Text style={styles.progressText}>
-            {Math.round(progressPercentage)}%
+            {percentage}%
           </Animated.Text>
         </View>
       ) : (
