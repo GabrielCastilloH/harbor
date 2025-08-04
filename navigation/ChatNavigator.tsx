@@ -17,6 +17,7 @@ import {
 } from "stream-chat-expo";
 import { NavigationProp } from "@react-navigation/native";
 import ProfileScreen from "../screens/ProfileScreen";
+import ReportScreen from "../screens/ReportScreen";
 import { useAppContext } from "../context/AppContext";
 import { RootStackParamList } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -267,6 +268,13 @@ export default function ChatNavigator() {
             component={ProfileScreen}
             options={{
               headerTitle: "Profile",
+            }}
+          />
+          <Stack.Screen
+            name="ReportScreen"
+            component={ReportScreen}
+            options={{
+              headerTitle: "Report User",
             }}
           />
         </Stack.Navigator>

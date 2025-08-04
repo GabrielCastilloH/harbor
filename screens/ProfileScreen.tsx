@@ -11,6 +11,7 @@ import {
   Alert,
   Image,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import BasicInfoView from "../components/BasicInfoView";
@@ -157,33 +158,32 @@ export default function ProfileScreen() {
 
     navigation.setOptions({
       headerBackTitle: "Back",
-      headerRight: () =>
-        matchId ? (
-          <Pressable
-            onPress={() => handleUnmatch()}
-            disabled={unmatchLoading}
-            style={({ pressed }) => [
-              styles.unmatchButton,
-              pressed && styles.unmatchButtonPressed,
-              unmatchLoading && styles.unmatchButtonDisabled,
-            ]}
-          >
-            {unmatchLoading ? (
-              <View style={styles.unmatchLoadingContainer}>
-                <ActivityIndicator size="small" color={Colors.strongRed} />
-                <Text
-                  style={[styles.unmatchButtonText, styles.unmatchLoadingText]}
-                >
-                  Unmatching...
-                </Text>
-              </View>
-            ) : (
-              <Text style={styles.unmatchButtonText}>Unmatch</Text>
-            )}
-          </Pressable>
-        ) : null,
+      headerRight: () => (
+        <Pressable
+          onPress={() => handleReport()}
+          style={({ pressed }) => [
+            styles.reportButton,
+            pressed && styles.reportButtonPressed,
+          ]}
+        >
+          <Ionicons name="flag" size={20} color={Colors.strongRed} />
+        </Pressable>
+      ),
     });
-  }, [navigation, userId, currentUserId, matchId]);
+  }, [navigation, userId, currentUserId]);
+
+  const handleReport = () => {
+    if (!userId || !profile) {
+      return;
+    }
+
+    // @ts-ignore - Navigation type issue
+    navigation.navigate("ReportScreen", {
+      reportedUserId: userId,
+      reportedUserEmail: profile.email,
+      reportedUserName: profile.firstName,
+    });
+  };
 
   const handleUnmatch = async () => {
     if (!userId || !currentUserId || !matchId) {
@@ -317,6 +317,31 @@ export default function ProfileScreen() {
           <AcademicView profile={profile} />
           <PersonalView profile={profile} />
         </View>
+
+        {/* Unmatch Button at the bottom */}
+        {matchId && (
+          <View style={styles.unmatchContainer}>
+            <Pressable
+              style={[
+                styles.unmatchButtonFull,
+                unmatchLoading && styles.unmatchButtonDisabled,
+              ]}
+              onPress={handleUnmatch}
+              disabled={unmatchLoading}
+            >
+              {unmatchLoading ? (
+                <View style={styles.unmatchLoadingContainer}>
+                  <ActivityIndicator size="small" color={Colors.secondary100} />
+                  <Text style={styles.unmatchButtonTextFull}>
+                    Unmatching...
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.unmatchButtonTextFull}>Unmatch</Text>
+              )}
+            </Pressable>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -344,6 +369,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: Colors.secondary100,
   },
+  reportButton: {
+    marginRight: 15,
+    padding: 8,
+  },
+  reportButtonPressed: {
+    opacity: 0.7,
+  },
   unmatchButton: {
     marginRight: 15,
     padding: 8,
@@ -358,6 +390,24 @@ const styles = StyleSheet.create({
     color: Colors.strongRed,
     fontWeight: "bold",
     fontSize: 16,
+  },
+  unmatchContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.secondary200,
+    backgroundColor: Colors.secondary100,
+  },
+  unmatchButtonFull: {
+    backgroundColor: Colors.strongRed,
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  unmatchButtonTextFull: {
+    color: Colors.secondary100,
+    fontSize: 16,
+    fontWeight: "bold",
   },
   unmatchLoadingContainer: {
     flexDirection: "row",
