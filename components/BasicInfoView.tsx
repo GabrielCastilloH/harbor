@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import PageIndicator from "./PageIndicator";
 import { Profile } from "../types/App";
@@ -10,6 +10,19 @@ export interface ViewProps {
 }
 
 export default function BasicInfoView({ profile }: ViewProps) {
+  const getGenderIcon = (gender: string) => {
+    switch (gender.toLowerCase()) {
+      case "male":
+        return "gender-male";
+      case "female":
+        return "gender-female";
+      case "non-binary":
+        return "gender-non-binary";
+      default:
+        return "gender-male-female";
+    }
+  };
+
   return (
     <View style={styles.contentContainer}>
       <View style={styles.content}>
@@ -18,11 +31,21 @@ export default function BasicInfoView({ profile }: ViewProps) {
             <View style={styles.nameAgeContainer}>
               <Text style={styles.nameText}>{profile.firstName}</Text>
               <Text style={styles.ageText}>{profile.age}</Text>
+              <View style={styles.genderIconContainer}>
+                {profile.gender && (
+                  <MaterialCommunityIcons
+                    name={getGenderIcon(profile.gender) as any}
+                    size={36}
+                    color={Colors.primary500}
+                    style={styles.genderIcon}
+                  />
+                )}
+              </View>
             </View>
           </View>
           <View style={styles.infoContainer}>
             <View style={styles.infoItem}>
-              <Ionicons name="school" size={20} color={Colors.primary500} />
+              <Ionicons name="school" size={16} color={Colors.primary500} />
               <Text
                 style={styles.infoText}
                 numberOfLines={1}
@@ -32,10 +55,10 @@ export default function BasicInfoView({ profile }: ViewProps) {
               </Text>
             </View>
             <View style={styles.divider} />
-            <View style={styles.infoItem}>
-              <Ionicons name="book" size={20} color={Colors.primary500} />
+            <View style={styles.majorInfoItem}>
+              <Ionicons name="book" size={16} color={Colors.primary500} />
               <Text
-                style={styles.infoText}
+                style={styles.majorInfoText}
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
@@ -98,6 +121,13 @@ const styles = StyleSheet.create({
     color: Colors.black,
     opacity: 0.8,
   },
+  genderIcon: {
+    marginRight: 5,
+  },
+  genderIconContainer: {
+    marginLeft: "auto", // Push the icon to the right
+    padding: 2,
+  },
   infoContainer: {
     gap: 10,
     height: 50,
@@ -110,13 +140,28 @@ const styles = StyleSheet.create({
   },
   infoItem: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
+    flexShrink: 0, // Don't shrink the year level item
   },
   infoText: {
     fontSize: 16,
     fontWeight: "500",
     color: Colors.primary500,
-    marginLeft: 4,
+    marginLeft: 8,
+  },
+  majorInfoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1, // Take remaining space
+    minWidth: 0, // Allow shrinking
+  },
+  majorInfoText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: Colors.primary500,
+    marginLeft: 8,
+    flex: 1,
+    minWidth: 0, // Allow text to shrink and truncate
   },
   divider: {
     width: 1,

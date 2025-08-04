@@ -93,6 +93,8 @@ interface CreateUserData {
   yearLevel?: string;
   age?: number;
   major?: string;
+  gender?: string;
+  sexualOrientation?: string;
   images?: string[];
   aboutMe?: string;
   q1?: string;
@@ -109,6 +111,8 @@ interface UpdateUserData {
   yearLevel?: string;
   age?: number;
   major?: string;
+  gender?: string;
+  sexualOrientation?: string;
   images?: string[];
   aboutMe?: string;
   q1?: string;
@@ -120,7 +124,7 @@ interface UpdateUserData {
 }
 
 /**
- * Creates a new user profile
+ * Creates a new user profile with atomic operations
  */
 export const createUser = functions.https.onCall(
   {
@@ -137,123 +141,224 @@ export const createUser = functions.https.onCall(
   async (request: functions.https.CallableRequest<CreateUserData>) => {
     try {
       if (!request.auth) {
-        // await logToNtfy("createUser - User not authenticated");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
         );
       }
 
-      const firebaseUid = request.auth.uid;
       const userData = request.data;
+      const firebaseUid = request.auth.uid;
 
-      // await logToNtfy(
-      //   `createUser - Received request with firebaseUid: ${firebaseUid}`
-      // );
-      // await logToNtfy(
-      //   `createUser - Received request with userData: ${JSON.stringify(userData)}`
-      // );
+      // Backend validation - enforce all client-side rules
+      const validationErrors: string[] = [];
 
-      if (!userData || !userData.firstName || !userData.email) {
+      // Validate required fields
+      if (!userData.firstName?.trim()) {
+        validationErrors.push("First name is required");
+      } else if (userData.firstName.trim().length < 2) {
+        validationErrors.push("First name must be at least 2 characters");
+      } else if (userData.firstName.trim().length > 50) {
+        validationErrors.push("First name must be 50 characters or less");
+      }
+
+      if (!userData.age || userData.age < 18) {
+        validationErrors.push("Age must be 18 or older");
+      }
+
+      if (!userData.gender?.trim()) {
+        validationErrors.push("Gender selection is required");
+      } else {
+        const validGenders = ["Male", "Female", "Non-Binary"];
+        if (!validGenders.includes(userData.gender)) {
+          validationErrors.push("Invalid gender selection");
+        }
+      }
+
+      if (!userData.sexualOrientation?.trim()) {
+        validationErrors.push("Sexual orientation selection is required");
+      } else {
+        const validOrientations = ["Straight", "Homosexual", "Bisexual"];
+        if (!validOrientations.includes(userData.sexualOrientation)) {
+          validationErrors.push("Invalid sexual orientation selection");
+        }
+      }
+
+      if (!userData.yearLevel?.trim()) {
+        validationErrors.push("Year level selection is required");
+      } else {
+        const validYearLevels = ["Freshman", "Sophomore", "Junior", "Senior"];
+        if (!validYearLevels.includes(userData.yearLevel)) {
+          validationErrors.push("Invalid year level selection");
+        }
+      }
+
+      if (!userData.major?.trim()) {
+        validationErrors.push("Major selection is required");
+      }
+
+      // Validate images
+      if (!userData.images || userData.images.length < 3) {
+        validationErrors.push("At least 3 images are required");
+      } else if (userData.images.length > 6) {
+        validationErrors.push("Maximum 6 images allowed");
+      }
+
+      // Validate text fields with character limits
+      const textFieldValidations = [
+        { field: "aboutMe", maxLength: 300, minLength: 5, name: "about me" },
+        {
+          field: "q1",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'This year, I really want to'",
+        },
+        {
+          field: "q2",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'Together we could'",
+        },
+        {
+          field: "q3",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'Favorite book, movie or song'",
+        },
+        {
+          field: "q4",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'I chose my major because'",
+        },
+        {
+          field: "q5",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'My favorite study spot is'",
+        },
+        {
+          field: "q6",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'Some of my hobbies are'",
+        },
+      ];
+
+      textFieldValidations.forEach(({ field, maxLength, minLength, name }) => {
+        const value = (userData as any)[field]?.toString().trim() || "";
+
+        if (value === "") {
+          validationErrors.push(`Please fill in your ${name}`);
+        } else if (value.length < minLength) {
+          validationErrors.push(
+            `Your ${name} must be at least ${minLength} characters long`
+          );
+        } else if (value.length > maxLength) {
+          validationErrors.push(
+            `Your ${name} must be ${maxLength} characters or less`
+          );
+        }
+      });
+
+      // If validation fails, return error
+      if (validationErrors.length > 0) {
         throw new functions.https.HttpsError(
           "invalid-argument",
-          "firstName and email are required"
+          `Validation failed: ${validationErrors.join("; ")}`
         );
       }
 
-      // Check if user already exists
-      const existingUser = await db.collection("users").doc(firebaseUid).get();
-      if (existingUser.exists) {
-        // User exists, update the document with the new data
+      // Use transaction for atomic operations
+      const result = await db.runTransaction(async (transaction) => {
+        // Check if user already exists
+        const existingUser = await transaction.get(
+          db.collection("users").doc(firebaseUid)
+        );
 
-        const existingData = existingUser.data();
+        if (existingUser.exists) {
+          // User exists, update the document with the new data
+          const existingData = existingUser.data();
+          const updatedUserDoc = {
+            firstName: userData.firstName,
+            email: userData.email,
+            age: userData.age,
+            yearLevel: userData.yearLevel,
+            major: userData.major,
+            gender: userData.gender || existingData?.gender || "",
+            sexualOrientation:
+              userData.sexualOrientation ||
+              existingData?.sexualOrientation ||
+              "",
+            images: existingData?.images || userData.images || [],
+            aboutMe: userData.aboutMe || existingData?.aboutMe || "",
+            q1: userData.q1 || existingData?.q1 || "",
+            q2: userData.q2 || existingData?.q2 || "",
+            q3: userData.q3 || existingData?.q3 || "",
+            q4: userData.q4 || existingData?.q4 || "",
+            q5: userData.q5 || existingData?.q5 || "",
+            q6: userData.q6 || existingData?.q6 || "",
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          };
 
-        // Merge existing data with new data, preserving existing images
-        const updatedUserDoc = {
-          uid: firebaseUid,
-          firstName: userData.firstName,
-          yearLevel: userData.yearLevel || existingData?.yearLevel || "",
-          age: userData.age || existingData?.age || 0,
-          major: userData.major || existingData?.major || "",
-          images: existingData?.images || userData.images || [], // Preserve existing images
-          aboutMe: userData.aboutMe || existingData?.aboutMe || "",
-          q1: userData.q1 || existingData?.q1 || "",
-          q2: userData.q2 || existingData?.q2 || "",
-          q3: userData.q3 || existingData?.q3 || "",
-          q4: userData.q4 || existingData?.q4 || "",
-          q5: userData.q5 || existingData?.q5 || "",
-          q6: userData.q6 || existingData?.q6 || "",
-          email: userData.email,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        };
+          transaction.update(
+            db.collection("users").doc(firebaseUid),
+            updatedUserDoc
+          );
+          return { message: "User updated successfully", user: updatedUserDoc };
+        } else {
+          // User doesn't exist, create new document
+          const newUserDoc = {
+            firstName: userData.firstName,
+            email: userData.email,
+            age: userData.age,
+            yearLevel: userData.yearLevel,
+            major: userData.major,
+            gender: userData.gender,
+            sexualOrientation: userData.sexualOrientation,
+            images: userData.images || [],
+            aboutMe: userData.aboutMe || "",
+            q1: userData.q1 || "",
+            q2: userData.q2 || "",
+            q3: userData.q3 || "",
+            q4: userData.q4 || "",
+            q5: userData.q5 || "",
+            q6: userData.q6 || "",
+            currentMatches: [],
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          };
 
-        await db.collection("users").doc(firebaseUid).update(updatedUserDoc);
+          transaction.set(db.collection("users").doc(firebaseUid), newUserDoc);
+          return { message: "User created successfully", user: newUserDoc };
+        }
+      });
 
-        // Create Stream Chat user if not already created
+      // Create Stream Chat user after successful Firestore transaction
+      try {
         await createStreamUser(firebaseUid, userData.firstName);
-
-        return {
-          message: "User updated successfully",
-          user: updatedUserDoc,
-        };
+      } catch (streamError) {
+        console.error("Failed to create Stream Chat user:", streamError);
+        // Don't fail the entire operation if Stream Chat fails
       }
 
-      // Create user document in Firestore
-      const userDoc = {
-        uid: firebaseUid,
-        firstName: userData.firstName,
-        yearLevel: userData.yearLevel || "",
-        age: userData.age || 0,
-        major: userData.major || "",
-        images: userData.images || [], // This will include any images uploaded during setup
-        aboutMe: userData.aboutMe || "",
-        q1: userData.q1 || "",
-        q2: userData.q2 || "",
-        q3: userData.q3 || "",
-        q4: userData.q4 || "",
-        q5: userData.q5 || "",
-        q6: userData.q6 || "",
-        email: userData.email,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      };
-
-      // await logToNtfy(
-      //   `createUser - About to save user to Firestore with data: ${JSON.stringify(userDoc)}`
-      // );
-      // await logToNtfy("createUser - Saving user to Firestore:", firebaseUid);
-
-      await db.collection("users").doc(firebaseUid).set(userDoc);
-
-      // await logToNtfy(
-      //   `createUser - User saved to Firestore successfully: ${firebaseUid}`
-      // );
-      // await logToNtfy(
-      //   `createUser - About to create Stream Chat user for: ${firebaseUid}`
-      // );
-
-      // Create Stream Chat user
-      // await logToNtfy("createUser - CALLING createStreamUser NOW");
-      await createStreamUser(firebaseUid, userData.firstName);
-      // await logToNtfy("createUser - createStreamUser CALL COMPLETED");
-
-      // await logToNtfy(
-      //   `createUser - Stream Chat user created successfully: ${firebaseUid}`
-      // );
-      // await logToNtfy(
-      //   `createUser - User creation completed successfully: ${firebaseUid}`
-      // );
-
-      return {
-        message: "User created successfully",
-        user: userDoc,
-      };
+      return result;
     } catch (error: any) {
-      console.error("Error creating user:", error);
+      console.error("Error in createUser:", error);
+      await logToNtfy(
+        `USER CREATION ERROR: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-      throw new functions.https.HttpsError("internal", "Failed to create user");
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to create user profile"
+      );
     }
   }
 );
@@ -285,6 +390,7 @@ export const getAllUsers = functions.https.onCall(
       const usersSnapshot = await db.collection("users").get();
       const users = usersSnapshot.docs.map((doc) => {
         const userData = doc.data();
+
         // Remove images from each user for security
         const { images, ...userDataWithoutImages } = userData;
         return {
@@ -357,7 +463,6 @@ export const getUserById = functions.https.onCall(
       // Remove images from the response for security - images should only be fetched via getImages
       if (userData) {
         const { images, ...userDataWithoutImages } = userData;
-
         return { user: userDataWithoutImages };
       }
 
@@ -406,6 +511,137 @@ export const updateUser = functions.https.onCall(
         throw new functions.https.HttpsError(
           "invalid-argument",
           "User ID and user data are required"
+        );
+      }
+
+      // Backend validation for updates
+      const validationErrors: string[] = [];
+
+      // Validate first name if provided
+      if (userData.firstName !== undefined) {
+        if (!userData.firstName?.trim()) {
+          validationErrors.push("First name is required");
+        } else if (userData.firstName.trim().length < 2) {
+          validationErrors.push("First name must be at least 2 characters");
+        } else if (userData.firstName.trim().length > 50) {
+          validationErrors.push("First name must be 50 characters or less");
+        }
+      }
+
+      // Validate age if provided
+      if (userData.age !== undefined && userData.age < 18) {
+        validationErrors.push("Age must be 18 or older");
+      }
+
+      // Validate gender if provided
+      if (userData.gender !== undefined) {
+        if (!userData.gender?.trim()) {
+          validationErrors.push("Gender selection is required");
+        } else {
+          const validGenders = ["Male", "Female", "Non-Binary"];
+          if (!validGenders.includes(userData.gender)) {
+            validationErrors.push("Invalid gender selection");
+          }
+        }
+      }
+
+      // Validate sexual orientation if provided
+      if (userData.sexualOrientation !== undefined) {
+        if (!userData.sexualOrientation?.trim()) {
+          validationErrors.push("Sexual orientation selection is required");
+        } else {
+          const validOrientations = ["Straight", "Homosexual", "Bisexual"];
+          if (!validOrientations.includes(userData.sexualOrientation)) {
+            validationErrors.push("Invalid sexual orientation selection");
+          }
+        }
+      }
+
+      // Validate year level if provided
+      if (userData.yearLevel !== undefined) {
+        if (!userData.yearLevel?.trim()) {
+          validationErrors.push("Year level selection is required");
+        } else {
+          const validYearLevels = ["Freshman", "Sophomore", "Junior", "Senior"];
+          if (!validYearLevels.includes(userData.yearLevel)) {
+            validationErrors.push("Invalid year level selection");
+          }
+        }
+      }
+
+      // Validate images if provided
+      if (userData.images !== undefined) {
+        if (userData.images.length < 3) {
+          validationErrors.push("At least 3 images are required");
+        } else if (userData.images.length > 6) {
+          validationErrors.push("Maximum 6 images allowed");
+        }
+      }
+
+      // Validate text fields if provided
+      const textFieldValidations = [
+        { field: "aboutMe", maxLength: 300, minLength: 5, name: "about me" },
+        {
+          field: "q1",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'This year, I really want to'",
+        },
+        {
+          field: "q2",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'Together we could'",
+        },
+        {
+          field: "q3",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'Favorite book, movie or song'",
+        },
+        {
+          field: "q4",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'I chose my major because'",
+        },
+        {
+          field: "q5",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'My favorite study spot is'",
+        },
+        {
+          field: "q6",
+          maxLength: 150,
+          minLength: 5,
+          name: "answer to 'Some of my hobbies are'",
+        },
+      ];
+
+      textFieldValidations.forEach(({ field, maxLength, minLength, name }) => {
+        if ((userData as any)[field] !== undefined) {
+          const value = (userData as any)[field]?.toString().trim() || "";
+
+          if (value === "") {
+            validationErrors.push(`Please fill in your ${name}`);
+          } else if (value.length < minLength) {
+            validationErrors.push(
+              `Your ${name} must be at least ${minLength} characters long`
+            );
+          } else if (value.length > maxLength) {
+            validationErrors.push(
+              `Your ${name} must be ${maxLength} characters or less`
+            );
+          }
+        }
+      });
+
+      // If validation fails, return error
+      if (validationErrors.length > 0) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          `Validation failed: ${validationErrors.join("; ")}`
         );
       }
 

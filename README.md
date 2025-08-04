@@ -1,6 +1,49 @@
 # 🌊 Harbor
 
 A unique dating app that focuses on meaningful connections through progressive photo reveal and limited daily interactions.
+TODO: Add push notifications to the app (and make the you've matched system notification silent) Make blurry photo lower quality on backend to make it harder to makeout face.
+
+## 📋 Validation Rules
+
+### Profile Validation Requirements
+
+#### Images
+
+- **Minimum**: 3 images required
+- **Maximum**: 6 images allowed
+- **Format**: JPEG only
+- **Size**: Auto-resized to 800x800 max, quality 80%
+
+#### Required Fields
+
+All fields must be completed before profile creation:
+
+- **First Name**: 2-50 characters
+- **Age**: 18+ years old
+- **Gender**: Must select from dropdown (Male, Female, Non-Binary)
+- **Sexual Orientation**: Must select from dropdown (Straight, Homosexual, Bisexual)
+- **Year Level**: Must select from dropdown (Freshman, Sophomore, Junior, Senior)
+- **Major**: Must select from dropdown (85+ options)
+
+#### Text Field Limits
+
+| Field                              | Min Length | Max Length | Description                    |
+| ---------------------------------- | ---------- | ---------- | ------------------------------ |
+| First Name                         | 2          | 50         | First name or initial/nickname |
+| About Me                           | 5          | 300        | Personal description           |
+| Q1: "This year, I really want to"  | 5          | 150        | Personal goal                  |
+| Q2: "Together we could"            | 5          | 150        | Shared activity                |
+| Q3: "Favorite book, movie or song" | 5          | 150        | Cultural preference            |
+| Q4: "I chose my major because"     | 5          | 150        | Academic motivation            |
+| Q5: "My favorite study spot is"    | 5          | 150        | Study preference               |
+| Q6: "Some of my hobbies are"       | 5          | 150        | Personal interests             |
+
+#### Backend Enforcement
+
+- **Client-side validation**: Immediate feedback for user experience
+- **Backend validation**: Server-side enforcement to prevent bypass
+- **ACID compliance**: All validations enforced in transactions
+- **Error handling**: Graceful failure with clear error messages
 
 ## 🚀 Getting Started
 
@@ -59,25 +102,6 @@ A unique dating app that focuses on meaningful connections through progressive p
    ```bash
    npx expo run:ios
    ```
-
-## 🛠 Development Status
-
-### Completed Features ✅
-
-- StreamChat Integration
-  - User creation and token generation
-  - Backend route for user token fetching
-- Match-based chat creation
-- Fixed signup bug.
-- Actually add user info to the top right corner of chats.
-- Add pre-filled data in user settings and add name of the other person individual chats.
-- Make sure you get the matched! screen when matching
-- Only able to talk to one person at a time.
-- Add photo blurring preview screen.
-- Setup progressive photo unblurring
-- Implement authentication route protection
-- Force users to use a square picture in the image picker.
-- Make the images higher quality.
 
 ## 🎭 Progressive Photo Reveal System
 
@@ -144,43 +168,3 @@ export function getClientBlurLevel({
   }
 }
 ```
-
-### Security Rules
-
-#### Firebase Function (`getImages`) Rules:
-
-- **ALWAYS return blurred URLs when blur level >= 80** - This is a constant that never changes
-- For string URLs: Convert `original.jpg` to `original-blurred.jpg` when blur level >= 80
-- For object URLs: Use `blurredUrl` property when blur level >= 80
-- **Never return unblurred URLs when blur level >= 80, regardless of consent**
-
-#### Expo BlurView Rules:
-
-- **Blur intensity = blurLevel (capped at 80)** - If blur level is 100, Expo should blur as much as possible
-- **Blur level 100 = Maximum Expo blur** - This is not rocket science, 100% blur means maximum blur
-- **Blur level 80+ = Always use blurred URLs + Expo blur** - Double protection
-- **Blur level < 80 = Use consent logic** - Only show unblurred if both users consented
-
-### Security Flow:
-
-1. Firebase function determines blur level based on match data
-2. If blur level >= 80: Return blurred URLs (server-side protection)
-3. Expo applies additional blur based on blur level (client-side protection)
-4. If blur level < 80: Use consent logic to determine URL type
-5. **NEVER expose unblurred images without proper consent**
-
-### In Progress 🚧
-
-- [ ] Integrate Stripe for payment processing
-- [ ] Premium features through Stripe integration
-- [ ] Change number to only allow three swipes per day.
-- [ ] Uncomment code to make sure onlly @cornell.edu allowed.
-- [ ] Fix the weird swiping delay on home screen. (if possible lol)
-
-## 🔜 Future Enhancements (not MVP)
-
-- Enhanced matching algorithms
-- Additional privacy features
-- Profile customization options
-
-Built with ❤️ using React Native, Expo, and Firebase
