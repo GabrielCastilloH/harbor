@@ -157,11 +157,7 @@ export default function SettingsScreen() {
             style={[styles.button, isPremium && styles.premiumActiveButton]}
             onPress={handlePremiumUpgrade}
           >
-            <Ionicons
-              name={isPremium ? "star" : "star-outline"}
-              size={20}
-              color={isPremium ? Colors.primary500 : Colors.primary500}
-            />
+            <Ionicons name="star" size={20} color={Colors.primary500} />
             <Text
               style={[styles.buttonText, isPremium && styles.premiumActiveText]}
             >

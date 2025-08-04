@@ -228,12 +228,6 @@ export default function App() {
     throw new Error(`Superwall initialization failed: ${superwallError}`);
   }
 
-  // Show loading while fetching API keys
-  if (isLoadingSuperwall) {
-    console.log("🔍 [APP] Showing Superwall loading screen");
-    return <LoadingScreen loadingText="Loading Superwall..." />;
-  }
-
   // Ensure we have API keys before proceeding
   if (!superwallApiKeys || !superwallApiKeys.ios || !superwallApiKeys.android) {
     const error = "Superwall API keys are missing or invalid";
@@ -246,9 +240,6 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <SuperwallProvider apiKeys={superwallApiKeys}>
-        <SuperwallLoading>
-          <LoadingScreen loadingText="Loading Superwall..." />
-        </SuperwallLoading>
         <SuperwallLoaded>
           <AppProvider>
             <AppContent />
