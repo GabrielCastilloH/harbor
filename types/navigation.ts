@@ -3,6 +3,6 @@ export type RootStackParamList = {
   ChatScreen: undefined;
   ProfileScreen: {
     userId: string;
-    matchId: string;
+    matchId?: string | null;
   };
 };

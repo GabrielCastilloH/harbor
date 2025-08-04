@@ -13,6 +13,9 @@ import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { signOut } from "firebase/auth";
+import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 
@@ -33,12 +36,25 @@ export default function SettingsScreen() {
         text: "Sign Out",
         onPress: async () => {
           try {
-            await AsyncStorage.removeItem("@user");
-            await AsyncStorage.removeItem("@authToken");
+            // Sign out from Google Sign-In
+            await GoogleSignin.signOut();
+
+            // Sign out from Firebase Auth
+            await signOut(auth);
+
+            // Clear AsyncStorage
+            await AsyncStorage.multiRemove([
+              "@user",
+              "@authToken",
+              "@streamApiKey",
+              "@streamUserToken",
+            ]);
+
+            // Clear app context state
             setIsAuthenticated(false);
-            setUserId("");
+            setUserId(null); // Use null instead of empty string
           } catch (error) {
-            console.error("Error signing out:", error);
+            console.error("❌ [SETTINGS] Error signing out:", error);
           }
         },
       },

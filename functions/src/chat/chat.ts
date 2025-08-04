@@ -363,20 +363,38 @@ export const createChatChannel = functions.https.onCall(
           );
           console.log(`🔧 [CHAT] Channel data after update:`, channel.data);
 
-          // Send system message for new matches
-          try {
-            await channel.sendMessage({
-              text: "You've matched! Start chatting now.",
-              user_id: "system",
-            });
+          // Check if intro message was already sent by checking the match document
+          const matchDoc = await db.collection("matches").doc(matchId).get();
+          const matchData = matchDoc.data();
+          const hasIntroMessage = matchData?.introMessageSent === true;
+
+          // Send system message for new matches only if it hasn't been sent before
+          if (!hasIntroMessage) {
+            try {
+              await channel.sendMessage({
+                text: "You've matched! Start chatting now.",
+                user_id: "system",
+              });
+
+              // Mark that intro message has been sent in the match document
+              await db.collection("matches").doc(matchId).update({
+                introMessageSent: true,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+
+              console.log(
+                `✅ [CHAT] System message sent for new match: ${matchId}`
+              );
+            } catch (messageErr) {
+              console.error(
+                `❌ [CHAT] Failed to send system message: ${messageErr}`
+              );
+              // Don't fail the channel creation if system message fails
+            }
+          } else {
             console.log(
-              `✅ [CHAT] System message sent for new match: ${matchId}`
+              `🔄 [CHAT] Intro message already sent, skipping duplicate`
             );
-          } catch (messageErr) {
-            console.error(
-              `❌ [CHAT] Failed to send system message: ${messageErr}`
-            );
-            // Don't fail the channel creation if system message fails
           }
         } catch (updateErr) {
           console.error(
