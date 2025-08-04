@@ -34,14 +34,12 @@ export default function SettingsScreen() {
       Alert.alert("Error", "Failed to load premium options. Please try again.");
     },
     onPresent: (info) => {
-      console.log("Premium Paywall Presented:", info);
+      // Premium paywall presented
     },
     onDismiss: (info, result) => {
-      console.log("Premium Paywall Dismissed:", info, "Result:", result);
       // Handle dismissal - user can continue using the app
     },
     onSkip: (reason) => {
-      console.log("Premium Paywall Skipped:", reason);
       // User was allowed through without paywall (e.g., already subscribed)
     },
   });
