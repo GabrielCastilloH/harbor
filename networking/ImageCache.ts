@@ -56,10 +56,6 @@ export class ImageCache {
         await this.removeCachedImage(userId, type);
         return null;
       }
-
-      console.log(
-        `📦 [ImageCache] Retrieved cached ${type} image for user ${userId}`
-      );
       return cachedImage.url;
     } catch (error) {
       console.error(
