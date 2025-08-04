@@ -8,7 +8,7 @@ export type Profile = {
   age: number;
   major: string;
   gender: string; // "Male", "Female", or "Non-Binary"
-  sexualOrientation: string; // "Straight", "Homosexual", or "Bisexual"
+  sexualOrientation: string; // "Heterosexual", "Homosexual", "Bisexual", or "Pansexual"
   images: string[];
   aboutMe: string;
   q1: string; // "This year, I really want to:"
