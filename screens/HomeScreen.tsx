@@ -438,7 +438,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
       <GestureHandlerRootView style={styles.container}>
         <View style={styles.headerContainer}>
           <TouchableOpacity
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.primary100,
     paddingHorizontal: 10,
-    paddingTop: 10,
+    paddingTop: 0,
   },
   buttonsContainer: {
     flexDirection: "row",
