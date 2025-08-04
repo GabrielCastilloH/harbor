@@ -52,7 +52,15 @@ export default function SettingsScreen() {
         placement: "settings_premium", // This should match your Superwall dashboard placement
         feature: () => {
           // This runs if no paywall is shown (user already has access)
-          Alert.alert("Premium", "You already have premium access!");
+          // Check if user actually has premium or if it's due to no products
+          if (subscriptionStatus?.status === "ACTIVE") {
+            Alert.alert("Premium", "You already have premium access!");
+          } else {
+            Alert.alert(
+              "Premium",
+              "Premium features are not yet available. Please check back later!"
+            );
+          }
         },
       });
     } catch (error) {
@@ -287,7 +295,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   premiumActiveButton: {
-    backgroundColor: Colors.primary200,
+    backgroundColor: Colors.secondary200,
     borderColor: Colors.primary500,
     borderWidth: 1,
   },
