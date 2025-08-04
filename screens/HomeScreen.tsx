@@ -438,97 +438,107 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-      <GestureHandlerRootView style={styles.container}>
-        <View style={styles.headerContainer}>
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={handleReportCurrentProfile}
-          >
-            <Ionicons name="flag-outline" size={24} color={Colors.primary500} />
-          </TouchableOpacity>
-          <Image
-            tintColor={Colors.primary500}
-            source={require("../assets/logo.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={handlePremiumUpgrade}
-          >
-            <Ionicons name="star-outline" size={24} color={Colors.primary500} />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.cardsContainer}>
-          <AnimatedStack
-            ref={stackRef}
-            data={recommendations}
-            onSwipeRight={handleSwipeRight}
-            onSwipeLeft={handleSwipeLeft}
-            onCurrentProfileChange={setCurrentCardProfile}
-          />
-        </View>
-        <View style={styles.buttonsContainer}>
-          <TouchableOpacity
-            activeOpacity={1}
-            style={[
-              styles.button,
-              styles.noButton,
-              isNoPressed && { backgroundColor: Colors.red },
-            ]}
-            onPressIn={(event) => {
-              setIsNoPressed(true);
-              handleTouchStart(event);
-            }}
-            onPressOut={(event) => handleTouchEnd(event, true)}
-          >
-            <Image
-              source={require("../assets/images/shipwreck.png")}
-              style={{
-                height: 40,
-                width: 40,
-                tintColor: isNoPressed ? Colors.primary100 : Colors.red,
-              }}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            activeOpacity={1}
-            style={[
-              styles.button,
-              styles.yesButton,
-              isYesPressed && { backgroundColor: Colors.green },
-            ]}
-            onPressIn={(event) => {
-              setIsYesPressed(true);
-              handleTouchStart(event);
-            }}
-            onPressOut={(event) => handleTouchEnd(event, false)}
-          >
-            <View style={{ marginBottom: 3, marginLeft: 2 }}>
-              <FontAwesome6
-                name="sailboat"
-                size={35}
-                color={isYesPressed ? Colors.primary100 : Colors.green}
+    <View style={{ flex: 1, backgroundColor: Colors.primary100 }}>
+      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+        <GestureHandlerRootView style={styles.container}>
+          <View style={styles.headerContainer}>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={handleReportCurrentProfile}
+            >
+              <Ionicons
+                name="flag-outline"
+                size={24}
+                color={Colors.primary500}
               />
-            </View>
-          </TouchableOpacity>
-        </View>
-        <MatchModal
-          visible={showMatch}
-          onClose={() => setShowMatch(false)}
-          matchedProfile={matchedProfile}
-          currentProfile={userProfile}
-        />
-      </GestureHandlerRootView>
-    </SafeAreaView>
+            </TouchableOpacity>
+            <Image
+              tintColor={Colors.primary500}
+              source={require("../assets/logo.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={handlePremiumUpgrade}
+            >
+              <Ionicons
+                name="star-outline"
+                size={24}
+                color={Colors.primary500}
+              />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.cardsContainer}>
+            <AnimatedStack
+              ref={stackRef}
+              data={recommendations}
+              onSwipeRight={handleSwipeRight}
+              onSwipeLeft={handleSwipeLeft}
+              onCurrentProfileChange={setCurrentCardProfile}
+            />
+          </View>
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[
+                styles.button,
+                styles.noButton,
+                isNoPressed && { backgroundColor: Colors.red },
+              ]}
+              onPressIn={(event) => {
+                setIsNoPressed(true);
+                handleTouchStart(event);
+              }}
+              onPressOut={(event) => handleTouchEnd(event, true)}
+            >
+              <Image
+                source={require("../assets/images/shipwreck.png")}
+                style={{
+                  height: 40,
+                  width: 40,
+                  tintColor: isNoPressed ? Colors.primary100 : Colors.red,
+                }}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[
+                styles.button,
+                styles.yesButton,
+                isYesPressed && { backgroundColor: Colors.green },
+              ]}
+              onPressIn={(event) => {
+                setIsYesPressed(true);
+                handleTouchStart(event);
+              }}
+              onPressOut={(event) => handleTouchEnd(event, false)}
+            >
+              <View style={{ marginBottom: 3, marginLeft: 2 }}>
+                <FontAwesome6
+                  name="sailboat"
+                  size={35}
+                  color={isYesPressed ? Colors.primary100 : Colors.green}
+                />
+              </View>
+            </TouchableOpacity>
+          </View>
+          <MatchModal
+            visible={showMatch}
+            onClose={() => setShowMatch(false)}
+            matchedProfile={matchedProfile}
+            currentProfile={userProfile}
+          />
+        </GestureHandlerRootView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.secondary100,
+    backgroundColor: Colors.primary100,
   },
   headerContainer: {
     width: "100%",
@@ -537,7 +547,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    backgroundColor: Colors.primary100,
   },
   headerButton: {
     width: 44,
@@ -551,16 +560,19 @@ const styles = StyleSheet.create({
   },
   cardsContainer: {
     flex: 1,
-    backgroundColor: Colors.primary100,
     paddingHorizontal: 10,
     paddingTop: 0,
+    paddingBottom: 0,
+    justifyContent: "center",
   },
   buttonsContainer: {
     flexDirection: "row",
     justifyContent: "space-evenly",
+    alignItems: "center",
     paddingBottom: 20,
     paddingHorizontal: 30,
-    backgroundColor: Colors.primary100,
+    paddingTop: 20,
+    minHeight: 120,
   },
   button: {
     width: 80,
