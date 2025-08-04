@@ -6,7 +6,7 @@ import SignIn from "./screens/SignIn";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import AccountSetupScreen from "./screens/AccountSetupScreen";
-import PaywallScreen from "./screens/PaywallScreen";
+
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
@@ -122,13 +122,16 @@ function AppContent() {
     // Check if user should see paywall (first-time users)
     if (!hasSeenPaywall) {
       console.log(
-        "🔍 [APP CONTENT] User hasn't seen paywall, showing PaywallScreen"
+        "🔍 [APP CONTENT] User hasn't seen paywall, showing Superwall paywall"
       );
+      // For new users, show the main app but Superwall will handle the paywall presentation
+      // The paywall will be shown automatically by Superwall for new users
       return (
         <GestureHandlerRootView style={{ flex: 1 }}>
           <NavigationContainer>
             <StatusBar style="dark" />
-            <PaywallScreen />
+            <TabNavigator />
+            <UnviewedMatchesHandler />
           </NavigationContainer>
         </GestureHandlerRootView>
       );
