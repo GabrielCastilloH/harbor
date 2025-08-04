@@ -191,6 +191,16 @@ export const createReportAndUnmatch = functions.https.onCall(
 
       const reporterId = request.auth.uid;
 
+      console.log("🔍 Received data:", {
+        reportedUserId,
+        reportedUserEmail,
+        reportedUserName,
+        reason,
+        explanation,
+        matchId,
+        reporterId,
+      });
+
       if (!reportedUserId || !reason || !explanation || !matchId) {
         throw new functions.https.HttpsError(
           "invalid-argument",
@@ -223,24 +233,7 @@ export const createReportAndUnmatch = functions.https.onCall(
 
       // Perform both operations in a single transaction
       const result = await db.runTransaction(async (transaction) => {
-        // 1. Create the report
-        const reportData = {
-          reporterId,
-          reporterEmail,
-          reportedUserId,
-          reportedUserEmail: finalReportedUserEmail,
-          reportedUserName,
-          reason,
-          explanation,
-          status: "pending",
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        };
-
-        const reportRef = db.collection("reports").doc();
-        transaction.set(reportRef, reportData);
-
-        // 2. Get the match document
+        // 1. Get the match document FIRST (read before any writes)
         const matchDoc = await transaction.get(
           db.collection("matches").doc(matchId)
         );
@@ -267,13 +260,30 @@ export const createReportAndUnmatch = functions.https.onCall(
           );
         }
 
-        // 3. Deactivate the match
+        // 2. Create the report (write)
+        const reportData = {
+          reporterId,
+          reporterEmail,
+          reportedUserId,
+          reportedUserEmail: finalReportedUserEmail,
+          reportedUserName,
+          reason,
+          explanation,
+          status: "pending",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        const reportRef = db.collection("reports").doc();
+        transaction.set(reportRef, reportData);
+
+        // 3. Deactivate the match (write)
         transaction.update(db.collection("matches").doc(matchId), {
           isActive: false,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        // 4. Remove match from both users' currentMatches arrays
+        // 4. Remove match from both users' currentMatches arrays (writes)
         transaction.update(db.collection("users").doc(matchData.user1Id), {
           currentMatches: admin.firestore.FieldValue.arrayRemove(matchId),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
