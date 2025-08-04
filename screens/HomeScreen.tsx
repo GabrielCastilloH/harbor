@@ -10,7 +10,10 @@ import {
   Text,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaView } from "react-native-safe-area-context";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useNavigation, NavigationProp } from "@react-navigation/native";
 import Colors from "../constants/Colors";
 import AnimatedStack from "../components/AnimatedStack";
 import MatchModal from "./MatchModal";
@@ -28,9 +31,11 @@ import { getBlurredImageUrl } from "../networking/ImageService";
 import { usePlacement } from "expo-superwall";
 import { usePremium } from "../hooks/usePremium";
 import { SwipeLimitService } from "../networking/SwipeLimitService";
+import { RootStackParamList } from "../types/navigation";
 
 export default function HomeScreen() {
   const { userId, isAuthenticated, currentUser } = useAppContext();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] =
     useState<boolean>(false);
@@ -52,6 +57,9 @@ export default function HomeScreen() {
     maxSwipesPerDay: number;
     canSwipe: boolean;
   } | null>(null);
+  const [currentCardProfile, setCurrentCardProfile] = useState<Profile | null>(
+    null
+  );
   const stackRef = React.useRef<{
     swipeLeft: () => void;
     swipeRight: () => void;
@@ -394,20 +402,63 @@ export default function HomeScreen() {
     }, 1000);
   };
 
+  const handleReportCurrentProfile = () => {
+    if (!currentCardProfile || !currentCardProfile.uid) {
+      Alert.alert("Error", "No profile to report");
+      return;
+    }
+
+    // Navigate to report screen
+    navigation.navigate("ReportScreen", {
+      reportedUserId: currentCardProfile.uid,
+      reportedUserEmail: currentCardProfile.email,
+      reportedUserName: currentCardProfile.firstName,
+      matchId: "", // Empty since this is not from a match
+    });
+  };
+
+  const handlePremiumUpgrade = async () => {
+    try {
+      await registerPlacement({
+        placement: "settings_premium",
+        feature: () => {
+          Alert.alert(
+            "Upgrade to Premium",
+            "Get unlimited swipes and more features!"
+          );
+        },
+      });
+    } catch (error) {
+      console.error("Error showing premium paywall:", error);
+    }
+  };
+
   if (loadingProfile || loadingRecommendations) {
     return <LoadingScreen loadingText="Loading your Harbor" />;
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <GestureHandlerRootView style={styles.container}>
         <View style={styles.headerContainer}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleReportCurrentProfile}
+          >
+            <Ionicons name="flag-outline" size={24} color={Colors.primary500} />
+          </TouchableOpacity>
           <Image
             tintColor={Colors.primary500}
             source={require("../assets/logo.png")}
             style={styles.logo}
             resizeMode="contain"
           />
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handlePremiumUpgrade}
+          >
+            <Ionicons name="star-outline" size={24} color={Colors.primary500} />
+          </TouchableOpacity>
         </View>
         <View style={styles.cardsContainer}>
           <AnimatedStack
@@ -415,6 +466,7 @@ export default function HomeScreen() {
             data={recommendations}
             onSwipeRight={handleSwipeRight}
             onSwipeLeft={handleSwipeLeft}
+            onCurrentProfileChange={setCurrentCardProfile}
           />
         </View>
         <View style={styles.buttonsContainer}>
@@ -469,7 +521,7 @@ export default function HomeScreen() {
           currentProfile={userProfile}
         />
       </GestureHandlerRootView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -480,20 +532,28 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     width: "100%",
-    height: 120,
-    paddingTop: 70,
+    height: 80,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
     backgroundColor: Colors.primary100,
   },
+  headerButton: {
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   logo: {
-    height: 80,
-    width: 80,
+    height: 60,
+    width: 60,
   },
   cardsContainer: {
     flex: 1,
     backgroundColor: Colors.primary100,
     paddingHorizontal: 10,
+    paddingTop: 10,
   },
   buttonsContainer: {
     flexDirection: "row",
