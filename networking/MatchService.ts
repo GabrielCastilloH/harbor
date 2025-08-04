@@ -63,7 +63,6 @@ export class MatchService {
       });
       const data = result.data as any;
 
-      // console.log("MatchService - Match channel updated:", data);
       return data;
     } catch (error) {
       console.error("MatchService - Error updating match channel:", error);

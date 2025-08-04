@@ -95,10 +95,6 @@ export default function EditProfileScreen() {
           images: personalImages,
         };
 
-        console.log(
-          "[EditProfileScreen] Setting profile data with personal images:",
-          profileWithImages.images
-        );
         setProfileData(profileWithImages);
         setProfile(profileWithImages);
       } catch (error: any) {
@@ -107,9 +103,6 @@ export default function EditProfileScreen() {
           error?.code === "not-found" ||
           error?.code === "functions/not-found"
         ) {
-          console.log(
-            "[EditProfileScreen] User not found, skipping profile fetch"
-          );
           setLoading(false);
           return;
         }
