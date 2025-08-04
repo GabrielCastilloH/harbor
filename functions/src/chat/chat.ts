@@ -289,9 +289,6 @@ export const createChatChannel = functions.https.onCall(
       const channelId = [userId1, userId2].sort().join("-");
 
       // Find the match between these users
-      console.log(
-        `🔍 [CHAT] Searching for match between users: ${userId1} and ${userId2}`
-      );
       const matchQuery = await db
         .collection("matches")
         .where("user1Id", "in", [userId1, userId2])
@@ -300,24 +297,12 @@ export const createChatChannel = functions.https.onCall(
         .limit(1)
         .get();
 
-      console.log(
-        `🔍 [CHAT] Match query result: ${matchQuery.size} matches found`
-      );
-
       let matchId = null;
       if (!matchQuery.empty) {
         matchId = matchQuery.docs[0].id;
-        console.log(
-          `✅ [CHAT] Found match ${matchId} for users ${userId1} and ${userId2}`
-        );
-      } else {
-        console.log(
-          `❌ [CHAT] No active match found for users ${userId1} and ${userId2}`
-        );
       }
 
       // Create or get the channel with matchId in the data
-      console.log(`🔧 [CHAT] Creating/getting channel with ID: ${channelId}`);
       const channel = serverClient.channel("messaging", channelId, {
         members: [userId1, userId2],
         created_by_id: request.auth.uid,
@@ -325,19 +310,11 @@ export const createChatChannel = functions.https.onCall(
 
       try {
         await channel.create();
-        console.log(`✅ [CHAT] Channel created successfully`);
       } catch (err: any) {
         if (err && err.code === 16) {
           // Channel already exists, just use it
-          console.log(
-            `🔄 [CHAT] Channel already exists, watching existing channel`
-          );
           await channel.watch();
-          console.log(
-            `✅ [CHAT] Channel already exists, using existing channel`
-          );
         } else {
-          console.error(`❌ [CHAT] Channel creation error:`, err);
           throw err;
         }
       }
@@ -345,23 +322,10 @@ export const createChatChannel = functions.https.onCall(
       // Always try to update channel with matchId (for both new and existing channels)
       if (matchId) {
         try {
-          console.log(
-            `🔧 [CHAT] Attempting to update channel with matchId: ${matchId}`
-          );
-          console.log(
-            `🔧 [CHAT] Current channel data before update:`,
-            channel.data
-          );
-
           await channel.update({
             // @ts-ignore - Adding custom field to channel data
             matchId: matchId,
           });
-
-          console.log(
-            `✅ [CHAT] Successfully updated channel with matchId: ${matchId}`
-          );
-          console.log(`🔧 [CHAT] Channel data after update:`, channel.data);
 
           // Check if intro message was already sent by checking the match document
           const matchDoc = await db.collection("matches").doc(matchId).get();
@@ -381,38 +345,15 @@ export const createChatChannel = functions.https.onCall(
                 introMessageSent: true,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               });
-
-              console.log(
-                `✅ [CHAT] System message sent for new match: ${matchId}`
-              );
             } catch (messageErr) {
-              console.error(
-                `❌ [CHAT] Failed to send system message: ${messageErr}`
-              );
               // Don't fail the channel creation if system message fails
             }
-          } else {
-            console.log(
-              `🔄 [CHAT] Intro message already sent, skipping duplicate`
-            );
           }
-        } catch (updateErr) {
-          console.error(
-            `❌ [CHAT] Failed to update channel with matchId: ${updateErr}`
-          );
-          console.error(`❌ [CHAT] Update error details:`, updateErr);
-        }
-      } else {
-        console.log(`⚠️ [CHAT] No matchId to store in channel data`);
+        } catch (updateErr) {}
       }
-
-      console.log(`📤 [CHAT] Final channel data being returned:`, channel.data);
       return { channel: channel.data };
     } catch (error) {
       console.error("Error creating chat channel:", error);
-      await logToNtfy(
-        `CHAT ERROR: ${error instanceof Error ? error.message : String(error)}`
-      );
       throw new functions.https.HttpsError(
         "internal",
         "Failed to create chat channel"
@@ -507,17 +448,13 @@ export const updateMessageCount = functions.https.onCall(
         );
       }
 
-      console.log(`Updating message count for match: ${matchId}`);
-
       // Get current message count
       const matchDoc = await db.collection("matches").doc(matchId).get();
       if (!matchDoc.exists) {
-        console.log(`Match ${matchId} not found`);
         throw new functions.https.HttpsError("not-found", "Match not found");
       }
 
       const currentCount = matchDoc.data()?.messageCount || 0;
-      console.log(`Current message count: ${currentCount}`);
 
       // Increment message count in Firestore
       await db
@@ -527,8 +464,6 @@ export const updateMessageCount = functions.https.onCall(
           messageCount: admin.firestore.FieldValue.increment(1),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-
-      console.log(`Message count updated to: ${currentCount + 1}`);
 
       return { success: true, newCount: currentCount + 1 };
     } catch (error) {

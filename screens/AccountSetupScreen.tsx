@@ -48,7 +48,7 @@ export default function AccountSetupScreen({
   useEffect(() => {
     if (targetProgress > progress) {
       const interval = setInterval(() => {
-        setProgress(prev => {
+        setProgress((prev) => {
           const increment = 0.02; // Small increments for smooth animation
           const newProgress = Math.min(prev + increment, targetProgress);
           return newProgress;
@@ -98,7 +98,7 @@ export default function AccountSetupScreen({
     setLoading(true);
     setProgress(0);
     setTargetProgress(0);
-    
+
     try {
       const currentUser = auth.currentUser;
       if (!currentUser) {
@@ -153,16 +153,16 @@ export default function AccountSetupScreen({
             // Update progress smoothly for each image
             const imageProgress = 0.1 + (i / imagesToUpload.length) * 0.6; // 10% to 70%
             updateProgress(imageProgress);
-            
+
             // Upload one image at a time
             const singleResult = await uploadImageViaCloudFunction(
               firebaseUid,
               imagesToUpload[i]
             );
             uploadResults.push(singleResult);
-            
+
             // Small delay to let progress animation catch up
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 100));
           } catch (uploadError) {
             console.error(`Failed to upload image ${i + 1}:`, uploadError);
             Alert.alert(
@@ -180,10 +180,10 @@ export default function AccountSetupScreen({
 
       // Extract filenames from Cloud Function results
       const imageFilenames = uploadResults.map((r) => r.filename);
-      
+
       // Move to profile creation phase
       updateProgress(0.7);
-      
+
       // STEP 2: Create the user profile in Firestore with transaction
       const userData = {
         firstName: profileData.firstName,
@@ -218,7 +218,7 @@ export default function AccountSetupScreen({
 
       // Move to chat setup phase
       updateProgress(0.95);
-      
+
       try {
         const { apiKey, userToken } = await preloadChatCredentials(firebaseUid);
         setStreamApiKey(apiKey);
@@ -230,13 +230,13 @@ export default function AccountSetupScreen({
         );
         // Don't fail the entire operation if chat credentials fail
       }
-      
+
       // Complete the process
       updateProgress(1);
-      
+
       // Small delay to show 100% completion
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       setUserId(firebaseUid);
       setProfile({
         ...profileData,
