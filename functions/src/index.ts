@@ -8,6 +8,7 @@ import { chatFunctions } from "./chat/chat";
 import { imageFunctions } from "./images/images";
 import { matchFunctions } from "./matches/matches";
 import { recommendationsFunctions } from "./recommendations/recommendations";
+import { reportFunctions } from "./reports/reports";
 import { swipeFunctions } from "./swipes/swipes";
 import { userFunctions } from "./users/users";
 
@@ -17,6 +18,7 @@ export {
   imageFunctions,
   matchFunctions,
   recommendationsFunctions,
+  reportFunctions,
   swipeFunctions,
   userFunctions,
 };
