@@ -16,7 +16,6 @@ import { preloadChatCredentials } from "../util/chatPreloader";
 export default function AccountSetupScreen({
   showProgressBar = true,
 }: { showProgressBar?: boolean } = {}) {
-  console.log("🔵 [ACCOUNT SETUP] Screen shown");
   const {
     setUserId,
     setProfile,
