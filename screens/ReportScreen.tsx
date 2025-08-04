@@ -111,6 +111,7 @@ export default function ReportScreen() {
     >
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
@@ -196,6 +197,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100, // Add padding to ensure content ends before tab bar
   },
   content: {
     padding: 24,
