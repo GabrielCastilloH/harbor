@@ -48,6 +48,13 @@ export default function ReportScreen() {
   const { reportedUserId, reportedUserEmail, reportedUserName, matchId } =
     route.params;
 
+  console.log("🔍 ReportScreen params:", {
+    reportedUserId,
+    reportedUserEmail,
+    reportedUserName,
+    matchId,
+  });
+
   const handleSubmit = async () => {
     if (!selectedReason) {
       Alert.alert("Error", "Please select a reason for the report.");
@@ -56,6 +63,14 @@ export default function ReportScreen() {
 
     if (!explanation.trim()) {
       Alert.alert("Error", "Please provide an explanation for the report.");
+      return;
+    }
+
+    if (!matchId) {
+      Alert.alert(
+        "Error",
+        "Cannot submit report - match information not available."
+      );
       return;
     }
 
