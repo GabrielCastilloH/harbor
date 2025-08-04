@@ -133,7 +133,7 @@ const requestNotificationPermissions = async () => {
     }
 
     if (finalStatus !== "granted") {
-      console.log("Failed to get push token for push notification!");
+      // Failed to get push token for push notification
       return;
     }
 
