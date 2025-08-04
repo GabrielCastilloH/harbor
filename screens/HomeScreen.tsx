@@ -458,10 +458,7 @@ export default function HomeScreen() {
       await registerPlacement({
         placement: "settings_premium",
         feature: () => {
-          Alert.alert(
-            "Upgrade to Premium",
-            "Get unlimited swipes and more features!"
-          );
+          // No alert - just close silently
         },
       });
     } catch (error) {
