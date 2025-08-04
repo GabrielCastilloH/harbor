@@ -69,22 +69,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Listen to Firebase Auth state changes
   useEffect(() => {
-    console.log("🔍 [APP CONTEXT] Setting up Firebase Auth listener");
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log("🔍 [APP CONTEXT] Firebase Auth state changed:", {
-        user: user ? user.uid : "null",
-        isAuthDetermined,
-        currentUserId: currentUser?.uid,
-      });
-
       // Prevent multiple rapid state changes during initialization
       if (isAuthDetermined && user?.uid === currentUser?.uid) {
-        console.log("🔍 [APP CONTEXT] Skipping duplicate auth state change");
         return;
       }
 
       if (user) {
-        console.log("🔍 [APP CONTEXT] User signed in:", user.uid);
         // User is signed in
         setCurrentUser(user);
         setIsAuthenticated(true);
@@ -92,28 +83,21 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         // Always check Firestore when user changes to ensure we have the correct profile
         // This fixes the issue where switching accounts doesn't properly check the new user's profile
         try {
-          console.log("🔍 [APP CONTEXT] Checking Firestore for user profile");
           const { UserService } = require("../networking");
           const response = await UserService.getUserById(user.uid);
           if (response && response.user) {
-            console.log("🔍 [APP CONTEXT] User profile found in Firestore");
             setUserId(user.uid);
             setProfile(response.user);
           } else {
-            console.log("🔍 [APP CONTEXT] User profile not found in Firestore");
             setUserId(null);
             setProfile(null);
           }
         } catch (error: any) {
-          console.error("❌ [APP CONTEXT] Error checking user profile:", error);
           if (
             error?.code === "functions/not-found" ||
             error?.code === "not-found" ||
             error?.message?.includes("not found")
           ) {
-            console.log(
-              "🔍 [APP CONTEXT] User not found in Firestore, setting userId to null"
-            );
             setUserId(null);
             setProfile(null);
           } else {
@@ -143,7 +127,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           }
         } catch (error) {}
       } else {
-        console.log("🔍 [APP CONTEXT] User signed out");
         // User is signed out
         setCurrentUser(null);
         setIsAuthenticated(false);
@@ -162,9 +145,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       setIsAuthDetermined(true);
       setIsInitialized(true);
-      console.log(
-        "🔍 [APP CONTEXT] Auth state determined, isInitialized set to true"
-      );
     });
 
     return () => unsubscribe();

@@ -57,13 +57,6 @@ export async function fetchUpdateChannelChatStatus(
   channelId: string,
   freeze: boolean
 ): Promise<any> {
-  // console.log(
-  //   "ChatFunctions - Updating channel:",
-  //   channelId,
-  //   "frozen:",
-  //   freeze
-  // );
-
   try {
     const updateChannelChatStatus = httpsCallable(
       functions,
@@ -71,8 +64,6 @@ export async function fetchUpdateChannelChatStatus(
     );
     const result = await updateChannelChatStatus({ channelId, freeze });
     const data = result.data as { channel: any };
-
-    // console.log("ChatFunctions - Channel updated:", data.channel);
     return data.channel;
   } catch (error) {
     console.error("ChatFunctions - Error updating channel:", error);
@@ -88,8 +79,6 @@ export async function updateMessageCount(matchId: string): Promise<void> {
     );
     const result = await updateMessageCount({ matchId });
     const data = result.data as { success: boolean };
-
-    // console.log("ChatFunctions - Message count updated:", data);
   } catch (error) {
     console.error("ChatFunctions - Error updating message count:", error);
     throw new Error("Failed to update message count");
