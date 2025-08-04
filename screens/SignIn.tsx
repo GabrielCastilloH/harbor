@@ -23,6 +23,9 @@ import {
 
 export default function SignIn() {
   const {
+    isAuthenticated,
+    currentUser,
+    userId,
     setIsAuthenticated,
     setUserId,
     setProfile,
@@ -33,33 +36,46 @@ export default function SignIn() {
   const [isNewUser, setIsNewUser] = useState(false);
   const [signInSuccessful, setSignInSuccessful] = useState(false);
 
-  // Clean up any existing authentication state when the SignIn screen loads
+  // If user is already authenticated or has a current user, don't show SignIn screen
+  if (isAuthenticated || currentUser) {
+    return null;
+  }
+
+  // Additional check: if we have a userId in context, don't show SignIn screen
+  if (userId && userId.trim() !== "") {
+    return null;
+  }
+
+  // Only clean up auth state if user is not already authenticated
   useEffect(() => {
-    const cleanupAuth = async () => {
-      try {
-        // Sign out from Google Sign-In
-        await GoogleSignin.signOut();
+    if (!isAuthenticated) {
+      const cleanupAuth = async () => {
+        try {
+          // Sign out from Google Sign-In
+          await GoogleSignin.signOut();
 
-        // Sign out from Firebase Auth
-        await signOut(auth);
+          // Sign out from Firebase Auth
+          await signOut(auth);
 
-        // Clear app context state
-        setUserId(null);
-        setProfile(null);
-        setIsAuthenticated(false);
-        setStreamApiKey(null);
-        setStreamUserToken(null);
+          // Clear app context state
+          setUserId(null);
+          setProfile(null);
+          setIsAuthenticated(false);
+          setStreamApiKey(null);
+          setStreamUserToken(null);
 
-        // Clear stored data from AsyncStorage
-        await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
+          // Clear stored data from AsyncStorage
+          await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
 
-        // Clear chat credentials
-        await clearChatCredentials();
-      } catch (error) {}
-    };
+          // Clear chat credentials
+          await clearChatCredentials();
+        } catch (error) {}
+      };
 
-    cleanupAuth();
+      cleanupAuth();
+    }
   }, [
+    isAuthenticated,
     setUserId,
     setProfile,
     setIsAuthenticated,
@@ -68,6 +84,16 @@ export default function SignIn() {
   ]);
 
   const handleExistingUser = async (userData: any) => {
+    // Guard against running this when user is already authenticated
+    if (isAuthenticated || currentUser) {
+      return;
+    }
+
+    // Additional guard: if userId is already set in context, don't override it
+    if (userId && userId.trim() !== "") {
+      return;
+    }
+
     try {
       // Pre-load chat credentials for existing users
 
@@ -89,6 +115,11 @@ export default function SignIn() {
   };
 
   const handleNewUser = (user: any) => {
+    // Guard against running this when user is already authenticated
+    if (isAuthenticated || currentUser) {
+      return;
+    }
+
     // Handle new user - navigate to setup/onboarding
     // Don't pre-load chat credentials for new users since they need to complete setup first
     setSignInSuccessful(true);
@@ -112,6 +143,10 @@ export default function SignIn() {
     setIsNewUser(false);
   };
 
+  const handleSignInComplete = () => {
+    setIsLoading(false);
+  };
+
   if (isLoading) {
     const loadingText = isNewUser
       ? "Setting up your account..."
@@ -132,23 +167,26 @@ export default function SignIn() {
         </View>
         <Text style={styles.title}>Sign In</Text>
         <Text style={styles.description}>
-          In order to use this app you must sign in with your Cornell NetID via
+          In order to use this app you must sign in with your Cornell email via
           Google.
         </Text>
 
         {/* Custom Button */}
-        <View style={styles.buttonContainer}>
-          <GoogleSignInButton
-            onUserExists={handleExistingUser}
-            onNewUser={handleNewUser}
-            onError={handleError}
-            onSignInStart={handleSignInStart}
-            buttonText="Continue with Cornell"
-            buttonStyle={styles.button}
-            textStyle={styles.buttonText}
-            showCornellLogo={true}
-          />
-        </View>
+        {!isAuthenticated && !currentUser && !signInSuccessful && !userId && (
+          <View style={styles.buttonContainer}>
+            <GoogleSignInButton
+              onUserExists={handleExistingUser}
+              onNewUser={handleNewUser}
+              onError={handleError}
+              onSignInStart={handleSignInStart}
+              onSignInComplete={handleSignInComplete}
+              buttonText="Continue with Cornell"
+              buttonStyle={styles.button}
+              textStyle={styles.buttonText}
+              showCornellLogo={true}
+            />
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );

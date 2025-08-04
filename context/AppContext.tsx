@@ -60,6 +60,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isAuthDetermined, setIsAuthDetermined] = useState(false);
 
+  // Ensure userId is never an empty string - convert to null
+  useEffect(() => {
+    if (userId === "") {
+      setUserId(null);
+    }
+  }, [userId]);
+
   // Listen to Firebase Auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -73,32 +80,30 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setCurrentUser(user);
         setIsAuthenticated(true);
 
-        // Only check Firestore if we don't already have a userId set
-        // This prevents race conditions during sign-in
-        if (!userId) {
-          try {
-            const { UserService } = await import("../networking");
-            const response = await UserService.getUserById(user.uid);
-            if (response && response.user) {
-              setUserId(user.uid);
-              setProfile(response.user);
-            } else {
-              setUserId(null);
-              setProfile(null);
-            }
-          } catch (error: any) {
-            if (
-              error?.code === "functions/not-found" ||
-              error?.code === "not-found" ||
-              error?.message?.includes("not found")
-            ) {
-              setUserId(null);
-              setProfile(null);
-            } else {
-              // For other errors, still set userId but log the error
-
-              setUserId(user.uid);
-            }
+        // Always check Firestore when user changes to ensure we have the correct profile
+        // This fixes the issue where switching accounts doesn't properly check the new user's profile
+        try {
+          const { UserService } = require("../networking");
+          const response = await UserService.getUserById(user.uid);
+          if (response && response.user) {
+            setUserId(user.uid);
+            setProfile(response.user);
+          } else {
+            setUserId(null);
+            setProfile(null);
+          }
+        } catch (error: any) {
+          if (
+            error?.code === "functions/not-found" ||
+            error?.code === "not-found" ||
+            error?.message?.includes("not found")
+          ) {
+            setUserId(null);
+            setProfile(null);
+          } else {
+            // For other errors, still set userId but log the error
+            console.error("Error checking user profile:", error);
+            setUserId(user.uid);
           }
         }
 
@@ -122,7 +127,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         // User is signed out
         setCurrentUser(null);
         setIsAuthenticated(false);
-        setUserId(null);
+        setUserId(null); // Ensure this is null, not empty string
         setProfile(null);
         setStreamApiKey(null);
         setStreamUserToken(null);

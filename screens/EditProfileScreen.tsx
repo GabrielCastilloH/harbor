@@ -27,6 +27,8 @@ const emptyProfile: Profile = {
   age: 0,
   yearLevel: "",
   major: "",
+  gender: "",
+  sexualOrientation: "",
   images: [],
   aboutMe: "",
   q1: "",
