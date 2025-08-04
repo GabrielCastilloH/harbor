@@ -29,47 +29,10 @@ GoogleSignin.configure({
 function AppContent() {
   const { isAuthenticated, userId, isInitialized, profile } = useAppContext();
 
-  console.log("🔍 [APP CONTENT] State:", {
-    isAuthenticated,
-    userId,
-    isInitialized,
-    paywallSeen: profile?.paywallSeen,
-  });
-
-  console.log("🔍 [APP CONTENT] Current state after paywall check:", {
-    isAuthenticated,
-    userId,
-    isInitialized,
-    paywallSeen: profile?.paywallSeen,
-  });
-
   // Show loading screen while Firebase Auth is determining the auth state
   if (!isInitialized) {
-    console.log(
-      "🔍 [APP CONTENT] Showing loading screen because isInitialized is false"
-    );
     return <LoadingScreen loadingText="Initializing..." />;
   }
-
-  console.log(
-    "🔍 [APP CONTENT] Past loading screen, checking navigation logic"
-  );
-
-  console.log("🔍 [APP CONTENT] FINAL NAVIGATION DECISION:", {
-    isAuthenticated,
-    userId,
-    paywallSeen: profile?.paywallSeen,
-    shouldShowSignIn: !isAuthenticated,
-    shouldShowAccountSetup:
-      isAuthenticated && (!userId || userId.trim() === ""),
-    shouldShowPaywall:
-      isAuthenticated &&
-      userId &&
-      userId.trim() !== "" &&
-      !profile?.paywallSeen,
-    shouldShowMainApp:
-      isAuthenticated && userId && userId.trim() !== "" && profile?.paywallSeen,
-  });
 
   // Security check: Only allow access to main app if user exists in Firestore
   // If not signed in, show SignIn.
@@ -133,8 +96,6 @@ export default function App() {
   // Ensure we have API keys before proceeding
   if (!superwallApiKeys || !superwallApiKeys.ios || !superwallApiKeys.android) {
     const error = "Superwall API keys are missing or invalid";
-    console.error("🚨 [SUPERWALL] CRITICAL ERROR:", error);
-    console.error("🚨 [SUPERWALL] API Keys state:", superwallApiKeys);
     throw new Error(error);
   }
 
