@@ -64,7 +64,6 @@ export default function GoogleSignInButton({
       }
 
       // 2. Check Google Play Services (Android only)
-      console.log("🔍 [GOOGLE SIGN IN] Checking Google Play Services");
       await GoogleSignin.hasPlayServices({
         showPlayServicesUpdateDialog: true,
       });
@@ -121,9 +120,6 @@ export default function GoogleSignInButton({
 
           // Check if component is still mounted before calling callback
           if (!isMountedRef.current) {
-            console.log(
-              "🔍 [GOOGLE SIGN IN] Component unmounted, skipping callback"
-            );
             return;
           }
 

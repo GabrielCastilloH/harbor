@@ -84,7 +84,7 @@ export const createReport = functions.https.onCall(
           const reportedUser = await admin.auth().getUser(reportedUserId);
           finalReportedUserEmail = reportedUser.email;
         } catch (error) {
-          console.log("Could not get reported user email:", error);
+          console.error("Could not get reported user email:", error);
         }
       }
 
@@ -338,7 +338,7 @@ export const reportAndUnmatch = functions.https.onCall(
           const reportedUser = await admin.auth().getUser(reportedUserId);
           finalReportedUserEmail = reportedUser.email;
         } catch (error) {
-          console.log("Could not get reported user email:", error);
+          console.error("Could not get reported user email:", error);
         }
       }
 
