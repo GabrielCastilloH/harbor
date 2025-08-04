@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -11,15 +11,22 @@ import {
   Alert,
   Image,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import BasicInfoView from "../components/BasicInfoView";
 import AcademicView from "../components/AcademicView";
 import PersonalView from "../components/PersonalView";
 import { getImageSource } from "../util/imageUtils";
-import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
+import {
+  useRoute,
+  RouteProp,
+  useNavigation,
+  NavigationProp,
+} from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
 import { MatchService, UserService } from "../networking";
+import { RootStackParamList } from "../types/navigation";
 import { getImages } from "../networking/ImageService";
 import { BlurView } from "expo-blur";
 import { getClientBlurLevel, BLUR_CONFIG } from "../constants/blurConfig";
@@ -54,8 +61,14 @@ export default function ProfileScreen() {
   const [imageLoading, setImageLoading] = useState(true);
 
   const route = useRoute<RouteProp<ProfileScreenParams, "ProfileScreen">>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { userId: currentUserId } = useAppContext();
+  const navigationRef = useRef<NavigationProp<RootStackParamList>>(navigation);
+
+  // Update ref when navigation changes
+  useEffect(() => {
+    navigationRef.current = navigation;
+  }, [navigation]);
   const userId = route.params?.userId;
   const matchIdParam = route.params?.matchId;
   const [matchId, setMatchId] = useState<string | null>(matchIdParam ?? null);
@@ -154,36 +167,81 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (userId === currentUserId) return;
+    if (!matchId) return; // Don't show report button if matchId is not available
 
-    navigation.setOptions({
+    navigationRef.current.setOptions({
       headerBackTitle: "Back",
-      headerRight: () =>
-        matchId ? (
-          <Pressable
-            onPress={() => handleUnmatch()}
-            disabled={unmatchLoading}
-            style={({ pressed }) => [
-              styles.unmatchButton,
-              pressed && styles.unmatchButtonPressed,
-              unmatchLoading && styles.unmatchButtonDisabled,
-            ]}
-          >
-            {unmatchLoading ? (
-              <View style={styles.unmatchLoadingContainer}>
-                <ActivityIndicator size="small" color={Colors.strongRed} />
-                <Text
-                  style={[styles.unmatchButtonText, styles.unmatchLoadingText]}
-                >
-                  Unmatching...
-                </Text>
-              </View>
-            ) : (
-              <Text style={styles.unmatchButtonText}>Unmatch</Text>
-            )}
-          </Pressable>
-        ) : null,
+      headerRight: () => (
+        <Pressable
+          onPress={() => {
+            console.log("🚩 Flag button pressed!");
+            console.log("🔍 Navigation ref:", navigationRef.current);
+            console.log("🔍 userId:", userId, "profile:", profile?.firstName);
+
+            if (!navigationRef.current) {
+              console.error("❌ Navigation ref is null!");
+              Alert.alert("Error", "Navigation not available");
+              return;
+            }
+
+            if (!matchId) {
+              console.error("❌ MatchId is null!");
+              Alert.alert("Error", "Match not found");
+              return;
+            }
+
+            try {
+              navigationRef.current.navigate("ReportScreen", {
+                reportedUserId: userId,
+                reportedUserEmail: profile?.email,
+                reportedUserName: profile?.firstName,
+                matchId: matchId,
+              });
+              console.log("✅ Navigation successful");
+            } catch (error) {
+              console.error("❌ Navigation error:", error);
+              Alert.alert("Error", "Failed to navigate to report screen");
+            }
+          }}
+          style={({ pressed }) => [
+            styles.reportButton,
+            pressed && styles.reportButtonPressed,
+          ]}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="flag" size={20} color={Colors.strongRed} />
+        </Pressable>
+      ),
     });
-  }, [navigation, userId, currentUserId, matchId]);
+  }, [navigationRef, userId, currentUserId, profile, matchId]);
+
+  const handleReport = () => {
+    console.log(
+      "🚩 handleReport called with userId:",
+      userId,
+      "profile:",
+      profile?.firstName
+    );
+
+    if (!userId || !profile || !matchId) {
+      console.log("❌ handleReport - missing userId, profile, or matchId");
+      return;
+    }
+
+    console.log("🚩 Report button clicked for user:", userId);
+
+    try {
+      navigationRef.current.navigate("ReportScreen", {
+        reportedUserId: userId,
+        reportedUserEmail: profile.email,
+        reportedUserName: profile.firstName,
+        matchId: matchId,
+      });
+      console.log("✅ Navigation to ReportScreen successful");
+    } catch (error) {
+      console.error("❌ Navigation error:", error);
+    }
+  };
 
   const handleUnmatch = async () => {
     if (!userId || !currentUserId || !matchId) {
@@ -206,8 +264,8 @@ export default function ProfileScreen() {
             try {
               await MatchService.unmatch(currentUserId, matchId);
 
-              navigation.goBack();
-              navigation.goBack();
+              navigationRef.current.goBack();
+              navigationRef.current.goBack();
             } catch (error) {
               Alert.alert(
                 "Error",
@@ -229,6 +287,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={{ flex: 1 }}>
+      {/* Remove floating report flag button */}
       <ScrollView
         style={styles.scrollView}
         bounces={false}
@@ -317,6 +376,31 @@ export default function ProfileScreen() {
           <AcademicView profile={profile} />
           <PersonalView profile={profile} />
         </View>
+
+        {/* Unmatch Button at the bottom */}
+        {matchId && (
+          <View style={styles.unmatchContainer}>
+            <Pressable
+              style={[
+                styles.unmatchButtonFull,
+                unmatchLoading && styles.unmatchButtonDisabled,
+              ]}
+              onPress={handleUnmatch}
+              disabled={unmatchLoading}
+            >
+              {unmatchLoading ? (
+                <View style={styles.unmatchLoadingContainer}>
+                  <ActivityIndicator size="small" color={Colors.secondary100} />
+                  <Text style={styles.unmatchButtonTextFull}>
+                    Unmatching...
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.unmatchButtonTextFull}>Unmatch</Text>
+              )}
+            </Pressable>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -344,6 +428,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: Colors.secondary100,
   },
+  reportButton: {
+    marginRight: 15,
+    padding: 8,
+  },
+  reportButtonPressed: {
+    opacity: 0.7,
+  },
   unmatchButton: {
     marginRight: 15,
     padding: 8,
@@ -358,6 +449,24 @@ const styles = StyleSheet.create({
     color: Colors.strongRed,
     fontWeight: "bold",
     fontSize: 16,
+  },
+  unmatchContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.secondary200,
+    backgroundColor: Colors.secondary100,
+  },
+  unmatchButtonFull: {
+    backgroundColor: Colors.strongRed,
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  unmatchButtonTextFull: {
+    color: Colors.secondary100,
+    fontSize: 16,
+    fontWeight: "bold",
   },
   unmatchLoadingContainer: {
     flexDirection: "row",
