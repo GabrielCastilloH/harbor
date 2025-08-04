@@ -64,6 +64,7 @@ export default function GoogleSignInButton({
       }
 
       // 2. Check Google Play Services (Android only)
+      console.log("🔍 [GOOGLE SIGN IN] Checking Google Play Services");
       await GoogleSignin.hasPlayServices({
         showPlayServicesUpdateDialog: true,
       });
@@ -77,6 +78,7 @@ export default function GoogleSignInButton({
         const tokens = await GoogleSignin.getTokens();
         accessToken = tokens.accessToken;
       } catch (tokenError: any) {
+        console.error("❌ [GOOGLE SIGN IN] Token error:", tokenError);
         // If user cancelled or there's a token issue, handle gracefully
         if (
           tokenError.message?.includes(
@@ -97,10 +99,12 @@ export default function GoogleSignInButton({
       }
 
       if (!accessToken) {
+        console.error("❌ [GOOGLE SIGN IN] No access token found");
         throw new Error("No access token found");
       }
 
       // 4. Create Firebase credential
+
       const googleCredential = GoogleAuthProvider.credential(null, accessToken);
 
       // 5. Sign in to Firebase
@@ -117,6 +121,9 @@ export default function GoogleSignInButton({
 
           // Check if component is still mounted before calling callback
           if (!isMountedRef.current) {
+            console.log(
+              "🔍 [GOOGLE SIGN IN] Component unmounted, skipping callback"
+            );
             return;
           }
 
@@ -141,51 +148,19 @@ export default function GoogleSignInButton({
 
         onNewUser(userCredential.user);
       }
-
-      // Don't call onSignInComplete here - let the callbacks (onUserExists/onNewUser) handle completion
-      // This ensures the loading screen stays until we have a definitive answer
     } catch (error: any) {
-      // console.log(
-      //   "GoogleSignInButton - Error during Google sign-in:",
-      //   error
-      // );
+      console.error("❌ [GOOGLE SIGN IN] Error during sign-in process:", error);
+      console.error("❌ [GOOGLE SIGN IN] Error details:", {
+        message: error.message,
+        code: error.code,
+        stack: error.stack,
+      });
 
-      // Handle specific error types
-      if (error.message?.includes("offline")) {
-        Alert.alert(
-          "No Internet Connection",
-          "Please check your internet connection and try again."
-        );
-      } else if (
-        error.code === "SIGN_IN_CANCELLED" ||
-        error.message?.includes("getTokens requires a token") ||
-        error.message?.includes("getTokens requires a user to be signed in")
-      ) {
-        // User cancelled sign-in or there was a token issue - ensure we're completely signed out
-        try {
-          await GoogleSignin.signOut();
-          await signOut(auth);
-        } catch (signOutError) {
-          // console.log(
-          //   "Error during sign out after cancellation:",
-          //   signOutError
-          // );
-        }
-        // Don't show any error for cancellation - just complete silently
-        if (isMountedRef.current) {
-          onSignInComplete?.();
-        }
-        return;
-      } else {
-        if (isMountedRef.current) {
-          onError(error);
-        }
-      }
+      // Call onSignInComplete to stop loading
+      onSignInComplete?.();
 
-      // Call onSignInComplete if provided
-      if (isMountedRef.current) {
-        onSignInComplete?.();
-      }
+      // Call onError with the error
+      onError(error);
     }
   };
 

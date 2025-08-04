@@ -1,20 +1,18 @@
 import { initializeApp } from "firebase/app";
-import { initializeAuth } from "firebase/auth";
+import { initializeAuth, getReactNativePersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import * as firebaseAuth from "firebase/auth";
+import { getFunctions } from "firebase/functions";
 import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
 
-const getReactNativePersistence = (firebaseAuth as any)
-  .getReactNativePersistence;
-
 const firebaseConfig = {
-  apiKey: "AIzaSyAh5NygEYrPdJXdle524PYrwP3WsPXaIqg",
+  apiKey: "AIzaSyDydx9TbO0u7Auexci8iLQV-AljrPus9lI",
   authDomain: "harbor-ch.firebaseapp.com",
   projectId: "harbor-ch",
   storageBucket: "harbor-ch.firebasestorage.app",
   messagingSenderId: "838717009645",
-  appId: "1:838717009645:ios:094e6663c50385aa4426e4",
+  appId: "1:838717009645:web:0dba1cce14cf3f794426e4",
+  measurementId: "G-PVV6GZQQ8R",
 };
 
 // Initialize Firebase
@@ -28,5 +26,14 @@ export const auth = initializeAuth(app, {
 // Initialize Firebase services
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const functions = getFunctions(app);
+
+// Superwall configuration
+export const SUPERWALL_CONFIG = {
+  apiKeys: {
+    ios: process.env.EXPO_PUBLIC_SUPERWALL_IOS_API_KEY || "",
+    android: process.env.EXPO_PUBLIC_SUPERWALL_ANDROID_API_KEY || "",
+  },
+};
 
 export default app;
