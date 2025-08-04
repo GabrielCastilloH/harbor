@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -63,6 +63,12 @@ export default function ProfileScreen() {
   const route = useRoute<RouteProp<ProfileScreenParams, "ProfileScreen">>();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { userId: currentUserId } = useAppContext();
+  const navigationRef = useRef<NavigationProp<RootStackParamList>>(navigation);
+
+  // Update ref when navigation changes
+  useEffect(() => {
+    navigationRef.current = navigation;
+  }, [navigation]);
   const userId = route.params?.userId;
   const matchIdParam = route.params?.matchId;
   const [matchId, setMatchId] = useState<string | null>(matchIdParam ?? null);
@@ -162,16 +168,32 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (userId === currentUserId) return;
 
-    navigation.setOptions({
+    navigationRef.current.setOptions({
       headerBackTitle: "Back",
-      headerRight: ({ navigation: navFromHeader }) => (
+      headerRight: () => (
         <Pressable
           onPress={() => {
-            navFromHeader.navigate("ReportScreen", {
-              reportedUserId: userId,
-              reportedUserEmail: profile?.email,
-              reportedUserName: profile?.firstName,
-            });
+            console.log("🚩 Flag button pressed!");
+            console.log("🔍 Navigation ref:", navigationRef.current);
+            console.log("🔍 userId:", userId, "profile:", profile?.firstName);
+
+            if (!navigationRef.current) {
+              console.error("❌ Navigation ref is null!");
+              Alert.alert("Error", "Navigation not available");
+              return;
+            }
+
+            try {
+              navigationRef.current.navigate("ReportScreen", {
+                reportedUserId: userId,
+                reportedUserEmail: profile?.email,
+                reportedUserName: profile?.firstName,
+              });
+              console.log("✅ Navigation successful");
+            } catch (error) {
+              console.error("❌ Navigation error:", error);
+              Alert.alert("Error", "Failed to navigate to report screen");
+            }
           }}
           style={({ pressed }) => [
             styles.reportButton,
@@ -183,7 +205,7 @@ export default function ProfileScreen() {
         </Pressable>
       ),
     });
-  }, [navigation, userId, currentUserId, profile]);
+  }, [navigationRef, userId, currentUserId, profile]);
 
   const handleReport = () => {
     console.log(
@@ -201,7 +223,7 @@ export default function ProfileScreen() {
     console.log("🚩 Report button clicked for user:", userId);
 
     try {
-      navigation.navigate("ReportScreen", {
+      navigationRef.current.navigate("ReportScreen", {
         reportedUserId: userId,
         reportedUserEmail: profile.email,
         reportedUserName: profile.firstName,
@@ -233,8 +255,8 @@ export default function ProfileScreen() {
             try {
               await MatchService.unmatch(currentUserId, matchId);
 
-              navigation.goBack();
-              navigation.goBack();
+              navigationRef.current.goBack();
+              navigationRef.current.goBack();
             } catch (error) {
               Alert.alert(
                 "Error",
