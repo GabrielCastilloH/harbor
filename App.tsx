@@ -133,7 +133,12 @@ export default function App() {
         setSuperwallApiKeys(keys.apiKeys);
       } catch (error) {
         console.error("Failed to fetch Superwall API keys:", error);
-        // Continue without Superwall for now
+        // Continue without Superwall - app will still work
+        // You can add your API keys directly here as fallback if needed
+        setSuperwallApiKeys({
+          ios: "", // Add your iOS API key here if needed
+          android: "", // Add your Android API key here if needed
+        });
       } finally {
         setIsLoadingSuperwall(false);
       }
