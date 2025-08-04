@@ -81,17 +81,6 @@ export default function ReportScreen() {
         throw new Error("User not authenticated");
       }
 
-      // Debug logs
-      console.log("🔍 [REPORT] Submitting report with data:", {
-        reportedUserId,
-        reportedUserEmail,
-        reportedUserName,
-        reason: selectedReason,
-        explanation: explanation.trim(),
-        matchId: matchId || "",
-        currentUserId: currentUser.uid,
-      });
-
       // Use different function based on whether there's a matchId
       if (matchId && matchId.trim() !== "") {
         // Report from a match - use reportAndUnmatch
