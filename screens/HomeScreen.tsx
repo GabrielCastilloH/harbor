@@ -63,8 +63,6 @@ export default function HomeScreen() {
   // Premium features
   const { isPremium, swipesPerDay } = usePremium();
 
-
-
   // Initialize socket connection
   useEffect(() => {
     if (!userId || !isAuthenticated || !currentUser) {
@@ -118,7 +116,6 @@ export default function HomeScreen() {
           error?.code === "functions/not-found"
         ) {
           // User not found, skipping user profile fetch
-
         } else {
           console.error("❌ [HOMESCREEN] Error fetching user profile:", error);
         }
@@ -133,7 +130,6 @@ export default function HomeScreen() {
   // Show paywall for new users after profile is loaded
   useEffect(() => {
     if (userProfile && !userProfile.paywallSeen && !hasShownPaywall && userId) {
-
       setHasShownPaywall(true);
 
       // Register and show the paywall
@@ -169,7 +165,6 @@ export default function HomeScreen() {
           maxSwipesPerDay: limitData.maxSwipesPerDay,
           canSwipe: limitData.canSwipe,
         });
-
       } catch (error) {
         console.error("❌ [HOMESCREEN] Error fetching swipe limit:", error);
       }
@@ -213,9 +208,7 @@ export default function HomeScreen() {
 
         // If user not found, don't show error - they might be setting up their account
         if (error?.code === "not-found") {
-          console.log(
-            "⚠️ [HOMESCREEN] User not found, skipping recommendations fetch"
-          );
+          // User not found, skipping recommendations fetch
         }
       } finally {
         setLoadingRecommendations(false);
@@ -253,18 +246,15 @@ export default function HomeScreen() {
     const swipeId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     if (swipeInProgress || lastSwipedProfile === profile.uid) {
-
       return;
     }
 
     if (!userId || !profile.uid) {
-
       return;
     }
 
     // Check swipe limit
     if (swipeLimit && !swipeLimit.canSwipe) {
-
       // Show paywall for premium upgrade
       try {
         await registerPlacement({
@@ -287,7 +277,6 @@ export default function HomeScreen() {
     }
 
     try {
-
       setSwipeInProgress(true);
       setLastSwipedProfile(profile.uid);
 
@@ -297,7 +286,6 @@ export default function HomeScreen() {
         profile.uid,
         "right"
       );
-
 
       // Step 1.5: Increment swipe count
       try {
@@ -309,7 +297,6 @@ export default function HomeScreen() {
           maxSwipesPerDay: updatedLimit.maxSwipesPerDay,
           canSwipe: updatedLimit.canSwipe,
         });
-
       } catch (error) {
         console.error(
           `❌ [HOMESCREEN] [${swipeId}] Error incrementing swipe count:`,
@@ -319,13 +306,11 @@ export default function HomeScreen() {
 
       // Step 2: If it's a match, create chat channel and show modal
       if (response.match) {
-
         try {
           const chatResponse = await ChatFunctions.createChannel({
             userId1: userId,
             userId2: profile.uid,
           });
-          
         } catch (chatError) {
           console.error(
             `❌ [HOMESCREEN] [${swipeId}] Error creating chat channel:`,
@@ -335,7 +320,6 @@ export default function HomeScreen() {
           // Always show the match modal if a match is made
           setMatchedProfile(profile);
           setShowMatch(true);
-          
         }
       }
 
@@ -349,7 +333,6 @@ export default function HomeScreen() {
         setCurrentProfile(null);
       }
     } catch (error) {
-
     } finally {
       // Increase timeout to prevent race conditions
       setTimeout(() => {
@@ -369,7 +352,6 @@ export default function HomeScreen() {
 
     // Check swipe limit for left swipes too
     if (swipeLimit && !swipeLimit.canSwipe) {
-
       return;
     }
 
@@ -387,7 +369,6 @@ export default function HomeScreen() {
           maxSwipesPerDay: updatedLimit.maxSwipesPerDay,
           canSwipe: updatedLimit.canSwipe,
         });
-
       } catch (error) {
         console.error(
           "❌ [HOMESCREEN] Error incrementing left swipe count:",

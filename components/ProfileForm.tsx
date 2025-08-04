@@ -59,12 +59,7 @@ export default function ProfileForm({
 
   // Keep imagesWithKeys in sync with profileData.images if profileData changes (e.g., on load)
   React.useEffect(() => {
-    console.log(
-      "[ProfileForm] profileData.images changed:",
-      profileData.images
-    );
     const wrappedImages = wrapImagesWithKeys(profileData.images);
-    console.log("[ProfileForm] 🔍 DEBUG - wrappedImages:", wrappedImages);
     setImagesWithKeys(wrappedImages);
   }, [profileData.images]);
 
@@ -427,24 +422,14 @@ export default function ProfileForm({
                   image.uri.trim() !== ""
               )
               .map((image) => {
-                console.log("[ProfileForm] 🔍 DEBUG - rendering image:", image);
                 return (
                   <View key={image.key} style={styles.imageContainer}>
                     <View style={styles.imageBackground}>
                       <Image
                         source={getImageSource(image.uri)}
                         style={styles.image}
-                        onError={(error) => {
-                          console.log(
-                            "[ProfileForm] 🔍 DEBUG - Image loading error:",
-                            error
-                          );
-                        }}
-                        onLoad={() => {
-                          console.log(
-                            "[ProfileForm] 🔍 DEBUG - Image loaded successfully"
-                          );
-                        }}
+                        onError={() => {}}
+                        onLoad={() => {}}
                         resizeMode="cover"
                         fadeDuration={0}
                       />
