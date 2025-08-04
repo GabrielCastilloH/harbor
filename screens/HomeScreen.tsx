@@ -6,6 +6,8 @@ import {
   Image,
   TouchableOpacity,
   GestureResponderEvent,
+  Alert,
+  Text,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
@@ -24,6 +26,8 @@ import {
 } from "../networking";
 import { getBlurredImageUrl } from "../networking/ImageService";
 import { usePlacement } from "expo-superwall";
+import { usePremium } from "../hooks/usePremium";
+import { SwipeLimitService } from "../networking/SwipeLimitService";
 
 export default function HomeScreen() {
   const { userId, isAuthenticated, currentUser } = useAppContext();
@@ -43,6 +47,11 @@ export default function HomeScreen() {
     null
   );
   const [hasShownPaywall, setHasShownPaywall] = useState(false);
+  const [swipeLimit, setSwipeLimit] = useState<{
+    swipesToday: number;
+    maxSwipesPerDay: number;
+    canSwipe: boolean;
+  } | null>(null);
   const stackRef = React.useRef<{
     swipeLeft: () => void;
     swipeRight: () => void;
@@ -50,6 +59,9 @@ export default function HomeScreen() {
 
   // Superwall paywall placement
   const { registerPlacement } = usePlacement();
+
+  // Premium features
+  const { isPremium, swipesPerDay } = usePremium();
 
   console.log("🏠 [HOMESCREEN] Component loaded with:", {
     userId,
@@ -154,6 +166,29 @@ export default function HomeScreen() {
     }
   }, [userProfile, hasShownPaywall, userId, registerPlacement]);
 
+  // Fetch swipe limits when user profile is loaded
+  useEffect(() => {
+    const fetchSwipeLimit = async () => {
+      if (!userId || !isAuthenticated) {
+        return;
+      }
+
+      try {
+        const limitData = await SwipeLimitService.getSwipeLimit(userId);
+        setSwipeLimit({
+          swipesToday: limitData.swipesToday,
+          maxSwipesPerDay: limitData.maxSwipesPerDay,
+          canSwipe: limitData.canSwipe,
+        });
+        console.log("🎯 [HOMESCREEN] Swipe limit loaded:", limitData);
+      } catch (error) {
+        console.error("❌ [HOMESCREEN] Error fetching swipe limit:", error);
+      }
+    };
+
+    fetchSwipeLimit();
+  }, [userId, isAuthenticated]);
+
   useEffect(() => {
     const fetchRecommendations = async () => {
       if (!userId || !isAuthenticated || !currentUser) {
@@ -251,6 +286,32 @@ export default function HomeScreen() {
       return;
     }
 
+    // Check swipe limit
+    if (swipeLimit && !swipeLimit.canSwipe) {
+      console.log(
+        `🚫 [HOMESCREEN] [${swipeId}] Swipe blocked: daily limit reached (${swipeLimit.swipesToday}/${swipeLimit.maxSwipesPerDay})`
+      );
+      // Show paywall for premium upgrade
+      try {
+        await registerPlacement({
+          placement: "settings_premium",
+          feature: () => {
+            Alert.alert(
+              "Daily Limit Reached",
+              `You've used all ${
+                swipeLimit.maxSwipesPerDay
+              } swipes for today. Upgrade to Premium for ${
+                isPremium ? 40 : 40
+              } swipes per day!`
+            );
+          },
+        });
+      } catch (error) {
+        console.error("Error showing premium paywall:", error);
+      }
+      return;
+    }
+
     try {
       console.log(
         `➡️ [HOMESCREEN] [${swipeId}] Starting swipe right for profile:`,
@@ -269,6 +330,26 @@ export default function HomeScreen() {
         `✅ [HOMESCREEN] [${swipeId}] SwipeService.createSwipe result:`,
         response
       );
+
+      // Step 1.5: Increment swipe count
+      try {
+        const updatedLimit = await SwipeLimitService.incrementSwipeCount(
+          userId
+        );
+        setSwipeLimit({
+          swipesToday: updatedLimit.swipesToday,
+          maxSwipesPerDay: updatedLimit.maxSwipesPerDay,
+          canSwipe: updatedLimit.canSwipe,
+        });
+        console.log(
+          `📊 [HOMESCREEN] [${swipeId}] Swipe count updated: ${updatedLimit.swipesToday}/${updatedLimit.maxSwipesPerDay}`
+        );
+      } catch (error) {
+        console.error(
+          `❌ [HOMESCREEN] [${swipeId}] Error incrementing swipe count:`,
+          error
+        );
+      }
 
       // Step 2: If it's a match, create chat channel and show modal
       if (response.match) {
@@ -323,7 +404,7 @@ export default function HomeScreen() {
     }
   };
 
-  const handleSwipeLeft = (profile: Profile) => {
+  const handleSwipeLeft = async (profile: Profile) => {
     // Prevent duplicate swipes while a swipe is in progress
     if (swipeInProgress || lastSwipedProfile === profile.uid) {
       return;
@@ -331,8 +412,38 @@ export default function HomeScreen() {
 
     if (!profile.uid) return;
 
+    // Check swipe limit for left swipes too
+    if (swipeLimit && !swipeLimit.canSwipe) {
+      console.log(
+        `🚫 [HOMESCREEN] Left swipe blocked: daily limit reached (${swipeLimit.swipesToday}/${swipeLimit.maxSwipesPerDay})`
+      );
+      return;
+    }
+
     setSwipeInProgress(true);
     setLastSwipedProfile(profile.uid);
+
+    // Increment swipe count for left swipes too
+    if (userId) {
+      try {
+        const updatedLimit = await SwipeLimitService.incrementSwipeCount(
+          userId
+        );
+        setSwipeLimit({
+          swipesToday: updatedLimit.swipesToday,
+          maxSwipesPerDay: updatedLimit.maxSwipesPerDay,
+          canSwipe: updatedLimit.canSwipe,
+        });
+        console.log(
+          `📊 [HOMESCREEN] Left swipe count updated: ${updatedLimit.swipesToday}/${updatedLimit.maxSwipesPerDay}`
+        );
+      } catch (error) {
+        console.error(
+          "❌ [HOMESCREEN] Error incrementing left swipe count:",
+          error
+        );
+      }
+    }
 
     // Update current profile to the next one
     const currentIndex = recommendations.findIndex(
@@ -365,6 +476,14 @@ export default function HomeScreen() {
             style={styles.logo}
             resizeMode="contain"
           />
+          {swipeLimit && (
+            <View style={styles.swipeCounter}>
+              <Text style={styles.swipeCounterText}>
+                {swipeLimit.swipesToday}/{swipeLimit.maxSwipesPerDay} swipes
+                today
+              </Text>
+            </View>
+          )}
         </View>
         <View style={styles.cardsContainer}>
           <AnimatedStack
@@ -473,5 +592,19 @@ const styles = StyleSheet.create({
   },
   yesButton: {
     borderColor: Colors.green,
+  },
+  swipeCounter: {
+    position: "absolute",
+    top: 10,
+    right: 16,
+    backgroundColor: Colors.primary500,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  swipeCounterText: {
+    color: Colors.primary100,
+    fontSize: 12,
+    fontWeight: "600",
   },
 });
