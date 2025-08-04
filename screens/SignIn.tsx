@@ -22,6 +22,7 @@ import {
 } from "../util/chatPreloader";
 
 export default function SignIn() {
+  console.log("🟡 [SIGN IN] Screen shown");
   const {
     isAuthenticated,
     currentUser,
