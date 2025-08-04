@@ -27,11 +27,13 @@ GoogleSignin.configure({
 });
 
 function AppContent() {
-  const { isAuthenticated, userId, isInitialized, profile } = useAppContext();
+  const { isAuthenticated, userId, isInitialized, profile, isCheckingProfile } =
+    useAppContext();
 
   // Show loading screen while Firebase Auth is determining the auth state
-  if (!isInitialized) {
-    return <LoadingScreen loadingText="Initializing..." />;
+  // OR while we're checking the user profile in Firestore
+  if (!isInitialized || isCheckingProfile) {
+    return <LoadingScreen loadingText="Signing you in..." />;
   }
 
   // Security check: Only allow access to main app if user exists in Firestore
