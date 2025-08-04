@@ -476,14 +476,6 @@ export default function HomeScreen() {
             style={styles.logo}
             resizeMode="contain"
           />
-          {swipeLimit && (
-            <View style={styles.swipeCounter}>
-              <Text style={styles.swipeCounterText}>
-                {swipeLimit.swipesToday}/{swipeLimit.maxSwipesPerDay} swipes
-                today
-              </Text>
-            </View>
-          )}
         </View>
         <View style={styles.cardsContainer}>
           <AnimatedStack
@@ -592,19 +584,5 @@ const styles = StyleSheet.create({
   },
   yesButton: {
     borderColor: Colors.green,
-  },
-  swipeCounter: {
-    position: "absolute",
-    top: 10,
-    right: 16,
-    backgroundColor: Colors.primary500,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  swipeCounterText: {
-    color: Colors.primary100,
-    fontSize: 12,
-    fontWeight: "600",
   },
 });
