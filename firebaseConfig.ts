@@ -30,7 +30,6 @@ export const functions = getFunctions(app);
 
 // Superwall configuration
 export const SUPERWALL_CONFIG = {
-  // These will be fetched from Firebase Secret Manager
   apiKeys: {
     ios: process.env.EXPO_PUBLIC_SUPERWALL_IOS_API_KEY || "",
     android: process.env.EXPO_PUBLIC_SUPERWALL_ANDROID_API_KEY || "",

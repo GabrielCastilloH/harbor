@@ -325,6 +325,7 @@ export const createUser = functions.https.onCall(
             q5: userData.q5 || "",
             q6: userData.q6 || "",
             currentMatches: [],
+            paywallSeen: false,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };
@@ -723,10 +724,71 @@ export const unmatchUser = functions.https.onCall(
   }
 );
 
+/**
+ * Marks the paywall as seen for a user
+ */
+export const markPaywallAsSeen = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: functions.https.CallableRequest<{ userId: string }>) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { userId } = request.data;
+
+      if (!userId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "User ID is required"
+        );
+      }
+
+      // Verify the requesting user is updating their own paywall status
+      if (request.auth.uid !== userId) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User can only update their own paywall status"
+        );
+      }
+
+      await db.collection("users").doc(userId).update({
+        paywallSeen: true,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return {
+        message: "Paywall marked as seen",
+        success: true,
+      };
+    } catch (error: any) {
+      console.error("Error marking paywall as seen:", error);
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to mark paywall as seen"
+      );
+    }
+  }
+);
+
 export const userFunctions = {
   createUser,
   getAllUsers,
   getUserById,
   updateUser,
   unmatchUser,
+  markPaywallAsSeen,
 };

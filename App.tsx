@@ -15,7 +15,7 @@ import UnviewedMatchesHandler from "./components/UnviewedMatchesHandler";
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
-import { getSuperwallApiKeys } from "./networking/SuperwallService";
+import { SUPERWALL_CONFIG } from "./firebaseConfig";
 
 // Configure Google Sign-In
 GoogleSignin.configure({
@@ -27,89 +27,20 @@ GoogleSignin.configure({
 });
 
 function AppContent() {
-  const { isAuthenticated, userId, isInitialized } = useAppContext();
-  const [hasSeenPaywall, setHasSeenPaywall] = useState<boolean | null>(null);
-  const [superwallApiKeys, setSuperwallApiKeys] = useState<{
-    ios: string;
-    android: string;
-  } | null>(null);
-  const [isLoadingSuperwall, setIsLoadingSuperwall] = useState(false);
-  const [superwallError, setSuperwallError] = useState<string | null>(null);
+  const { isAuthenticated, userId, isInitialized, profile } = useAppContext();
 
   console.log("🔍 [APP CONTENT] State:", {
     isAuthenticated,
     userId,
     isInitialized,
-    hasSeenPaywall,
+    paywallSeen: profile?.paywallSeen,
   });
-
-  // Check if user has seen the paywall
-  useEffect(() => {
-    console.log("🔍 [APP CONTENT] useEffect - checking paywall status");
-    const checkPaywallStatus = async () => {
-      if (isAuthenticated && userId) {
-        console.log(
-          "🔍 [APP CONTENT] User authenticated, checking paywall status for userId:",
-          userId
-        );
-        try {
-          const paywallSeen = await AsyncStorage.getItem(
-            `@paywall_seen_${userId}`
-          );
-          console.log("🔍 [APP CONTENT] Paywall seen status:", paywallSeen);
-          setHasSeenPaywall(paywallSeen === "true");
-        } catch (error) {
-          console.error(
-            "❌ [APP CONTENT] Error checking paywall status:",
-            error
-          );
-          setHasSeenPaywall(false);
-        }
-      } else {
-        console.log(
-          "🔍 [APP CONTENT] User not authenticated or no userId, setting hasSeenPaywall to false (not null)"
-        );
-        // If user is not authenticated, they haven't seen the paywall yet
-        setHasSeenPaywall(false);
-      }
-    };
-
-    checkPaywallStatus();
-  }, [isAuthenticated, userId]);
-
-  // Initialize Superwall only after user is authenticated
-  useEffect(() => {
-    if (isAuthenticated && userId && !superwallApiKeys && !isLoadingSuperwall) {
-      console.log(
-        "🔍 [APP CONTENT] User authenticated, initializing Superwall"
-      );
-      setIsLoadingSuperwall(true);
-
-      const initializeSuperwall = async () => {
-        try {
-          console.log("🔑 [SUPERWALL] Fetching API keys...");
-          const keys = await getSuperwallApiKeys();
-          console.log("✅ [SUPERWALL] API keys fetched successfully");
-          setSuperwallApiKeys(keys.apiKeys);
-        } catch (error) {
-          console.error("❌ [SUPERWALL] Failed to fetch API keys:", error);
-          setSuperwallError(
-            error instanceof Error ? error.message : String(error)
-          );
-        } finally {
-          setIsLoadingSuperwall(false);
-        }
-      };
-
-      initializeSuperwall();
-    }
-  }, [isAuthenticated, userId, superwallApiKeys, isLoadingSuperwall]);
 
   console.log("🔍 [APP CONTENT] Current state after paywall check:", {
     isAuthenticated,
     userId,
     isInitialized,
-    hasSeenPaywall,
+    paywallSeen: profile?.paywallSeen,
   });
 
   // Show loading screen while Firebase Auth is determining the auth state
@@ -127,14 +58,17 @@ function AppContent() {
   console.log("🔍 [APP CONTENT] FINAL NAVIGATION DECISION:", {
     isAuthenticated,
     userId,
-    hasSeenPaywall,
+    paywallSeen: profile?.paywallSeen,
     shouldShowSignIn: !isAuthenticated,
     shouldShowAccountSetup:
       isAuthenticated && (!userId || userId.trim() === ""),
     shouldShowPaywall:
-      isAuthenticated && userId && userId.trim() !== "" && !hasSeenPaywall,
+      isAuthenticated &&
+      userId &&
+      userId.trim() !== "" &&
+      !profile?.paywallSeen,
     shouldShowMainApp:
-      isAuthenticated && userId && userId.trim() !== "" && hasSeenPaywall,
+      isAuthenticated && userId && userId.trim() !== "" && profile?.paywallSeen,
   });
 
   // Security check: Only allow access to main app if user exists in Firestore
@@ -149,39 +83,8 @@ function AppContent() {
       "🔍 [APP CONTENT] User authenticated with userId, checking paywall"
     );
 
-    // Check if user should see paywall (first-time users)
-    if (!hasSeenPaywall) {
-      console.log(
-        "🔍 [APP CONTENT] User hasn't seen paywall, showing Superwall paywall"
-      );
-      // For new users, show the main app but Superwall will handle the paywall presentation
-      // The paywall will be shown automatically by Superwall for new users
-      return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <NavigationContainer>
-            <StatusBar style="dark" />
-            <TabNavigator />
-            <UnviewedMatchesHandler />
-          </NavigationContainer>
-        </GestureHandlerRootView>
-      );
-    }
-
-    console.log("🔍 [APP CONTENT] User has seen paywall, showing TabNavigator");
-
-    // If Superwall is still loading, show loading screen
-    if (isLoadingSuperwall) {
-      return <LoadingScreen loadingText="Signing you in..." />;
-    }
-
-    // If Superwall failed to load, show error
-    if (superwallError) {
-      console.error("🚨 [SUPERWALL] CRITICAL ERROR:", superwallError);
-      // Continue without Superwall for now
-    }
-
-    // Render main app with Superwall if available
-    const mainApp = (
+    // Render main app
+    return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
           <StatusBar style="dark" />
@@ -190,18 +93,6 @@ function AppContent() {
         </NavigationContainer>
       </GestureHandlerRootView>
     );
-
-    // Wrap with SuperwallProvider if API keys are available
-    if (superwallApiKeys && superwallApiKeys.ios && superwallApiKeys.android) {
-      return (
-        <SuperwallProvider apiKeys={superwallApiKeys}>
-          <SuperwallLoaded>{mainApp}</SuperwallLoaded>
-        </SuperwallProvider>
-      );
-    }
-
-    // Return main app without Superwall if keys aren't available
-    return mainApp;
   }
 
   // Additional check: if user is authenticated but userId is not set yet, don't render SignIn
@@ -237,11 +128,47 @@ function AppContent() {
 }
 
 export default function App() {
+  // Debug: Print environment variables immediately
+  console.log("🔍 [APP] Environment variables check:");
+  console.log("🔍 [APP] All process.env keys:", Object.keys(process.env));
+  console.log(
+    "🔍 [APP] EXPO_PUBLIC_SUPERWALL_IOS_API_KEY:",
+    process.env.EXPO_PUBLIC_SUPERWALL_IOS_API_KEY
+  );
+  console.log(
+    "🔍 [APP] EXPO_PUBLIC_SUPERWALL_ANDROID_API_KEY:",
+    process.env.EXPO_PUBLIC_SUPERWALL_ANDROID_API_KEY
+  );
+  console.log("🔍 [APP] SUPERWALL_CONFIG:", SUPERWALL_CONFIG);
+
+  // Get API keys immediately
+  const apiKeys = SUPERWALL_CONFIG.apiKeys;
+  console.log("🔍 [APP] API keys check:", apiKeys);
+
+  const [superwallApiKeys, setSuperwallApiKeys] = useState<{
+    ios: string;
+    android: string;
+  } | null>(apiKeys);
+  const [isLoadingSuperwall, setIsLoadingSuperwall] = useState(false);
+  const [superwallError, setSuperwallError] = useState<string | null>(null);
+
+  // Ensure we have API keys before proceeding
+  if (!superwallApiKeys || !superwallApiKeys.ios || !superwallApiKeys.android) {
+    const error = "Superwall API keys are missing or invalid";
+    console.error("🚨 [SUPERWALL] CRITICAL ERROR:", error);
+    console.error("🚨 [SUPERWALL] API Keys state:", superwallApiKeys);
+    throw new Error(error);
+  }
+
   return (
     <SafeAreaProvider>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
+      <SuperwallProvider apiKeys={superwallApiKeys}>
+        <SuperwallLoaded>
+          <AppProvider>
+            <AppContent />
+          </AppProvider>
+        </SuperwallLoaded>
+      </SuperwallProvider>
     </SafeAreaProvider>
   );
 }

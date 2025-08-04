@@ -23,6 +23,7 @@ import {
   ChatFunctions,
 } from "../networking";
 import { getBlurredImageUrl } from "../networking/ImageService";
+import { usePlacement } from "expo-superwall";
 
 export default function HomeScreen() {
   const { userId, isAuthenticated, currentUser } = useAppContext();
@@ -41,10 +42,14 @@ export default function HomeScreen() {
   const [lastSwipedProfile, setLastSwipedProfile] = useState<string | null>(
     null
   );
+  const [hasShownPaywall, setHasShownPaywall] = useState(false);
   const stackRef = React.useRef<{
     swipeLeft: () => void;
     swipeRight: () => void;
   }>(null);
+
+  // Superwall paywall placement
+  const { registerPlacement } = usePlacement();
 
   console.log("🏠 [HOMESCREEN] Component loaded with:", {
     userId,
@@ -121,6 +126,33 @@ export default function HomeScreen() {
 
     fetchUserProfile();
   }, [userId, isAuthenticated, currentUser]);
+
+  // Show paywall for new users after profile is loaded
+  useEffect(() => {
+    if (userProfile && !userProfile.paywallSeen && !hasShownPaywall && userId) {
+      console.log("🎯 [HOMESCREEN] New user detected, showing paywall");
+      setHasShownPaywall(true);
+
+      // Register and show the paywall
+      registerPlacement({
+        placement: "onboarding_paywall",
+        feature: async () => {
+          // This runs if no paywall is shown (user already has access)
+          console.log(
+            "🎯 [HOMESCREEN] User already has access, marking paywall as seen"
+          );
+          try {
+            await UserService.markPaywallAsSeen(userId);
+          } catch (error) {
+            console.error(
+              "❌ [HOMESCREEN] Error marking paywall as seen:",
+              error
+            );
+          }
+        },
+      });
+    }
+  }, [userProfile, hasShownPaywall, userId, registerPlacement]);
 
   useEffect(() => {
     const fetchRecommendations = async () => {
