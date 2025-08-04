@@ -21,7 +21,12 @@ interface GenderPickerProps {
 }
 
 const genderOptions = ["Male", "Female", "Non-Binary"];
-const orientationOptions = ["Straight", "Homosexual", "Bisexual"];
+const orientationOptions = [
+  "Heterosexual",
+  "Homosexual",
+  "Bisexual",
+  "Pansexual",
+];
 
 const { height: screenHeight } = Dimensions.get("window");
 
