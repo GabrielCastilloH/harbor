@@ -17,6 +17,8 @@ import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import * as ImagePicker from "expo-image-picker";
 import { getImageSource } from "../util/imageUtils";
+import GenderPicker from "./GenderPicker";
+import DataPicker from "./DataPicker";
 
 interface ProfileFormProps {
   profileData: Profile;
@@ -81,25 +83,79 @@ export default function ProfileForm({
       errors.push("Please add at least 3 images");
     }
 
-    // Check text fields
-    const textFields: (keyof Profile)[] = [
-      "firstName",
+    // Check required dropdown fields
+    const dropdownFields: (keyof Profile)[] = [
       "yearLevel",
       "major",
-      "aboutMe",
-      "q1",
-      "q2",
-      "q3",
-      "q4",
-      "q5",
-      "q6",
+      "gender",
+      "sexualOrientation",
     ];
 
-    textFields.forEach((field) => {
+    dropdownFields.forEach((field) => {
       if (!profileData[field] || profileData[field].toString().trim() === "") {
+        const fieldName = field.replace(/([A-Z])/g, " $1").toLowerCase();
+        errors.push(`Please select your ${fieldName}`);
+      }
+    });
+
+    // Check text fields with character limits
+    const textFields: {
+      field: keyof Profile;
+      maxLength: number;
+      minLength: number;
+      name: string;
+    }[] = [
+      { field: "firstName", maxLength: 50, minLength: 2, name: "first name" },
+      { field: "aboutMe", maxLength: 300, minLength: 5, name: "about me" },
+      {
+        field: "q1",
+        maxLength: 150,
+        minLength: 5,
+        name: "answer to 'This year, I really want to'",
+      },
+      {
+        field: "q2",
+        maxLength: 150,
+        minLength: 5,
+        name: "answer to 'Together we could'",
+      },
+      {
+        field: "q3",
+        maxLength: 150,
+        minLength: 5,
+        name: "answer to 'Favorite book, movie or song'",
+      },
+      {
+        field: "q4",
+        maxLength: 150,
+        minLength: 5,
+        name: "answer to 'I chose my major because'",
+      },
+      {
+        field: "q5",
+        maxLength: 150,
+        minLength: 5,
+        name: "answer to 'My favorite study spot is'",
+      },
+      {
+        field: "q6",
+        maxLength: 150,
+        minLength: 5,
+        name: "answer to 'Some of my hobbies are'",
+      },
+    ];
+
+    textFields.forEach(({ field, maxLength, minLength, name }) => {
+      const value = profileData[field]?.toString().trim() || "";
+
+      if (value === "") {
+        errors.push(`Please fill in your ${name}`);
+      } else if (value.length < minLength) {
         errors.push(
-          `Please fill in ${field.replace(/([A-Z])/g, " $1").toLowerCase()}`
+          `Your ${name} must be at least ${minLength} characters long`
         );
+      } else if (value.length > maxLength) {
+        errors.push(`Your ${name} must be ${maxLength} characters or less`);
       }
     });
 
@@ -193,10 +249,10 @@ export default function ProfileForm({
             </Text>
           </View>
 
-          <Text style={styles.label}>First Name</Text>
+          <Text style={styles.firstLabel}>First Name (or Initial)</Text>
           <TextInput
             style={styles.input}
-            placeholder="First Name"
+            placeholder="First name (or initial/nickname for extra privacy)"
             value={profileData.firstName}
             onChangeText={(text) => handleChange("firstName", text)}
           />
@@ -210,25 +266,56 @@ export default function ProfileForm({
             keyboardType="numeric"
           />
 
+          <View style={styles.genderContainer}>
+            <View style={styles.genderField}>
+              <Text style={styles.label}>Your Gender</Text>
+              <GenderPicker
+                value={profileData.gender || ""}
+                onValueChange={(value) => handleChange("gender", value)}
+                placeholder="Select gender"
+                style={styles.genderPicker}
+              />
+            </View>
+            <View style={styles.genderField}>
+              <Text style={styles.label}>Sexual Orientation</Text>
+              <GenderPicker
+                value={profileData.sexualOrientation || ""}
+                onValueChange={(value) =>
+                  handleChange("sexualOrientation", value)
+                }
+                placeholder="Select orientation"
+                style={styles.genderPicker}
+                type="orientation"
+              />
+            </View>
+          </View>
+
           <Text style={styles.label}>Year Level</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Year Level"
-            value={profileData.yearLevel}
-            onChangeText={(text) => handleChange("yearLevel", text)}
+          <DataPicker
+            value={profileData.yearLevel || ""}
+            onValueChange={(value) => handleChange("yearLevel", value)}
+            placeholder="Select year level"
+            type="yearLevel"
+            style={styles.individualPicker}
           />
 
           <Text style={styles.label}>Major</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Major"
-            value={profileData.major}
-            onChangeText={(text) => handleChange("major", text)}
+          <DataPicker
+            value={profileData.major || ""}
+            onValueChange={(value) => handleChange("major", value)}
+            placeholder="Select major"
+            type="major"
+            style={styles.individualPicker}
           />
 
-          <Text style={styles.label}>About Me</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>About Me</Text>
+            <Text style={styles.characterCount}>
+              {profileData.aboutMe?.length || 0}/300
+            </Text>
+          </View>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="Tell us about yourself..."
             value={profileData.aboutMe}
             onChangeText={(text) => handleChange("aboutMe", text)}
@@ -236,9 +323,14 @@ export default function ProfileForm({
             numberOfLines={3}
           />
 
-          <Text style={styles.label}>This year, I really want to</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>This year, I really want to</Text>
+            <Text style={styles.characterCount}>
+              {profileData.q1?.length || 0}/150
+            </Text>
+          </View>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="This year, I want to..."
             value={profileData.q1}
             onChangeText={(text) => handleChange("q1", text)}
@@ -246,9 +338,14 @@ export default function ProfileForm({
             numberOfLines={3}
           />
 
-          <Text style={styles.label}>Together we could</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Together we could</Text>
+            <Text style={styles.characterCount}>
+              {profileData.q2?.length || 0}/150
+            </Text>
+          </View>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="We could..."
             value={profileData.q2}
             onChangeText={(text) => handleChange("q2", text)}
@@ -256,9 +353,14 @@ export default function ProfileForm({
             numberOfLines={3}
           />
 
-          <Text style={styles.label}>Favorite book, movie or song</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Favorite book, movie or song</Text>
+            <Text style={styles.characterCount}>
+              {profileData.q3?.length || 0}/150
+            </Text>
+          </View>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="My favorite book/movie/song is..."
             value={profileData.q3}
             onChangeText={(text) => handleChange("q3", text)}
@@ -266,9 +368,14 @@ export default function ProfileForm({
             numberOfLines={3}
           />
 
-          <Text style={styles.label}>I chose my major because...</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>I chose my major because...</Text>
+            <Text style={styles.characterCount}>
+              {profileData.q4?.length || 0}/150
+            </Text>
+          </View>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="I chose my major because..."
             value={profileData.q4}
             onChangeText={(text) => handleChange("q4", text)}
@@ -276,9 +383,14 @@ export default function ProfileForm({
             numberOfLines={3}
           />
 
-          <Text style={styles.label}>My favorite study spot is</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>My favorite study spot is</Text>
+            <Text style={styles.characterCount}>
+              {profileData.q5?.length || 0}/150
+            </Text>
+          </View>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="My favorite study spot is..."
             value={profileData.q5}
             onChangeText={(text) => handleChange("q5", text)}
@@ -286,9 +398,14 @@ export default function ProfileForm({
             numberOfLines={3}
           />
 
-          <Text style={styles.label}>Some of my hobbies are</Text>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Some of my hobbies are</Text>
+            <Text style={styles.characterCount}>
+              {profileData.q6?.length || 0}/150
+            </Text>
+          </View>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             placeholder="In my free time, I like to..."
             value={profileData.q6}
             onChangeText={(text) => handleChange("q6", text)}
@@ -302,13 +419,6 @@ export default function ProfileForm({
             Profile Images
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {(() => {
-              console.log(
-                "[ProfileForm] 🔍 DEBUG - imagesWithKeys:",
-                imagesWithKeys
-              );
-              return null;
-            })()}
             {imagesWithKeys
               .filter(
                 (image) =>
@@ -403,12 +513,19 @@ const styles = StyleSheet.create({
     color: Colors.primary500,
     marginBottom: 5,
   },
+  firstLabel: {
+    fontSize: 16,
+    color: Colors.primary500,
+    marginBottom: 5,
+    marginTop: 10,
+  },
   input: {
     backgroundColor: Colors.secondary200,
     padding: 15,
     borderRadius: 8,
     marginBottom: 15,
     color: "gray",
+    fontSize: 16,
   },
   imageContainer: {
     position: "relative",
@@ -481,5 +598,36 @@ const styles = StyleSheet.create({
   },
   profileImagesTitle: {
     marginBottom: 8,
+  },
+  genderContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 15,
+  },
+  genderField: {
+    flex: 1,
+    marginRight: 10,
+  },
+  genderPicker: {
+    flex: 1,
+  },
+  individualPicker: {
+    marginBottom: 15,
+  },
+  multilineInput: {
+    height: 80,
+    textAlignVertical: "top",
+    paddingTop: 15,
+  },
+  characterCount: {
+    fontSize: 12,
+    color: Colors.primary500,
+    textAlign: "right",
+  },
+  labelContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 5,
   },
 });

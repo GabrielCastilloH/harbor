@@ -10,6 +10,7 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
 import LoadingScreen from "./components/LoadingScreen";
+import UnviewedMatchesHandler from "./components/UnviewedMatchesHandler";
 
 // Configure Google Sign-In
 GoogleSignin.configure({
@@ -25,6 +26,7 @@ function AppContent() {
 
   // Show loading screen while Firebase Auth is determining the auth state
   if (!isInitialized) {
+    console.log("🔄 [APP] App not initialized yet, showing loading screen");
     return <LoadingScreen loadingText="Initializing..." />;
   }
 
@@ -34,13 +36,38 @@ function AppContent() {
   //  - if userId exists (user has profile in Firestore), show TabNavigator
   //  - if authenticated but no userId (no profile in Firestore), show AccountSetupScreen
 
+  // Don't render SignIn if user is already authenticated
+  if (isAuthenticated && userId && userId.trim() !== "") {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer>
+          <StatusBar style="dark" />
+          <TabNavigator />
+          <UnviewedMatchesHandler />
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    );
+  }
+
+  // Additional check: if user is authenticated but userId is not set yet, don't render SignIn
+  if (isAuthenticated && (!userId || userId.trim() === "")) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer>
+          <StatusBar style="dark" />
+          <AccountSetupScreen />
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    );
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
         <StatusBar style="dark" />
         {!isAuthenticated ? (
           <SignIn />
-        ) : userId ? (
+        ) : userId && userId.trim() !== "" ? (
           <TabNavigator />
         ) : (
           <AccountSetupScreen />
