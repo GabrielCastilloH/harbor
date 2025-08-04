@@ -30,7 +30,6 @@ import { usePremium } from "../hooks/usePremium";
 import { SwipeLimitService } from "../networking/SwipeLimitService";
 
 export default function HomeScreen() {
-  console.log("🟢 [HOME] Screen shown");
   const { userId, isAuthenticated, currentUser } = useAppContext();
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] =
