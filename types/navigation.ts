@@ -5,4 +5,9 @@ export type RootStackParamList = {
     userId: string;
     matchId?: string | null;
   };
+  ReportScreen: {
+    reportedUserId: string;
+    reportedUserEmail?: string;
+    reportedUserName?: string;
+  };
 };
