@@ -21,12 +21,13 @@ export const getSuperwallApiKeys = functions.https.onCall(
   },
   async (request: CallableRequest) => {
     try {
-      if (!request.auth) {
-        throw new functions.https.HttpsError(
-          "unauthenticated",
-          "User must be authenticated"
-        );
-      }
+      // Remove authentication requirement since we need API keys before user auth
+      // if (!request.auth) {
+      //   throw new functions.https.HttpsError(
+      //     "unauthenticated",
+      //     "User must be authenticated"
+      //   );
+      // }
 
       // Get Superwall API keys from Secret Manager
       const [iosApiKeyVersion, androidApiKeyVersion] = await Promise.all([
