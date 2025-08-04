@@ -8,6 +8,8 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -96,16 +98,14 @@ export default function ReportScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Ionicons name="flag" size={24} color={Colors.strongRed} />
-          <Text style={styles.headerTitle}>Report User</Text>
-        </View>
-
         <View style={styles.content}>
           <Text style={styles.sectionTitle}>Reason for Report</Text>
           <Text style={styles.sectionSubtitle}>
@@ -155,29 +155,30 @@ export default function ReportScreen() {
             Your report will be reviewed by our team. We take all reports
             seriously and will investigate accordingly.
           </Text>
+
+          {/* Submit button at bottom of scroll content */}
+          <View style={styles.submitContainer}>
+            <Pressable
+              style={[
+                styles.submitButton,
+                isSubmitting && styles.submitButtonDisabled,
+              ]}
+              onPress={handleSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <View style={styles.submitLoadingContainer}>
+                  <ActivityIndicator size="small" color={Colors.secondary100} />
+                  <Text style={styles.submitButtonText}>Submitting...</Text>
+                </View>
+              ) : (
+                <Text style={styles.submitButtonText}>Submit Report</Text>
+              )}
+            </Pressable>
+          </View>
         </View>
       </ScrollView>
-
-      <View style={styles.footer}>
-        <Pressable
-          style={[
-            styles.submitButton,
-            isSubmitting && styles.submitButtonDisabled,
-          ]}
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <View style={styles.submitLoadingContainer}>
-              <ActivityIndicator size="small" color={Colors.secondary100} />
-              <Text style={styles.submitButtonText}>Submitting...</Text>
-            </View>
-          ) : (
-            <Text style={styles.submitButtonText}>Submit Report</Text>
-          )}
-        </Pressable>
-      </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -188,20 +189,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.secondary200,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: Colors.primary500,
-    marginLeft: 8,
   },
   content: {
     padding: 24,
@@ -226,13 +213,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: Colors.secondary200,
+    borderColor: Colors.secondary500,
     backgroundColor: Colors.secondary100,
     marginBottom: 8,
   },
   reasonButtonSelected: {
-    backgroundColor: Colors.strongRed,
-    borderColor: Colors.strongRed,
+    backgroundColor: Colors.primary500,
+    borderColor: Colors.primary500,
   },
   reasonButtonText: {
     fontSize: 16,
@@ -244,7 +231,7 @@ const styles = StyleSheet.create({
   },
   explanationInput: {
     borderWidth: 1,
-    borderColor: Colors.secondary200,
+    borderColor: Colors.secondary500,
     borderRadius: 8,
     padding: 16,
     fontSize: 16,
@@ -259,10 +246,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontStyle: "italic",
   },
-  footer: {
-    padding: 24,
-    borderTopWidth: 1,
-    borderTopColor: Colors.secondary200,
+  submitContainer: {
+    marginTop: 24,
   },
   submitButton: {
     backgroundColor: Colors.strongRed,
