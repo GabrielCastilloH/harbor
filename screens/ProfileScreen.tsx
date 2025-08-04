@@ -18,9 +18,15 @@ import BasicInfoView from "../components/BasicInfoView";
 import AcademicView from "../components/AcademicView";
 import PersonalView from "../components/PersonalView";
 import { getImageSource } from "../util/imageUtils";
-import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
+import {
+  useRoute,
+  RouteProp,
+  useNavigation,
+  NavigationProp,
+} from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
 import { MatchService, UserService } from "../networking";
+import { RootStackParamList } from "../types/navigation";
 import { getImages } from "../networking/ImageService";
 import { BlurView } from "expo-blur";
 import { getClientBlurLevel, BLUR_CONFIG } from "../constants/blurConfig";
@@ -55,7 +61,7 @@ export default function ProfileScreen() {
   const [imageLoading, setImageLoading] = useState(true);
 
   const route = useRoute<RouteProp<ProfileScreenParams, "ProfileScreen">>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { userId: currentUserId } = useAppContext();
   const userId = route.params?.userId;
   const matchIdParam = route.params?.matchId;
@@ -158,31 +164,52 @@ export default function ProfileScreen() {
 
     navigation.setOptions({
       headerBackTitle: "Back",
-      headerRight: () => (
+      headerRight: ({ navigation: navFromHeader }) => (
         <Pressable
-          onPress={() => handleReport()}
+          onPress={() => {
+            navFromHeader.navigate("ReportScreen", {
+              reportedUserId: userId,
+              reportedUserEmail: profile?.email,
+              reportedUserName: profile?.firstName,
+            });
+          }}
           style={({ pressed }) => [
             styles.reportButton,
             pressed && styles.reportButtonPressed,
           ]}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="flag" size={20} color={Colors.strongRed} />
         </Pressable>
       ),
     });
-  }, [navigation, userId, currentUserId]);
+  }, [navigation, userId, currentUserId, profile]);
 
   const handleReport = () => {
+    console.log(
+      "🚩 handleReport called with userId:",
+      userId,
+      "profile:",
+      profile?.firstName
+    );
+
     if (!userId || !profile) {
+      console.log("❌ handleReport - missing userId or profile");
       return;
     }
 
-    // @ts-ignore - Navigation type issue
-    navigation.navigate("ReportScreen", {
-      reportedUserId: userId,
-      reportedUserEmail: profile.email,
-      reportedUserName: profile.firstName,
-    });
+    console.log("🚩 Report button clicked for user:", userId);
+
+    try {
+      navigation.navigate("ReportScreen", {
+        reportedUserId: userId,
+        reportedUserEmail: profile.email,
+        reportedUserName: profile.firstName,
+      });
+      console.log("✅ Navigation to ReportScreen successful");
+    } catch (error) {
+      console.error("❌ Navigation error:", error);
+    }
   };
 
   const handleUnmatch = async () => {
@@ -229,6 +256,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={{ flex: 1 }}>
+      {/* Remove floating report flag button */}
       <ScrollView
         style={styles.scrollView}
         bounces={false}
@@ -372,6 +400,7 @@ const styles = StyleSheet.create({
   reportButton: {
     marginRight: 15,
     padding: 8,
+    backgroundColor: Colors.secondary200, // Temporary for debugging
   },
   reportButtonPressed: {
     opacity: 0.7,
