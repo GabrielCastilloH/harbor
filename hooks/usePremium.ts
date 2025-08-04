@@ -3,8 +3,7 @@ import {
   getFeatureConfig,
   getSwipesPerDay,
   canSeeWhoSwipedOnThem,
-  canSeeUnblurredImages,
-} from "../constants/Features";
+} from "../constants/FeaturesConfig";
 
 export const usePremium = () => {
   const { isSubscribed } = useSuperwall();
@@ -17,6 +16,5 @@ export const usePremium = () => {
     features: getFeatureConfig(isPremium),
     swipesPerDay: getSwipesPerDay(isPremium),
     canSeeWhoSwipedOnThem: canSeeWhoSwipedOnThem(isPremium),
-    canSeeUnblurredImages: canSeeUnblurredImages(isPremium),
   };
 };
