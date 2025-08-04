@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "react-native";
-import HomeScreen from "../screens/HomeScreen";
+import HomeStack from "./HomeStack";
 import SettingsStack from "./SettingsStack";
 import ChatNavigator from "./ChatNavigator";
 import Colors from "../constants/Colors";
@@ -19,7 +19,7 @@ export default function TabNavigator() {
     >
       <Tab.Screen
         name="HomeTab"
-        component={HomeScreen}
+        component={HomeStack}
         options={{
           title: "Home",
           headerShown: false,
