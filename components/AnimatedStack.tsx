@@ -24,6 +24,7 @@ type AnimatedStackProps = {
   data: Profile[];
   onSwipeRight?: (profile: Profile) => void;
   onSwipeLeft?: (profile: Profile) => void;
+  onCurrentProfileChange?: (profile: Profile | null) => void;
   ref?: React.RefObject<{
     swipeLeft: () => void;
     swipeRight: () => void;
@@ -31,7 +32,12 @@ type AnimatedStackProps = {
 };
 
 export default React.forwardRef(function AnimatedStack(
-  { data, onSwipeRight, onSwipeLeft }: AnimatedStackProps,
+  {
+    data,
+    onSwipeRight,
+    onSwipeLeft,
+    onCurrentProfileChange,
+  }: AnimatedStackProps,
   ref
 ) {
   const { userId } = useAppContext();
@@ -41,6 +47,13 @@ export default React.forwardRef(function AnimatedStack(
 
   const currentProfile = data[currentIndex];
   const nextProfile = data[nextIndex];
+
+  // Notify parent component when current profile changes
+  useEffect(() => {
+    if (onCurrentProfileChange) {
+      onCurrentProfileChange(currentProfile || null);
+    }
+  }, [currentProfile, onCurrentProfileChange]);
 
   const { width: screenWidth } = useWindowDimensions();
   const hiddenTranslateX = 2 * screenWidth;
