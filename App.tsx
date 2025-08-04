@@ -6,11 +6,16 @@ import SignIn from "./screens/SignIn";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import AccountSetupScreen from "./screens/AccountSetupScreen";
+
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
 import LoadingScreen from "./components/LoadingScreen";
 import UnviewedMatchesHandler from "./components/UnviewedMatchesHandler";
+import { useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
+import { SUPERWALL_CONFIG } from "./firebaseConfig";
 
 // Configure Google Sign-In
 GoogleSignin.configure({
@@ -22,13 +27,49 @@ GoogleSignin.configure({
 });
 
 function AppContent() {
-  const { isAuthenticated, userId, isInitialized } = useAppContext();
+  const { isAuthenticated, userId, isInitialized, profile } = useAppContext();
+
+  console.log("🔍 [APP CONTENT] State:", {
+    isAuthenticated,
+    userId,
+    isInitialized,
+    paywallSeen: profile?.paywallSeen,
+  });
+
+  console.log("🔍 [APP CONTENT] Current state after paywall check:", {
+    isAuthenticated,
+    userId,
+    isInitialized,
+    paywallSeen: profile?.paywallSeen,
+  });
 
   // Show loading screen while Firebase Auth is determining the auth state
   if (!isInitialized) {
-    console.log("🔄 [APP] App not initialized yet, showing loading screen");
+    console.log(
+      "🔍 [APP CONTENT] Showing loading screen because isInitialized is false"
+    );
     return <LoadingScreen loadingText="Initializing..." />;
   }
+
+  console.log(
+    "🔍 [APP CONTENT] Past loading screen, checking navigation logic"
+  );
+
+  console.log("🔍 [APP CONTENT] FINAL NAVIGATION DECISION:", {
+    isAuthenticated,
+    userId,
+    paywallSeen: profile?.paywallSeen,
+    shouldShowSignIn: !isAuthenticated,
+    shouldShowAccountSetup:
+      isAuthenticated && (!userId || userId.trim() === ""),
+    shouldShowPaywall:
+      isAuthenticated &&
+      userId &&
+      userId.trim() !== "" &&
+      !profile?.paywallSeen,
+    shouldShowMainApp:
+      isAuthenticated && userId && userId.trim() !== "" && profile?.paywallSeen,
+  });
 
   // Security check: Only allow access to main app if user exists in Firestore
   // If not signed in, show SignIn.
@@ -38,6 +79,7 @@ function AppContent() {
 
   // Don't render SignIn if user is already authenticated
   if (isAuthenticated && userId && userId.trim() !== "") {
+    // Render main app
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
@@ -78,11 +120,33 @@ function AppContent() {
 }
 
 export default function App() {
+  // Get API keys immediately
+  const apiKeys = SUPERWALL_CONFIG.apiKeys;
+
+  const [superwallApiKeys, setSuperwallApiKeys] = useState<{
+    ios: string;
+    android: string;
+  } | null>(apiKeys);
+  const [isLoadingSuperwall, setIsLoadingSuperwall] = useState(false);
+  const [superwallError, setSuperwallError] = useState<string | null>(null);
+
+  // Ensure we have API keys before proceeding
+  if (!superwallApiKeys || !superwallApiKeys.ios || !superwallApiKeys.android) {
+    const error = "Superwall API keys are missing or invalid";
+    console.error("🚨 [SUPERWALL] CRITICAL ERROR:", error);
+    console.error("🚨 [SUPERWALL] API Keys state:", superwallApiKeys);
+    throw new Error(error);
+  }
+
   return (
     <SafeAreaProvider>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
+      <SuperwallProvider apiKeys={superwallApiKeys}>
+        <SuperwallLoaded>
+          <AppProvider>
+            <AppContent />
+          </AppProvider>
+        </SuperwallLoaded>
+      </SuperwallProvider>
     </SafeAreaProvider>
   );
 }

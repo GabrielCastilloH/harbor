@@ -69,10 +69,13 @@ export default function SignIn() {
 
           // Clear chat credentials
           await clearChatCredentials();
-        } catch (error) {}
+        } catch (error) {
+          console.error("❌ [SIGN IN] Error during cleanup:", error);
+        }
       };
 
       cleanupAuth();
+    } else {
     }
   }, [
     isAuthenticated,
@@ -115,6 +118,8 @@ export default function SignIn() {
   };
 
   const handleNewUser = (user: any) => {
+    console.log("🔍 [SIGN IN] handleNewUser called with:", user?.uid);
+
     // Guard against running this when user is already authenticated
     if (isAuthenticated || currentUser) {
       return;
@@ -131,6 +136,7 @@ export default function SignIn() {
   };
 
   const handleError = (error: any) => {
+    console.error("❌ [SIGN IN] Sign-in error:", error);
     setIsLoading(false);
     Alert.alert(
       "Sign In Error",
@@ -151,6 +157,7 @@ export default function SignIn() {
     const loadingText = isNewUser
       ? "Setting up your account..."
       : "Signing you in...";
+
     return <LoadingScreen loadingText={loadingText} />;
   }
 
