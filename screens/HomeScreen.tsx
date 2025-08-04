@@ -367,23 +367,35 @@ export default function HomeScreen() {
   };
 
   const handleSwipeLeft = async (profile: Profile) => {
+    // Generate unique ID for this swipe attempt
+    const swipeId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
     // Prevent duplicate swipes while a swipe is in progress
     if (swipeInProgress || lastSwipedProfile === profile.uid) {
       return;
     }
 
-    if (!profile.uid) return;
+    if (!userId || !profile.uid) {
+      return;
+    }
 
     // Check swipe limit for left swipes too
     if (swipeLimit && !swipeLimit.canSwipe) {
       return;
     }
 
-    setSwipeInProgress(true);
-    setLastSwipedProfile(profile.uid);
+    try {
+      setSwipeInProgress(true);
+      setLastSwipedProfile(profile.uid);
 
-    // Increment swipe count for left swipes too
-    if (userId) {
+      // Step 1: Create the swipe
+      const response = await SwipeService.createSwipe(
+        userId,
+        profile.uid,
+        "left"
+      );
+
+      // Step 1.5: Increment swipe count
       try {
         const updatedLimit = await SwipeLimitService.incrementSwipeCount(
           userId
@@ -395,27 +407,32 @@ export default function HomeScreen() {
         });
       } catch (error) {
         console.error(
-          "❌ [HOMESCREEN] Error incrementing left swipe count:",
+          `❌ [HOMESCREEN] [${swipeId}] Error incrementing left swipe count:`,
           error
         );
       }
-    }
 
-    // Update current profile to the next one
-    const currentIndex = recommendations.findIndex(
-      (p) => p.uid === profile.uid
-    );
-    if (currentIndex < recommendations.length - 1) {
-      setCurrentProfile(recommendations[currentIndex + 1]);
-    } else {
-      setCurrentProfile(null);
+      // Update current profile to the next one
+      const currentIndex = recommendations.findIndex(
+        (p) => p.uid === profile.uid
+      );
+      if (currentIndex < recommendations.length - 1) {
+        setCurrentProfile(recommendations[currentIndex + 1]);
+      } else {
+        setCurrentProfile(null);
+      }
+    } catch (error) {
+      console.error(
+        `❌ [HOMESCREEN] [${swipeId}] Error creating left swipe:`,
+        error
+      );
+    } finally {
+      // Reset swipe flags after a short delay
+      setTimeout(() => {
+        setSwipeInProgress(false);
+        setLastSwipedProfile(null);
+      }, 1000);
     }
-
-    // Reset swipe flags after a short delay
-    setTimeout(() => {
-      setSwipeInProgress(false);
-      setLastSwipedProfile(null);
-    }, 1000);
   };
 
   const handleReportCurrentProfile = () => {
