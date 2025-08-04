@@ -13,7 +13,11 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useNavigation, NavigationProp } from "@react-navigation/native";
+import {
+  useNavigation,
+  NavigationProp,
+  useFocusEffect,
+} from "@react-navigation/native";
 import Colors from "../constants/Colors";
 import AnimatedStack from "../components/AnimatedStack";
 import MatchModal from "./MatchModal";
@@ -60,6 +64,7 @@ export default function HomeScreen() {
   const [currentCardProfile, setCurrentCardProfile] = useState<Profile | null>(
     null
   );
+  const [shouldRemoveCurrentCard, setShouldRemoveCurrentCard] = useState(false);
   const stackRef = React.useRef<{
     swipeLeft: () => void;
     swipeRight: () => void;
@@ -70,6 +75,17 @@ export default function HomeScreen() {
 
   // Premium features
   const { isPremium, swipesPerDay } = usePremium();
+
+  // Remove card when returning from report screen
+  useFocusEffect(
+    React.useCallback(() => {
+      if (shouldRemoveCurrentCard && stackRef.current) {
+        // Remove the card without animation
+        stackRef.current.swipeLeft();
+        setShouldRemoveCurrentCard(false);
+      }
+    }, [shouldRemoveCurrentCard])
+  );
 
   // Initialize socket connection
   useEffect(() => {
@@ -408,6 +424,9 @@ export default function HomeScreen() {
       return;
     }
 
+    // Set flag to remove card when returning from report
+    setShouldRemoveCurrentCard(true);
+
     // Navigate to report screen
     navigation.navigate("ReportScreen", {
       reportedUserId: currentCardProfile.uid,
@@ -415,11 +434,6 @@ export default function HomeScreen() {
       reportedUserName: currentCardProfile.firstName,
       matchId: "", // Empty since this is not from a match
     });
-
-    // Swipe left on the current card to remove it
-    if (stackRef.current) {
-      stackRef.current.swipeLeft();
-    }
   };
 
   const handlePremiumUpgrade = async () => {
