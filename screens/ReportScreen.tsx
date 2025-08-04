@@ -23,6 +23,7 @@ type ReportScreenParams = {
     reportedUserId: string;
     reportedUserEmail?: string;
     reportedUserName?: string;
+    matchId: string;
   };
 };
 
@@ -44,7 +45,8 @@ export default function ReportScreen() {
   const navigation = useNavigation();
   const { userId: currentUserId } = useAppContext();
 
-  const { reportedUserId, reportedUserEmail, reportedUserName } = route.params;
+  const { reportedUserId, reportedUserEmail, reportedUserName, matchId } =
+    route.params;
 
   const handleSubmit = async () => {
     if (!selectedReason) {
@@ -63,7 +65,7 @@ export default function ReportScreen() {
       const functions = getFunctions();
       const createReport = httpsCallable(
         functions,
-        "reportFunctions-createReport"
+        "reportFunctions-createReportAndUnmatch"
       );
 
       const currentUser = auth.currentUser;
@@ -77,6 +79,7 @@ export default function ReportScreen() {
         reportedUserName,
         reason: selectedReason,
         explanation: explanation.trim(),
+        matchId: matchId,
       });
 
       Alert.alert(
@@ -85,7 +88,11 @@ export default function ReportScreen() {
         [
           {
             text: "OK",
-            onPress: () => navigation.goBack(),
+            onPress: () => {
+              // Go back to profile screen, then back to chat
+              navigation.goBack();
+              navigation.goBack();
+            },
           },
         ]
       );

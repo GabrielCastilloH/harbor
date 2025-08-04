@@ -9,5 +9,6 @@ export type RootStackParamList = {
     reportedUserId: string;
     reportedUserEmail?: string;
     reportedUserName?: string;
+    matchId: string;
   };
 };
