@@ -18,6 +18,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
+import { usePlacement, useUser } from "expo-superwall";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -25,6 +26,46 @@ export default function SettingsScreen() {
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [locationServices, setLocationServices] = useState(true);
+  const { subscriptionStatus } = useUser();
+
+  const { registerPlacement } = usePlacement({
+    onError: (err) => {
+      console.error("Premium Paywall Error:", err);
+      Alert.alert("Error", "Failed to load premium options. Please try again.");
+    },
+    onPresent: (info) => {
+      // Premium paywall presented
+    },
+    onDismiss: (info, result) => {
+      // Handle dismissal - user can continue using the app
+    },
+    onSkip: (reason) => {
+      // User was allowed through without paywall (e.g., already subscribed)
+    },
+  });
+
+  const handlePremiumUpgrade = async () => {
+    try {
+      await registerPlacement({
+        placement: "settings_premium", // This should match your Superwall dashboard placement
+        feature: () => {
+          // This runs if no paywall is shown (user already has access)
+          // Check if user actually has premium or if it's due to no products
+          if (subscriptionStatus?.status === "ACTIVE") {
+            Alert.alert("Premium", "You already have premium access!");
+          } else {
+            Alert.alert(
+              "Premium",
+              "Premium features are not yet available. Please check back later!"
+            );
+          }
+        },
+      });
+    } catch (error) {
+      console.error("Error showing premium paywall:", error);
+      Alert.alert("Error", "Failed to show premium options. Please try again.");
+    }
+  };
 
   const handleSignOut = async () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -60,6 +101,8 @@ export default function SettingsScreen() {
       },
     ]);
   };
+
+  const isPremium = subscriptionStatus?.status === "ACTIVE";
 
   return (
     <>
@@ -114,6 +157,28 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
+
+          {/* Premium Button */}
+          <TouchableOpacity
+            style={[styles.button, isPremium && styles.premiumActiveButton]}
+            onPress={handlePremiumUpgrade}
+          >
+            <Ionicons name="star" size={20} color={Colors.primary500} />
+            <Text
+              style={[styles.buttonText, isPremium && styles.premiumActiveText]}
+            >
+              {isPremium ? "Premium Active" : "Upgrade to Premium"}
+            </Text>
+            {isPremium && (
+              <Ionicons
+                name="checkmark-circle"
+                size={20}
+                color={Colors.primary500}
+                style={styles.checkmark}
+              />
+            )}
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.button}>
             <Ionicons name="lock-closed" size={20} color={Colors.primary500} />
             <Text style={styles.buttonText}>Privacy Policy</Text>
@@ -226,5 +291,17 @@ const styles = StyleSheet.create({
   logoutText: {
     color: Colors.primary500,
     fontWeight: "bold",
+  },
+  premiumActiveButton: {
+    backgroundColor: Colors.secondary200,
+    borderColor: Colors.primary500,
+    borderWidth: 1,
+  },
+  premiumActiveText: {
+    color: Colors.primary500,
+    fontWeight: "bold",
+  },
+  checkmark: {
+    marginLeft: 10,
   },
 });

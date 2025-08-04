@@ -92,4 +92,21 @@ export class UserService {
       throw error;
     }
   }
+
+  static async markPaywallAsSeen(userId: string) {
+    try {
+      const markPaywallAsSeen = httpsCallable(
+        functions,
+        "userFunctions-markPaywallAsSeen"
+      );
+      const result = await markPaywallAsSeen({ userId });
+      const data = result.data as any;
+
+      console.log("UserService - Paywall marked as seen:", data);
+      return data;
+    } catch (error) {
+      console.error("UserService - Error marking paywall as seen:", error);
+      throw error;
+    }
+  }
 }
