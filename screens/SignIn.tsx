@@ -36,26 +36,41 @@ export default function SignIn() {
   const [isNewUser, setIsNewUser] = useState(false);
   const [signInSuccessful, setSignInSuccessful] = useState(false);
 
+  console.log("🔍 [SIGN IN] Component state:", {
+    isAuthenticated,
+    currentUser: currentUser?.uid || "null",
+    userId,
+    isLoading,
+    isNewUser,
+    signInSuccessful,
+  });
+
   // If user is already authenticated or has a current user, don't show SignIn screen
   if (isAuthenticated || currentUser) {
+    console.log("🔍 [SIGN IN] User already authenticated, returning null");
     return null;
   }
 
   // Additional check: if we have a userId in context, don't show SignIn screen
   if (userId && userId.trim() !== "") {
+    console.log("🔍 [SIGN IN] UserId already set, returning null");
     return null;
   }
 
   // Only clean up auth state if user is not already authenticated
   useEffect(() => {
+    console.log("🔍 [SIGN IN] useEffect - cleanup auth state");
     if (!isAuthenticated) {
       const cleanupAuth = async () => {
+        console.log("🔍 [SIGN IN] Starting auth cleanup");
         try {
           // Sign out from Google Sign-In
           await GoogleSignin.signOut();
+          console.log("🔍 [SIGN IN] Google Sign-In cleaned up");
 
           // Sign out from Firebase Auth
           await signOut(auth);
+          console.log("🔍 [SIGN IN] Firebase Auth cleaned up");
 
           // Clear app context state
           setUserId(null);
@@ -63,16 +78,23 @@ export default function SignIn() {
           setIsAuthenticated(false);
           setStreamApiKey(null);
           setStreamUserToken(null);
+          console.log("🔍 [SIGN IN] Context state cleared");
 
           // Clear stored data from AsyncStorage
           await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
+          console.log("🔍 [SIGN IN] AsyncStorage cleared");
 
           // Clear chat credentials
           await clearChatCredentials();
-        } catch (error) {}
+          console.log("🔍 [SIGN IN] Chat credentials cleared");
+        } catch (error) {
+          console.error("❌ [SIGN IN] Error during cleanup:", error);
+        }
       };
 
       cleanupAuth();
+    } else {
+      console.log("🔍 [SIGN IN] User already authenticated, skipping cleanup");
     }
   }, [
     isAuthenticated,
@@ -84,17 +106,22 @@ export default function SignIn() {
   ]);
 
   const handleExistingUser = async (userData: any) => {
+    console.log("🔍 [SIGN IN] handleExistingUser called with:", userData?.uid);
+
     // Guard against running this when user is already authenticated
     if (isAuthenticated || currentUser) {
+      console.log("🔍 [SIGN IN] User already authenticated, skipping");
       return;
     }
 
     // Additional guard: if userId is already set in context, don't override it
     if (userId && userId.trim() !== "") {
+      console.log("🔍 [SIGN IN] UserId already set, skipping");
       return;
     }
 
     try {
+      console.log("🔍 [SIGN IN] Pre-loading chat credentials");
       // Pre-load chat credentials for existing users
 
       const { apiKey, userToken } = await preloadChatCredentials(userData.uid);
@@ -115,11 +142,17 @@ export default function SignIn() {
   };
 
   const handleNewUser = (user: any) => {
+    console.log("🔍 [SIGN IN] handleNewUser called with:", user?.uid);
+
     // Guard against running this when user is already authenticated
     if (isAuthenticated || currentUser) {
+      console.log(
+        "🔍 [SIGN IN] User already authenticated, skipping new user handler"
+      );
       return;
     }
 
+    console.log("🔍 [SIGN IN] Setting up new user");
     // Handle new user - navigate to setup/onboarding
     // Don't pre-load chat credentials for new users since they need to complete setup first
     setSignInSuccessful(true);
@@ -128,9 +161,11 @@ export default function SignIn() {
     setUserId(null); // This will trigger AccountSetupScreen
     // Stop loading after we have definitive answer that user is new
     setIsLoading(false);
+    console.log("🔍 [SIGN IN] New user setup complete");
   };
 
   const handleError = (error: any) => {
+    console.error("❌ [SIGN IN] Sign-in error:", error);
     setIsLoading(false);
     Alert.alert(
       "Sign In Error",
@@ -139,11 +174,13 @@ export default function SignIn() {
   };
 
   const handleSignInStart = () => {
+    console.log("🔍 [SIGN IN] Sign-in started");
     setIsLoading(true);
     setIsNewUser(false);
   };
 
   const handleSignInComplete = () => {
+    console.log("🔍 [SIGN IN] Sign-in completed");
     setIsLoading(false);
   };
 
@@ -151,9 +188,11 @@ export default function SignIn() {
     const loadingText = isNewUser
       ? "Setting up your account..."
       : "Signing you in...";
+    console.log("🔍 [SIGN IN] Showing loading screen with text:", loadingText);
     return <LoadingScreen loadingText={loadingText} />;
   }
 
+  console.log("🔍 [SIGN IN] Rendering sign-in screen");
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
