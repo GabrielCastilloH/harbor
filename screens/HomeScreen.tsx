@@ -443,7 +443,7 @@ export default function HomeScreen() {
         <GestureHandlerRootView style={styles.container}>
           <View style={styles.headerContainer}>
             <TouchableOpacity
-              style={styles.headerButton}
+              style={styles.flagButton}
               onPress={handleReportCurrentProfile}
             >
               <Ionicons
@@ -459,7 +459,7 @@ export default function HomeScreen() {
               resizeMode="contain"
             />
             <TouchableOpacity
-              style={styles.headerButton}
+              style={styles.starButton}
               onPress={handlePremiumUpgrade}
             >
               <Ionicons
@@ -553,6 +553,20 @@ const styles = StyleSheet.create({
     height: 44,
     justifyContent: "center",
     alignItems: "center",
+  },
+  flagButton: {
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 15,
+  },
+  starButton: {
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
   },
   logo: {
     height: 60,
