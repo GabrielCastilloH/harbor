@@ -13,17 +13,11 @@ async function blurImageBuffer(
   buffer: Buffer,
   blurPercent: number
 ): Promise<Buffer> {
-  console.log(`blurImageBuffer - Starting blur for ${blurPercent}%`);
-
   try {
     // Calculate sigma based on blur percentage
     // Higher blur percentage = higher sigma (more blur)
     // Map blur percentage to sigma to match React Native client blur
     const sigma = Math.max(6, blurPercent / 10); // 80% = sigma of 8
-
-    console.log(
-      `blurImageBuffer - Using sigma: ${sigma} for ${blurPercent}% blur`
-    );
 
     // Process image with sharp
     const blurredBuffer = await sharp(buffer)
@@ -32,15 +26,8 @@ async function blurImageBuffer(
       .jpeg({ quality: 80 })
       .toBuffer();
 
-    console.log(
-      `blurImageBuffer - Blur ${blurPercent}% completed, buffer size: ${blurredBuffer.length}`
-    );
     return blurredBuffer;
   } catch (error) {
-    console.error(
-      `blurImageBuffer - Error blurring image for ${blurPercent}%:`,
-      error
-    );
     throw error;
   }
 }
@@ -61,8 +48,6 @@ export const uploadImage = functions.https.onCall(
     invoker: "public",
   },
   async (request) => {
-    console.log("imageFunctions-uploadImage - Starting upload");
-
     try {
       if (!request.auth) {
         throw new functions.https.HttpsError(
@@ -82,10 +67,6 @@ export const uploadImage = functions.https.onCall(
 
       // Convert to buffer
       const imageBuffer = Buffer.from(imageData, "base64");
-      console.log(
-        "imageFunctions-uploadImage - Buffer size:",
-        imageBuffer.length
-      );
 
       // Generate file paths with _original and _blurred suffixes
       const timestamp = Date.now();
@@ -94,10 +75,6 @@ export const uploadImage = functions.https.onCall(
       const originalFilePath = `${baseName}_original.jpg`;
       const blurredFilePath = `${baseName}_blurred.jpg`;
       const filename = `${timestamp}-${randomId}_original.jpg`;
-
-      console.log("🚀 UPLOAD FUNCTION - File paths:");
-      console.log("Original path:", originalFilePath);
-      console.log("Blurred path:", blurredFilePath);
 
       // Use transaction to ensure atomicity
       const result = await db.runTransaction(async (transaction) => {
@@ -125,22 +102,17 @@ export const uploadImage = functions.https.onCall(
         }
 
         // Upload original image first (simpler, more reliable)
-        console.log("📤 Uploading original image...");
         await bucket.file(originalFilePath).save(imageBuffer, {
           metadata: { contentType: "image/jpeg" },
         });
-        console.log("✅ Original image uploaded successfully");
 
         // Generate and upload blurred version
-        console.log("🔀 Generating blurred version...");
         const blurredBuffer = await blurImageBuffer(imageBuffer, 80);
         await bucket.file(blurredFilePath).save(blurredBuffer, {
           metadata: { contentType: "image/jpeg" },
         });
-        console.log("✅ Blurred image uploaded successfully");
 
         // Update user document atomically
-        console.log("💾 Storing filename in Firestore:", filename);
         transaction.update(db.collection("users").doc(userId), {
           images: admin.firestore.FieldValue.arrayUnion(filename),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -152,11 +124,8 @@ export const uploadImage = functions.https.onCall(
         };
       });
 
-      console.log("🎉 UPLOAD COMPLETED - Final filename:", filename);
       return result;
     } catch (error) {
-      console.error("imageFunctions-uploadImage - Error:", error);
-
       // If it's a not-found error, provide helpful message
       if (
         error instanceof functions.https.HttpsError &&
@@ -234,7 +203,6 @@ export const getPersonalImages = functions.https.onCall(
           // Check if file exists first
           const [exists] = await bucket.file(originalPath).exists();
           if (!exists) {
-            console.log(`[getPersonalImages] File not found: ${originalPath}`);
             continue;
           }
 
@@ -257,13 +225,6 @@ export const getPersonalImages = functions.https.onCall(
         }
       }
 
-      console.log(
-        "[getPersonalImages] 🔍 DEBUG - personalImages array:",
-        personalImages
-      );
-      console.log("[getPersonalImages] 🔍 DEBUG - returning structure:", {
-        images: personalImages,
-      });
       return {
         images: personalImages,
       };
@@ -303,8 +264,6 @@ export const getImages = functions.https.onCall(
       }
       const { targetUserId } = request.data;
       const currentUserId = request.auth.uid;
-      console.log("🎯 PROFILE VIEW LOADED ***********");
-      console.log("[getImages] Fetching images for user:", targetUserId);
 
       if (!targetUserId) {
         throw new functions.https.HttpsError(
@@ -320,7 +279,6 @@ export const getImages = functions.https.onCall(
         .get();
 
       if (!targetUserDoc.exists) {
-        console.log("[getImages] ❌ User not found:", targetUserId);
         throw new functions.https.HttpsError(
           "not-found",
           "Target user not found"
@@ -329,10 +287,8 @@ export const getImages = functions.https.onCall(
 
       const targetUserData = targetUserDoc.data();
       const images = targetUserData?.images || [];
-      console.log(`[getImages] 📸 Found ${images.length} images`);
 
       // Get match info
-      console.log("[getImages] 🔍 Checking match status...");
       const matchQuery = await db
         .collection("matches")
         .where("user1Id", "in", [currentUserId, targetUserId])
@@ -349,13 +305,6 @@ export const getImages = functions.https.onCall(
         user1Consented = matchData?.user1Consented || false;
         user2Consented = matchData?.user2Consented || false;
         messageCount = matchData?.messageCount ?? 0;
-        console.log(
-          `[getImages] ✅ Match found - Consent: ${
-            user1Consented && user2Consented
-          }, Messages: ${messageCount}`
-        );
-      } else {
-        console.log(`[getImages] ❌ No match found - Using default values`);
       }
       // For each image, return the correct URL and blurLevel
       const result = [];
@@ -367,22 +316,14 @@ export const getImages = functions.https.onCall(
         if (typeof img === "string") {
           // The data in Firestore is now filenames from uploadImageViaCloudFunction
           const filename = img;
-          console.log(`[getImages] Processing filename:`, filename);
 
           // Check if both users have consented to see unblurred images
           const bothConsented = user1Consented && user2Consented;
-          console.log(`[getImages] Consent check:`, {
-            bothConsented,
-            messageCount,
-          });
 
           // Generate signed URLs based on consent
           if (bothConsented) {
             // Both consented - generate signed URL for original image
             const originalPath = `users/${targetUserId}/images/${filename}`;
-            console.log(`[getImages] 🔍 DEBUG - Original path:`, originalPath);
-            console.log(`[getImages] 🔍 DEBUG - Filename:`, filename);
-            console.log(`[getImages] 🔍 DEBUG - TargetUserId:`, targetUserId);
 
             const [originalUrl] = await bucket.file(originalPath).getSignedUrl({
               action: "read",
@@ -390,18 +331,6 @@ export const getImages = functions.https.onCall(
               version: "v4",
             });
             url = originalUrl;
-            console.log(
-              `[getImages] ✅ Generated unblurred signed URL:`,
-              originalUrl
-            );
-            console.log(
-              `[getImages] 🔍 DEBUG - URL contains %252F:`,
-              originalUrl.includes("%252F")
-            );
-            console.log(
-              `[getImages] 🔍 DEBUG - URL contains %2F:`,
-              originalUrl.includes("%2F")
-            );
           } else {
             // Not consented - generate signed URL for blurred image
             const blurredFilename = filename.replace(
@@ -409,11 +338,6 @@ export const getImages = functions.https.onCall(
               "_blurred.jpg"
             );
             const blurredPath = `users/${targetUserId}/images/${blurredFilename}`;
-            console.log(`[getImages] 🔍 DEBUG - Blurred path:`, blurredPath);
-            console.log(
-              `[getImages] 🔍 DEBUG - Blurred filename:`,
-              blurredFilename
-            );
 
             const [blurredUrl] = await bucket.file(blurredPath).getSignedUrl({
               action: "read",
@@ -421,21 +345,8 @@ export const getImages = functions.https.onCall(
               version: "v4",
             });
             url = blurredUrl;
-            console.log(
-              `[getImages] 🔒 Generated blurred signed URL:`,
-              blurredUrl
-            );
-            console.log(
-              `[getImages] 🔍 DEBUG - URL contains %252F:`,
-              blurredUrl.includes("%252F")
-            );
-            console.log(
-              `[getImages] 🔍 DEBUG - URL contains %2F:`,
-              blurredUrl.includes("%2F")
-            );
           }
         } else {
-          console.log(`[getImages] ❌ Invalid image format:`, img);
           url = null;
         }
 
@@ -499,8 +410,6 @@ export const generateBlurred = functions.https.onCall(
         );
       }
 
-      console.log("🔀 Generating blurred version for:", filename);
-
       // Get the original image from Storage
       const originalPath = `users/${userId}/images/${filename}`;
       const originalFile = bucket.file(originalPath);
@@ -528,8 +437,6 @@ export const generateBlurred = functions.https.onCall(
       await blurredFile.save(blurredBuffer, {
         metadata: { contentType: "image/jpeg" },
       });
-
-      console.log("✅ Blurred version generated:", blurredFilename);
 
       return {
         success: true,
@@ -573,8 +480,6 @@ export const getOriginalImages = functions.https.onCall(
       }
       const { userId } = request.data;
       const currentUserId = request.auth.uid;
-      console.log("[getOriginalImages] userId:", userId);
-      console.log("[getOriginalImages] currentUserId:", currentUserId);
 
       if (!userId) {
         throw new functions.https.HttpsError(
@@ -593,9 +498,7 @@ export const getOriginalImages = functions.https.onCall(
 
       // Get user's images
       const userDoc = await db.collection("users").doc(userId).get();
-      console.log("[getOriginalImages] userDoc.exists:", userDoc.exists);
       if (!userDoc.exists) {
-        console.log("[getOriginalImages] User not found in Firestore:", userId);
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
