@@ -118,8 +118,6 @@ export default function SignIn() {
   };
 
   const handleNewUser = (user: any) => {
-    console.log("🔍 [SIGN IN] handleNewUser called with:", user?.uid);
-
     // Guard against running this when user is already authenticated
     if (isAuthenticated || currentUser) {
       return;

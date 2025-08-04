@@ -174,10 +174,6 @@ export default function ProfileScreen() {
       headerRight: () => (
         <Pressable
           onPress={() => {
-            console.log("🚩 Flag button pressed!");
-            console.log("🔍 Navigation ref:", navigationRef.current);
-            console.log("🔍 userId:", userId, "profile:", profile?.firstName);
-
             if (!navigationRef.current) {
               console.error("❌ Navigation ref is null!");
               Alert.alert("Error", "Navigation not available");
@@ -197,7 +193,6 @@ export default function ProfileScreen() {
                 reportedUserName: profile?.firstName,
                 matchId: matchId,
               });
-              console.log("✅ Navigation successful");
             } catch (error) {
               console.error("❌ Navigation error:", error);
               Alert.alert("Error", "Failed to navigate to report screen");
@@ -216,19 +211,9 @@ export default function ProfileScreen() {
   }, [navigationRef, userId, currentUserId, profile, matchId]);
 
   const handleReport = () => {
-    console.log(
-      "🚩 handleReport called with userId:",
-      userId,
-      "profile:",
-      profile?.firstName
-    );
-
     if (!userId || !profile || !matchId) {
-      console.log("❌ handleReport - missing userId, profile, or matchId");
       return;
     }
-
-    console.log("🚩 Report button clicked for user:", userId);
 
     try {
       navigationRef.current.navigate("ReportScreen", {
@@ -237,7 +222,6 @@ export default function ProfileScreen() {
         reportedUserName: profile.firstName,
         matchId: matchId,
       });
-      console.log("✅ Navigation to ReportScreen successful");
     } catch (error) {
       console.error("❌ Navigation error:", error);
     }
