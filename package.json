@@ -20,6 +20,7 @@
     "expo": "~52.0.47",
     "expo-auth-session": "^6.0.3",
     "expo-av": "~15.0.2",
+    "expo-blur": "~14.0.3",
     "expo-file-system": "~18.0.12",
     "expo-image-manipulator": "~13.0.6",
     "expo-image-picker": "~16.0.4",
@@ -42,7 +43,7 @@
     "react-native-web": "~0.19.13",
     "socket.io-client": "^4.8.1",
     "stream-chat-expo": "^6.4.0",
-    "expo-blur": "~14.0.3"
+    "@react-native-picker/picker": "2.9.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
