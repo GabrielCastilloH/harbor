@@ -79,10 +79,6 @@ function AppContent() {
 
   // Don't render SignIn if user is already authenticated
   if (isAuthenticated && userId && userId.trim() !== "") {
-    console.log(
-      "🔍 [APP CONTENT] User authenticated with userId, checking paywall"
-    );
-
     // Render main app
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -97,9 +93,6 @@ function AppContent() {
 
   // Additional check: if user is authenticated but userId is not set yet, don't render SignIn
   if (isAuthenticated && (!userId || userId.trim() === "")) {
-    console.log(
-      "🔍 [APP CONTENT] User authenticated but no userId, showing AccountSetupScreen"
-    );
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
@@ -110,7 +103,6 @@ function AppContent() {
     );
   }
 
-  console.log("🔍 [APP CONTENT] User not authenticated, showing SignIn");
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
@@ -128,22 +120,8 @@ function AppContent() {
 }
 
 export default function App() {
-  // Debug: Print environment variables immediately
-  console.log("🔍 [APP] Environment variables check:");
-  console.log("🔍 [APP] All process.env keys:", Object.keys(process.env));
-  console.log(
-    "🔍 [APP] EXPO_PUBLIC_SUPERWALL_IOS_API_KEY:",
-    process.env.EXPO_PUBLIC_SUPERWALL_IOS_API_KEY
-  );
-  console.log(
-    "🔍 [APP] EXPO_PUBLIC_SUPERWALL_ANDROID_API_KEY:",
-    process.env.EXPO_PUBLIC_SUPERWALL_ANDROID_API_KEY
-  );
-  console.log("🔍 [APP] SUPERWALL_CONFIG:", SUPERWALL_CONFIG);
-
   // Get API keys immediately
   const apiKeys = SUPERWALL_CONFIG.apiKeys;
-  console.log("🔍 [APP] API keys check:", apiKeys);
 
   const [superwallApiKeys, setSuperwallApiKeys] = useState<{
     ios: string;
