@@ -48,13 +48,6 @@ export default function ReportScreen() {
   const { reportedUserId, reportedUserEmail, reportedUserName, matchId } =
     route.params;
 
-  console.log("🔍 ReportScreen params:", {
-    reportedUserId,
-    reportedUserEmail,
-    reportedUserName,
-    matchId,
-  });
-
   const handleSubmit = async () => {
     if (!selectedReason) {
       Alert.alert("Error", "Please select a reason for the report.");
@@ -66,21 +59,13 @@ export default function ReportScreen() {
       return;
     }
 
-    if (!matchId) {
-      Alert.alert(
-        "Error",
-        "Cannot submit report - match information not available."
-      );
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
       const functions = getFunctions();
-      const createReport = httpsCallable(
+      const reportAndUnmatch = httpsCallable(
         functions,
-        "reportFunctions-createReportAndUnmatch"
+        "reportFunctions-reportAndUnmatch"
       );
 
       const currentUser = auth.currentUser;
@@ -88,13 +73,13 @@ export default function ReportScreen() {
         throw new Error("User not authenticated");
       }
 
-      await createReport({
+      await reportAndUnmatch({
         reportedUserId,
         reportedUserEmail,
         reportedUserName,
         reason: selectedReason,
         explanation: explanation.trim(),
-        matchId: matchId,
+        matchId,
       });
 
       Alert.alert(
@@ -104,9 +89,9 @@ export default function ReportScreen() {
           {
             text: "OK",
             onPress: () => {
-              // Go back to profile screen, then back to chat
-              navigation.goBack();
-              navigation.goBack();
+              // Navigate back to chat list by going back multiple times
+              navigation.goBack(); // Go back from ReportScreen
+              navigation.goBack(); // Go back from ProfileScreen
             },
           },
         ]
