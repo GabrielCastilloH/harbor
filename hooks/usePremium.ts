@@ -3,7 +3,7 @@ import {
   getFeatureConfig,
   getSwipesPerDay,
   canSeeWhoSwipedOnThem,
-} from "../constants/FeaturesConfig";
+} from "../constants/Features";
 
 export const usePremium = () => {
   const { isSubscribed } = useSuperwall();
