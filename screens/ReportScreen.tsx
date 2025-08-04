@@ -76,24 +76,53 @@ export default function ReportScreen() {
 
     try {
       const functions = getFunctions();
-      const reportAndUnmatch = httpsCallable(
-        functions,
-        "reportFunctions-reportAndUnmatch"
-      );
-
       const currentUser = auth.currentUser;
       if (!currentUser) {
         throw new Error("User not authenticated");
       }
 
-      await reportAndUnmatch({
+      // Debug logs
+      console.log("🔍 [REPORT] Submitting report with data:", {
         reportedUserId,
         reportedUserEmail,
         reportedUserName,
         reason: selectedReason,
         explanation: explanation.trim(),
-        matchId: matchId || "", // Ensure matchId is never undefined
+        matchId: matchId || "",
+        currentUserId: currentUser.uid,
       });
+
+      // Use different function based on whether there's a matchId
+      if (matchId && matchId.trim() !== "") {
+        // Report from a match - use reportAndUnmatch
+        const reportAndUnmatch = httpsCallable(
+          functions,
+          "reportFunctions-reportAndUnmatch"
+        );
+
+        await reportAndUnmatch({
+          reportedUserId,
+          reportedUserEmail,
+          reportedUserName,
+          reason: selectedReason,
+          explanation: explanation.trim(),
+          matchId,
+        });
+      } else {
+        // Report from home screen - use createReport
+        const createReport = httpsCallable(
+          functions,
+          "reportFunctions-createReport"
+        );
+
+        await createReport({
+          reportedUserId,
+          reportedUserEmail,
+          reportedUserName,
+          reason: selectedReason,
+          explanation: explanation.trim(),
+        });
+      }
 
       setReportSubmitted(true);
       Alert.alert(
