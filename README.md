@@ -21,7 +21,7 @@ All fields must be completed before profile creation:
 - **First Name**: 2-50 characters
 - **Age**: 18+ years old
 - **Gender**: Must select from dropdown (Male, Female, Non-Binary)
-- **Sexual Orientation**: Must select from dropdown (Straight, Homosexual, Bisexual)
+- **Sexual Orientation**: Must select from dropdown (Heterosexual, Homosexual, Bisexual, Pansexual)
 - **Year Level**: Must select from dropdown (Freshman, Sophomore, Junior, Senior)
 - **Major**: Must select from dropdown (85+ options)
 
