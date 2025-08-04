@@ -167,7 +167,6 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (userId === currentUserId) return;
-    if (!matchId) return; // Don't set up report button until matchId is available
 
     navigationRef.current.setOptions({
       headerBackTitle: "Back",
@@ -185,8 +184,8 @@ export default function ProfileScreen() {
             }
 
             if (!matchId) {
-              console.error("❌ Cannot report - no matchId available");
-              Alert.alert("Error", "Cannot report this user at this time");
+              console.error("❌ MatchId is null!");
+              Alert.alert("Error", "Match not found");
               return;
             }
 
@@ -213,7 +212,35 @@ export default function ProfileScreen() {
         </Pressable>
       ),
     });
-  }, [navigationRef, userId, currentUserId, profile, matchId]);
+  }, [navigationRef, userId, currentUserId, profile]);
+
+  const handleReport = () => {
+    console.log(
+      "🚩 handleReport called with userId:",
+      userId,
+      "profile:",
+      profile?.firstName
+    );
+
+    if (!userId || !profile || !matchId) {
+      console.log("❌ handleReport - missing userId, profile, or matchId");
+      return;
+    }
+
+    console.log("🚩 Report button clicked for user:", userId);
+
+    try {
+      navigationRef.current.navigate("ReportScreen", {
+        reportedUserId: userId,
+        reportedUserEmail: profile.email,
+        reportedUserName: profile.firstName,
+        matchId: matchId,
+      });
+      console.log("✅ Navigation to ReportScreen successful");
+    } catch (error) {
+      console.error("❌ Navigation error:", error);
+    }
+  };
 
   const handleUnmatch = async () => {
     if (!userId || !currentUserId || !matchId) {
@@ -403,7 +430,6 @@ const styles = StyleSheet.create({
   reportButton: {
     marginRight: 15,
     padding: 8,
-    backgroundColor: Colors.secondary200, // Temporary for debugging
   },
   reportButtonPressed: {
     opacity: 0.7,
