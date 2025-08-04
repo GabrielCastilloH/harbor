@@ -183,11 +183,18 @@ export default function ProfileScreen() {
               return;
             }
 
+            if (!matchId) {
+              console.error("❌ Cannot report - no matchId available");
+              Alert.alert("Error", "Cannot report this user at this time");
+              return;
+            }
+
             try {
               navigationRef.current.navigate("ReportScreen", {
                 reportedUserId: userId,
                 reportedUserEmail: profile?.email,
                 reportedUserName: profile?.firstName,
+                matchId: matchId,
               });
               console.log("✅ Navigation successful");
             } catch (error) {
@@ -206,33 +213,6 @@ export default function ProfileScreen() {
       ),
     });
   }, [navigationRef, userId, currentUserId, profile]);
-
-  const handleReport = () => {
-    console.log(
-      "🚩 handleReport called with userId:",
-      userId,
-      "profile:",
-      profile?.firstName
-    );
-
-    if (!userId || !profile) {
-      console.log("❌ handleReport - missing userId or profile");
-      return;
-    }
-
-    console.log("🚩 Report button clicked for user:", userId);
-
-    try {
-      navigationRef.current.navigate("ReportScreen", {
-        reportedUserId: userId,
-        reportedUserEmail: profile.email,
-        reportedUserName: profile.firstName,
-      });
-      console.log("✅ Navigation to ReportScreen successful");
-    } catch (error) {
-      console.error("❌ Navigation error:", error);
-    }
-  };
 
   const handleUnmatch = async () => {
     if (!userId || !currentUserId || !matchId) {
