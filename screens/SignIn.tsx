@@ -22,7 +22,6 @@ import {
 } from "../util/chatPreloader";
 
 export default function SignIn() {
-  console.log("🟡 [SIGN IN] Screen shown");
   const {
     isAuthenticated,
     currentUser,
@@ -100,7 +99,6 @@ export default function SignIn() {
 
     try {
       // Pre-load chat credentials for existing users
-
       const { apiKey, userToken } = await preloadChatCredentials(userData.uid);
 
       // Update context with pre-loaded credentials
@@ -110,11 +108,9 @@ export default function SignIn() {
       // Don't block sign-in if chat pre-loading fails
     }
 
-    // Handle existing user - navigate to main app
+    // Don't set authentication state here - let AppContext handle it
+    // The GoogleSignInButton will trigger Firebase Auth, which will trigger AppContext
     setSignInSuccessful(true);
-    setIsAuthenticated(true);
-    setUserId(userData.uid);
-    // Stop loading after we have definitive answer that user exists
     setIsLoading(false);
   };
 
@@ -128,9 +124,7 @@ export default function SignIn() {
     // Don't pre-load chat credentials for new users since they need to complete setup first
     setSignInSuccessful(true);
     setIsNewUser(true);
-    setIsAuthenticated(true);
-    setUserId(null); // This will trigger AccountSetupScreen
-    // Stop loading after we have definitive answer that user is new
+    // Don't set authentication state here - let AppContext handle it
     setIsLoading(false);
   };
 

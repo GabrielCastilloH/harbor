@@ -21,6 +21,7 @@ interface AppContextType {
   streamUserToken: string | null;
   setStreamUserToken: (token: string | null) => void;
   isInitialized: boolean;
+  isCheckingProfile: boolean;
 }
 
 const defaultValue: AppContextType = {
@@ -40,6 +41,7 @@ const defaultValue: AppContextType = {
   streamUserToken: null,
   setStreamUserToken: () => {},
   isInitialized: false,
+  isCheckingProfile: false,
 };
 
 export const AppContext = React.createContext<AppContextType>(defaultValue);
@@ -59,6 +61,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [streamUserToken, setStreamUserToken] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isAuthDetermined, setIsAuthDetermined] = useState(false);
+  const [isCheckingProfile, setIsCheckingProfile] = useState(false);
 
   // Ensure userId is never an empty string - convert to null
   useEffect(() => {
@@ -82,6 +85,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
         // Always check Firestore when user changes to ensure we have the correct profile
         // This fixes the issue where switching accounts doesn't properly check the new user's profile
+        setIsCheckingProfile(true);
         try {
           const { UserService } = require("../networking");
           const response = await UserService.getUserById(user.uid);
@@ -108,6 +112,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             setUserId(null);
             setProfile(null);
           }
+        } finally {
+          setIsCheckingProfile(false);
         }
 
         // Load cached Stream credentials
@@ -134,6 +140,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setProfile(null);
         setStreamApiKey(null);
         setStreamUserToken(null);
+        setIsCheckingProfile(false);
 
         // Clear stored data
         try {
@@ -144,11 +151,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       }
 
       setIsAuthDetermined(true);
-      setIsInitialized(true);
     });
 
     return () => unsubscribe();
   }, [isAuthDetermined, currentUser]);
+
+  // Set initialized to true when profile checking is complete
+  useEffect(() => {
+    if (isAuthDetermined && !isCheckingProfile) {
+      setIsInitialized(true);
+    }
+  }, [isAuthDetermined, isCheckingProfile]);
 
   return (
     <AppContext.Provider
@@ -169,6 +182,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         streamUserToken,
         setStreamUserToken,
         isInitialized,
+        isCheckingProfile,
       }}
     >
       {children}
