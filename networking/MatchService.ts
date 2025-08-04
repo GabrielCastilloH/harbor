@@ -5,8 +5,6 @@ const functions = getFunctions(app, "us-central1");
 
 export class MatchService {
   static async createMatch(user1Id: string, user2Id: string) {
-    // console.log("MatchService - createMatch called with:", { user1Id, user2Id });
-
     try {
       const createMatch = httpsCallable(
         functions,
@@ -14,8 +12,6 @@ export class MatchService {
       );
       const result = await createMatch({ user1Id, user2Id });
       const data = result.data as any;
-
-      // console.log("MatchService - Match created:", data);
       return data;
     } catch (error) {
       console.error("MatchService - Error creating match:", error);
@@ -24,8 +20,6 @@ export class MatchService {
   }
 
   static async getActiveMatches(userId: string) {
-    // console.log("MatchService - getActiveMatches called with:", userId);
-
     try {
       const getActiveMatches = httpsCallable(
         functions,
@@ -33,8 +27,6 @@ export class MatchService {
       );
       const result = await getActiveMatches({ userId });
       const data = result.data as any;
-
-      // console.log("MatchService - Active matches:", data);
       return data;
     } catch (error) {
       console.error("MatchService - Error getting active matches:", error);
@@ -43,20 +35,10 @@ export class MatchService {
   }
 
   static async unmatch(userId: string, matchId: string) {
-    console.log("🔍 [DEBUG] MatchService.unmatch called with:", {
-      userId,
-      matchId,
-    });
-
     try {
       const unmatch = httpsCallable(functions, "matchFunctions-unmatchUsers");
-      console.log(
-        "🔍 [DEBUG] Calling Firebase function: matchFunctions-unmatchUsers"
-      );
       const result = await unmatch({ userId, matchId });
       const data = result.data as any;
-
-      console.log("✅ [DEBUG] MatchService.unmatch successful:", data);
       return data;
     } catch (error) {
       console.error("❌ [DEBUG] MatchService.unmatch error:", error);
@@ -69,12 +51,6 @@ export class MatchService {
     channelId: string,
     channelType: string
   ) {
-    // console.log("MatchService - updateMatchChannel called with:", {
-    //   matchId,
-    //   channelId,
-    //   channelType,
-    // });
-
     try {
       const updateMatchChannel = httpsCallable(
         functions,
@@ -87,7 +63,6 @@ export class MatchService {
       });
       const data = result.data as any;
 
-      // console.log("MatchService - Match channel updated:", data);
       return data;
     } catch (error) {
       console.error("MatchService - Error updating match channel:", error);

@@ -26,7 +26,6 @@ export class RecommendationService {
       // await logToNtfy(
       //   `RecommendationService - Number of recommendations: ${data.recommendations?.length || 0}`
       // );
-      // console.log("RecommendationService - Recommendations fetched:", data);
 
       return data;
     } catch (error: any) {
