@@ -167,6 +167,7 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (userId === currentUserId) return;
+    if (!matchId) return; // Don't set up report button until matchId is available
 
     navigationRef.current.setOptions({
       headerBackTitle: "Back",
@@ -212,7 +213,7 @@ export default function ProfileScreen() {
         </Pressable>
       ),
     });
-  }, [navigationRef, userId, currentUserId, profile]);
+  }, [navigationRef, userId, currentUserId, profile, matchId]);
 
   const handleUnmatch = async () => {
     if (!userId || !currentUserId || !matchId) {
