@@ -148,6 +148,179 @@ export const createReport = functions.https.onCall(
 );
 
 /**
+ * Creates a report and unmatch users in a single transaction
+ */
+export const createReportAndUnmatch = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (
+    request: CallableRequest<{
+      reportedUserId: string;
+      reportedUserEmail?: string;
+      reportedUserName?: string;
+      reason: string;
+      explanation: string;
+      matchId: string;
+    }>
+  ) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const {
+        reportedUserId,
+        reportedUserEmail,
+        reportedUserName,
+        reason,
+        explanation,
+        matchId,
+      } = request.data;
+
+      const reporterId = request.auth.uid;
+
+      if (!reportedUserId || !reason || !explanation || !matchId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Missing required fields: reportedUserId, reason, explanation, or matchId"
+        );
+      }
+
+      // Prevent self-reporting
+      if (reporterId === reportedUserId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Cannot report yourself"
+        );
+      }
+
+      // Get reporter's email
+      const reporterUser = await admin.auth().getUser(reporterId);
+      const reporterEmail = reporterUser.email;
+
+      // Get reported user's email if not provided
+      let finalReportedUserEmail = reportedUserEmail;
+      if (!finalReportedUserEmail) {
+        try {
+          const reportedUser = await admin.auth().getUser(reportedUserId);
+          finalReportedUserEmail = reportedUser.email;
+        } catch (error) {
+          console.log("Could not get reported user email:", error);
+        }
+      }
+
+      // Perform both operations in a single transaction
+      const result = await db.runTransaction(async (transaction) => {
+        // 1. Create the report
+        const reportData = {
+          reporterId,
+          reporterEmail,
+          reportedUserId,
+          reportedUserEmail: finalReportedUserEmail,
+          reportedUserName,
+          reason,
+          explanation,
+          status: "pending",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        const reportRef = db.collection("reports").doc();
+        transaction.set(reportRef, reportData);
+
+        // 2. Get the match document
+        const matchDoc = await transaction.get(
+          db.collection("matches").doc(matchId)
+        );
+        if (!matchDoc.exists) {
+          throw new functions.https.HttpsError("not-found", "Match not found");
+        }
+
+        const matchData = matchDoc.data();
+        if (!matchData) {
+          throw new functions.https.HttpsError(
+            "not-found",
+            "Match data not found"
+          );
+        }
+
+        // Verify the requesting user is part of this match
+        if (
+          reporterId !== matchData.user1Id &&
+          reporterId !== matchData.user2Id
+        ) {
+          throw new functions.https.HttpsError(
+            "permission-denied",
+            "User not part of this match"
+          );
+        }
+
+        // 3. Deactivate the match
+        transaction.update(db.collection("matches").doc(matchId), {
+          isActive: false,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 4. Remove match from both users' currentMatches arrays
+        transaction.update(db.collection("users").doc(matchData.user1Id), {
+          currentMatches: admin.firestore.FieldValue.arrayRemove(matchId),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        transaction.update(db.collection("users").doc(matchData.user2Id), {
+          currentMatches: admin.firestore.FieldValue.arrayRemove(matchId),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return {
+          reportId: reportRef.id,
+          matchId: matchId,
+          user1Id: matchData.user1Id,
+          user2Id: matchData.user2Id,
+        };
+      });
+
+      // Log the report and unmatch for monitoring
+      await logToNtfy(
+        `🚩 REPORT & UNMATCH: ${reporterEmail} reported and unmatched from ${
+          finalReportedUserEmail || reportedUserId
+        } for ${reason}`
+      );
+
+      return {
+        message: "Report created and users unmatched successfully",
+        reportId: result.reportId,
+        matchId: result.matchId,
+      };
+    } catch (error: any) {
+      console.error("Error creating report and unmatching:", error);
+      await logToNtfy(`❌ REPORT & UNMATCH ERROR: ${error.message}`);
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to create report and unmatch users"
+      );
+    }
+  }
+);
+
+/**
  * Gets all reports (admin function)
  */
 export const getReports = functions.https.onCall(
@@ -270,6 +443,7 @@ export const updateReportStatus = functions.https.onCall(
 
 export const reportFunctions = {
   createReport,
+  createReportAndUnmatch,
   getReports,
   updateReportStatus,
 };
