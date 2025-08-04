@@ -461,8 +461,17 @@ export const getSwipesByUser = functions.https.onCall(
   }
 );
 
+import {
+  getSwipeLimit,
+  incrementSwipeCount,
+  updateSwipeLimit,
+} from "./swipeLimits";
+
 export const swipeFunctions = {
   createSwipe,
   countRecentSwipes,
   getSwipesByUser,
+  getSwipeLimit,
+  incrementSwipeCount,
+  updateSwipeLimit,
 };
