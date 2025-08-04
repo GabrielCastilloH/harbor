@@ -124,21 +124,25 @@ export default function App() {
     android: string;
   } | null>(null);
   const [isLoadingSuperwall, setIsLoadingSuperwall] = useState(true);
+  const [superwallError, setSuperwallError] = useState<string | null>(null);
 
   // Fetch Superwall API keys
   useEffect(() => {
     const fetchApiKeys = async () => {
       try {
+        console.log("🔑 [SUPERWALL] Fetching API keys...");
         const keys = await getSuperwallApiKeys();
+        console.log("✅ [SUPERWALL] API keys fetched successfully:", {
+          ios: keys.apiKeys.ios ? "PRESENT" : "MISSING",
+          android: keys.apiKeys.android ? "PRESENT" : "MISSING",
+        });
         setSuperwallApiKeys(keys.apiKeys);
       } catch (error) {
-        console.error("Failed to fetch Superwall API keys:", error);
-        // Continue without Superwall - app will still work
-        // You can add your API keys directly here as fallback if needed
-        setSuperwallApiKeys({
-          ios: "", // Add your iOS API key here if needed
-          android: "", // Add your Android API key here if needed
-        });
+        console.error("❌ [SUPERWALL] Failed to fetch API keys:", error);
+        setSuperwallError(
+          error instanceof Error ? error.message : String(error)
+        );
+        // Don't set fallback - let it fail properly
       } finally {
         setIsLoadingSuperwall(false);
       }
@@ -147,9 +151,28 @@ export default function App() {
     fetchApiKeys();
   }, []);
 
+  // Show error if Superwall failed to load
+  if (superwallError) {
+    console.error("🚨 [SUPERWALL] CRITICAL ERROR:", superwallError);
+    throw new Error(`Superwall initialization failed: ${superwallError}`);
+  }
+
+  // Show loading while fetching API keys
+  if (isLoadingSuperwall) {
+    return <LoadingScreen loadingText="Loading Superwall..." />;
+  }
+
+  // Ensure we have API keys before proceeding
+  if (!superwallApiKeys || !superwallApiKeys.ios || !superwallApiKeys.android) {
+    const error = "Superwall API keys are missing or invalid";
+    console.error("🚨 [SUPERWALL] CRITICAL ERROR:", error);
+    console.error("🚨 [SUPERWALL] API Keys state:", superwallApiKeys);
+    throw new Error(error);
+  }
+
   return (
     <SafeAreaProvider>
-      <SuperwallProvider apiKeys={superwallApiKeys || { ios: "", android: "" }}>
+      <SuperwallProvider apiKeys={superwallApiKeys}>
         <SuperwallLoading>
           <LoadingScreen loadingText="Loading Superwall..." />
         </SuperwallLoading>
