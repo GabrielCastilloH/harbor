@@ -27,7 +27,7 @@ class SocketService {
     this._socket = io(url);
 
     this._socket.on("connect", () => {
-      console.log("Connected to socket server");
+      // Connected to socket server
     });
 
     this._socket.on("match", (matchData: MatchEvent) => {

@@ -28,8 +28,6 @@ export async function uploadImageViaCloudFunction(
   const filename = `${timestamp}-${randomId}_original.jpg`;
   const filePath = `users/${userId}/images/${filename}`;
 
-  console.log("📤 Uploading to Firebase Storage:", filePath);
-
   // Upload to Firebase Storage directly
   const storageRef = ref(storage, filePath);
   await uploadBytes(storageRef, blob, {
@@ -38,25 +36,19 @@ export async function uploadImageViaCloudFunction(
 
   // Get the download URL
   const originalUrl = await getDownloadURL(storageRef);
-  console.log("✅ Original image uploaded:", originalUrl);
 
   // Store filename in Firestore (only if user document exists)
-  console.log("📝 Storing filename in Firestore:", filename);
   try {
     const userRef = doc(db, "users", userId);
     await updateDoc(userRef, {
       images: arrayUnion(filename),
     });
-    console.log("✅ Filename stored in Firestore");
   } catch (error) {
-    console.log(
-      "⚠️ User document doesn't exist yet, skipping Firestore update"
-    );
+    // User document doesn't exist yet, skipping Firestore update
     // The filename will be stored when the profile is created
   }
 
   // Call Cloud Function to generate blurred version
-  console.log("🔀 Calling Cloud Function to generate blurred version...");
   const { getFunctions, httpsCallable } = require("firebase/functions");
   const functions = getFunctions();
   const generateBlurred = httpsCallable(
@@ -69,8 +61,6 @@ export async function uploadImageViaCloudFunction(
       userId: userId,
       filename: filename,
     });
-
-    console.log("✅ Blurred version generated:", result.data);
 
     // Construct blurred URL
     const blurredUrl = originalUrl.replace("_original.jpg", "_blurred.jpg");
