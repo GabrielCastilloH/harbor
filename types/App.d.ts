@@ -18,6 +18,7 @@ export type Profile = {
   q5: string; // "My favorite study spot is:"
   q6: string; // "Some of my hobbies are:"
   currentMatches?: string[];
+  paywallSeen?: boolean;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
