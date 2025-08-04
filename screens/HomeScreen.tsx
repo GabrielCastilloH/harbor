@@ -415,6 +415,11 @@ export default function HomeScreen() {
       reportedUserName: currentCardProfile.firstName,
       matchId: "", // Empty since this is not from a match
     });
+
+    // Swipe left on the current card to remove it
+    if (stackRef.current) {
+      stackRef.current.swipeLeft();
+    }
   };
 
   const handlePremiumUpgrade = async () => {
