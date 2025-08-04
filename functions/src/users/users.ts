@@ -551,7 +551,12 @@ export const updateUser = functions.https.onCall(
         if (!userData.sexualOrientation?.trim()) {
           validationErrors.push("Sexual orientation selection is required");
         } else {
-          const validOrientations = ["Straight", "Homosexual", "Bisexual"];
+          const validOrientations = [
+            "Heterosexual",
+            "Homosexual",
+            "Bisexual",
+            "Pansexual",
+          ];
           if (!validOrientations.includes(userData.sexualOrientation)) {
             validationErrors.push("Invalid sexual orientation selection");
           }

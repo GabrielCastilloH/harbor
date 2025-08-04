@@ -18,6 +18,82 @@ async function logToNtfy(msg: string) {
 const db = admin.firestore();
 
 /**
+ * Determines if two users are compatible based on their gender and sexual orientation
+ */
+function isCompatible(user1: any, user2: any): boolean {
+  const gender1 = user1.gender;
+  const orientation1 = user1.sexualOrientation;
+  const gender2 = user2.gender;
+  const orientation2 = user2.sexualOrientation;
+
+  // If either user is missing required data, don't show them
+  if (!gender1 || !orientation1 || !gender2 || !orientation2) {
+    return false;
+  }
+
+  // Check if user1 would be interested in user2
+  const user1InterestedInUser2 = isUserInterestedIn(user1, user2);
+
+  // Check if user2 would be interested in user1
+  const user2InterestedInUser1 = isUserInterestedIn(user2, user1);
+
+  // Both users must be interested in each other for compatibility
+  return user1InterestedInUser2 && user2InterestedInUser1;
+}
+
+/**
+ * Determines if user1 would be interested in user2 based on gender and sexual orientation
+ */
+function isUserInterestedIn(user1: any, user2: any): boolean {
+  const gender1 = user1.gender;
+  const orientation1 = user1.sexualOrientation;
+  const gender2 = user2.gender;
+
+  switch (orientation1) {
+    case "Heterosexual":
+      // Heterosexual people are interested in the opposite gender
+      if (gender1 === "Male") return gender2 === "Female";
+      if (gender1 === "Female") return gender2 === "Male";
+      if (gender1 === "Non-Binary") return gender2 === "Non-Binary";
+      return false;
+
+    case "Homosexual":
+      // Homosexual people are interested in the same gender
+      if (gender1 === "Male") return gender2 === "Male";
+      if (gender1 === "Female") return gender2 === "Female";
+      if (gender1 === "Non-Binary") return gender2 === "Non-Binary";
+      return false;
+
+    case "Bisexual":
+      // Bisexual people are interested in their own gender and other genders
+      if (gender1 === "Male") return gender2 === "Male" || gender2 === "Female";
+      if (gender1 === "Female")
+        return gender2 === "Male" || gender2 === "Female";
+      if (gender1 === "Non-Binary") return gender2 === "Non-Binary";
+      return false;
+
+    case "Pansexual":
+      // Pansexual people are interested in all genders
+      if (gender1 === "Male")
+        return (
+          gender2 === "Male" || gender2 === "Female" || gender2 === "Non-Binary"
+        );
+      if (gender1 === "Female")
+        return (
+          gender2 === "Male" || gender2 === "Female" || gender2 === "Non-Binary"
+        );
+      if (gender1 === "Non-Binary")
+        return (
+          gender2 === "Male" || gender2 === "Female" || gender2 === "Non-Binary"
+        );
+      return false;
+
+    default:
+      return false;
+  }
+}
+
+/**
  * Gets user recommendations for swiping
  */
 export const getRecommendations = functions.https.onCall(
@@ -106,7 +182,13 @@ export const getRecommendations = functions.https.onCall(
         return { recommendations: [] };
       }
 
-      return { recommendations: trulyAvailableUsers };
+      // Apply intelligent matching based on sexual orientation and gender preferences
+      const currentUserData = userDoc.data();
+      const filteredRecommendations = trulyAvailableUsers.filter((user) => {
+        return isCompatible(currentUserData, user);
+      });
+
+      return { recommendations: filteredRecommendations };
     } catch (error: any) {
       if (error instanceof functions.https.HttpsError) {
         throw error;
