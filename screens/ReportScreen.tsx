@@ -17,6 +17,7 @@ import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 import { auth } from "../firebaseConfig";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { useFocusEffect } from "@react-navigation/native";
 
 type ReportScreenParams = {
   ReportScreen: {
@@ -40,6 +41,7 @@ export default function ReportScreen() {
   const [selectedReason, setSelectedReason] = useState<string>("");
   const [explanation, setExplanation] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reportSubmitted, setReportSubmitted] = useState(false);
 
   const route = useRoute<RouteProp<ReportScreenParams, "ReportScreen">>();
   const navigation = useNavigation();
@@ -47,6 +49,17 @@ export default function ReportScreen() {
 
   const { reportedUserId, reportedUserEmail, reportedUserName, matchId } =
     route.params;
+
+  // Remove the reported card when returning to home screen
+  useFocusEffect(
+    React.useCallback(() => {
+      if (reportSubmitted) {
+        // Reset the flag
+        setReportSubmitted(false);
+        // The card removal will be handled by the home screen
+      }
+    }, [reportSubmitted])
+  );
 
   const handleSubmit = async () => {
     if (!selectedReason) {
@@ -63,25 +76,55 @@ export default function ReportScreen() {
 
     try {
       const functions = getFunctions();
-      const reportAndUnmatch = httpsCallable(
-        functions,
-        "reportFunctions-reportAndUnmatch"
-      );
-
       const currentUser = auth.currentUser;
       if (!currentUser) {
         throw new Error("User not authenticated");
       }
 
-      await reportAndUnmatch({
+      // Debug logs
+      console.log("🔍 [REPORT] Submitting report with data:", {
         reportedUserId,
         reportedUserEmail,
         reportedUserName,
         reason: selectedReason,
         explanation: explanation.trim(),
-        matchId,
+        matchId: matchId || "",
+        currentUserId: currentUser.uid,
       });
 
+      // Use different function based on whether there's a matchId
+      if (matchId && matchId.trim() !== "") {
+        // Report from a match - use reportAndUnmatch
+        const reportAndUnmatch = httpsCallable(
+          functions,
+          "reportFunctions-reportAndUnmatch"
+        );
+
+        await reportAndUnmatch({
+          reportedUserId,
+          reportedUserEmail,
+          reportedUserName,
+          reason: selectedReason,
+          explanation: explanation.trim(),
+          matchId,
+        });
+      } else {
+        // Report from home screen - use createReport
+        const createReport = httpsCallable(
+          functions,
+          "reportFunctions-createReport"
+        );
+
+        await createReport({
+          reportedUserId,
+          reportedUserEmail,
+          reportedUserName,
+          reason: selectedReason,
+          explanation: explanation.trim(),
+        });
+      }
+
+      setReportSubmitted(true);
       Alert.alert(
         "Report Submitted",
         "Thank you for your report. We will review it and take appropriate action.",
@@ -89,9 +132,8 @@ export default function ReportScreen() {
           {
             text: "OK",
             onPress: () => {
-              // Navigate back to chat list by going back multiple times
-              navigation.goBack(); // Go back from ReportScreen
-              navigation.goBack(); // Go back from ProfileScreen
+              // Navigate back to home screen
+              navigation.goBack();
             },
           },
         ]
@@ -108,10 +150,13 @@ export default function ReportScreen() {
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
     >
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
           <Text style={styles.sectionTitle}>Reason for Report</Text>
@@ -196,6 +241,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100, // Add padding to ensure content ends before tab bar
   },
   content: {
     padding: 24,
