@@ -32,32 +32,80 @@ GoogleSignin.configure({
 
 function AppContent() {
   const { isAuthenticated, userId, isInitialized } = useAppContext();
-  const [isLoadingSuperwall, setIsLoadingSuperwall] = useState(true);
   const [hasSeenPaywall, setHasSeenPaywall] = useState<boolean | null>(null);
+
+  console.log("🔍 [APP CONTENT] State:", {
+    isAuthenticated,
+    userId,
+    isInitialized,
+    hasSeenPaywall,
+  });
 
   // Check if user has seen the paywall
   useEffect(() => {
+    console.log("🔍 [APP CONTENT] useEffect - checking paywall status");
     const checkPaywallStatus = async () => {
       if (isAuthenticated && userId) {
+        console.log(
+          "🔍 [APP CONTENT] User authenticated, checking paywall status for userId:",
+          userId
+        );
         try {
           const paywallSeen = await AsyncStorage.getItem(
             `@paywall_seen_${userId}`
           );
+          console.log("🔍 [APP CONTENT] Paywall seen status:", paywallSeen);
           setHasSeenPaywall(paywallSeen === "true");
         } catch (error) {
-          console.error("Error checking paywall status:", error);
+          console.error(
+            "❌ [APP CONTENT] Error checking paywall status:",
+            error
+          );
           setHasSeenPaywall(false);
         }
+      } else {
+        console.log(
+          "🔍 [APP CONTENT] User not authenticated or no userId, setting hasSeenPaywall to false (not null)"
+        );
+        // If user is not authenticated, they haven't seen the paywall yet
+        setHasSeenPaywall(false);
       }
     };
 
     checkPaywallStatus();
   }, [isAuthenticated, userId]);
 
+  console.log("🔍 [APP CONTENT] Current state after paywall check:", {
+    isAuthenticated,
+    userId,
+    isInitialized,
+    hasSeenPaywall,
+  });
+
   // Show loading screen while Firebase Auth is determining the auth state
-  if (!isInitialized || isLoadingSuperwall || hasSeenPaywall === null) {
+  if (!isInitialized) {
+    console.log(
+      "🔍 [APP CONTENT] Showing loading screen because isInitialized is false"
+    );
     return <LoadingScreen loadingText="Initializing..." />;
   }
+
+  console.log(
+    "🔍 [APP CONTENT] Past loading screen, checking navigation logic"
+  );
+
+  console.log("🔍 [APP CONTENT] FINAL NAVIGATION DECISION:", {
+    isAuthenticated,
+    userId,
+    hasSeenPaywall,
+    shouldShowSignIn: !isAuthenticated,
+    shouldShowAccountSetup:
+      isAuthenticated && (!userId || userId.trim() === ""),
+    shouldShowPaywall:
+      isAuthenticated && userId && userId.trim() !== "" && !hasSeenPaywall,
+    shouldShowMainApp:
+      isAuthenticated && userId && userId.trim() !== "" && hasSeenPaywall,
+  });
 
   // Security check: Only allow access to main app if user exists in Firestore
   // If not signed in, show SignIn.
@@ -67,8 +115,15 @@ function AppContent() {
 
   // Don't render SignIn if user is already authenticated
   if (isAuthenticated && userId && userId.trim() !== "") {
+    console.log(
+      "🔍 [APP CONTENT] User authenticated with userId, checking paywall"
+    );
+
     // Check if user should see paywall (first-time users)
     if (!hasSeenPaywall) {
+      console.log(
+        "🔍 [APP CONTENT] User hasn't seen paywall, showing PaywallScreen"
+      );
       return (
         <GestureHandlerRootView style={{ flex: 1 }}>
           <NavigationContainer>
@@ -79,6 +134,7 @@ function AppContent() {
       );
     }
 
+    console.log("🔍 [APP CONTENT] User has seen paywall, showing TabNavigator");
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
@@ -92,6 +148,9 @@ function AppContent() {
 
   // Additional check: if user is authenticated but userId is not set yet, don't render SignIn
   if (isAuthenticated && (!userId || userId.trim() === "")) {
+    console.log(
+      "🔍 [APP CONTENT] User authenticated but no userId, showing AccountSetupScreen"
+    );
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
@@ -102,6 +161,7 @@ function AppContent() {
     );
   }
 
+  console.log("🔍 [APP CONTENT] User not authenticated, showing SignIn");
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
@@ -126,8 +186,15 @@ export default function App() {
   const [isLoadingSuperwall, setIsLoadingSuperwall] = useState(true);
   const [superwallError, setSuperwallError] = useState<string | null>(null);
 
+  console.log("🔍 [APP] App component state:", {
+    superwallApiKeys: superwallApiKeys ? "PRESENT" : "NULL",
+    isLoadingSuperwall,
+    superwallError,
+  });
+
   // Fetch Superwall API keys
   useEffect(() => {
+    console.log("🔍 [APP] Starting Superwall API key fetch");
     const fetchApiKeys = async () => {
       try {
         console.log("🔑 [SUPERWALL] Fetching API keys...");
@@ -144,6 +211,7 @@ export default function App() {
         );
         // Don't set fallback - let it fail properly
       } finally {
+        console.log("🔍 [APP] Superwall loading finished");
         setIsLoadingSuperwall(false);
       }
     };
@@ -159,6 +227,7 @@ export default function App() {
 
   // Show loading while fetching API keys
   if (isLoadingSuperwall) {
+    console.log("🔍 [APP] Showing Superwall loading screen");
     return <LoadingScreen loadingText="Loading Superwall..." />;
   }
 
@@ -170,6 +239,7 @@ export default function App() {
     throw new Error(error);
   }
 
+  console.log("🔍 [APP] Superwall ready, rendering main app");
   return (
     <SafeAreaProvider>
       <SuperwallProvider apiKeys={superwallApiKeys}>
