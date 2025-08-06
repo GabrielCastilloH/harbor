@@ -1,7 +1,21 @@
 # 🌊 Harbor
 
 A unique dating app that focuses on meaningful connections through progressive photo reveal and limited daily interactions.
-TODO: Add push notifications to the app (and make the you've matched system notification silent) Make blurry photo lower quality on backend to make it harder to makeout face. button to view profile in the settings. show difference between basic and premium plan. by signing up you agree to terms & conditions (put this in the first page). Make other person see the match modal even if they didn't click on the swipe that made the match. work with user1 viewed. CANT GO TO PROFILE WHEN USING ON PHONE FOR SOME REASON. MAKE \_BLURRY PHOTOS MORE BLURRY. Send a message when both people accept to reload the chat. Make the continue modal a bit more opaque. Make sure they can't send a message if one user hasn't allowed to continue (actually not MVP)
+
+TODO:
+
+- Add push notifications to the app (and make the you've matched system notification silent)
+- Make blurry photo lower quality on backend to make it harder to makeout face.
+- button to view profile in the settings.
+- show difference between basic and premium plan.
+- by signing up you agree to terms & conditions (put this in the first page).
+- Make other person see the match modal even if they didn't click on the swipe that made the match.
+- work with user1 viewed.
+- CANT GO TO PROFILE WHEN USING ON PHONE FOR SOME REASON.
+- MAKE \_BLURRY PHOTOS MORE BLURRY.
+- Send a message when both people accept to reload the chat.
+- Make the continue modal a bit more opaque.
+- Make sure they can't send a message if one user hasn't allowed to continue (actually not MVP)
 
 ## 📋 Validation Rules
 
