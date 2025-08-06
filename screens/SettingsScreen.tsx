@@ -19,6 +19,7 @@ import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 import { usePlacement, useUser } from "expo-superwall";
+import SettingsButton from "../components/SettingsButton";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -132,94 +133,77 @@ export default function SettingsScreen() {
         </View>
       </SafeAreaView>
       <ScrollView style={styles.container}>
+        {/* Preferences Section */}
+        <View style={[styles.section, styles.firstSection]}>
+          <Text style={styles.sectionTitle}>Preferences</Text>
+
+          <SettingsButton
+            icon="notifications-outline"
+            text="Notifications"
+            switchProps={{
+              value: notifications,
+              onValueChange: setNotifications,
+            }}
+          />
+        </View>
+
+        {/* Account Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
 
-          {/* Notifications Button with Switch */}
-          <View style={styles.button}>
-            <Ionicons
-              name="notifications"
-              size={20}
-              color={Colors.primary500}
-            />
-            <Text style={styles.buttonText}>Notifications</Text>
-            <Switch
-              value={notifications}
-              onValueChange={setNotifications}
-              trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
-              thumbColor={Colors.secondary100}
-              style={styles.switch}
-            />
-          </View>
-
-          {/* Edit Profile Button */}
-          <TouchableOpacity
-            style={styles.button}
+          <SettingsButton
+            icon="person-outline"
+            text="Edit Profile"
             onPress={() => navigation.navigate("Profile" as never)}
-          >
-            <Ionicons
-              name="person-circle"
-              size={20}
-              color={Colors.primary500}
-            />
-            <Text style={styles.buttonText}>Edit Profile</Text>
-          </TouchableOpacity>
+          />
 
-          {/* View Profile Button */}
-          <TouchableOpacity
-            style={styles.button}
+          <SettingsButton
+            icon="eye-outline"
+            text="View Profile"
             onPress={() => {
-              // Navigate to view profile - you'll need to implement this
               Alert.alert(
                 "View Profile",
                 "View profile functionality coming soon!"
               );
             }}
-          >
-            <Ionicons name="eye" size={20} color={Colors.primary500} />
-            <Text style={styles.buttonText}>View Profile</Text>
-          </TouchableOpacity>
+          />
 
-          {/* Premium Button */}
-          <TouchableOpacity
-            style={[styles.button, isPremium && styles.premiumActiveButton]}
+          <SettingsButton
+            icon="star-outline"
+            text={isPremium ? "Premium Active" : "Upgrade to Premium"}
             onPress={handlePremiumUpgrade}
-          >
-            <Ionicons name="star" size={20} color={Colors.primary500} />
-            <Text
-              style={[styles.buttonText, isPremium && styles.premiumActiveText]}
-            >
-              {isPremium ? "Premium Active" : "Upgrade to Premium"}
-            </Text>
-            {isPremium && (
-              <Ionicons
-                name="checkmark-circle"
-                size={20}
-                color={Colors.primary500}
-                style={styles.checkmark}
-              />
-            )}
-          </TouchableOpacity>
+          />
+        </View>
 
-          <TouchableOpacity style={styles.button}>
-            <Ionicons name="lock-closed" size={20} color={Colors.primary500} />
-            <Text style={styles.buttonText}>Privacy Policy</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.button}>
-            <Ionicons
-              name="document-text"
-              size={20}
-              color={Colors.primary500}
-            />
-            <Text style={styles.buttonText}>Terms of Service</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.button, styles.logoutButton]}
+        {/* Legal Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Legal</Text>
+
+          <SettingsButton
+            icon="shield-outline"
+            text="Privacy Policy"
+            onPress={() => {
+              // Add privacy policy navigation
+            }}
+          />
+
+          <SettingsButton
+            icon="document-text-outline"
+            text="Terms of Service"
+            onPress={() => {
+              // Add terms of service navigation
+            }}
+          />
+        </View>
+
+        {/* Sign Out Section */}
+        <View style={styles.section}>
+          <SettingsButton
+            icon="log-out-outline"
+            text="Sign Out"
             onPress={handleSignOut}
-          >
-            <Ionicons name="log-out" size={20} color={Colors.primary500} />
-            <Text style={[styles.buttonText, styles.logoutText]}>Sign Out</Text>
-          </TouchableOpacity>
+            isDestructive={true}
+          />
         </View>
       </ScrollView>
     </>
@@ -232,63 +216,22 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.secondary100,
   },
   section: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 0,
+    marginBottom: 14, // Middle ground spacing between sections
+  },
+  firstSection: {
+    marginTop: 10, // Moderate space from top for Preferences
   },
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
+    fontSize: 20, // Larger
+    fontWeight: "500", // Medium boldness
     color: Colors.primary500,
-    marginBottom: 10,
+    marginBottom: 8,
+    marginTop: 0,
   },
-  button: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 15,
-    backgroundColor: Colors.secondary200,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  buttonText: {
-    color: Colors.primary500,
-    fontSize: 16,
-    marginLeft: 10,
-    flex: 1, // Allow text to take available space
-  },
-  switch: {
-    marginLeft: "auto", // Push switch to the right
-  },
-  logoutButton: {
-    backgroundColor: Colors.primary100,
-    marginTop: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 2,
-        },
-        shadowOpacity: 0.2,
-        shadowRadius: 1,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
-  },
-  logoutText: {
-    color: Colors.primary500,
-    fontWeight: "bold",
-  },
-  premiumActiveButton: {
-    backgroundColor: Colors.secondary200,
-    borderColor: Colors.primary500,
-    borderWidth: 1,
-  },
-  premiumActiveText: {
-    color: Colors.primary500,
-    fontWeight: "bold",
-  },
-  checkmark: {
-    marginLeft: 10,
+  lastButton: {
+    marginBottom: 0, // Remove extra space below last button
   },
 });
