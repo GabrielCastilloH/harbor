@@ -132,31 +132,53 @@ export default function SettingsScreen() {
         </View>
       </SafeAreaView>
       <ScrollView style={styles.container}>
-        <View style={[styles.section, { paddingTop: 5 }]}>
-          <View style={styles.setting}>
-            <Text style={styles.settingText}>Notifications</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+
+          {/* Notifications Button with Switch */}
+          <View style={styles.button}>
+            <Ionicons
+              name="notifications"
+              size={20}
+              color={Colors.primary500}
+            />
+            <Text style={styles.buttonText}>Notifications</Text>
             <Switch
               value={notifications}
               onValueChange={setNotifications}
               trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
               thumbColor={Colors.secondary100}
+              style={styles.switch}
             />
           </View>
+
+          {/* Edit Profile Button */}
           <TouchableOpacity
-            style={styles.profileButton}
+            style={styles.button}
             onPress={() => navigation.navigate("Profile" as never)}
           >
             <Ionicons
               name="person-circle"
-              size={24}
+              size={20}
               color={Colors.primary500}
             />
-            <Text style={styles.profileButtonText}>Edit Profile</Text>
+            <Text style={styles.buttonText}>Edit Profile</Text>
           </TouchableOpacity>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+          {/* View Profile Button */}
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => {
+              // Navigate to view profile - you'll need to implement this
+              Alert.alert(
+                "View Profile",
+                "View profile functionality coming soon!"
+              );
+            }}
+          >
+            <Ionicons name="eye" size={20} color={Colors.primary500} />
+            <Text style={styles.buttonText}>View Profile</Text>
+          </TouchableOpacity>
 
           {/* Premium Button */}
           <TouchableOpacity
@@ -209,35 +231,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.secondary100,
   },
-  profileButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.primary100,
-    padding: 15,
-    marginTop: 10,
-    borderRadius: 10,
-    justifyContent: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 2,
-        },
-        shadowOpacity: 0.2,
-        shadowRadius: 1,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
-  },
-  profileButtonText: {
-    color: Colors.primary500,
-    fontSize: 18,
-    fontWeight: "bold",
-    marginLeft: 10,
-  },
   section: {
     padding: 20,
   },
@@ -246,16 +239,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: Colors.primary500,
     marginBottom: 10,
-  },
-  setting: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 15,
-  },
-  settingText: {
-    fontSize: 18,
-    color: Colors.primary500,
   },
   button: {
     flexDirection: "row",
@@ -269,6 +252,10 @@ const styles = StyleSheet.create({
     color: Colors.primary500,
     fontSize: 16,
     marginLeft: 10,
+    flex: 1, // Allow text to take available space
+  },
+  switch: {
+    marginLeft: "auto", // Push switch to the right
   },
   logoutButton: {
     backgroundColor: Colors.primary100,
