@@ -106,8 +106,7 @@ export default function SettingsScreen() {
 
   const handleViewProfile = () => {
     // Navigate to view own profile (with blurred photos)
-    // ProfileScreen will get current user's ID from context
-    navigation.navigate("ProfileView" as never);
+    navigation.navigate("SelfProfile" as never);
   };
 
   const handlePrivacyPolicy = () => {
