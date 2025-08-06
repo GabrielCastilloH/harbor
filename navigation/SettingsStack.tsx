@@ -1,5 +1,6 @@
 import SettingsScreen from "../screens/SettingsScreen";
 import EditProfileScreen from "../screens/EditProfileScreen";
+import ProfileScreen from "../screens/ProfileScreen";
 import Colors from "../constants/Colors";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
@@ -24,6 +25,14 @@ export default function SettingsStack() {
         name="Profile"
         component={EditProfileScreen}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ProfileView"
+        component={ProfileScreen}
+        options={{
+          headerTitle: "Profile",
+          headerShown: true,
+        }}
       />
     </Stack.Navigator>
   );
