@@ -7,6 +7,7 @@ import {
   Switch,
   Platform,
   Alert,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useState } from "react";
@@ -23,7 +24,7 @@ import SettingsButton from "../components/SettingsButton";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
-  const { setIsAuthenticated, setUserId } = useAppContext();
+  const { setIsAuthenticated, setUserId, userId } = useAppContext();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [locationServices, setLocationServices] = useState(true);
@@ -103,6 +104,20 @@ export default function SettingsScreen() {
     ]);
   };
 
+  const handleViewProfile = () => {
+    // Navigate to view own profile (with blurred photos)
+    // ProfileScreen will get current user's ID from context
+    navigation.navigate("ProfileView" as never);
+  };
+
+  const handlePrivacyPolicy = () => {
+    Linking.openURL("https://www.tryharbor.app/privacy");
+  };
+
+  const handleTermsAndConditions = () => {
+    Linking.openURL("https://www.tryharbor.app/terms");
+  };
+
   const isPremium = subscriptionStatus?.status === "ACTIVE";
 
   return (
@@ -160,12 +175,7 @@ export default function SettingsScreen() {
           <SettingsButton
             icon="eye-outline"
             text="View Profile"
-            onPress={() => {
-              Alert.alert(
-                "View Profile",
-                "View profile functionality coming soon!"
-              );
-            }}
+            onPress={handleViewProfile}
           />
 
           <SettingsButton
@@ -182,17 +192,13 @@ export default function SettingsScreen() {
           <SettingsButton
             icon="shield-outline"
             text="Privacy Policy"
-            onPress={() => {
-              // Add privacy policy navigation
-            }}
+            onPress={handlePrivacyPolicy}
           />
 
           <SettingsButton
             icon="document-text-outline"
-            text="Terms of Service"
-            onPress={() => {
-              // Add terms of service navigation
-            }}
+            text="Terms & Conditions"
+            onPress={handleTermsAndConditions}
           />
         </View>
 
