@@ -12,7 +12,6 @@ TODO:
 - Make other person see the match modal even if they didn't click on the swipe that made the match.
 - work with user1 viewed.
 - CANT GO TO PROFILE WHEN USING ON PHONE FOR SOME REASON.
-- MAKE \_BLURRY PHOTOS MORE BLURRY.
 - Send a message when both people accept to reload the chat.
 - Make the continue modal a bit more opaque.
 - Make sure they can't send a message if one user hasn't allowed to continue (actually not MVP)
