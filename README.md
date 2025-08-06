@@ -1,7 +1,7 @@
 # 🌊 Harbor
 
 A unique dating app that focuses on meaningful connections through progressive photo reveal and limited daily interactions.
-TODO: Add push notifications to the app (and make the you've matched system notification silent) Make blurry photo lower quality on backend to make it harder to makeout face.
+TODO: Add push notifications to the app (and make the you've matched system notification silent) Make blurry photo lower quality on backend to make it harder to makeout face. button to view profile in the settings. show difference between basic and premium plan. by signing up you agree to terms & conditions (put this in the first page).
 
 ## 📋 Validation Rules
 
