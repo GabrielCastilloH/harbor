@@ -20,10 +20,11 @@ async function blurImageBuffer(
     const sigma = Math.max(6, blurPercent / 10); // 80% = sigma of 8
 
     // Process image with sharp
+    // Lower quality for blurred images (quality: 50)
     const blurredBuffer = await sharp(buffer)
       .resize(800, 800, { fit: "inside", withoutEnlargement: true })
       .blur(sigma)
-      .jpeg({ quality: 80 })
+      .jpeg({ quality: 50 }) // Lower quality for blurred images
       .toBuffer();
 
     return blurredBuffer;
