@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     color: Colors.primary500,
     textAlign: "center",
     fontSize: 14,
-    opacity: 0.8,
+    opacity: 0.9,
     lineHeight: 20,
   },
   termsLink: {
