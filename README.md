@@ -6,8 +6,6 @@ TODO:
 
 - Add push notifications to the app (and make the you've matched system notification silent)
 - show difference between basic and premium plan.
-- Make other person see the match modal even if they didn't click on the swipe that made the match.
-- work with user1 viewed.
 - CANT GO TO PROFILE WHEN USING ON PHONE FOR SOME REASON.
 - Send a message when both people accept to reload the chat.
 - Make the continue modal a bit more opaque.
