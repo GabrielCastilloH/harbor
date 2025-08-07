@@ -22,6 +22,7 @@ import Colors from "../constants/Colors";
 import AnimatedStack from "../components/AnimatedStack";
 import MatchModal from "./MatchModal";
 import LoadingScreen from "../components/LoadingScreen";
+import UnviewedMatchesHandler from "../components/UnviewedMatchesHandler";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
 import SocketService from "../util/SocketService";
@@ -65,6 +66,7 @@ export default function HomeScreen() {
     null
   );
   const [shouldRemoveCurrentCard, setShouldRemoveCurrentCard] = useState(false);
+  const [currentMatchId, setCurrentMatchId] = useState<string | null>(null);
   const stackRef = React.useRef<{
     swipeLeft: () => void;
     swipeRight: () => void;
@@ -343,6 +345,7 @@ export default function HomeScreen() {
         } finally {
           // Always show the match modal if a match is made
           setMatchedProfile(profile);
+          setCurrentMatchId(response.matchId || null);
           setShowMatch(true);
         }
       }
@@ -561,7 +564,9 @@ export default function HomeScreen() {
             onClose={() => setShowMatch(false)}
             matchedProfile={matchedProfile}
             currentProfile={userProfile}
+            matchId={currentMatchId}
           />
+          <UnviewedMatchesHandler />
         </GestureHandlerRootView>
       </SafeAreaView>
     </View>
