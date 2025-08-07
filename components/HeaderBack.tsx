@@ -7,9 +7,17 @@ import Colors from "../constants/Colors";
 interface HeaderBackProps {
   title: string;
   onBack: () => void;
+  rightIcon?: {
+    name: string;
+    onPress: () => void;
+  };
 }
 
-export default function HeaderBack({ title, onBack }: HeaderBackProps) {
+export default function HeaderBack({
+  title,
+  onBack,
+  rightIcon,
+}: HeaderBackProps) {
   return (
     <SafeAreaView
       edges={["top"]}
@@ -29,6 +37,7 @@ export default function HeaderBack({ title, onBack }: HeaderBackProps) {
         <Pressable onPress={onBack} style={{ padding: 8 }}>
           <Ionicons name="arrow-back" size={24} color={Colors.primary500} />
         </Pressable>
+
         <Text
           style={{
             fontSize: 18,
@@ -38,7 +47,18 @@ export default function HeaderBack({ title, onBack }: HeaderBackProps) {
         >
           {title}
         </Text>
-        <View style={{ width: 40 }} />
+
+        {rightIcon ? (
+          <Pressable onPress={rightIcon.onPress} style={{ padding: 8 }}>
+            <Ionicons
+              name={rightIcon.name as any}
+              size={24}
+              color={Colors.primary500}
+            />
+          </Pressable>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
       </View>
     </SafeAreaView>
   );

@@ -6,6 +6,7 @@ import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 import { UserService } from "../networking";
 import { useState, useEffect } from "react";
+import HeaderBack from "./HeaderBack";
 
 interface ChatHeaderProps {
   onBack: () => void;
@@ -14,8 +15,9 @@ interface ChatHeaderProps {
 
 export default function ChatHeader({ onBack, navigation }: ChatHeaderProps) {
   const { channel, userId } = useAppContext();
-  const [matchedUserName, setMatchedUserName] = useState<string>("");
+  const [matchedUserName, setMatchedUserName] = useState<string>("Loading...");
   const [matchedUserId, setMatchedUserId] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const getMatchedUserName = async () => {
@@ -37,7 +39,11 @@ export default function ChatHeader({ onBack, navigation }: ChatHeaderProps) {
         } catch (error) {
           console.error("Error fetching matched user name:", error);
           setMatchedUserName("User");
+        } finally {
+          setIsLoading(false);
         }
+      } else {
+        setIsLoading(false);
       }
     };
 
@@ -45,6 +51,15 @@ export default function ChatHeader({ onBack, navigation }: ChatHeaderProps) {
   }, [channel, userId]);
 
   const handleHeaderPress = () => {
+    if (matchedUserId) {
+      navigation.navigate("ProfileScreen", {
+        userId: matchedUserId,
+        matchId: null, // Will be fetched in ProfileScreen
+      });
+    }
+  };
+
+  const handleProfileIconPress = () => {
     if (matchedUserId) {
       navigation.navigate("ProfileScreen", {
         userId: matchedUserId,
@@ -62,6 +77,7 @@ export default function ChatHeader({ onBack, navigation }: ChatHeaderProps) {
         style={{
           flexDirection: "row",
           alignItems: "center",
+          justifyContent: "space-between",
           paddingTop: 15,
           paddingBottom: 16,
           paddingHorizontal: 16,
@@ -84,14 +100,16 @@ export default function ChatHeader({ onBack, navigation }: ChatHeaderProps) {
             style={{
               fontSize: 18,
               fontWeight: "600",
-              color: Colors.primary500,
+              color: isLoading ? Colors.secondary500 : Colors.primary500,
             }}
           >
             {matchedUserName}
           </Text>
         </Pressable>
 
-        <View style={{ width: 40 }} />
+        <Pressable onPress={handleProfileIconPress} style={{ padding: 8 }}>
+          <Ionicons name="person" size={24} color={Colors.primary500} />
+        </Pressable>
       </View>
     </SafeAreaView>
   );
