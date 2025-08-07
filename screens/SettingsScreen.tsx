@@ -21,6 +21,7 @@ import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 import { usePlacement, useUser } from "expo-superwall";
 import SettingsButton from "../components/SettingsButton";
+import MainHeading from "../components/MainHeading";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -121,31 +122,7 @@ export default function SettingsScreen() {
 
   return (
     <>
-      <SafeAreaView
-        edges={["top"]}
-        style={{ backgroundColor: Colors.primary100 }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingTop: 24, // Increased space from the top
-            paddingBottom: 16, // Increased from 8 to add more space below the text
-            paddingHorizontal: 16,
-            backgroundColor: Colors.primary100,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 24, // Increased from 20 to make text larger
-              fontWeight: "bold",
-              color: Colors.primary500,
-            }}
-          >
-            App Settings
-          </Text>
-        </View>
-      </SafeAreaView>
+      <MainHeading title="App Settings" />
       <ScrollView style={styles.container}>
         {/* Preferences Section */}
         <View style={[styles.section, styles.firstSection]}>
