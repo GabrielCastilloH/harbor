@@ -7,8 +7,6 @@ import Colors from "../constants/Colors";
 import { updateMessageCount } from "../networking";
 import { MatchService, ConsentService } from "../networking";
 import { BLUR_CONFIG } from "../constants/blurConfig";
-import ChatHeader from "../components/ChatHeader";
-import { useNavigation } from "@react-navigation/native";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
@@ -24,8 +22,6 @@ export default function ChatScreen() {
     messageCount: number;
     shouldShowConsentScreen: boolean;
   } | null>(null);
-
-  const navigation = useNavigation();
 
   // Check consent state when component mounts
   useEffect(() => {
@@ -183,16 +179,8 @@ export default function ChatScreen() {
     );
   }
 
-  const handleBack = () => {
-    navigation.goBack();
-  };
-
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: Colors.primary100 }}
-      edges={["top", "bottom"]}
-    >
-      <ChatHeader onBack={handleBack} navigation={navigation} />
+    <>
       <Channel channel={channel}>
         <MessageList />
 
@@ -241,7 +229,7 @@ export default function ChatScreen() {
           <MessageInput />
         )}
       </Channel>
-    </SafeAreaView>
+    </>
   );
 }
 
@@ -263,14 +251,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1000,
   },
   warningModalBackground: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
   },

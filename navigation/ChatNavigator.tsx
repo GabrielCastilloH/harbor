@@ -22,6 +22,7 @@ import { useAppContext } from "../context/AppContext";
 import { RootStackParamList } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import MainHeading from "../components/MainHeading";
+import ChatHeader from "../components/ChatHeader";
 
 type NavigationProps = NavigationProp<RootStackParamList>;
 
@@ -268,9 +269,32 @@ export default function ChatNavigator() {
           <Stack.Screen
             name="ChatScreen"
             component={ChatScreenWithHeader}
-            options={{
-              headerShown: false,
-            }}
+            options={({ navigation }) => ({
+              headerShown: true,
+              headerTitle: "Yolanda",
+              headerStyle: { backgroundColor: Colors.primary100 },
+              headerTintColor: Colors.primary500,
+              headerTitleAlign: "center",
+              headerLeft: () => (
+                <TouchableOpacity
+                  onPress={() => navigation.goBack()}
+                  style={{ padding: 8 }}
+                >
+                  <Ionicons name="arrow-back" size={24} color={Colors.primary500} />
+                </TouchableOpacity>
+              ),
+              headerRight: () => (
+                <TouchableOpacity
+                  onPress={() => {
+                    // Navigate to profile - we'll need to get the matched user ID
+                    // For now, just a placeholder
+                  }}
+                  style={{ padding: 8 }}
+                >
+                  <Ionicons name="person" size={24} color={Colors.primary500} />
+                </TouchableOpacity>
+              ),
+            })}
           />
           <Stack.Screen
             name="ProfileScreen"
