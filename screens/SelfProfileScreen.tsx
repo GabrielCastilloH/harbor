@@ -11,6 +11,7 @@ import {
   Alert,
   Image,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
@@ -24,6 +25,7 @@ import { UserService } from "../networking";
 import { getPersonalImages } from "../networking/ImageService";
 import LoadingScreen from "../components/LoadingScreen";
 import ImageCarousel from "../components/ImageCarousel";
+import HeaderBack from "../components/HeaderBack";
 
 const windowWidth = Dimensions.get("window").width;
 
@@ -83,8 +85,8 @@ export default function SelfProfileScreen() {
 
       try {
         const response = await getPersonalImages(userId);
-        if (response && response.images) {
-          setImages(response.images);
+        if (response) {
+          setImages(response);
         }
       } catch (error) {
         console.error("Error fetching images:", error);
@@ -106,46 +108,43 @@ export default function SelfProfileScreen() {
 
   if (!profile) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Failed to load profile</Text>
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Failed to load profile</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <>
-      <View style={styles.header}>
-        <Pressable onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={Colors.primary500} />
-        </Pressable>
-        <Text style={styles.headerTitle}>My Profile</Text>
-        <View style={styles.placeholder} />
-      </View>
+    <View style={{ flex: 1, backgroundColor: Colors.secondary100 }}>
+      <HeaderBack title="My Profile" onBack={handleBack} />
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Image Carousel */}
-        {!imageLoading && images.length > 0 && (
-          <View style={styles.imageContainer}>
-            <ImageCarousel
-              images={images.map((img, index) => ({
-                id: index.toString(),
-                url: img.url,
-                blurLevel: 0, // No blur for own images
-              }))}
-              imageSize={windowWidth - 40}
-              borderRadius={16}
-              spacing={20}
-              showIndicators={true}
-            />
-          </View>
-        )}
-
-        {imageLoading && (
-          <View style={styles.imageLoadingContainer}>
-            <ActivityIndicator size="large" color={Colors.primary500} />
-            <Text style={styles.loadingText}>Loading images...</Text>
-          </View>
-        )}
+        {/* Image Carousel - Always show, even when loading */}
+        <View style={styles.imageContainer}>
+          <ImageCarousel
+            images={
+              images.length > 0
+                ? images.map((img, index) => ({
+                    id: index.toString(),
+                    url: img.url,
+                    blurLevel: 0, // No blur for own images
+                  }))
+                : [
+                    {
+                      id: "placeholder",
+                      url: "", // Empty URL will show gray background
+                      blurLevel: 0,
+                    },
+                  ]
+            }
+            imageSize={windowWidth - 40}
+            borderRadius={16}
+            spacing={20}
+            showIndicators={images.length > 0}
+          />
+        </View>
 
         {/* Profile Content */}
         <View style={styles.contentContainer}>
@@ -176,31 +175,14 @@ export default function SelfProfileScreen() {
           )}
         </View>
       </Modal>
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: Colors.primary100,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.secondary200,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.primary500,
-  },
-  placeholder: {
-    width: 40,
+  safeArea: {
+    flex: 1,
+    backgroundColor: Colors.secondary100,
   },
   container: {
     flex: 1,
@@ -208,16 +190,6 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     marginVertical: 20,
-  },
-  imageLoadingContainer: {
-    height: 200,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 8,
-    color: Colors.primary500,
-    fontSize: 16,
   },
   contentContainer: {
     paddingHorizontal: 20,
