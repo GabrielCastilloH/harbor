@@ -7,6 +7,8 @@ import Colors from "../constants/Colors";
 import { updateMessageCount } from "../networking";
 import { MatchService, ConsentService } from "../networking";
 import { BLUR_CONFIG } from "../constants/blurConfig";
+import ChatHeader from "../components/ChatHeader";
+import { useNavigation } from "@react-navigation/native";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
@@ -22,6 +24,8 @@ export default function ChatScreen() {
     messageCount: number;
     shouldShowConsentScreen: boolean;
   } | null>(null);
+
+  const navigation = useNavigation();
 
   // Check consent state when component mounts
   useEffect(() => {
@@ -179,8 +183,13 @@ export default function ChatScreen() {
     );
   }
 
+  const handleBack = () => {
+    navigation.goBack();
+  };
+
   return (
     <>
+      <ChatHeader onBack={handleBack} navigation={navigation} />
       <Channel channel={channel}>
         <MessageList />
 
