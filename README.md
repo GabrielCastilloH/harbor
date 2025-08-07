@@ -5,10 +5,7 @@ A unique dating app that focuses on meaningful connections through progressive p
 TODO:
 
 - Add push notifications to the app (and make the you've matched system notification silent)
-- Make blurry photo lower quality on backend to make it harder to makeout face.
-- button to view profile in the settings.
 - show difference between basic and premium plan.
-- by signing up you agree to terms & conditions (put this in the first page).
 - Make other person see the match modal even if they didn't click on the swipe that made the match.
 - work with user1 viewed.
 - CANT GO TO PROFILE WHEN USING ON PHONE FOR SOME REASON.
