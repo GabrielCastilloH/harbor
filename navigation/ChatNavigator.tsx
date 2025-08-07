@@ -21,6 +21,7 @@ import ReportScreen from "../screens/ReportScreen";
 import { useAppContext } from "../context/AppContext";
 import { RootStackParamList } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import MainHeading from "../components/MainHeading";
 
 type NavigationProps = NavigationProp<RootStackParamList>;
 
@@ -30,6 +31,16 @@ interface HeaderRightButtonProps {
 
 interface ChatScreenWithHeaderProps {
   navigation: NavigationProps;
+}
+
+// Create a wrapper component for ChatList with MainHeading
+function ChatListWithHeader() {
+  return (
+    <>
+      <MainHeading title="Chats" />
+      <ChatList />
+    </>
+  );
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -249,10 +260,9 @@ export default function ChatNavigator() {
         >
           <Stack.Screen
             name="Chats"
-            component={ChatList}
+            component={ChatListWithHeader}
             options={{
-              title: "Chats",
-              headerTitleAlign: "center",
+              headerShown: false,
             }}
           />
           <Stack.Screen
