@@ -274,7 +274,7 @@ export default function ChatNavigator() {
             name="ReportScreen"
             component={ReportScreen}
             options={{
-              headerTitle: "Report User",
+              headerShown: false,
             }}
           />
         </Stack.Navigator>
