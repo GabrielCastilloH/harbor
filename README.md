@@ -6,9 +6,6 @@ TODO:
 
 - Add push notifications to the app (and make the you've matched system notification silent)
 - show difference between basic and premium plan.
-- CANT GO TO PROFILE WHEN USING ON PHONE FOR SOME REASON.
-- Send a message when both people accept to reload the chat.
-- Make the continue modal a bit more opaque.
 - Make sure they can't send a message if one user hasn't allowed to continue (actually not MVP)
 
 ## 📋 Validation Rules
