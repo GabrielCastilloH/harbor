@@ -188,7 +188,10 @@ export default function ChatScreen() {
   };
 
   return (
-    <>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: Colors.primary100 }}
+      edges={["top", "bottom"]}
+    >
       <ChatHeader onBack={handleBack} navigation={navigation} />
       <Channel channel={channel}>
         <MessageList />
@@ -238,7 +241,7 @@ export default function ChatScreen() {
           <MessageInput />
         )}
       </Channel>
-    </>
+    </SafeAreaView>
   );
 }
 
