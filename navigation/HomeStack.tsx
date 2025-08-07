@@ -18,13 +18,7 @@ export default function HomeStack() {
         name="ReportScreen"
         component={ReportScreen}
         options={{
-          headerShown: true,
-          headerTitle: "Report User",
-          headerStyle: {
-            backgroundColor: Colors.primary100,
-          },
-          headerTintColor: Colors.black,
-          headerBackTitle: "Back",
+          headerShown: false,
         }}
       />
     </Stack.Navigator>

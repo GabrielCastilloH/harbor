@@ -20,6 +20,7 @@ import { useRef, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { auth } from "../firebaseConfig";
+import HeaderBack from "../components/HeaderBack";
 
 const emptyProfile: Profile = {
   email: "",
@@ -229,36 +230,7 @@ export default function EditProfileScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.secondary100 }}>
-      {/* Custom Header */}
-      <SafeAreaView
-        edges={["top"]}
-        style={{ backgroundColor: Colors.primary100 }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingTop: 15, // Added to match App Settings header height
-            paddingBottom: 16, // Increased from 8 to match App Settings header
-            paddingHorizontal: 16,
-            backgroundColor: Colors.primary100,
-          }}
-        >
-          <TouchableOpacity onPress={handleBack} style={{ padding: 4 }}>
-            <Ionicons name="chevron-back" size={28} color={Colors.primary500} />
-          </TouchableOpacity>
-          <Text
-            style={{
-              fontSize: 24, // Increased from 20 to make text larger
-              fontWeight: "normal", // Changed from "bold" to "normal" to make it lighter
-              marginLeft: 8,
-              color: Colors.primary500,
-            }}
-          >
-            Edit Profile
-          </Text>
-        </View>
-      </SafeAreaView>
+      <HeaderBack title="Edit Profile" onBack={handleBack} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
