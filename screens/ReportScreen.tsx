@@ -18,6 +18,7 @@ import { useAppContext } from "../context/AppContext";
 import { auth } from "../firebaseConfig";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { useFocusEffect } from "@react-navigation/native";
+import HeaderBack from "../components/HeaderBack";
 
 type ReportScreenParams = {
   ReportScreen: {
@@ -60,6 +61,10 @@ export default function ReportScreen() {
       }
     }, [reportSubmitted])
   );
+
+  const handleBack = () => {
+    navigation.goBack();
+  };
 
   const handleSubmit = async () => {
     if (!selectedReason) {
@@ -136,90 +141,96 @@ export default function ReportScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-    >
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+    <View style={styles.container}>
+      <HeaderBack title="Report User" onBack={handleBack} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        <View style={styles.content}>
-          <Text style={styles.sectionTitle}>Reason for Report</Text>
-          <Text style={styles.sectionSubtitle}>
-            Please select the primary reason for this report:
-          </Text>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            <Text style={styles.sectionTitle}>Reason for Report</Text>
+            <Text style={styles.sectionSubtitle}>
+              Please select the primary reason for this report:
+            </Text>
 
-          <View style={styles.reasonsContainer}>
-            {reportReasons.map((reason) => (
-              <Pressable
-                key={reason}
-                style={[
-                  styles.reasonButton,
-                  selectedReason === reason && styles.reasonButtonSelected,
-                ]}
-                onPress={() => setSelectedReason(reason)}
-              >
-                <Text
+            <View style={styles.reasonsContainer}>
+              {reportReasons.map((reason) => (
+                <Pressable
+                  key={reason}
                   style={[
-                    styles.reasonButtonText,
-                    selectedReason === reason &&
-                      styles.reasonButtonTextSelected,
+                    styles.reasonButton,
+                    selectedReason === reason && styles.reasonButtonSelected,
                   ]}
+                  onPress={() => setSelectedReason(reason)}
                 >
-                  {reason}
-                </Text>
+                  <Text
+                    style={[
+                      styles.reasonButtonText,
+                      selectedReason === reason &&
+                        styles.reasonButtonTextSelected,
+                    ]}
+                  >
+                    {reason}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={styles.sectionTitle}>Additional Details</Text>
+            <Text style={styles.sectionSubtitle}>
+              Please provide more details about the incident:
+            </Text>
+
+            <TextInput
+              style={styles.explanationInput}
+              placeholder="Describe what happened..."
+              placeholderTextColor={Colors.secondary500}
+              value={explanation}
+              onChangeText={setExplanation}
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+            />
+
+            <Text style={styles.note}>
+              Your report will be reviewed by our team. We take all reports
+              seriously and will investigate accordingly.
+            </Text>
+
+            {/* Submit button at bottom of scroll content */}
+            <View style={styles.submitContainer}>
+              <Pressable
+                style={[
+                  styles.submitButton,
+                  isSubmitting && styles.submitButtonDisabled,
+                ]}
+                onPress={handleSubmit}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <View style={styles.submitLoadingContainer}>
+                    <ActivityIndicator
+                      size="small"
+                      color={Colors.secondary100}
+                    />
+                    <Text style={styles.submitButtonText}>Submitting...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.submitButtonText}>Submit Report</Text>
+                )}
               </Pressable>
-            ))}
+            </View>
           </View>
-
-          <Text style={styles.sectionTitle}>Additional Details</Text>
-          <Text style={styles.sectionSubtitle}>
-            Please provide more details about the incident:
-          </Text>
-
-          <TextInput
-            style={styles.explanationInput}
-            placeholder="Describe what happened..."
-            placeholderTextColor={Colors.secondary500}
-            value={explanation}
-            onChangeText={setExplanation}
-            multiline
-            numberOfLines={6}
-            textAlignVertical="top"
-          />
-
-          <Text style={styles.note}>
-            Your report will be reviewed by our team. We take all reports
-            seriously and will investigate accordingly.
-          </Text>
-
-          {/* Submit button at bottom of scroll content */}
-          <View style={styles.submitContainer}>
-            <Pressable
-              style={[
-                styles.submitButton,
-                isSubmitting && styles.submitButtonDisabled,
-              ]}
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <View style={styles.submitLoadingContainer}>
-                  <ActivityIndicator size="small" color={Colors.secondary100} />
-                  <Text style={styles.submitButtonText}>Submitting...</Text>
-                </View>
-              ) : (
-                <Text style={styles.submitButtonText}>Submit Report</Text>
-              )}
-            </Pressable>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
