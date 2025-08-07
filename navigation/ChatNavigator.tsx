@@ -258,10 +258,9 @@ export default function ChatNavigator() {
           <Stack.Screen
             name="ChatScreen"
             component={ChatScreenWithHeader}
-            options={({ navigation }) => ({
-              headerTitle: "Messages",
-              headerRight: () => <HeaderRightButton navigation={navigation} />,
-            })}
+            options={{
+              headerShown: false,
+            }}
           />
           <Stack.Screen
             name="ProfileScreen"
