@@ -54,32 +54,14 @@ export default function MatchModal({
 
   if (!matchedProfile || !currentProfile) return null;
 
+  // Simplified: Always navigate to ChatsTab
   const handleGoToChat = async () => {
-    if (!userId || !matchedProfile.uid) {
-      console.error("Missing userId or matchedProfile.uid");
-      return;
-    }
-
     setIsLoadingChat(true);
     try {
-      // Create or get the chat channel between the two users
-      const chatResponse = await ChatFunctions.createChannel({
-        userId1: userId,
-        userId2: matchedProfile.uid,
-      });
-
-      if (chatResponse && chatResponse.channel) {
-        // Set the channel in context
-        setChannel(chatResponse.channel);
-
-        // Navigate to the ChatsTab
-        (navigation as any).navigate("ChatsTab");
-
-        // Close the match modal
-        onClose();
-      }
+      (navigation as any).navigate("ChatsTab");
+      onClose();
     } catch (error) {
-      console.error("Error navigating to chat:", error);
+      console.error("Error navigating to chat tab:", error);
     } finally {
       setIsLoadingChat(false);
     }
