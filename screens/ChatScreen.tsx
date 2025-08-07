@@ -92,6 +92,20 @@ export default function ChatScreen() {
         if (response.bothConsented) {
           setShowConsentModal(false);
           setIsChatFrozen(false);
+
+          // Send system message when both users consent
+          try {
+            await channel?.sendMessage({
+              text: "Both of you have decided to continue getting to know one another! 💕",
+              user_id: "system",
+            });
+          } catch (messageError) {
+            console.error(
+              "Error sending consent system message:",
+              messageError
+            );
+            // Don't fail the consent process if system message fails
+          }
         }
       } else {
         // If user chose to unmatch, keep chat frozen
