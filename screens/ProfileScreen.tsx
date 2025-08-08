@@ -33,6 +33,7 @@ import { getClientBlurLevel, BLUR_CONFIG } from "../constants/blurConfig";
 import LoadingScreen from "../components/LoadingScreen";
 import ImageCarousel from "../components/ImageCarousel";
 import { auth } from "../firebaseConfig";
+import HeaderBack from "../components/HeaderBack";
 
 type ProfileScreenParams = {
   ProfileScreen: {
@@ -98,11 +99,44 @@ export default function ProfileScreen() {
       try {
         const response = await UserService.getUserById(userId);
         if (response) {
-          setProfile(response.user || response);
+          // Handle different response formats from Firebase
+          let profileData = null;
+
+          if (response.firstName || (response as any).uid) {
+            profileData = response as any;
+          } else if (
+            (response as any).user &&
+            ((response as any).user.firstName || (response as any).user.uid)
+          ) {
+            profileData = (response as any).user;
+          } else {
+            console.error(
+              "ProfileScreen - Invalid profile data format:",
+              response
+            );
+            setLoading(false);
+            return;
+          }
+
+          if (profileData && profileData.firstName) {
+            setProfile(profileData);
+            // Add a minimum loading time to prevent blank page flash
+            setTimeout(() => {
+              setLoading(false);
+            }, 500);
+          } else {
+            console.error(
+              "ProfileScreen - Missing required profile fields:",
+              profileData
+            );
+            setLoading(false);
+          }
+        } else {
+          console.error("ProfileScreen - No data in response:", response);
+          setLoading(false);
         }
       } catch (error) {
-        console.error("Error fetching profile:", error);
-      } finally {
+        console.error("ProfileScreen - Failed to fetch user profile:", error);
         setLoading(false);
       }
     };
@@ -271,6 +305,14 @@ export default function ProfileScreen() {
 
   return (
     <View style={{ flex: 1 }}>
+      <HeaderBack
+        title="Profile"
+        onBack={() => navigation.goBack()}
+        rightIcon={{
+          name: "flag",
+          onPress: handleReport,
+        }}
+      />
       {/* Remove floating report flag button */}
       <ScrollView
         style={styles.scrollView}
