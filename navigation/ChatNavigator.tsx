@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { TouchableOpacity } from "react-native";
+import { TouchableOpacity, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ChatList from "../screens/ChatList";
 import ChatScreen from "../screens/ChatScreen";
@@ -21,6 +21,7 @@ import ReportScreen from "../screens/ReportScreen";
 import { useAppContext } from "../context/AppContext";
 import { RootStackParamList } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import MainHeading from "../components/MainHeading";
 
 type NavigationProps = NavigationProp<RootStackParamList>;
 
@@ -28,8 +29,22 @@ interface HeaderRightButtonProps {
   navigation: NavigationProps;
 }
 
+interface HeaderTitleButtonProps {
+  navigation: NavigationProps;
+}
+
 interface ChatScreenWithHeaderProps {
   navigation: NavigationProps;
+}
+
+// Create a wrapper component for ChatList with MainHeading
+function ChatListWithHeader() {
+  return (
+    <>
+      <MainHeading title="Chats" />
+      <ChatList />
+    </>
+  );
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -57,13 +72,70 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
         }
       }}
       disabled={isFrozen}
-      style={{ opacity: isFrozen ? 0.3 : 1 }}
+      style={{ opacity: isFrozen ? 0.3 : 1, padding: 8 }}
     >
       <Ionicons
         name="person"
         size={24}
         color={isFrozen ? Colors.secondary500 : Colors.primary500}
       />
+    </TouchableOpacity>
+  );
+}
+
+function HeaderTitleButton({ navigation }: HeaderTitleButtonProps) {
+  const { channel, userId } = useAppContext();
+  const [matchedUserName, setMatchedUserName] = useState<string>("Loading...");
+  const [matchedUserId, setMatchedUserId] = useState<string>("");
+
+  useEffect(() => {
+    const getMatchedUserName = async () => {
+      if (!channel || !userId) return;
+      const otherMembers = channel?.state?.members || {};
+      const otherUserId = Object.keys(otherMembers).find(
+        (key) => key !== userId
+      );
+      if (otherUserId) {
+        setMatchedUserId(otherUserId);
+        try {
+          const response = await UserService.getUserById(otherUserId);
+          if (response) {
+            const userData = (response as any).user || response;
+            setMatchedUserName(userData.firstName || "User");
+          }
+        } catch (error) {
+          console.error("Error fetching matched user name:", error);
+          setMatchedUserName("User");
+        }
+      }
+    };
+
+    getMatchedUserName();
+  }, [channel, userId]);
+
+  const handleHeaderPress = () => {
+    if (matchedUserId) {
+      navigation.navigate("ProfileScreen", {
+        userId: matchedUserId,
+        matchId: null,
+      });
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={handleHeaderPress}
+      style={{
+        alignItems: "center",
+        paddingVertical: 8,
+      }}
+      hitSlop={{ top: 8, bottom: 8, left: 20, right: 20 }}
+    >
+      <Text
+        style={{ fontSize: 18, fontWeight: "600", color: Colors.primary500 }}
+      >
+        {matchedUserName}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -190,15 +262,15 @@ export default function ChatNavigator() {
 
         if (response) {
           // If response contains data directly as the user object
-          if (response.firstName || response.uid) {
-            profileData = response;
+          if (response.firstName || (response as any).uid) {
+            profileData = response as any;
           }
           // If response contains data in the user property
           else if (
-            response.user &&
-            (response.user.firstName || response.user.uid)
+            (response as any).user &&
+            ((response as any).user.firstName || (response as any).user.uid)
           ) {
-            profileData = response.user;
+            profileData = (response as any).user;
           } else {
             console.error(
               "ChatNavigator - Invalid profile data format:",
@@ -249,32 +321,30 @@ export default function ChatNavigator() {
         >
           <Stack.Screen
             name="Chats"
-            component={ChatList}
+            component={ChatListWithHeader}
             options={{
-              title: "Chats",
-              headerTitleAlign: "center",
+              headerShown: false,
             }}
           />
           <Stack.Screen
             name="ChatScreen"
-            component={ChatScreenWithHeader}
-            options={({ navigation }) => ({
-              headerTitle: "Messages",
-              headerRight: () => <HeaderRightButton navigation={navigation} />,
-            })}
+            component={ChatScreen}
+            options={{
+              headerShown: false,
+            }}
           />
           <Stack.Screen
             name="ProfileScreen"
             component={ProfileScreen}
             options={{
-              headerTitle: "Profile",
+              headerShown: false,
             }}
           />
           <Stack.Screen
             name="ReportScreen"
             component={ReportScreen}
             options={{
-              headerTitle: "Report User",
+              headerShown: false,
             }}
           />
         </Stack.Navigator>

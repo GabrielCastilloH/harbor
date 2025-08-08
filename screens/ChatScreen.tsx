@@ -6,13 +6,23 @@ import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
 import { updateMessageCount } from "../networking";
 import { MatchService, ConsentService } from "../networking";
-import { BLUR_CONFIG } from "../constants/blurConfig";
+import HeaderBack from "../components/HeaderBack";
+import LoadingScreen from "../components/LoadingScreen";
+import { useNavigation } from "@react-navigation/native";
+import { UserService } from "../networking";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { Platform } from "react-native";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
+  const navigation = useNavigation();
+  const tabBarHeight = useBottomTabBarHeight();
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [isChatFrozen, setIsChatFrozen] = useState(false);
   const [userConsented, setUserConsented] = useState(false);
+  const [matchedUserName, setMatchedUserName] = useState<string>("Loading...");
+  const [matchedUserId, setMatchedUserId] = useState<string>("");
+  const [isLayoutReady, setIsLayoutReady] = useState(false);
   const [consentStatus, setConsentStatus] = useState<{
     user1Id: string;
     user2Id: string;
@@ -23,13 +33,48 @@ export default function ChatScreen() {
     shouldShowConsentScreen: boolean;
   } | null>(null);
 
+  // Hide tab bar when this screen is focused
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      navigation.getParent()?.setOptions({
+        tabBarStyle: { display: "none" },
+      });
+    });
+
+    const unsubscribeBlur = navigation.addListener("blur", () => {
+      navigation.getParent()?.setOptions({
+        tabBarStyle: {
+          backgroundColor: Colors.secondary100,
+          display: "flex",
+        },
+      });
+    });
+
+    return () => {
+      // Ensure tab bar is shown when component unmounts
+      navigation.getParent()?.setOptions({
+        tabBarStyle: {
+          backgroundColor: Colors.secondary100,
+          display: "flex",
+        },
+      });
+      unsubscribe();
+      unsubscribeBlur();
+    };
+  }, [navigation]);
+
   // Check consent state when component mounts
   useEffect(() => {
     const checkConsentState = async () => {
-      if (!channel || !userId) return;
+      if (!channel || !userId) {
+        return;
+      }
 
       const matchId = channel.data?.matchId;
-      if (!matchId) return;
+
+      if (!matchId) {
+        return;
+      }
 
       try {
         // TEMPORARY: Migrate existing match to new consent fields
@@ -75,10 +120,53 @@ export default function ChatScreen() {
     checkConsentState();
   }, [channel, userId]);
 
+  // Fetch matched user name
+  useEffect(() => {
+    const getMatchedUserName = async () => {
+      if (!channel || !userId) {
+        return;
+      }
+
+      const otherMembers = channel?.state?.members || {};
+
+      const otherUserId = Object.keys(otherMembers).find(
+        (key) => key !== userId
+      );
+
+      if (otherUserId) {
+        setMatchedUserId(otherUserId);
+        try {
+          const response = await UserService.getUserById(otherUserId);
+
+          if (response) {
+            const userData = (response as any).user || response;
+            const firstName = userData.firstName || "User";
+            setMatchedUserName(firstName);
+          }
+        } catch (error) {
+          console.error("Error fetching matched user name:", error);
+          setMatchedUserName("User");
+        }
+      }
+    };
+
+    getMatchedUserName();
+  }, [channel, userId]);
+
+  // Set layout ready when we have the user name and tab bar height
+  useEffect(() => {
+    // Only require matchedUserName to be loaded, tabBarHeight can be 0
+    if (matchedUserName !== "Loading...") {
+      setIsLayoutReady(true);
+    }
+  }, [matchedUserName]);
+
   const handleConsentResponse = async (consented: boolean) => {
     try {
       const matchId = channel?.data?.matchId;
-      if (!matchId || !userId) return;
+      if (!matchId || !userId) {
+        return;
+      }
 
       const response = await ConsentService.updateConsent(
         matchId,
@@ -92,6 +180,20 @@ export default function ChatScreen() {
         if (response.bothConsented) {
           setShowConsentModal(false);
           setIsChatFrozen(false);
+
+          // Send system message when both users consent
+          try {
+            await channel?.sendMessage({
+              text: "Both of you have decided to continue getting to know one another! 💕",
+              user_id: "system",
+            });
+          } catch (messageError) {
+            console.error(
+              "Error sending consent system message:",
+              messageError
+            );
+            // Don't fail the consent process if system message fails
+          }
         }
       } else {
         // If user chose to unmatch, keep chat frozen
@@ -104,7 +206,9 @@ export default function ChatScreen() {
   };
 
   useEffect(() => {
-    if (!channel) return;
+    if (!channel) {
+      return;
+    }
 
     // Set up message listener
     const handleNewMessage = async (event: any) => {
@@ -165,71 +269,70 @@ export default function ChatScreen() {
     );
   }
 
+  // Don't render the main content until layout is ready to prevent jarring shifts
+  if (!isLayoutReady) {
+    return (
+      <View style={styles.loadingContainer}>
+        <HeaderBack title="Loading..." onBack={() => navigation.goBack()} />
+        <LoadingScreen loadingText="Loading chat..." />
+      </View>
+    );
+  }
+
   return (
-    <>
-      <Channel channel={channel}>
-        <MessageList />
+    <View style={styles.container}>
+      <HeaderBack
+        title={matchedUserName}
+        onBack={() => navigation.goBack()}
+        onTitlePress={() => {
+          if (matchedUserId) {
+            (navigation as any).navigate("ProfileScreen", {
+              userId: matchedUserId,
+              matchId: null,
+            });
+          }
+        }}
+        rightIcon={{
+          name: "person",
+          onPress: () => {
+            if (matchedUserId) {
+              (navigation as any).navigate("ProfileScreen", {
+                userId: matchedUserId,
+                matchId: null,
+              });
+            }
+          },
+        }}
+      />
 
-        {/* Consent Modal - Inside the Channel view */}
-        {showConsentModal && (
-          <View style={styles.modalOverlay}>
-            <View style={styles.warningModalContent}>
-              <Text style={styles.warningTitle}>Photos Will Be Revealed</Text>
-              <Text style={styles.warningText}>
-                You've exchanged {consentStatus?.messageCount || 0} messages.
-                Your photos will start becoming clearer. This is your last
-                chance to unmatch while remaining anonymous.
-              </Text>
-              <View style={styles.warningButtons}>
-                <Pressable
-                  style={[styles.warningButton, styles.unmatchButton]}
-                  onPress={() => handleConsentResponse(false)}
-                >
-                  <Text style={styles.warningButtonText}>Unmatch</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.warningButton, styles.continueButton]}
-                  onPress={() => {
-                    setShowConsentModal(false);
-                    handleConsentResponse(true);
-                  }}
-                >
-                  <Text style={styles.warningButtonText}>Continue</Text>
-                </Pressable>
-              </View>
-            </View>
+      <SafeAreaView style={styles.channelContainer} edges={["bottom"]}>
+        <Channel channel={channel}>
+          <View style={styles.channelContent}>
+            <MessageList />
+            <MessageInput />
           </View>
-        )}
-
-        {isChatFrozen ? (
-          <View style={styles.disabledContainer}>
-            <Text style={styles.disabledText}>
-              {channel.data?.frozen
-                ? "This chat has been frozen because one of the users unmatched."
-                : userConsented
-                ? "Waiting for the other person to continue the chat..."
-                : "Chat is paused until both users agree to continue."}
-            </Text>
-          </View>
-        ) : (
-          <MessageInput />
-        )}
-      </Channel>
-    </>
+        </Channel>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  disabledContainer: {
-    padding: 16,
-    backgroundColor: Colors.primary100,
-    borderTopWidth: 1,
-    borderTopColor: Colors.primary500,
+  container: {
+    flex: 1,
+    backgroundColor: "white",
   },
-  disabledText: {
-    textAlign: "center",
-    color: Colors.primary500,
-    fontStyle: "italic",
+  channelContainer: {
+    flex: 1,
+    backgroundColor: "white",
+  },
+  channelContent: {
+    flex: 1,
+    backgroundColor: "white",
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: Colors.primary100,
   },
   modalOverlay: {
     position: "absolute",
@@ -237,14 +340,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1000,
   },
   warningModalBackground: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
     justifyContent: "center",
     alignItems: "center",
   },
