@@ -315,7 +315,8 @@ export default function ProfileScreen() {
           onBack={() => navigation.goBack()}
           rightIcon={{
             name: "flag",
-            onPress: handleReport,
+            onPress: () => {}, // Disabled during loading
+            disabled: true,
           }}
         />
         <LoadingScreen loadingText="Loading profile..." />
@@ -332,7 +333,8 @@ export default function ProfileScreen() {
           onBack={() => navigation.goBack()}
           rightIcon={{
             name: "flag",
-            onPress: handleReport,
+            onPress: () => {}, // Disabled during loading
+            disabled: true,
           }}
         />
         <LoadingScreen loadingText="Loading profile..." />
