@@ -8,6 +8,7 @@ import { updateMessageCount } from "../networking";
 import { MatchService, ConsentService } from "../networking";
 import { BLUR_CONFIG } from "../constants/blurConfig";
 import HeaderBack from "../components/HeaderBack";
+import LoadingScreen from "../components/LoadingScreen";
 import { useNavigation } from "@react-navigation/native";
 import { UserService } from "../networking";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -233,18 +234,7 @@ export default function ChatScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.primary100 }}>
         <HeaderBack title="Loading..." onBack={() => navigation.goBack()} />
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: Colors.secondary100,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ color: Colors.primary500, fontSize: 16 }}>
-            Loading chat...
-          </Text>
-        </View>
+        <LoadingScreen loadingText="Loading chat..." />
       </View>
     );
   }
