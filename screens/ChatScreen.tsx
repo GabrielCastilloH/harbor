@@ -273,40 +273,40 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <View style={styles.headerContainer}>
-        <HeaderBack
-          title={matchedUserName}
-          onBack={() => navigation.goBack()}
-          onTitlePress={() => {
+    <View style={styles.container}>
+      <HeaderBack
+        title={matchedUserName}
+        onBack={() => navigation.goBack()}
+        onTitlePress={() => {
+          if (matchedUserId) {
+            (navigation as any).navigate("ProfileScreen", {
+              userId: matchedUserId,
+              matchId: null,
+            });
+          }
+        }}
+        rightIcon={{
+          name: "person",
+          onPress: () => {
             if (matchedUserId) {
               (navigation as any).navigate("ProfileScreen", {
                 userId: matchedUserId,
                 matchId: null,
               });
             }
-          }}
-          rightIcon={{
-            name: "person",
-            onPress: () => {
-              if (matchedUserId) {
-                (navigation as any).navigate("ProfileScreen", {
-                  userId: matchedUserId,
-                  matchId: null,
-                });
-              }
-            },
-          }}
-        />
-      </View>
+          },
+        }}
+      />
 
-      <Channel channel={channel}>
-        <View style={styles.channelContainer}>
-          <MessageList />
-          <MessageInput />
-        </View>
-      </Channel>
-    </SafeAreaView>
+      <SafeAreaView style={styles.channelContainer} edges={["bottom"]}>
+        <Channel channel={channel}>
+          <View style={styles.channelContent}>
+            <MessageList />
+            <MessageInput />
+          </View>
+        </Channel>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -315,19 +315,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.primary100,
   },
-  headerContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1,
-    backgroundColor: Colors.primary100,
-  },
   channelContainer: {
     flex: 1,
     backgroundColor: Colors.primary100,
-    paddingBottom: Platform.OS === "ios" ? 20 : 10,
-    paddingTop: 60, // Add padding to account for header height
+  },
+  channelContent: {
+    flex: 1,
+    backgroundColor: Colors.primary100,
   },
   loadingContainer: {
     flex: 1,
