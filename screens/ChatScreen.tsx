@@ -233,7 +233,18 @@ export default function ChatScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.primary100 }}>
         <HeaderBack title="Loading..." onBack={() => navigation.goBack()} />
-        <View style={{ flex: 1, backgroundColor: Colors.secondary100 }} />
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: Colors.secondary100,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ color: Colors.primary500, fontSize: 16 }}>
+            Loading chat...
+          </Text>
+        </View>
       </View>
     );
   }
@@ -268,7 +279,7 @@ export default function ChatScreen() {
         <View
           style={{
             flex: 1,
-            backgroundColor: Colors.primary100,
+            backgroundColor: Colors.secondary100,
             paddingBottom: tabBarHeight + 22,
           }}
         >
