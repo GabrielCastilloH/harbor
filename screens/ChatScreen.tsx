@@ -243,6 +243,14 @@ export default function ChatScreen() {
         <HeaderBack
           title={matchedUserName}
           onBack={() => navigation.goBack()}
+          onTitlePress={() => {
+            if (matchedUserId) {
+              (navigation as any).navigate("ProfileScreen", {
+                userId: matchedUserId,
+                matchId: null,
+              });
+            }
+          }}
           rightIcon={{
             name: "person",
             onPress: () => {
