@@ -31,6 +31,7 @@ import {
   SwipeService,
   RecommendationService,
   ChatFunctions,
+  MatchService,
 } from "../networking";
 import { getBlurredImageUrl } from "../networking/ImageService";
 // import { usePlacement } from "@superwall/react-native-superwall";
@@ -342,11 +343,20 @@ export default function HomeScreen() {
             `❌ [HOMESCREEN] [${swipeId}] Error creating chat channel:`,
             chatError
           );
-        } finally {
-          // Always show the match modal if a match is made
-          setMatchedProfile(profile);
-          setCurrentMatchId(response.matchId || null);
-          setShowMatch(true);
+        }
+
+        // Always show the match modal if a match is made
+        setMatchedProfile(profile);
+        setCurrentMatchId(response.matchId || null);
+        setShowMatch(true);
+
+        // Mark match as viewed
+        if (response.matchId) {
+          try {
+            await MatchService.markMatchAsViewed(response.matchId, userId);
+          } catch (error) {
+            console.error("Error marking match as viewed:", error);
+          }
         }
       }
 

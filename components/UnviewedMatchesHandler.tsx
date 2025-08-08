@@ -29,6 +29,16 @@ export default function UnviewedMatchesHandler() {
           setUnviewedMatches(response.matches);
           setCurrentMatchIndex(0);
           setShowMatchModal(true);
+
+          // Mark the first match as viewed
+          const firstMatch = response.matches[0];
+          if (firstMatch?.matchId && userId) {
+            try {
+              await MatchService.markMatchAsViewed(firstMatch.matchId, userId);
+            } catch (error) {
+              console.error("Error marking match as viewed:", error);
+            }
+          }
         }
       } catch (error) {
         console.error("Error checking unviewed matches:", error);
@@ -49,6 +59,16 @@ export default function UnviewedMatchesHandler() {
       // Move to next match or close modal
       if (currentMatchIndex + 1 < unviewedMatches.length) {
         setCurrentMatchIndex(currentMatchIndex + 1);
+
+        // Mark the next match as viewed
+        const nextMatch = unviewedMatches[currentMatchIndex + 1];
+        if (nextMatch?.matchId && userId) {
+          try {
+            await MatchService.markMatchAsViewed(nextMatch.matchId, userId);
+          } catch (error) {
+            console.error("Error marking match as viewed:", error);
+          }
+        }
       } else {
         setShowMatchModal(false);
         setUnviewedMatches([]);
