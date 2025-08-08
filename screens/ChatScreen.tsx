@@ -11,6 +11,7 @@ import LoadingScreen from "../components/LoadingScreen";
 import { useNavigation } from "@react-navigation/native";
 import { UserService } from "../networking";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { Platform } from "react-native";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
@@ -260,17 +261,9 @@ export default function ChatScreen() {
       />
 
       <Channel channel={channel}>
-        <View
-          style={[
-            styles.channelContainer,
-            { paddingBottom: tabBarHeight + 22 },
-          ]}
-        >
+        <View style={styles.channelContainer}>
           <MessageList />
-
-          <View style={styles.messageInputContainer}>
-            <MessageInput />
-          </View>
+          <MessageInput />
         </View>
       </Channel>
     </View>
@@ -284,9 +277,6 @@ const styles = StyleSheet.create({
   channelContainer: {
     flex: 1,
     backgroundColor: Colors.primary100,
-  },
-  messageInputContainer: {
-    paddingBottom: 15,
   },
   loadingContainer: {
     flex: 1,
