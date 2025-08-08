@@ -28,8 +28,8 @@ export default function HeaderBack({
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          paddingTop: 15,
-          paddingBottom: 16,
+          paddingTop: 8,
+          paddingBottom: 12,
           paddingHorizontal: 16,
           backgroundColor: Colors.primary100,
         }}
