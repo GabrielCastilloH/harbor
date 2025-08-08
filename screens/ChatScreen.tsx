@@ -1,6 +1,6 @@
 import { Text, View, StyleSheet, Modal, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Channel, MessageInput, MessageList } from "stream-chat-expo";
 import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
@@ -19,6 +19,7 @@ export default function ChatScreen() {
   const [userConsented, setUserConsented] = useState(false);
   const [matchedUserName, setMatchedUserName] = useState<string>("Loading...");
   const [matchedUserId, setMatchedUserId] = useState<string>("");
+  const channelViewRef = useRef<View>(null);
   const [consentStatus, setConsentStatus] = useState<{
     user1Id: string;
     user2Id: string;
@@ -224,25 +225,58 @@ export default function ChatScreen() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <HeaderBack
-        title="TEST CHAT HEADER"
-        onBack={() => navigation.goBack()}
-        rightIcon={{
-          name: "person",
-          onPress: () => {
-            console.log("Profile icon pressed");
-          },
+    <View style={{ flex: 1, backgroundColor: "red" }}>
+      <View
+        style={{ backgroundColor: "green" }}
+        onLayout={(event) => {
+          const { height, y, width, x } = event.nativeEvent.layout;
+          console.log("🔍 HEADER - HeaderBack Layout:");
+          console.log("   Height:", height);
+          console.log("   Y position:", y);
+          console.log("   Width:", width);
+          console.log("   X position:", x);
+          console.log("   Header visible:", height > 0);
         }}
-      />
-      {/* Comment out entire Channel for now */}
-      {/* <Channel channel={channel}>
-        <View style={{ flex: 1 }}>
+      >
+        <HeaderBack
+          title={matchedUserName}
+          onBack={() => navigation.goBack()}
+          rightIcon={{
+            name: "person",
+            onPress: () => {
+              if (matchedUserId) {
+                (navigation as any).navigate("ProfileScreen", {
+                  userId: matchedUserId,
+                  matchId: null,
+                });
+              }
+            },
+          }}
+        />
+      </View>
+
+      {/* STEP 1: Add basic Channel wrapper with logging */}
+      <Channel channel={channel}>
+        <View
+          style={{ flex: 1, backgroundColor: "blue" }}
+          onLayout={(event) => {
+            const { height, y, width, x } = event.nativeEvent.layout;
+            console.log("🔍 STEP 1 - Channel View Layout:");
+            console.log("   Height:", height);
+            console.log("   Y position:", y);
+            console.log("   Width:", width);
+            console.log("   X position:", x);
+            console.log("   Channel exists:", !!channel);
+            console.log("   Screen dimensions - Height:", height + y);
+          }}
+        >
+          {/* STEP 2: Add MessageList with logging */}
           <MessageList />
 
+          {/* STEP 3: Add MessageInput with logging */}
           <MessageInput />
         </View>
-      </Channel> */}
+      </Channel>
     </View>
   );
 }
