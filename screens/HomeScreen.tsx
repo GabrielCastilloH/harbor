@@ -564,7 +564,6 @@ export default function HomeScreen() {
             onClose={() => setShowMatch(false)}
             matchedProfile={matchedProfile}
             currentProfile={userProfile}
-            matchId={currentMatchId}
           />
           <UnviewedMatchesHandler />
         </GestureHandlerRootView>
