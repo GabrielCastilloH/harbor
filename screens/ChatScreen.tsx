@@ -447,7 +447,7 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.primary100,
+    backgroundColor: "white",
   },
   headerContainer: {
     position: "absolute",
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
   },
   channelContainer: {
     flex: 1,
-    backgroundColor: Colors.primary100,
+    backgroundColor: "white",
     paddingBottom: Platform.OS === "ios" ? 20 : 10,
     paddingTop: 60, // Add padding to account for header height
   },
