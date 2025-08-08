@@ -258,7 +258,7 @@ export default function ChatScreen() {
       {/* STEP 1: Add basic Channel wrapper with logging */}
       <Channel channel={channel}>
         <View
-          style={{ flex: 1, backgroundColor: "blue" }}
+          style={{ flex: 1, backgroundColor: "blue", paddingBottom: 80 }}
           onLayout={(event) => {
             const { height, y, width, x } = event.nativeEvent.layout;
             console.log("🔍 STEP 1 - Channel View Layout:");
