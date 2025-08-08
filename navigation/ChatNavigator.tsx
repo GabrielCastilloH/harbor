@@ -128,7 +128,6 @@ function HeaderTitleButton({ navigation }: HeaderTitleButtonProps) {
       style={{
         alignItems: "center",
         paddingVertical: 8,
-        backgroundColor: "red",
       }}
       hitSlop={{ top: 8, bottom: 8, left: 20, right: 20 }}
     >
