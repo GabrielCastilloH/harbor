@@ -12,9 +12,7 @@ import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import BasicInfoView from "../components/BasicInfoView";
 import { useNavigation } from "@react-navigation/native";
-import { ChatFunctions } from "../networking";
 import { useAppContext } from "../context/AppContext";
-import { MatchService } from "../networking/MatchService";
 
 interface MatchModalProps {
   visible: boolean;
@@ -115,7 +113,7 @@ const styles = StyleSheet.create({
   closeButton: {
     position: "absolute",
     right: 20,
-    top: 50,
+    top: "3%",
     zIndex: 3,
   },
   matchText: {
@@ -126,7 +124,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     zIndex: 2,
     position: "absolute",
-    top: 100,
+    top: "5%",
     width: "100%",
     paddingHorizontal: 20,
   },
@@ -145,7 +143,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 3,
     padding: 25,
-    top: 85,
+    top: "10%",
     borderColor: `${Colors.primary500}50`,
     overflow: "hidden",
   },
@@ -159,7 +157,7 @@ const styles = StyleSheet.create({
   },
   chatButton: {
     position: "absolute",
-    bottom: 80,
+    bottom: "10%",
     backgroundColor: Colors.primary500,
     paddingHorizontal: 30,
     paddingVertical: 15,
