@@ -18,8 +18,8 @@ export default function MainHeading({ title }: MainHeadingProps) {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
-          paddingTop: 24,
-          paddingBottom: 16,
+          paddingTop: 12,
+          paddingBottom: 12,
           paddingHorizontal: 16,
           backgroundColor: Colors.primary100,
         }}
