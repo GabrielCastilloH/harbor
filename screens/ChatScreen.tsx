@@ -313,15 +313,15 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.primary100,
+    backgroundColor: "white",
   },
   channelContainer: {
     flex: 1,
-    backgroundColor: Colors.primary100,
+    backgroundColor: "white",
   },
   channelContent: {
     flex: 1,
-    backgroundColor: Colors.primary100,
+    backgroundColor: "white",
   },
   loadingContainer: {
     flex: 1,
