@@ -21,6 +21,7 @@ export default function ChatScreen() {
   const [userConsented, setUserConsented] = useState(false);
   const [matchedUserName, setMatchedUserName] = useState<string>("Loading...");
   const [matchedUserId, setMatchedUserId] = useState<string>("");
+  const [isLayoutReady, setIsLayoutReady] = useState(false);
   const channelViewRef = useRef<View>(null);
   const [consentStatus, setConsentStatus] = useState<{
     user1Id: string;
@@ -102,25 +103,26 @@ export default function ChatScreen() {
         setMatchedUserId(otherUserId);
         try {
           const response = await UserService.getUserById(otherUserId);
-          console.log("ChatScreen - User response:", response);
           if (response) {
-            const userData = response.user || response;
-            const firstName = userData.firstName || "User";
-            console.log("ChatScreen - Setting matched user name:", firstName);
-            setMatchedUserName(firstName);
+            const userData = (response as any).user || response;
+            setMatchedUserName(userData.firstName || "User");
           }
         } catch (error) {
           console.error("Error fetching matched user name:", error);
           setMatchedUserName("User");
         }
-      } else {
-        console.log("ChatScreen - No other user found in channel");
-        setMatchedUserName("User");
       }
     };
 
     getMatchedUserName();
   }, [channel, userId]);
+
+  // Set layout ready when we have the user name and tab bar height
+  useEffect(() => {
+    if (matchedUserName !== "Loading..." && tabBarHeight > 0) {
+      setIsLayoutReady(true);
+    }
+  }, [matchedUserName, tabBarHeight]);
 
   const handleConsentResponse = async (consented: boolean) => {
     try {
@@ -226,70 +228,52 @@ export default function ChatScreen() {
     );
   }
 
+  // Don't render the main content until layout is ready to prevent jarring shifts
+  if (!isLayoutReady) {
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.primary100 }}>
+        <HeaderBack title="Loading..." onBack={() => navigation.goBack()} />
+        <View style={{ flex: 1, backgroundColor: Colors.secondary100 }} />
+      </View>
+    );
+  }
+
   return (
-    <View style={{ flex: 1, backgroundColor: "red" }}>
-      <View
-        style={{ backgroundColor: "green" }}
-        onLayout={(event) => {
-          const { height, y, width, x } = event.nativeEvent.layout;
-          console.log("🔍 HEADER - HeaderBack Layout:");
-          console.log("   Height:", height);
-          console.log("   Y position:", y);
-          console.log("   Width:", width);
-          console.log("   X position:", x);
-          console.log("   Header visible:", height > 0);
+    <View style={{ flex: 1 }}>
+      <HeaderBack
+        title={matchedUserName}
+        onBack={() => navigation.goBack()}
+        onTitlePress={() => {
+          if (matchedUserId) {
+            (navigation as any).navigate("ProfileScreen", {
+              userId: matchedUserId,
+              matchId: null,
+            });
+          }
         }}
-      >
-        <HeaderBack
-          title={matchedUserName}
-          onBack={() => navigation.goBack()}
-          onTitlePress={() => {
+        rightIcon={{
+          name: "person",
+          onPress: () => {
             if (matchedUserId) {
               (navigation as any).navigate("ProfileScreen", {
                 userId: matchedUserId,
                 matchId: null,
               });
             }
-          }}
-          rightIcon={{
-            name: "person",
-            onPress: () => {
-              if (matchedUserId) {
-                (navigation as any).navigate("ProfileScreen", {
-                  userId: matchedUserId,
-                  matchId: null,
-                });
-              }
-            },
-          }}
-        />
-      </View>
+          },
+        }}
+      />
 
-      {/* STEP 1: Add basic Channel wrapper with logging */}
       <Channel channel={channel}>
         <View
           style={{
             flex: 1,
-            backgroundColor: Colors.secondary100,
+            backgroundColor: Colors.primary100,
             paddingBottom: tabBarHeight + 22,
           }}
-          onLayout={(event) => {
-            const { height, y, width, x } = event.nativeEvent.layout;
-            console.log("🔍 STEP 1 - Channel View Layout:");
-            console.log("   Height:", height);
-            console.log("   Y position:", y);
-            console.log("   Width:", width);
-            console.log("   X position:", x);
-            console.log("   Channel exists:", !!channel);
-            console.log("   Screen dimensions - Height:", height + y);
-            console.log("   Tab bar height:", tabBarHeight);
-            console.log("   Total bottom padding:", tabBarHeight + 10);
-          }}
         >
-          {/* STEP 2: Add MessageList with logging */}
           <MessageList />
 
-          {/* STEP 3: Add MessageInput with logging */}
           <View style={{ paddingBottom: 15 }}>
             <MessageInput />
           </View>
