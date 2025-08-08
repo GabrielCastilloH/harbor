@@ -1,12 +1,11 @@
 import { Text, View, StyleSheet, Modal, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { Channel, MessageInput, MessageList } from "stream-chat-expo";
 import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
 import { updateMessageCount } from "../networking";
 import { MatchService, ConsentService } from "../networking";
-import { BLUR_CONFIG } from "../constants/blurConfig";
 import HeaderBack from "../components/HeaderBack";
 import LoadingScreen from "../components/LoadingScreen";
 import { useNavigation } from "@react-navigation/native";
@@ -23,7 +22,6 @@ export default function ChatScreen() {
   const [matchedUserName, setMatchedUserName] = useState<string>("Loading...");
   const [matchedUserId, setMatchedUserId] = useState<string>("");
   const [isLayoutReady, setIsLayoutReady] = useState(false);
-  const channelViewRef = useRef<View>(null);
   const [consentStatus, setConsentStatus] = useState<{
     user1Id: string;
     user2Id: string;
@@ -95,10 +93,6 @@ export default function ChatScreen() {
       const otherUserId = Object.keys(otherMembers).find(
         (key) => key !== userId
       );
-
-      console.log("ChatScreen - Channel members:", otherMembers);
-      console.log("ChatScreen - Current userId:", userId);
-      console.log("ChatScreen - Other userId:", otherUserId);
 
       if (otherUserId) {
         setMatchedUserId(otherUserId);
@@ -232,7 +226,7 @@ export default function ChatScreen() {
   // Don't render the main content until layout is ready to prevent jarring shifts
   if (!isLayoutReady) {
     return (
-      <View style={{ flex: 1, backgroundColor: Colors.primary100 }}>
+      <View style={styles.loadingContainer}>
         <HeaderBack title="Loading..." onBack={() => navigation.goBack()} />
         <LoadingScreen loadingText="Loading chat..." />
       </View>
@@ -240,7 +234,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.container}>
       <HeaderBack
         title={matchedUserName}
         onBack={() => navigation.goBack()}
@@ -267,15 +261,14 @@ export default function ChatScreen() {
 
       <Channel channel={channel}>
         <View
-          style={{
-            flex: 1,
-            backgroundColor: Colors.secondary100,
-            paddingBottom: tabBarHeight + 22,
-          }}
+          style={[
+            styles.channelContainer,
+            { paddingBottom: tabBarHeight + 22 },
+          ]}
         >
           <MessageList />
 
-          <View style={{ paddingBottom: 15 }}>
+          <View style={styles.messageInputContainer}>
             <MessageInput />
           </View>
         </View>
@@ -285,16 +278,19 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  disabledContainer: {
-    padding: 16,
-    backgroundColor: Colors.primary100,
-    borderTopWidth: 1,
-    borderTopColor: Colors.primary500,
+  container: {
+    flex: 1,
   },
-  disabledText: {
-    textAlign: "center",
-    color: Colors.primary500,
-    fontStyle: "italic",
+  channelContainer: {
+    flex: 1,
+    backgroundColor: Colors.primary100,
+  },
+  messageInputContainer: {
+    paddingBottom: 15,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: Colors.primary100,
   },
   modalOverlay: {
     position: "absolute",
@@ -302,14 +298,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1000,
   },
   warningModalBackground: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
     justifyContent: "center",
     alignItems: "center",
   },
