@@ -21,7 +21,6 @@ interface MatchModalProps {
   onClose: () => void;
   matchedProfile: Profile | null;
   currentProfile: Profile | null;
-  matchId?: string; // Add matchId prop
 }
 
 const { width } = Dimensions.get("window");
@@ -31,26 +30,10 @@ export default function MatchModal({
   onClose,
   matchedProfile,
   currentProfile,
-  matchId,
 }: MatchModalProps) {
   const navigation = useNavigation();
   const { userId, setChannel } = useAppContext();
   const [isLoadingChat, setIsLoadingChat] = React.useState(false);
-
-  // Mark match as viewed when modal becomes visible
-  useEffect(() => {
-    const markMatchAsViewed = async () => {
-      if (visible && matchId && userId) {
-        try {
-          await MatchService.markMatchAsViewed(matchId, userId);
-        } catch (error) {
-          console.error("Error marking match as viewed:", error);
-        }
-      }
-    };
-
-    markMatchAsViewed();
-  }, [visible, matchId, userId]);
 
   if (!matchedProfile || !currentProfile) return null;
 
