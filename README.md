@@ -6,7 +6,6 @@ TODO:
 
 - Add push notifications to the app (and make the you've matched system notification silent)
 - show difference between basic and premium plan.
-- Make sure they can't send a message if one user hasn't allowed to continue (actually not MVP)
 
 ## 📋 Validation Rules
 
