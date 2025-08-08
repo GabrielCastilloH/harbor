@@ -235,14 +235,14 @@ export default function ChatScreen() {
           },
         }}
       />
-
-      {/* Stream Chat context between header and tab bar */}
-      <Channel channel={channel}>
+      {/* Comment out entire Channel for now */}
+      {/* <Channel channel={channel}>
         <View style={{ flex: 1 }}>
           <MessageList />
+
           <MessageInput />
         </View>
-      </Channel>
+      </Channel> */}
     </View>
   );
 }
