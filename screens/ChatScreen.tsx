@@ -262,7 +262,7 @@ export default function ChatScreen() {
         <View
           style={{
             flex: 1,
-            backgroundColor: "blue",
+            backgroundColor: Colors.secondary100,
             paddingBottom: tabBarHeight + 22,
           }}
           onLayout={(event) => {
