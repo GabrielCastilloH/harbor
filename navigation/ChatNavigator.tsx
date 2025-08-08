@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { TouchableOpacity } from "react-native";
+import { TouchableOpacity, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ChatList from "../screens/ChatList";
 import ChatScreen from "../screens/ChatScreen";
@@ -22,11 +22,14 @@ import { useAppContext } from "../context/AppContext";
 import { RootStackParamList } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import MainHeading from "../components/MainHeading";
-import ChatHeader from "../components/ChatHeader";
 
 type NavigationProps = NavigationProp<RootStackParamList>;
 
 interface HeaderRightButtonProps {
+  navigation: NavigationProps;
+}
+
+interface HeaderTitleButtonProps {
   navigation: NavigationProps;
 }
 
@@ -76,6 +79,60 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
         size={24}
         color={isFrozen ? Colors.secondary500 : Colors.primary500}
       />
+    </TouchableOpacity>
+  );
+}
+
+function HeaderTitleButton({ navigation }: HeaderTitleButtonProps) {
+  const { channel, userId } = useAppContext();
+  const [matchedUserName, setMatchedUserName] = useState<string>("Loading...");
+  const [matchedUserId, setMatchedUserId] = useState<string>("");
+
+  useEffect(() => {
+    const getMatchedUserName = async () => {
+      if (!channel || !userId) return;
+      const otherMembers = channel?.state?.members || {};
+      const otherUserId = Object.keys(otherMembers).find(
+        (key) => key !== userId
+      );
+      if (otherUserId) {
+        setMatchedUserId(otherUserId);
+        try {
+          const response = await UserService.getUserById(otherUserId);
+          if (response) {
+            const userData = (response as any).user || response;
+            setMatchedUserName(userData.firstName || "User");
+          }
+        } catch (error) {
+          console.error("Error fetching matched user name:", error);
+          setMatchedUserName("User");
+        }
+      }
+    };
+
+    getMatchedUserName();
+  }, [channel, userId]);
+
+  const handleHeaderPress = () => {
+    if (matchedUserId) {
+      navigation.navigate("ProfileScreen", {
+        userId: matchedUserId,
+        matchId: null,
+      });
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={handleHeaderPress}
+      style={{ flex: 1, alignItems: "center", paddingVertical: 8 }}
+      hitSlop={{ top: 8, bottom: 8, left: 20, right: 20 }}
+    >
+      <Text
+        style={{ fontSize: 18, fontWeight: "600", color: Colors.primary500 }}
+      >
+        {matchedUserName}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -202,15 +259,15 @@ export default function ChatNavigator() {
 
         if (response) {
           // If response contains data directly as the user object
-          if (response.firstName || response.uid) {
-            profileData = response;
+          if (response.firstName || (response as any).uid) {
+            profileData = response as any;
           }
           // If response contains data in the user property
           else if (
-            response.user &&
-            (response.user.firstName || response.user.uid)
+            (response as any).user &&
+            ((response as any).user.firstName || (response as any).user.uid)
           ) {
-            profileData = response.user;
+            profileData = (response as any).user;
           } else {
             console.error(
               "ChatNavigator - Invalid profile data format:",
@@ -271,29 +328,131 @@ export default function ChatNavigator() {
             component={ChatScreenWithHeader}
             options={({ navigation }) => ({
               headerShown: true,
-              headerTitle: "Yolanda",
+              // headerTitle: () => <HeaderTitleButton navigation={navigation} />,
               headerStyle: { backgroundColor: Colors.primary100 },
               headerTintColor: Colors.primary500,
               headerTitleAlign: "center",
-              headerLeft: () => (
-                <TouchableOpacity
-                  onPress={() => navigation.goBack()}
-                  style={{ padding: 8 }}
-                >
-                  <Ionicons name="arrow-back" size={24} color={Colors.primary500} />
-                </TouchableOpacity>
-              ),
-              headerRight: () => (
-                <TouchableOpacity
-                  onPress={() => {
-                    // Navigate to profile - we'll need to get the matched user ID
-                    // For now, just a placeholder
-                  }}
-                  style={{ padding: 8 }}
-                >
-                  <Ionicons name="person" size={24} color={Colors.primary500} />
-                </TouchableOpacity>
-              ),
+              headerBackVisible: false,
+              headerTitle: () => {
+                const { channel, userId } = useAppContext();
+                const [matchedUserName, setMatchedUserName] =
+                  useState<string>("Loading...");
+                const [matchedUserId, setMatchedUserId] = useState<string>("");
+
+                useEffect(() => {
+                  const getMatchedUserName = async () => {
+                    if (!channel || !userId) return;
+
+                    const otherMembers = channel?.state?.members || {};
+                    const otherUserId = Object.keys(otherMembers).find(
+                      (key) => key !== userId
+                    );
+
+                    if (otherUserId) {
+                      setMatchedUserId(otherUserId);
+                      try {
+                        const response = await UserService.getUserById(
+                          otherUserId
+                        );
+                        if (response) {
+                          const userData = response.user || response;
+                          setMatchedUserName(userData.firstName || "User");
+                        }
+                      } catch (error) {
+                        console.error(
+                          "Error fetching matched user name:",
+                          error
+                        );
+                        setMatchedUserName("User");
+                      }
+                    }
+                  };
+
+                  getMatchedUserName();
+                }, [channel, userId]);
+
+                return (
+                  <TouchableOpacity
+                    activeOpacity={1}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      width: "100%",
+                      paddingHorizontal: 8,
+                      backgroundColor: "red",
+                    }}
+                  >
+                    {/* Back Button */}
+                    <TouchableOpacity
+                      onPress={() => navigation.goBack()}
+                      style={{ padding: 8 }}
+                    >
+                      <Ionicons
+                        name="arrow-back"
+                        size={24}
+                        color={Colors.primary500}
+                      />
+                    </TouchableOpacity>
+
+                    {/* Username (center) */}
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (matchedUserId) {
+                          navigation.navigate("ProfileScreen", {
+                            userId: matchedUserId,
+                            matchId: null,
+                          });
+                        }
+                      }}
+                      style={{ flex: 1, alignItems: "center" }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 18,
+                          fontWeight: "600",
+                          color: Colors.primary500,
+                        }}
+                      >
+                        {matchedUserName}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Profile Icon */}
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (matchedUserId) {
+                          navigation.navigate("ProfileScreen", {
+                            userId: matchedUserId,
+                            matchId: null,
+                          });
+                        }
+                      }}
+                      style={{ padding: 8 }}
+                    >
+                      <Ionicons
+                        name="person"
+                        size={24}
+                        color={Colors.primary500}
+                      />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                );
+              },
+
+              // headerLeft: () => (
+              //   <TouchableOpacity
+              //     onPress={() => navigation.goBack()}
+              //     style={{ padding: 8 }}
+              //   >
+              //     <Ionicons
+              //       name="arrow-back"
+              //       size={24}
+              //       color={Colors.primary500}
+              //     />
+              //   </TouchableOpacity>
+              // ),
+              // headerRight: () => <HeaderRightButton navigation={navigation} />,
             })}
           />
           <Stack.Screen
