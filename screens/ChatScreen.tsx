@@ -7,12 +7,18 @@ import Colors from "../constants/Colors";
 import { updateMessageCount } from "../networking";
 import { MatchService, ConsentService } from "../networking";
 import { BLUR_CONFIG } from "../constants/blurConfig";
+import HeaderBack from "../components/HeaderBack";
+import { useNavigation } from "@react-navigation/native";
+import { UserService } from "../networking";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
+  const navigation = useNavigation();
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [isChatFrozen, setIsChatFrozen] = useState(false);
   const [userConsented, setUserConsented] = useState(false);
+  const [matchedUserName, setMatchedUserName] = useState<string>("Loading...");
+  const [matchedUserId, setMatchedUserId] = useState<string>("");
   const [consentStatus, setConsentStatus] = useState<{
     user1Id: string;
     user2Id: string;
@@ -73,6 +79,44 @@ export default function ChatScreen() {
     };
 
     checkConsentState();
+  }, [channel, userId]);
+
+  // Fetch matched user name
+  useEffect(() => {
+    const getMatchedUserName = async () => {
+      if (!channel || !userId) return;
+
+      const otherMembers = channel?.state?.members || {};
+      const otherUserId = Object.keys(otherMembers).find(
+        (key) => key !== userId
+      );
+
+      console.log("ChatScreen - Channel members:", otherMembers);
+      console.log("ChatScreen - Current userId:", userId);
+      console.log("ChatScreen - Other userId:", otherUserId);
+
+      if (otherUserId) {
+        setMatchedUserId(otherUserId);
+        try {
+          const response = await UserService.getUserById(otherUserId);
+          console.log("ChatScreen - User response:", response);
+          if (response) {
+            const userData = response.user || response;
+            const firstName = userData.firstName || "User";
+            console.log("ChatScreen - Setting matched user name:", firstName);
+            setMatchedUserName(firstName);
+          }
+        } catch (error) {
+          console.error("Error fetching matched user name:", error);
+          setMatchedUserName("User");
+        }
+      } else {
+        console.log("ChatScreen - No other user found in channel");
+        setMatchedUserName("User");
+      }
+    };
+
+    getMatchedUserName();
   }, [channel, userId]);
 
   const handleConsentResponse = async (consented: boolean) => {
@@ -180,56 +224,26 @@ export default function ChatScreen() {
   }
 
   return (
-    <>
-      <Channel channel={channel}>
-        <MessageList />
+    <View style={{ flex: 1 }}>
+      <HeaderBack
+        title="TEST CHAT HEADER"
+        onBack={() => navigation.goBack()}
+        rightIcon={{
+          name: "person",
+          onPress: () => {
+            console.log("Profile icon pressed");
+          },
+        }}
+      />
+      {/* Comment out entire Channel for now */}
+      {/* <Channel channel={channel}>
+        <View style={{ flex: 1 }}>
+          <MessageList />
 
-        {/* Consent Modal - Inside the Channel view */}
-        {showConsentModal && (
-          <View style={styles.modalOverlay}>
-            <View style={styles.warningModalContent}>
-              <Text style={styles.warningTitle}>Photos Will Be Revealed</Text>
-              <Text style={styles.warningText}>
-                You've exchanged {consentStatus?.messageCount || 0} messages.
-                Your photos will start becoming clearer. This is your last
-                chance to unmatch while remaining anonymous.
-              </Text>
-              <View style={styles.warningButtons}>
-                <Pressable
-                  style={[styles.warningButton, styles.unmatchButton]}
-                  onPress={() => handleConsentResponse(false)}
-                >
-                  <Text style={styles.warningButtonText}>Unmatch</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.warningButton, styles.continueButton]}
-                  onPress={() => {
-                    setShowConsentModal(false);
-                    handleConsentResponse(true);
-                  }}
-                >
-                  <Text style={styles.warningButtonText}>Continue</Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {isChatFrozen ? (
-          <View style={styles.disabledContainer}>
-            <Text style={styles.disabledText}>
-              {channel.data?.frozen
-                ? "This chat has been frozen because one of the users unmatched."
-                : userConsented
-                ? "Waiting for the other person to continue the chat..."
-                : "Chat is paused until both users agree to continue."}
-            </Text>
-          </View>
-        ) : (
           <MessageInput />
-        )}
-      </Channel>
-    </>
+        </View>
+      </Channel> */}
+    </View>
   );
 }
 

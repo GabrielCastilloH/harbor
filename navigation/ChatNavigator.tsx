@@ -328,28 +328,10 @@ export default function ChatNavigator() {
           />
           <Stack.Screen
             name="ChatScreen"
-            component={ChatScreenWithHeader}
-            options={({ navigation }) => ({
-              headerShown: true,
-              headerStyle: { backgroundColor: Colors.primary100 },
-              headerTintColor: Colors.primary500,
-              headerTitleAlign: "center",
-              headerBackVisible: false,
-              headerTitle: () => <HeaderTitleButton navigation={navigation} />,
-              headerLeft: () => (
-                <TouchableOpacity
-                  onPress={() => navigation.goBack()}
-                  style={{ padding: 8 }}
-                >
-                  <Ionicons
-                    name="arrow-back"
-                    size={24}
-                    color={Colors.primary500}
-                  />
-                </TouchableOpacity>
-              ),
-              headerRight: () => <HeaderRightButton navigation={navigation} />,
-            })}
+            component={ChatScreen}
+            options={{
+              headerShown: false,
+            }}
           />
           <Stack.Screen
             name="ProfileScreen"
