@@ -7,6 +7,7 @@ import Colors from "../constants/Colors";
 interface HeaderBackProps {
   title: string;
   onBack: () => void;
+  onTitlePress?: () => void;
   rightIcon?: {
     name: string;
     onPress: () => void;
@@ -16,6 +17,7 @@ interface HeaderBackProps {
 export default function HeaderBack({
   title,
   onBack,
+  onTitlePress,
   rightIcon,
 }: HeaderBackProps) {
   return (
@@ -38,15 +40,29 @@ export default function HeaderBack({
           <Ionicons name="arrow-back" size={24} color={Colors.primary500} />
         </Pressable>
 
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: "600",
-            color: Colors.primary500,
-          }}
-        >
-          {title}
-        </Text>
+        {onTitlePress ? (
+          <Pressable onPress={onTitlePress}>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "600",
+                color: Colors.primary500,
+              }}
+            >
+              {title}
+            </Text>
+          </Pressable>
+        ) : (
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "600",
+              color: Colors.primary500,
+            }}
+          >
+            {title}
+          </Text>
+        )}
 
         {rightIcon ? (
           <Pressable onPress={rightIcon.onPress} style={{ padding: 8 }}>
