@@ -20,6 +20,7 @@ interface MatchModalProps {
   onClose: () => void;
   matchedProfile: Profile | null;
   currentProfile: Profile | null;
+  matchId?: string;
 }
 
 const { width } = Dimensions.get("window");
@@ -29,6 +30,7 @@ export default function MatchModal({
   onClose,
   matchedProfile,
   currentProfile,
+  matchId,
 }: MatchModalProps) {
   const navigation = useNavigation();
   const { userId, setChannel } = useAppContext();
