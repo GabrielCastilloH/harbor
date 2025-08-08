@@ -10,10 +10,12 @@ import { BLUR_CONFIG } from "../constants/blurConfig";
 import HeaderBack from "../components/HeaderBack";
 import { useNavigation } from "@react-navigation/native";
 import { UserService } from "../networking";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
   const navigation = useNavigation();
+  const tabBarHeight = useBottomTabBarHeight();
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [isChatFrozen, setIsChatFrozen] = useState(false);
   const [userConsented, setUserConsented] = useState(false);
@@ -258,7 +260,11 @@ export default function ChatScreen() {
       {/* STEP 1: Add basic Channel wrapper with logging */}
       <Channel channel={channel}>
         <View
-          style={{ flex: 1, backgroundColor: "blue", paddingBottom: 80 }}
+          style={{
+            flex: 1,
+            backgroundColor: "blue",
+            paddingBottom: tabBarHeight + 22,
+          }}
           onLayout={(event) => {
             const { height, y, width, x } = event.nativeEvent.layout;
             console.log("🔍 STEP 1 - Channel View Layout:");
@@ -268,13 +274,17 @@ export default function ChatScreen() {
             console.log("   X position:", x);
             console.log("   Channel exists:", !!channel);
             console.log("   Screen dimensions - Height:", height + y);
+            console.log("   Tab bar height:", tabBarHeight);
+            console.log("   Total bottom padding:", tabBarHeight + 10);
           }}
         >
           {/* STEP 2: Add MessageList with logging */}
           <MessageList />
 
           {/* STEP 3: Add MessageInput with logging */}
-          <MessageInput />
+          <View style={{ paddingBottom: 15 }}>
+            <MessageInput />
+          </View>
         </View>
       </Channel>
     </View>

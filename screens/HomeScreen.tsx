@@ -33,7 +33,7 @@ import {
   ChatFunctions,
 } from "../networking";
 import { getBlurredImageUrl } from "../networking/ImageService";
-import { usePlacement } from "expo-superwall";
+// import { usePlacement } from "@superwall/react-native-superwall";
 import { usePremium } from "../hooks/usePremium";
 import { SwipeLimitService } from "../networking/SwipeLimitService";
 import { RootStackParamList } from "../types/navigation";
@@ -72,8 +72,8 @@ export default function HomeScreen() {
     swipeRight: () => void;
   }>(null);
 
-  // Superwall paywall placement
-  const { registerPlacement } = usePlacement();
+  // Temporarily disable Superwall paywall placement
+  // const { registerPlacement } = usePlacement();
 
   // Premium features
   const { isPremium, swipesPerDay } = usePremium();
@@ -159,23 +159,23 @@ export default function HomeScreen() {
       setHasShownPaywall(true);
 
       // Register and show the paywall
-      registerPlacement({
-        placement: "onboarding_paywall",
-        feature: async () => {
-          // This runs if no paywall is shown (user already has access)
+      // registerPlacement({
+      //   placement: "onboarding_paywall",
+      //   feature: async () => {
+      //     // This runs if no paywall is shown (user already has access)
 
-          try {
-            await UserService.markPaywallAsSeen(userId);
-          } catch (error) {
-            console.error(
-              "❌ [HOMESCREEN] Error marking paywall as seen:",
-              error
-            );
-          }
-        },
-      });
+      //     try {
+      //       await UserService.markPaywallAsSeen(userId);
+      //     } catch (error) {
+      //       console.error(
+      //         "❌ [HOMESCREEN] Error marking paywall as seen:",
+      //         error
+      //       );
+      //     }
+      //   },
+      // });
     }
-  }, [userProfile, hasShownPaywall, userId, registerPlacement]);
+  }, [userProfile, hasShownPaywall, userId]);
 
   // Fetch swipe limits when user profile is loaded
   useEffect(() => {
@@ -283,19 +283,19 @@ export default function HomeScreen() {
     if (swipeLimit && !swipeLimit.canSwipe) {
       // Show paywall for premium upgrade
       try {
-        await registerPlacement({
-          placement: "settings_premium",
-          feature: () => {
-            Alert.alert(
-              "Daily Limit Reached",
-              `You've used all ${
-                swipeLimit.maxSwipesPerDay
-              } swipes for today. Upgrade to Premium for ${
-                isPremium ? 40 : 40
-              } swipes per day!`
-            );
-          },
-        });
+        // registerPlacement({
+        //   placement: "settings_premium",
+        //   feature: () => {
+        //     Alert.alert(
+        //       "Daily Limit Reached",
+        //       `You've used all ${
+        //         swipeLimit.maxSwipesPerDay
+        //       } swipes for today. Upgrade to Premium for ${
+        //         isPremium ? 40 : 40
+        //       } swipes per day!`
+        //     );
+        //   },
+        // });
       } catch (error) {
         console.error("Error showing premium paywall:", error);
       }
@@ -458,12 +458,12 @@ export default function HomeScreen() {
 
   const handlePremiumUpgrade = async () => {
     try {
-      await registerPlacement({
-        placement: "settings_premium",
-        feature: () => {
-          // No alert - just close silently
-        },
-      });
+      // registerPlacement({
+      //   placement: "settings_premium",
+      //   feature: () => {
+      //     // No alert - just close silently
+      //   },
+      // });
     } catch (error) {
       console.error("Error showing premium paywall:", error);
     }
