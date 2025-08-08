@@ -6,6 +6,7 @@ import {
   Image,
   TouchableOpacity,
   Alert,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "../constants/Colors";
@@ -188,6 +189,37 @@ export default function SignIn() {
           </View>
         )}
       </View>
+      {/* Terms and Privacy Disclaimer */}
+      <View style={styles.termsContainer}>
+        <Text style={styles.termsText}>
+          By making an account you agree to our{" "}
+          <Text
+            style={styles.termsLink}
+            onPress={() => {
+              window.open
+                ? window.open("https://www.tryharbor.app/terms.html", "_blank")
+                : Linking.openURL("https://www.tryharbor.app/terms.html");
+            }}
+          >
+            Terms of Service
+          </Text>{" "}
+          and{" "}
+          <Text
+            style={styles.termsLink}
+            onPress={() => {
+              window.open
+                ? window.open(
+                    "https://www.tryharbor.app/privacy.html",
+                    "_blank"
+                  )
+                : Linking.openURL("https://www.tryharbor.app/privacy.html");
+            }}
+          >
+            Privacy Policy
+          </Text>
+          .
+        </Text>
+      </View>
     </SafeAreaView>
   );
 }
@@ -239,5 +271,23 @@ const styles = StyleSheet.create({
     color: Colors.primary500,
     fontWeight: "500",
     fontSize: 20,
+  },
+  termsContainer: {
+    alignItems: "center",
+    marginVertical: 20, // More space above and below
+    paddingHorizontal: 0,
+    maxWidth: 260,
+    alignSelf: "center",
+  },
+  termsText: {
+    color: Colors.primary500,
+    textAlign: "center",
+    fontSize: 14,
+    opacity: 0.9,
+    lineHeight: 20,
+  },
+  termsLink: {
+    color: Colors.primary500,
+    fontWeight: "700",
   },
 });

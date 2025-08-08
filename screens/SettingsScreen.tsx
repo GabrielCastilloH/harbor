@@ -7,6 +7,7 @@ import {
   Switch,
   Platform,
   Alert,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useState } from "react";
@@ -18,49 +19,57 @@ import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
-import { usePlacement, useUser } from "expo-superwall";
+// import { usePlacement, useUser } from "@superwall/react-native-superwall";
+import SettingsButton from "../components/SettingsButton";
+import MainHeading from "../components/MainHeading";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
-  const { setIsAuthenticated, setUserId } = useAppContext();
+  const { setIsAuthenticated, setUserId, userId } = useAppContext();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [locationServices, setLocationServices] = useState(true);
-  const { subscriptionStatus } = useUser();
+  // const { subscriptionStatus } = useUser();
 
-  const { registerPlacement } = usePlacement({
-    onError: (err) => {
-      console.error("Premium Paywall Error:", err);
-      Alert.alert("Error", "Failed to load premium options. Please try again.");
-    },
-    onPresent: (info) => {
-      // Premium paywall presented
-    },
-    onDismiss: (info, result) => {
-      // Handle dismissal - user can continue using the app
-    },
-    onSkip: (reason) => {
-      // User was allowed through without paywall (e.g., already subscribed)
-    },
-  });
+  // Temporarily disable Superwall functionality
+  // const { registerPlacement } = usePlacement({
+  //   onError: (err) => {
+  //     console.error("Premium Paywall Error:", err);
+  //     Alert.alert("Error", "Failed to load premium options. Please try again.");
+  //   },
+  //   onPresent: (info) => {
+  //     // Premium paywall presented
+  //   },
+  //   onDismiss: (info, result) => {
+  //     // Handle dismissal - user can continue using the app
+  //   },
+  //   onSkip: (reason) => {
+  //     // User was allowed through without paywall (e.g., already subscribed)
+  //   },
+  // });
 
   const handlePremiumUpgrade = async () => {
     try {
-      await registerPlacement({
-        placement: "settings_premium", // This should match your Superwall dashboard placement
-        feature: () => {
-          // This runs if no paywall is shown (user already has access)
-          // Check if user actually has premium or if it's due to no products
-          if (subscriptionStatus?.status === "ACTIVE") {
-            Alert.alert("Premium", "You already have premium access!");
-          } else {
-            Alert.alert(
-              "Premium",
-              "Premium features are not yet available. Please check back later!"
-            );
-          }
-        },
-      });
+      // Temporarily disable Superwall functionality
+      // await registerPlacement({
+      //   placement: "settings_premium", // This should match your Superwall dashboard placement
+      //   feature: () => {
+      //     // This runs if no paywall is shown (user already has access)
+      //     // Check if user actually has premium or if it's due to no products
+      //     if (subscriptionStatus?.status === "ACTIVE") {
+      //       Alert.alert("Premium", "You already have premium access!");
+      //     } else {
+      //       Alert.alert(
+      //         "Premium",
+      //         "Premium features are not yet available. Please check back later!"
+      //       );
+      //     }
+      //   },
+      // });
+      Alert.alert(
+        "Premium",
+        "Premium features are not yet available. Please check back later!"
+      );
     } catch (error) {
       console.error("Error showing premium paywall:", error);
       Alert.alert("Error", "Failed to show premium options. Please try again.");
@@ -102,102 +111,87 @@ export default function SettingsScreen() {
     ]);
   };
 
-  const isPremium = subscriptionStatus?.status === "ACTIVE";
+  const handleViewProfile = () => {
+    // Navigate to view own profile (with blurred photos)
+    navigation.navigate("SelfProfile" as never);
+  };
+
+  const handlePrivacyPolicy = () => {
+    Linking.openURL("https://www.tryharbor.app/privacy");
+  };
+
+  const handleTermsAndConditions = () => {
+    Linking.openURL("https://www.tryharbor.app/terms");
+  };
+
+  const isPremium = false; // Temporarily set to false as Superwall is disabled
 
   return (
     <>
-      <SafeAreaView
-        edges={["top"]}
-        style={{ backgroundColor: Colors.primary100 }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingTop: 24, // Increased space from the top
-            paddingBottom: 16, // Increased from 8 to add more space below the text
-            paddingHorizontal: 16,
-            backgroundColor: Colors.primary100,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 24, // Increased from 20 to make text larger
-              fontWeight: "bold",
-              color: Colors.primary500,
-            }}
-          >
-            App Settings
-          </Text>
-        </View>
-      </SafeAreaView>
+      <MainHeading title="App Settings" />
       <ScrollView style={styles.container}>
-        <View style={[styles.section, { paddingTop: 5 }]}>
-          <View style={styles.setting}>
-            <Text style={styles.settingText}>Notifications</Text>
-            <Switch
-              value={notifications}
-              onValueChange={setNotifications}
-              trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
-              thumbColor={Colors.secondary100}
-            />
-          </View>
-          <TouchableOpacity
-            style={styles.profileButton}
-            onPress={() => navigation.navigate("Profile" as never)}
-          >
-            <Ionicons
-              name="person-circle"
-              size={24}
-              color={Colors.primary500}
-            />
-            <Text style={styles.profileButtonText}>Edit Profile</Text>
-          </TouchableOpacity>
+        {/* Preferences Section */}
+        <View style={[styles.section, styles.firstSection]}>
+          <Text style={styles.sectionTitle}>Preferences</Text>
+
+          <SettingsButton
+            icon="notifications-outline"
+            text="Notifications"
+            switchProps={{
+              value: notifications,
+              onValueChange: setNotifications,
+            }}
+          />
         </View>
 
+        {/* Account Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
 
-          {/* Premium Button */}
-          <TouchableOpacity
-            style={[styles.button, isPremium && styles.premiumActiveButton]}
-            onPress={handlePremiumUpgrade}
-          >
-            <Ionicons name="star" size={20} color={Colors.primary500} />
-            <Text
-              style={[styles.buttonText, isPremium && styles.premiumActiveText]}
-            >
-              {isPremium ? "Premium Active" : "Upgrade to Premium"}
-            </Text>
-            {isPremium && (
-              <Ionicons
-                name="checkmark-circle"
-                size={20}
-                color={Colors.primary500}
-                style={styles.checkmark}
-              />
-            )}
-          </TouchableOpacity>
+          <SettingsButton
+            icon="person-outline"
+            text="Edit Profile"
+            onPress={() => navigation.navigate("Profile" as never)}
+          />
 
-          <TouchableOpacity style={styles.button}>
-            <Ionicons name="lock-closed" size={20} color={Colors.primary500} />
-            <Text style={styles.buttonText}>Privacy Policy</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.button}>
-            <Ionicons
-              name="document-text"
-              size={20}
-              color={Colors.primary500}
-            />
-            <Text style={styles.buttonText}>Terms of Service</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.button, styles.logoutButton]}
+          <SettingsButton
+            icon="eye-outline"
+            text="View Profile"
+            onPress={handleViewProfile}
+          />
+
+          <SettingsButton
+            icon="star-outline"
+            text={isPremium ? "Premium Active" : "Upgrade to Premium"}
+            onPress={handlePremiumUpgrade}
+          />
+        </View>
+
+        {/* Legal Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Legal</Text>
+
+          <SettingsButton
+            icon="shield-outline"
+            text="Privacy Policy"
+            onPress={handlePrivacyPolicy}
+          />
+
+          <SettingsButton
+            icon="document-text-outline"
+            text="Terms & Conditions"
+            onPress={handleTermsAndConditions}
+          />
+        </View>
+
+        {/* Sign Out Section */}
+        <View style={styles.section}>
+          <SettingsButton
+            icon="log-out-outline"
+            text="Sign Out"
             onPress={handleSignOut}
-          >
-            <Ionicons name="log-out" size={20} color={Colors.primary500} />
-            <Text style={[styles.buttonText, styles.logoutText]}>Sign Out</Text>
-          </TouchableOpacity>
+            isDestructive={true}
+          />
         </View>
       </ScrollView>
     </>
@@ -209,99 +203,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.secondary100,
   },
-  profileButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.primary100,
-    padding: 15,
-    marginTop: 10,
-    borderRadius: 10,
-    justifyContent: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 2,
-        },
-        shadowOpacity: 0.2,
-        shadowRadius: 1,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
-  },
-  profileButtonText: {
-    color: Colors.primary500,
-    fontSize: 18,
-    fontWeight: "bold",
-    marginLeft: 10,
-  },
   section: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 0,
+    marginBottom: 14, // Middle ground spacing between sections
+  },
+  firstSection: {
+    marginTop: 10, // Moderate space from top for Preferences
   },
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
+    fontSize: 20, // Larger
+    fontWeight: "500", // Medium boldness
     color: Colors.primary500,
-    marginBottom: 10,
+    marginBottom: 8,
+    marginTop: 0,
   },
-  setting: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 15,
-  },
-  settingText: {
-    fontSize: 18,
-    color: Colors.primary500,
-  },
-  button: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 15,
-    backgroundColor: Colors.secondary200,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  buttonText: {
-    color: Colors.primary500,
-    fontSize: 16,
-    marginLeft: 10,
-  },
-  logoutButton: {
-    backgroundColor: Colors.primary100,
-    marginTop: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 2,
-        },
-        shadowOpacity: 0.2,
-        shadowRadius: 1,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
-  },
-  logoutText: {
-    color: Colors.primary500,
-    fontWeight: "bold",
-  },
-  premiumActiveButton: {
-    backgroundColor: Colors.secondary200,
-    borderColor: Colors.primary500,
-    borderWidth: 1,
-  },
-  premiumActiveText: {
-    color: Colors.primary500,
-    fontWeight: "bold",
-  },
-  checkmark: {
-    marginLeft: 10,
+  lastButton: {
+    marginBottom: 0, // Remove extra space below last button
   },
 });

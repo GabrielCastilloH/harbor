@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -6,13 +6,13 @@ import {
   Modal,
   TouchableOpacity,
   Dimensions,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import BasicInfoView from "../components/BasicInfoView";
 import { useNavigation } from "@react-navigation/native";
-import { ChatFunctions } from "../networking";
 import { useAppContext } from "../context/AppContext";
 
 interface MatchModalProps {
@@ -20,6 +20,7 @@ interface MatchModalProps {
   onClose: () => void;
   matchedProfile: Profile | null;
   currentProfile: Profile | null;
+  matchId?: string;
 }
 
 const { width } = Dimensions.get("window");
@@ -29,6 +30,7 @@ export default function MatchModal({
   onClose,
   matchedProfile,
   currentProfile,
+  matchId,
 }: MatchModalProps) {
   const navigation = useNavigation();
   const { userId, setChannel } = useAppContext();
@@ -36,32 +38,14 @@ export default function MatchModal({
 
   if (!matchedProfile || !currentProfile) return null;
 
+  // Simplified: Always navigate to ChatsTab
   const handleGoToChat = async () => {
-    if (!userId || !matchedProfile.uid) {
-      console.error("Missing userId or matchedProfile.uid");
-      return;
-    }
-
     setIsLoadingChat(true);
     try {
-      // Create or get the chat channel between the two users
-      const chatResponse = await ChatFunctions.createChannel({
-        userId1: userId,
-        userId2: matchedProfile.uid,
-      });
-
-      if (chatResponse && chatResponse.channel) {
-        // Set the channel in context
-        setChannel(chatResponse.channel);
-
-        // Navigate to the ChatsTab
-        (navigation as any).navigate("ChatsTab");
-
-        // Close the match modal
-        onClose();
-      }
+      (navigation as any).navigate("ChatsTab");
+      onClose();
     } catch (error) {
-      console.error("Error navigating to chat:", error);
+      console.error("Error navigating to chat tab:", error);
     } finally {
       setIsLoadingChat(false);
     }
@@ -131,8 +115,8 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: "absolute",
-    right: 20,
-    top: 50,
+    right: "5%",
+    top: Platform.OS === "ios" ? "7%" : "3%",
     zIndex: 3,
   },
   matchText: {
@@ -143,7 +127,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     zIndex: 2,
     position: "absolute",
-    top: 100,
+    top: Platform.OS === "ios" ? "9%" : "5%",
     width: "100%",
     paddingHorizontal: 20,
   },
@@ -162,7 +146,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 3,
     padding: 25,
-    top: 85,
+    top: "10%",
     borderColor: `${Colors.primary500}50`,
     overflow: "hidden",
   },
@@ -176,7 +160,7 @@ const styles = StyleSheet.create({
   },
   chatButton: {
     position: "absolute",
-    bottom: 80,
+    bottom: "10%",
     backgroundColor: Colors.primary500,
     paddingHorizontal: 30,
     paddingVertical: 15,

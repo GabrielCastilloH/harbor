@@ -14,8 +14,8 @@ import LoadingScreen from "./components/LoadingScreen";
 import UnviewedMatchesHandler from "./components/UnviewedMatchesHandler";
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
-import { SUPERWALL_CONFIG } from "./firebaseConfig";
+// import { SuperwallProvider, SuperwallLoaded } from "@superwall/react-native-superwall";
+// import { SUPERWALL_CONFIG } from "./firebaseConfig";
 
 // Configure Google Sign-In
 GoogleSignin.configure({
@@ -85,31 +85,27 @@ function AppContent() {
 }
 
 export default function App() {
-  // Get API keys immediately
-  const apiKeys = SUPERWALL_CONFIG.apiKeys;
+  // Temporarily disable Superwall functionality
+  // const apiKeys = SUPERWALL_CONFIG.apiKeys;
+  // const [superwallApiKeys, setSuperwallApiKeys] = useState<{
+  //   ios: string;
+  //   android: string;
+  // } | null>(apiKeys);
+  // const [isLoadingSuperwall, setIsLoadingSuperwall] = useState(false);
+  // const [superwallError, setSuperwallError] = useState<string | null>(null);
 
-  const [superwallApiKeys, setSuperwallApiKeys] = useState<{
-    ios: string;
-    android: string;
-  } | null>(apiKeys);
-  const [isLoadingSuperwall, setIsLoadingSuperwall] = useState(false);
-  const [superwallError, setSuperwallError] = useState<string | null>(null);
-
-  // Ensure we have API keys before proceeding
-  if (!superwallApiKeys || !superwallApiKeys.ios || !superwallApiKeys.android) {
-    const error = "Superwall API keys are missing or invalid";
-    throw new Error(error);
-  }
+  // // Ensure we have API keys before proceeding
+  // if (!superwallApiKeys || !superwallApiKeys.ios || !superwallApiKeys.android) {
+  //   const error = "Superwall API keys are missing or invalid";
+  //   throw new Error(error);
+  // }
 
   return (
     <SafeAreaProvider>
-      <SuperwallProvider apiKeys={superwallApiKeys}>
-        <SuperwallLoaded>
-          <AppProvider>
-            <AppContent />
-          </AppProvider>
-        </SuperwallLoaded>
-      </SuperwallProvider>
+      {/* Temporarily remove SuperwallProvider */}
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
     </SafeAreaProvider>
   );
 }
