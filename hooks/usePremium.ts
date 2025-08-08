@@ -1,4 +1,4 @@
-import { useSuperwall } from "expo-superwall";
+// import { useSuperwall } from "@superwall/react-native-superwall";
 import {
   getFeatureConfig,
   getSwipesPerDay,
@@ -6,7 +6,9 @@ import {
 } from "../constants/Features";
 
 export const usePremium = () => {
-  const { isSubscribed } = useSuperwall();
+  // Temporarily mock Superwall functionality
+  // const { isSubscribed } = useSuperwall();
+  const isSubscribed = false; // Default to free user
 
   // Use Superwall's isSubscribed as the source of truth
   const isPremium = isSubscribed;
