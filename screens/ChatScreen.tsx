@@ -407,30 +407,32 @@ export default function ChatScreen() {
 
   console.log("ChatScreen - Rendering main chat interface");
   return (
-    <View style={styles.container}>
-      <HeaderBack
-        title={matchedUserName}
-        onBack={() => navigation.goBack()}
-        onTitlePress={() => {
-          if (matchedUserId) {
-            (navigation as any).navigate("ProfileScreen", {
-              userId: matchedUserId,
-              matchId: null,
-            });
-          }
-        }}
-        rightIcon={{
-          name: "person",
-          onPress: () => {
+    <SafeAreaView style={styles.container} edges={["bottom"]}>
+      <View style={styles.headerContainer}>
+        <HeaderBack
+          title={matchedUserName}
+          onBack={() => navigation.goBack()}
+          onTitlePress={() => {
             if (matchedUserId) {
               (navigation as any).navigate("ProfileScreen", {
                 userId: matchedUserId,
                 matchId: null,
               });
             }
-          },
-        }}
-      />
+          }}
+          rightIcon={{
+            name: "person",
+            onPress: () => {
+              if (matchedUserId) {
+                (navigation as any).navigate("ProfileScreen", {
+                  userId: matchedUserId,
+                  matchId: null,
+                });
+              }
+            },
+          }}
+        />
+      </View>
 
       <Channel channel={channel}>
         <View style={styles.channelContainer}>
@@ -438,17 +440,28 @@ export default function ChatScreen() {
           <MessageInput />
         </View>
       </Channel>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Colors.primary100,
+  },
+  headerContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+    backgroundColor: Colors.primary100,
   },
   channelContainer: {
     flex: 1,
     backgroundColor: Colors.primary100,
+    paddingBottom: Platform.OS === "ios" ? 20 : 10,
+    paddingTop: 60, // Add padding to account for header height
   },
   loadingContainer: {
     flex: 1,
