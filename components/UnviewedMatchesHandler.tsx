@@ -11,11 +11,10 @@ interface UnviewedMatch {
 }
 
 export default function UnviewedMatchesHandler() {
-  const { userId, isAuthenticated } = useAppContext();
+  const { userId, isAuthenticated, profile } = useAppContext();
   const [unviewedMatches, setUnviewedMatches] = useState<UnviewedMatch[]>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [showMatchModal, setShowMatchModal] = useState(false);
-  const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     const checkUnviewedMatches = async () => {
@@ -30,6 +29,16 @@ export default function UnviewedMatchesHandler() {
           setUnviewedMatches(response.matches);
           setCurrentMatchIndex(0);
           setShowMatchModal(true);
+
+          // Mark the first match as viewed
+          const firstMatch = response.matches[0];
+          if (firstMatch?.matchId && userId) {
+            try {
+              await MatchService.markMatchAsViewed(firstMatch.matchId, userId);
+            } catch (error) {
+              console.error("Error marking match as viewed:", error);
+            }
+          }
         }
       } catch (error) {
         console.error("Error checking unviewed matches:", error);
@@ -47,16 +56,19 @@ export default function UnviewedMatchesHandler() {
     ) {
       const currentMatch = unviewedMatches[currentMatchIndex];
 
-      // Mark this match as viewed
-      try {
-        await MatchService.markMatchAsViewed(currentMatch.matchId, userId!);
-      } catch (error) {
-        console.error("Error marking match as viewed:", error);
-      }
-
       // Move to next match or close modal
       if (currentMatchIndex + 1 < unviewedMatches.length) {
         setCurrentMatchIndex(currentMatchIndex + 1);
+
+        // Mark the next match as viewed
+        const nextMatch = unviewedMatches[currentMatchIndex + 1];
+        if (nextMatch?.matchId && userId) {
+          try {
+            await MatchService.markMatchAsViewed(nextMatch.matchId, userId);
+          } catch (error) {
+            console.error("Error marking match as viewed:", error);
+          }
+        }
       } else {
         setShowMatchModal(false);
         setUnviewedMatches([]);
@@ -72,9 +84,9 @@ export default function UnviewedMatchesHandler() {
   // Get current match data
   const currentMatch = unviewedMatches[currentMatchIndex];
   const matchedProfile = currentMatch?.matchedProfile;
-  const userProfile = currentProfile; // This would need to be set from context
+  const userProfile = profile; // Get from context
 
-  if (!showMatchModal || !matchedProfile) {
+  if (!showMatchModal || !matchedProfile || !userProfile) {
     return null;
   }
 
@@ -84,6 +96,7 @@ export default function UnviewedMatchesHandler() {
       onClose={handleMatchModalClose}
       matchedProfile={matchedProfile}
       currentProfile={userProfile}
+      matchId={currentMatch?.matchId}
     />
   );
 }

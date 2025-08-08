@@ -1,5 +1,6 @@
 import SettingsScreen from "../screens/SettingsScreen";
 import EditProfileScreen from "../screens/EditProfileScreen";
+import SelfProfileScreen from "../screens/SelfProfileScreen";
 import Colors from "../constants/Colors";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
@@ -23,6 +24,11 @@ export default function SettingsStack() {
       <Stack.Screen
         name="Profile"
         component={EditProfileScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="SelfProfile"
+        component={SelfProfileScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
