@@ -33,6 +33,7 @@ import { getClientBlurLevel, BLUR_CONFIG } from "../constants/blurConfig";
 import LoadingScreen from "../components/LoadingScreen";
 import ImageCarousel from "../components/ImageCarousel";
 import { auth } from "../firebaseConfig";
+import HeaderBack from "../components/HeaderBack";
 
 type ProfileScreenParams = {
   ProfileScreen: {
@@ -59,6 +60,7 @@ export default function ProfileScreen() {
     }>
   >([]);
   const [imageLoading, setImageLoading] = useState(true);
+  const [isProfileReady, setIsProfileReady] = useState(false);
 
   const route = useRoute<RouteProp<ProfileScreenParams, "ProfileScreen">>();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -98,11 +100,44 @@ export default function ProfileScreen() {
       try {
         const response = await UserService.getUserById(userId);
         if (response) {
-          setProfile(response.user || response);
+          // Handle different response formats from Firebase
+          let profileData = null;
+
+          if (response.firstName || (response as any).uid) {
+            profileData = response as any;
+          } else if (
+            (response as any).user &&
+            ((response as any).user.firstName || (response as any).user.uid)
+          ) {
+            profileData = (response as any).user;
+          } else {
+            console.error(
+              "ProfileScreen - Invalid profile data format:",
+              response
+            );
+            setLoading(false);
+            return;
+          }
+
+          if (profileData && profileData.firstName) {
+            setProfile(profileData);
+            // Add a minimum loading time to prevent blank page flash
+            setTimeout(() => {
+              setLoading(false);
+            }, 500);
+          } else {
+            console.error(
+              "ProfileScreen - Missing required profile fields:",
+              profileData
+            );
+            setLoading(false);
+          }
+        } else {
+          console.error("ProfileScreen - No data in response:", response);
+          setLoading(false);
         }
       } catch (error) {
-        console.error("Error fetching profile:", error);
-      } finally {
+        console.error("ProfileScreen - Failed to fetch user profile:", error);
         setLoading(false);
       }
     };
@@ -161,6 +196,13 @@ export default function ProfileScreen() {
     };
     fetchImages();
   }, [userId]);
+
+  // Set profile ready when all data is loaded
+  useEffect(() => {
+    if (!loading && !imageLoading && profile) {
+      setIsProfileReady(true);
+    }
+  }, [loading, imageLoading, profile]);
 
   // Note: Blur logic is now handled dynamically in the image processing
   // No need to check blur warning state here anymore
@@ -266,11 +308,50 @@ export default function ProfileScreen() {
 
   // Show consistent loading screen for all loading states
   if (!matchId || loading || !profile) {
-    return <LoadingScreen loadingText="Loading..." />;
+    return (
+      <View style={{ flex: 1 }}>
+        <HeaderBack
+          title="Profile"
+          onBack={() => navigation.goBack()}
+          rightIcon={{
+            name: "flag",
+            onPress: () => {}, // Disabled during loading
+            disabled: true,
+          }}
+        />
+        <LoadingScreen loadingText="Loading profile..." />
+      </View>
+    );
+  }
+
+  // Show loading in content area while profile data is being prepared
+  if (!isProfileReady) {
+    return (
+      <View style={{ flex: 1 }}>
+        <HeaderBack
+          title="Profile"
+          onBack={() => navigation.goBack()}
+          rightIcon={{
+            name: "flag",
+            onPress: () => {}, // Disabled during loading
+            disabled: true,
+          }}
+        />
+        <LoadingScreen loadingText="Loading profile..." />
+      </View>
+    );
   }
 
   return (
     <View style={{ flex: 1 }}>
+      <HeaderBack
+        title="Profile"
+        onBack={() => navigation.goBack()}
+        rightIcon={{
+          name: "flag",
+          onPress: handleReport,
+        }}
+      />
       {/* Remove floating report flag button */}
       <ScrollView
         style={styles.scrollView}
