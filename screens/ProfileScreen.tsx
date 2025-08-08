@@ -60,6 +60,7 @@ export default function ProfileScreen() {
     }>
   >([]);
   const [imageLoading, setImageLoading] = useState(true);
+  const [isProfileReady, setIsProfileReady] = useState(false);
 
   const route = useRoute<RouteProp<ProfileScreenParams, "ProfileScreen">>();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -196,6 +197,13 @@ export default function ProfileScreen() {
     fetchImages();
   }, [userId]);
 
+  // Set profile ready when all data is loaded
+  useEffect(() => {
+    if (!loading && !imageLoading && profile) {
+      setIsProfileReady(true);
+    }
+  }, [loading, imageLoading, profile]);
+
   // Note: Blur logic is now handled dynamically in the image processing
   // No need to check blur warning state here anymore
 
@@ -300,7 +308,36 @@ export default function ProfileScreen() {
 
   // Show consistent loading screen for all loading states
   if (!matchId || loading || !profile) {
-    return <LoadingScreen loadingText="Loading..." />;
+    return (
+      <View style={{ flex: 1 }}>
+        <HeaderBack
+          title="Profile"
+          onBack={() => navigation.goBack()}
+          rightIcon={{
+            name: "flag",
+            onPress: handleReport,
+          }}
+        />
+        <LoadingScreen loadingText="Loading profile..." />
+      </View>
+    );
+  }
+
+  // Show loading in content area while profile data is being prepared
+  if (!isProfileReady) {
+    return (
+      <View style={{ flex: 1 }}>
+        <HeaderBack
+          title="Profile"
+          onBack={() => navigation.goBack()}
+          rightIcon={{
+            name: "flag",
+            onPress: handleReport,
+          }}
+        />
+        <LoadingScreen loadingText="Loading profile..." />
+      </View>
+    );
   }
 
   return (
