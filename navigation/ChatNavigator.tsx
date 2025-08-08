@@ -354,9 +354,25 @@ export default function ChatNavigator() {
           <Stack.Screen
             name="ProfileScreen"
             component={ProfileScreen}
-            options={{
+            options={({ navigation }) => ({
               headerTitle: "Profile",
-            }}
+              headerStyle: { backgroundColor: Colors.primary100 },
+              headerTintColor: Colors.primary500,
+              headerTitleAlign: "center",
+              headerBackVisible: false,
+              headerLeft: () => (
+                <TouchableOpacity
+                  onPress={() => navigation.goBack()}
+                  style={{ padding: 8 }}
+                >
+                  <Ionicons
+                    name="arrow-back"
+                    size={24}
+                    color={Colors.primary500}
+                  />
+                </TouchableOpacity>
+              ),
+            })}
           />
           <Stack.Screen
             name="ReportScreen"
