@@ -6,6 +6,7 @@ import {
   Modal,
   TouchableOpacity,
   Dimensions,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
@@ -112,8 +113,8 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: "absolute",
-    right: 20,
-    top: "3%",
+    right: "5%",
+    top: Platform.OS === "ios" ? "7%" : "3%",
     zIndex: 3,
   },
   matchText: {
@@ -124,7 +125,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     zIndex: 2,
     position: "absolute",
-    top: "5%",
+    top: Platform.OS === "ios" ? "9%" : "5%",
     width: "100%",
     paddingHorizontal: 20,
   },
