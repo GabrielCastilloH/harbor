@@ -72,7 +72,7 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
         }
       }}
       disabled={isFrozen}
-      style={{ opacity: isFrozen ? 0.3 : 1 }}
+      style={{ opacity: isFrozen ? 0.3 : 1, padding: 8 }}
     >
       <Ionicons
         name="person"
@@ -125,7 +125,11 @@ function HeaderTitleButton({ navigation }: HeaderTitleButtonProps) {
   return (
     <TouchableOpacity
       onPress={handleHeaderPress}
-      style={{ flex: 1, alignItems: "center", paddingVertical: 8 }}
+      style={{
+        alignItems: "center",
+        paddingVertical: 8,
+        backgroundColor: "red",
+      }}
       hitSlop={{ top: 8, bottom: 8, left: 20, right: 20 }}
     >
       <Text
@@ -328,131 +332,24 @@ export default function ChatNavigator() {
             component={ChatScreenWithHeader}
             options={({ navigation }) => ({
               headerShown: true,
-              // headerTitle: () => <HeaderTitleButton navigation={navigation} />,
               headerStyle: { backgroundColor: Colors.primary100 },
               headerTintColor: Colors.primary500,
               headerTitleAlign: "center",
               headerBackVisible: false,
-              headerTitle: () => {
-                const { channel, userId } = useAppContext();
-                const [matchedUserName, setMatchedUserName] =
-                  useState<string>("Loading...");
-                const [matchedUserId, setMatchedUserId] = useState<string>("");
-
-                useEffect(() => {
-                  const getMatchedUserName = async () => {
-                    if (!channel || !userId) return;
-
-                    const otherMembers = channel?.state?.members || {};
-                    const otherUserId = Object.keys(otherMembers).find(
-                      (key) => key !== userId
-                    );
-
-                    if (otherUserId) {
-                      setMatchedUserId(otherUserId);
-                      try {
-                        const response = await UserService.getUserById(
-                          otherUserId
-                        );
-                        if (response) {
-                          const userData = response.user || response;
-                          setMatchedUserName(userData.firstName || "User");
-                        }
-                      } catch (error) {
-                        console.error(
-                          "Error fetching matched user name:",
-                          error
-                        );
-                        setMatchedUserName("User");
-                      }
-                    }
-                  };
-
-                  getMatchedUserName();
-                }, [channel, userId]);
-
-                return (
-                  <TouchableOpacity
-                    activeOpacity={1}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      width: "100%",
-                      paddingHorizontal: 8,
-                      backgroundColor: "red",
-                    }}
-                  >
-                    {/* Back Button */}
-                    <TouchableOpacity
-                      onPress={() => navigation.goBack()}
-                      style={{ padding: 8 }}
-                    >
-                      <Ionicons
-                        name="arrow-back"
-                        size={24}
-                        color={Colors.primary500}
-                      />
-                    </TouchableOpacity>
-
-                    {/* Username (center) */}
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (matchedUserId) {
-                          navigation.navigate("ProfileScreen", {
-                            userId: matchedUserId,
-                            matchId: null,
-                          });
-                        }
-                      }}
-                      style={{ flex: 1, alignItems: "center" }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 18,
-                          fontWeight: "600",
-                          color: Colors.primary500,
-                        }}
-                      >
-                        {matchedUserName}
-                      </Text>
-                    </TouchableOpacity>
-
-                    {/* Profile Icon */}
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (matchedUserId) {
-                          navigation.navigate("ProfileScreen", {
-                            userId: matchedUserId,
-                            matchId: null,
-                          });
-                        }
-                      }}
-                      style={{ padding: 8 }}
-                    >
-                      <Ionicons
-                        name="person"
-                        size={24}
-                        color={Colors.primary500}
-                      />
-                    </TouchableOpacity>
-                  </TouchableOpacity>
-                );
-              },
-
-              // headerLeft: () => (
-              //   <TouchableOpacity
-              //     onPress={() => navigation.goBack()}
-              //     style={{ padding: 8 }}
-              //   >
-              //     <Ionicons
-              //       name="arrow-back"
-              //       size={24}
-              //       color={Colors.primary500}
-              //     />
-              //   </TouchableOpacity>
-              // ),
-              // headerRight: () => <HeaderRightButton navigation={navigation} />,
+              headerTitle: () => <HeaderTitleButton navigation={navigation} />,
+              headerLeft: () => (
+                <TouchableOpacity
+                  onPress={() => navigation.goBack()}
+                  style={{ padding: 8 }}
+                >
+                  <Ionicons
+                    name="arrow-back"
+                    size={24}
+                    color={Colors.primary500}
+                  />
+                </TouchableOpacity>
+              ),
+              headerRight: () => <HeaderRightButton navigation={navigation} />,
             })}
           />
           <Stack.Screen
