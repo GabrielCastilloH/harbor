@@ -51,6 +51,13 @@ export default function ChatScreen() {
     });
 
     return () => {
+      // Ensure tab bar is shown when component unmounts
+      navigation.getParent()?.setOptions({
+        tabBarStyle: {
+          backgroundColor: Colors.secondary100,
+          display: "flex",
+        },
+      });
       unsubscribe();
       unsubscribeBlur();
     };
