@@ -70,3 +70,36 @@ export function getEmulatedBlurPercent({
   const remaining = 80 * (1 - progress);
   return Math.round(remaining);
 }
+
+/**
+ * Returns a single unified clarity percentage (0-100) that maps the two-phase
+ * reveal into one smooth scale. This intentionally ignores the internal
+ * distinction between theatrical blur (Phase 1) and real reveal (Phase 2).
+ *
+ * - During Phase 1 (pre-consent): clarity linearly increases from 0% → (100 - SERVER_BLUR_PERCENT)%
+ *   over MESSAGES_TO_CLEAR_BLUR messages. With SERVER_BLUR_PERCENT=80, this is 0% → 20%.
+ * - During Phase 2 (post-consent): clarity continues from (100 - SERVER_BLUR_PERCENT)% → 100%
+ *   over MESSAGES_TO_CLEAR_ORIGINAL messages.
+ */
+export function getUnifiedClarityPercent({
+  messageCount,
+  bothConsented,
+}: {
+  messageCount: number;
+  bothConsented: boolean;
+}): number {
+  const stageOneGain = 100 - BLUR_CONFIG.SERVER_BLUR_PERCENT; // typically 20
+  if (!bothConsented) {
+    const progress = Math.min(
+      messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR,
+      1
+    );
+    return Math.round(stageOneGain * progress);
+  }
+  const progress = Math.min(
+    messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL,
+    1
+  );
+  const clarity = stageOneGain + BLUR_CONFIG.SERVER_BLUR_PERCENT * progress; // 20 + 80*progress
+  return Math.round(Math.max(0, Math.min(100, clarity)));
+}

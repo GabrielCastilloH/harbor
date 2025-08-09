@@ -32,7 +32,7 @@ import { BlurView } from "expo-blur";
 import {
   getClientBlurLevel,
   BLUR_CONFIG,
-  getEmulatedBlurPercent,
+  getUnifiedClarityPercent,
 } from "../constants/blurConfig";
 import LoadingScreen from "../components/LoadingScreen";
 import ImageCarousel from "../components/ImageCarousel";
@@ -387,11 +387,10 @@ export default function ProfileScreen() {
           clarityPercent={(() => {
             if (imagesWithBlur.length === 0) return undefined as any;
             const first = imagesWithBlur[0];
-            const emu = getEmulatedBlurPercent({
+            return getUnifiedClarityPercent({
               messageCount: first.messageCount,
               bothConsented: first.bothConsented,
             });
-            return 100 - Math.max(0, Math.min(100, emu));
           })()}
         />
         {/* Clarity percent now shown inside ImageCarousel */}
