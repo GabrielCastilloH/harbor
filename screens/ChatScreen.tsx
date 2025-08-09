@@ -1,6 +1,6 @@
 import { Text, View, StyleSheet, Modal, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Channel, MessageInput, MessageList } from "stream-chat-expo";
 import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
@@ -32,6 +32,25 @@ export default function ChatScreen() {
     messageCount: number;
     shouldShowConsentScreen: boolean;
   } | null>(null);
+  const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
+
+  // Default resolver: always compute matchId from the other channel member via backend
+  const resolveMatchId = useCallback(async (): Promise<string | null> => {
+    if (!channel || !userId) return null;
+    const otherMembers = channel?.state?.members || {};
+    const otherUserId = Object.keys(otherMembers).find((key) => key !== userId);
+    if (!otherUserId) return null;
+    try {
+      const fetchedMatchId = await MatchService.getMatchId(userId, otherUserId);
+      if (fetchedMatchId) {
+        setActiveMatchId(fetchedMatchId);
+        return fetchedMatchId;
+      }
+    } catch (e) {
+      console.error("ChatScreen - Failed to resolve matchId:", e);
+    }
+    return null;
+  }, [channel, userId]);
 
   // Hide tab bar when this screen is focused
   useEffect(() => {
@@ -63,62 +82,46 @@ export default function ChatScreen() {
     };
   }, [navigation]);
 
-  // Check consent state when component mounts
+  // Resolve matchId when channel/user changes
+  useEffect(() => {
+    resolveMatchId();
+  }, [resolveMatchId]);
+
+  // Check consent state when component mounts or when we resolve a matchId
   useEffect(() => {
     const checkConsentState = async () => {
-      if (!channel || !userId) {
-        return;
-      }
-
-      const matchId = channel.data?.matchId;
-
-      if (!matchId) {
-        return;
-      }
-
+      if (!channel || !userId || !activeMatchId) return;
       try {
         // TEMPORARY: Migrate existing match to new consent fields
         try {
-          await MatchService.migrateMatchConsent(matchId);
-        } catch (migrationError) {
-          // Migration failed, continue anyway
-        }
+          await MatchService.migrateMatchConsent(activeMatchId);
+        } catch (migrationError) {}
 
-        const status = await ConsentService.getConsentStatus(matchId);
+        const status = await ConsentService.getConsentStatus(activeMatchId);
         setConsentStatus(status);
 
-        // Check if channel is frozen due to unmatch
-        const isChannelFrozen = channel.data?.frozen || false;
-
+        const isChannelFrozen = (channel.data as any)?.frozen || false;
         if (isChannelFrozen) {
           setIsChatFrozen(true);
-          setShowConsentModal(false); // Don't show consent modal if chat is frozen due to unmatch
-        } else if (status.shouldShowConsentScreen) {
-          setShowConsentModal(true);
-          setIsChatFrozen(true);
-        } else if (status.bothConsented) {
-          setIsChatFrozen(false);
-        }
-
-        // Check if current user has consented
-        // Determine if current user is user1 or user2
-        const isUser1 = status.user1Id === userId;
-        const currentUserConsented = isUser1
-          ? status.user1Consented
-          : status.user2Consented;
-        setUserConsented(currentUserConsented);
-
-        // Don't show modal if current user has already consented
-        if (currentUserConsented) {
           setShowConsentModal(false);
+        } else {
+          const isSelfUser1 = status.user1Id === userId;
+          const showForSelf = isSelfUser1
+            ? status.shouldShowConsentForUser1
+            : status.shouldShowConsentForUser2;
+          setIsChatFrozen(showForSelf);
+          setShowConsentModal(showForSelf);
+          const currentUserConsented = isSelfUser1
+            ? status.user1Consented
+            : status.user2Consented;
+          setUserConsented(currentUserConsented);
         }
       } catch (error) {
         console.error("Error checking consent state:", error);
       }
     };
-
     checkConsentState();
-  }, [channel, userId]);
+  }, [channel, userId, activeMatchId]);
 
   // Fetch matched user name
   useEffect(() => {
@@ -163,7 +166,7 @@ export default function ChatScreen() {
 
   const handleConsentResponse = async (consented: boolean) => {
     try {
-      const matchId = channel?.data?.matchId;
+      const matchId = activeMatchId || (await resolveMatchId());
       if (!matchId || !userId) {
         return;
       }
@@ -212,7 +215,7 @@ export default function ChatScreen() {
 
     // Set up message listener
     const handleNewMessage = async (event: any) => {
-      const matchId = channel.data?.matchId;
+      const matchId = activeMatchId || (await resolveMatchId());
       if (matchId) {
         try {
           // First increment the message count
@@ -227,21 +230,14 @@ export default function ChatScreen() {
 
           if (isChannelFrozen) {
             setIsChatFrozen(true);
-            setShowConsentModal(false); // Don't show consent modal if chat is frozen due to unmatch
+            setShowConsentModal(false);
           } else {
-            // Determine if current user has already consented
-            const isUser1 = status.user1Id === userId;
-            const currentUserConsented = isUser1
-              ? status.user1Consented
-              : status.user2Consented;
-
-            if (status.shouldShowConsentScreen && !currentUserConsented) {
-              setShowConsentModal(true);
-              setIsChatFrozen(true);
-            } else if (status.bothConsented) {
-              setShowConsentModal(false);
-              setIsChatFrozen(false);
-            }
+            const isSelfUser1 = status.user1Id === userId;
+            const showForSelf = isSelfUser1
+              ? status.shouldShowConsentForUser1
+              : status.shouldShowConsentForUser2;
+            setIsChatFrozen(showForSelf);
+            setShowConsentModal(showForSelf);
           }
         } catch (error) {
           console.error(
@@ -259,7 +255,7 @@ export default function ChatScreen() {
     return () => {
       channel.off("message.new", handleNewMessage);
     };
-  }, [channel, userId]);
+  }, [channel, userId, activeMatchId, resolveMatchId]);
 
   if (!channel) {
     return (
