@@ -41,3 +41,32 @@ export function getClientBlurLevel({
     return percentageToBlurRadius(blurPercent);
   }
 }
+
+/**
+ * Returns the emulated blur percentage remaining (0-100) that we surface to users.
+ * This abstracts whether we are viewing _blurred or _original; it reflects the UX model.
+ */
+export function getEmulatedBlurPercent({
+  messageCount,
+  bothConsented,
+}: {
+  messageCount: number;
+  bothConsented: boolean;
+}): number {
+  // Phase 1: 100% -> 0% over MESSAGES_TO_CLEAR_BLUR
+  if (!bothConsented) {
+    const progress = Math.min(
+      messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR,
+      1
+    );
+    const remaining = 100 * (1 - progress);
+    return Math.round(remaining);
+  }
+  // Phase 2: emulate 80% -> 0% over MESSAGES_TO_CLEAR_ORIGINAL
+  const progress = Math.min(
+    messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL,
+    1
+  );
+  const remaining = 80 * (1 - progress);
+  return Math.round(remaining);
+}
