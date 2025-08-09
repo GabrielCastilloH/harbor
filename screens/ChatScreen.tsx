@@ -19,12 +19,10 @@ import HeaderBack from "../components/HeaderBack";
 import LoadingScreen from "../components/LoadingScreen";
 import { useNavigation } from "@react-navigation/native";
 import { UserService } from "../networking";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
   const navigation = useNavigation();
-  useBottomTabBarHeight();
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [isChatFrozen, setIsChatFrozen] = useState(false);
   const [userConsented, setUserConsented] = useState(false);
@@ -106,35 +104,7 @@ export default function ChatScreen() {
     return null;
   }, [channel, userId, fetchAndApplyConsentStatus]);
 
-  // Hide tab bar when this screen is focused
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => {
-      navigation.getParent()?.setOptions({
-        tabBarStyle: { display: "none" },
-      });
-    });
-
-    const unsubscribeBlur = navigation.addListener("blur", () => {
-      navigation.getParent()?.setOptions({
-        tabBarStyle: {
-          backgroundColor: Colors.secondary100,
-          display: "flex",
-        },
-      });
-    });
-
-    return () => {
-      // Ensure tab bar is shown when component unmounts
-      navigation.getParent()?.setOptions({
-        tabBarStyle: {
-          backgroundColor: Colors.secondary100,
-          display: "flex",
-        },
-      });
-      unsubscribe();
-      unsubscribeBlur();
-    };
-  }, [navigation]);
+  // Removed: tab bar hide/show logic to keep tab bar visible on ChatScreen
 
   // Resolve matchId when channel/user changes
   useEffect(() => {
@@ -347,14 +317,6 @@ export default function ChatScreen() {
     };
   }, [channel, userId, activeMatchId, resolveMatchId]);
 
-  if (!channel) {
-    return (
-      <SafeAreaView>
-        <Text>Loading chat ...</Text>
-      </SafeAreaView>
-    );
-  }
-
   // Don't render the main content until layout is ready to prevent jarring shifts
   if (!isLayoutReady) {
     return (
@@ -393,7 +355,7 @@ export default function ChatScreen() {
         }}
       />
 
-      <SafeAreaView style={styles.channelContainer} edges={["bottom"]}>
+      <View style={styles.channelContainer}>
         <Channel channel={channel}>
           <View style={styles.channelContent}>
             <MessageList />
@@ -512,7 +474,7 @@ export default function ChatScreen() {
             </View>
           </View>
         )}
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
