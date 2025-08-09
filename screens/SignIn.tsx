@@ -157,7 +157,7 @@ export default function SignIn() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.secondary100 }}>
       <View style={styles.container}>
         <View style={styles.logoContainer}>
           <Image
