@@ -246,7 +246,7 @@ export default function ProfileForm({
           <Text style={styles.firstLabel}>First Name (or Initial)</Text>
           <TextInput
             style={styles.input}
-            placeholder="First name (or initial/nickname for extra privacy)"
+            placeholder="First name (or initial/nickname privacy)"
             value={profileData.firstName}
             onChangeText={(text) => handleChange("firstName", text)}
           />
