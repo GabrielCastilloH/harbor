@@ -56,24 +56,8 @@ export default function ChatScreen() {
         setShowConsentModal(showForSelf);
         setIsChatFrozen(channelFrozen || showForSelf);
 
-        // Fire-and-forget server-side freeze sync (do not block UI)
-        try {
-          const desiredFreeze = showForSelf;
-          const channelId =
-            (channel as any)?.id || (channel as any)?.cid?.split(":")[1];
-          if (
-            typeof channelId === "string" &&
-            lastAppliedFreezeRef.current !== desiredFreeze
-          ) {
-            fetchUpdateChannelChatStatus(channelId, desiredFreeze)
-              .then(() => {
-                lastAppliedFreezeRef.current = desiredFreeze;
-              })
-              .catch((e) => {
-                console.error("[#CONSENT] freezeSync(fetchAndApply) error:", e);
-              });
-          }
-        } catch {}
+        // IMPORTANT: Never toggle server-side channel freeze for consent flow.
+        // We only soft-freeze locally so the header/message doesn't imply "unmatched".
       } catch (e) {
         console.error("[#CONSENT] fetchAndApplyConsentStatus error:", e);
       }
@@ -140,25 +124,7 @@ export default function ChatScreen() {
           : status.user2Consented;
         setUserConsented(currentUserConsented);
 
-        // Always sync server-side freeze to match showForSelf
-        try {
-          const desiredFreeze = showForSelf;
-          const channelId =
-            (channel as any)?.id || (channel as any)?.cid?.split(":")[1];
-          if (
-            typeof channelId === "string" &&
-            lastAppliedFreezeRef.current !== desiredFreeze
-          ) {
-            console.log("[#CONSENT] freezeSync(checkConsentState)", {
-              desiredFreeze,
-              channelId,
-            });
-            await fetchUpdateChannelChatStatus(channelId, desiredFreeze);
-            lastAppliedFreezeRef.current = desiredFreeze;
-          }
-        } catch (e) {
-          console.error("[#CONSENT] freezeSync(checkConsentState) error:", e);
-        }
+        // Do NOT sync server-side freeze for consent. Keep server freeze solely for real unmatch.
       } catch (error) {
         console.error("[#CONSENT] Error checking consent state:", error);
       }
@@ -286,21 +252,7 @@ export default function ChatScreen() {
             setIsChatFrozen(showForSelf);
             setShowConsentModal(showForSelf);
 
-            // Server-side freeze/unfreeze to hard-block input
-            try {
-              const desiredFreeze = showForSelf;
-              const channelId =
-                (channel as any)?.id || (channel as any)?.cid?.split(":")[1];
-              if (
-                typeof channelId === "string" &&
-                lastAppliedFreezeRef.current !== desiredFreeze
-              ) {
-                await fetchUpdateChannelChatStatus(channelId, desiredFreeze);
-                lastAppliedFreezeRef.current = desiredFreeze;
-              }
-            } catch (e) {
-              console.error("[#CONSENT] freezeSync(message.new) error:", e);
-            }
+            // Do NOT touch server-side freeze/unfreeze for consent flow
           }
         } catch (error) {
           console.error("[#CONSENT] message.new error:", error);
@@ -403,13 +355,16 @@ export default function ChatScreen() {
                         userId,
                         false
                       );
-                      const channelId =
-                        (channel as any)?.id ||
-                        (channel as any)?.cid?.split(":")[1];
-                      if (channelId) {
-                        await fetchUpdateChannelChatStatus(channelId, true);
-                        lastAppliedFreezeRef.current = true;
-                      }
+                      // Server freeze for explicit unmatch only
+                      try {
+                        const channelId =
+                          (channel as any)?.id ||
+                          (channel as any)?.cid?.split(":")[1];
+                        if (channelId) {
+                          await fetchUpdateChannelChatStatus(channelId, true);
+                          lastAppliedFreezeRef.current = true;
+                        }
+                      } catch {}
                       setIsChatFrozen(true);
                       setShowConsentModal(false);
                     } catch (e) {
@@ -444,13 +399,7 @@ export default function ChatScreen() {
                         true
                       );
                       if (res.bothConsented) {
-                        const channelId =
-                          (channel as any)?.id ||
-                          (channel as any)?.cid?.split(":")[1];
-                        if (channelId) {
-                          await fetchUpdateChannelChatStatus(channelId, false);
-                          lastAppliedFreezeRef.current = false;
-                        }
+                        // No server unfreeze here; consent flow is client-only visual gating
                         setIsChatFrozen(false);
                         setShowConsentModal(false);
                       } else {
