@@ -394,7 +394,12 @@ export default function ProfileScreen() {
           })()}
         />
         {/* Clarity percent now shown inside ImageCarousel */}
-        <View style={{ paddingHorizontal: 24, paddingTop: 0, marginTop: 0 }}>
+        <View
+          style={{
+            paddingHorizontal: 24,
+            paddingTop: 10,
+          }}
+        >
           <BasicInfoView profile={profile} />
         </View>
 
