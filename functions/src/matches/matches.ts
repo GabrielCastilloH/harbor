@@ -834,13 +834,30 @@ export const getConsentStatus = functions.https.onCall(
         );
       }
 
-      const user1Consented = matchData.user1Consented || false;
-      const user2Consented = matchData.user2Consented || false;
+      const user1Consented = Boolean(matchData.user1Consented);
+      const user2Consented = Boolean(matchData.user2Consented);
       const bothConsented = user1Consented && user2Consented;
       const messageCount = matchData.messageCount || 0;
 
-      // Check if consent screen should be shown (30 messages threshold)
-      const shouldShowConsentScreen = messageCount >= 30 && !bothConsented;
+      // Threshold for showing consent screen; keep in sync with client constant
+      const MESSAGE_THRESHOLD = 30;
+
+      // Edge-case aware: any count >= threshold should trigger consent if not both consented
+      const shouldShowConsentScreen =
+        messageCount >= MESSAGE_THRESHOLD && !bothConsented;
+
+      // Per-user requirement flags
+      const shouldShowConsentForUser1 =
+        shouldShowConsentScreen && !user1Consented;
+      const shouldShowConsentForUser2 =
+        shouldShowConsentScreen && !user2Consented;
+
+      // Human-readable state
+      const state = bothConsented
+        ? "both_consented"
+        : user1Consented || user2Consented
+        ? "one_consented"
+        : "none_consented";
 
       return {
         user1Id,
@@ -850,6 +867,26 @@ export const getConsentStatus = functions.https.onCall(
         bothConsented,
         messageCount,
         shouldShowConsentScreen,
+        shouldShowConsentForUser1,
+        shouldShowConsentForUser2,
+        state,
+        consent: {
+          state,
+          messageThreshold: MESSAGE_THRESHOLD,
+          bothConsented,
+          users: [
+            {
+              id: user1Id,
+              hasConsented: user1Consented,
+              shouldShow: shouldShowConsentForUser1,
+            },
+            {
+              id: user2Id,
+              hasConsented: user2Consented,
+              shouldShow: shouldShowConsentForUser2,
+            },
+          ],
+        },
       };
     } catch (error: any) {
       console.error("Error getting consent status:", error);
