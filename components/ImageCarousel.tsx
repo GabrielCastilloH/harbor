@@ -47,6 +47,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           justifyContent: "center",
           paddingHorizontal: spacing,
           height: imageSize + 40,
+          backgroundColor: "yellow", // DEBUG container for each image page
         }}
       >
         <View
@@ -129,9 +130,14 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   }, [images, currentIndex]);
 
   return (
-    <View style={{ width: "100%" }}>
+    <View style={{ width: "100%", backgroundColor: "red" }}>
       {/* Stage: image area with taps and indicators, fixed height */}
-      <View style={[styles.container, { height: imageSize + 40 }]}>
+      <View
+        style={[
+          styles.container,
+          { height: imageSize + 60, backgroundColor: "blue" },
+        ]}
+      >
         <FlatList
           ref={flatListRef}
           data={images}
@@ -148,10 +154,10 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
         />
 
         {/* Left tap area */}
-        <Pressable style={styles.leftTapArea} onPress={handleLeftTap} />
+        <Pressable style={[styles.leftTapArea]} onPress={handleLeftTap} />
 
         {/* Right tap area */}
-        <Pressable style={styles.rightTapArea} onPress={handleRightTap} />
+        <Pressable style={[styles.rightTapArea]} onPress={handleRightTap} />
 
         {/* Page indicator */}
         {showIndicators && (
@@ -165,7 +171,12 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               },
             ]}
           >
-            <View style={[styles.pageIndicator, { width: imageSize }]}>
+            <View
+              style={[
+                styles.pageIndicator,
+                { width: imageSize, backgroundColor: "pink" },
+              ]}
+            >
               {images.map((_, idx) => (
                 <View
                   key={idx}
@@ -175,34 +186,38 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
             </View>
           </View>
         )}
-      </View>
-
-      {/* Inline clarity row inside carousel container, below images */}
-      {typeof clarityPercent === "number" && (
-        <View
-          style={[
-            styles.clarityRow,
-            { width: imageSize, alignSelf: "center", marginTop: 10 },
-          ]}
-        >
-          <Text style={styles.clarityLabel}>
-            {Math.round(clarityPercent)}% Clear
-          </Text>
-          <View style={styles.clarityTrack}>
-            <View
-              style={[
-                styles.clarityFill,
-                {
-                  width: `${Math.max(
-                    0,
-                    Math.min(100, Math.round(clarityPercent))
-                  )}%`,
-                },
-              ]}
-            />
+        {/* Inline clarity row inside carousel container, below images */}
+        {typeof clarityPercent === "number" && (
+          <View
+            style={[
+              styles.clarityRow,
+              {
+                width: imageSize,
+                alignSelf: "center",
+                marginVertical: 10,
+                backgroundColor: "purple",
+              },
+            ]}
+          >
+            <Text style={[styles.clarityLabel, { backgroundColor: "cyan" }]}>
+              {Math.round(clarityPercent)}% Clear
+            </Text>
+            <View style={[styles.clarityTrack, { backgroundColor: "brown" }]}>
+              <View
+                style={[
+                  styles.clarityFill,
+                  {
+                    width: `${Math.max(
+                      0,
+                      Math.min(100, Math.round(clarityPercent))
+                    )}%`,
+                  },
+                ]}
+              />
+            </View>
           </View>
-        </View>
-      )}
+        )}
+      </View>
     </View>
   );
 };
