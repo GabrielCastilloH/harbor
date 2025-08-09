@@ -23,6 +23,7 @@ interface ImageCarouselProps {
   borderRadius?: number;
   spacing?: number;
   showIndicators?: boolean;
+  clarityPercent?: number; // when provided, shows inline clarity label + bar below images
 }
 
 const ImageCarousel: React.FC<ImageCarouselProps> = ({
@@ -31,6 +32,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   borderRadius = 16,
   spacing = 20,
   showIndicators = true,
+  clarityPercent,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
@@ -127,12 +129,9 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   }, [images, currentIndex]);
 
   return (
-    <View
-      style={{
-        width: "100%",
-      }}
-    >
-      <View style={styles.container}>
+    <View style={{ width: "100%" }}>
+      {/* Stage: image area with taps and indicators, fixed height */}
+      <View style={[styles.container, { height: imageSize + 40 }]}>
         <FlatList
           ref={flatListRef}
           data={images}
@@ -161,7 +160,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               styles.pageIndicatorContainer,
               {
                 top: 35,
-                left: (windowWidth - imageSize) / 2, // Center it with the image
+                left: (windowWidth - imageSize) / 2, // Center with the image
                 width: imageSize,
               },
             ]}
@@ -177,6 +176,33 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           </View>
         )}
       </View>
+
+      {/* Inline clarity row inside carousel container, below images */}
+      {typeof clarityPercent === "number" && (
+        <View
+          style={[
+            styles.clarityRow,
+            { width: imageSize, alignSelf: "center", marginTop: 10 },
+          ]}
+        >
+          <Text style={styles.clarityLabel}>
+            {Math.round(clarityPercent)}% Clear
+          </Text>
+          <View style={styles.clarityTrack}>
+            <View
+              style={[
+                styles.clarityFill,
+                {
+                  width: `${Math.max(
+                    0,
+                    Math.min(100, Math.round(clarityPercent))
+                  )}%`,
+                },
+              ]}
+            />
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -239,6 +265,30 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
   },
   activeDot: {
+    backgroundColor: Colors.primary500,
+  },
+  clarityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  clarityLabel: {
+    color: Colors.primary500,
+    fontWeight: "600",
+    fontSize: 14,
+    minWidth: 72,
+    textAlign: "left",
+  },
+  clarityTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 8,
+    backgroundColor: "#e6eef1",
+    overflow: "hidden",
+  },
+  clarityFill: {
+    height: 8,
+    borderRadius: 8,
     backgroundColor: Colors.primary500,
   },
 });
