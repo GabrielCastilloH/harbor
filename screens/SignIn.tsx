@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Linking,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "../constants/Colors";
@@ -233,7 +234,7 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     height: 120,
-    marginTop: "35%",
+    marginTop: Platform.OS === "ios" ? "45%" : "35%",
     justifyContent: "center",
   },
   logo: {
@@ -244,14 +245,14 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: "bold",
     color: Colors.primary500,
-    marginTop: "8%",
-    marginBottom: "1%",
+    marginTop: Platform.OS === "ios" ? "15%" : "8%",
+    marginBottom: Platform.OS === "ios" ? "5%" : "3%",
   },
   description: {
     fontSize: 18,
     color: Colors.primary500,
     textAlign: "center",
-    marginBottom: "10%",
+    marginBottom: Platform.OS === "ios" ? "10%" : "10%",
     paddingHorizontal: 20,
   },
   buttonContainer: {
