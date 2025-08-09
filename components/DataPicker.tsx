@@ -9,16 +9,18 @@ import {
   Animated,
   Dimensions,
   Platform,
+  Pressable,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Colors from "../constants/Colors";
+import { yearLevels, majors, genders, orientations } from "../constants/Data";
 
 interface DataPickerProps {
   value: string;
   onValueChange: (value: string) => void;
   placeholder: string;
   style?: any;
-  type: "major" | "yearLevel";
+  type: "major" | "yearLevel" | "gender" | "orientation";
 }
 
 const { height: screenHeight } = Dimensions.get("window");
@@ -33,9 +35,15 @@ export default function DataPicker({
   const [modalVisible, setModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 
-  // Import data based on type
-  const { yearLevels, majors } = require("../constants/Data");
-  const options = type === "major" ? majors : yearLevels;
+  // Options based on type
+  const options: string[] =
+    type === "major"
+      ? majors
+      : type === "yearLevel"
+      ? yearLevels
+      : type === "gender"
+      ? genders
+      : orientations;
 
   useEffect(() => {
     if (modalVisible) {
@@ -77,18 +85,21 @@ export default function DataPicker({
         animationType="none"
         onRequestClose={() => setModalVisible(false)}
       >
-        <TouchableOpacity
+        <View
           style={[
             styles.modalOverlay,
             Platform.OS === "android" ? styles.debugOverlay : null,
           ]}
-          activeOpacity={1}
-          onPressIn={() => console.log("[DataPicker] Overlay press in")}
-          onPress={() => {
-            console.log("[DataPicker] Overlay pressed -> closing");
-            setModalVisible(false);
-          }}
+          pointerEvents="box-none"
         >
+          <Pressable
+            style={styles.backdrop}
+            onPress={() => {
+              console.log("[DataPicker] Backdrop pressed -> closing");
+              setModalVisible(false);
+            }}
+            onPressIn={() => console.log("[DataPicker] Backdrop press in")}
+          />
           <Animated.View
             style={[
               styles.modalContent,
@@ -179,7 +190,7 @@ export default function DataPicker({
               </View>
             </TouchableOpacity>
           </Animated.View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </>
   );
@@ -216,6 +227,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-end",
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
   modalContent: {
     backgroundColor: Colors.secondary100,
