@@ -17,7 +17,6 @@ import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import * as ImagePicker from "expo-image-picker";
 import { getImageSource } from "../util/imageUtils";
-import GenderPicker from "./GenderPicker";
 import DataPicker from "./DataPicker";
 
 interface ProfileFormProps {
@@ -264,16 +263,17 @@ export default function ProfileForm({
           <View style={styles.genderContainer}>
             <View style={styles.genderField}>
               <Text style={styles.label}>Your Gender</Text>
-              <GenderPicker
+              <DataPicker
                 value={profileData.gender || ""}
                 onValueChange={(value) => handleChange("gender", value)}
                 placeholder="Select gender"
                 style={styles.genderPicker}
+                type="gender"
               />
             </View>
             <View style={styles.genderField}>
               <Text style={styles.label}>Sexual Orientation</Text>
-              <GenderPicker
+              <DataPicker
                 value={profileData.sexualOrientation || ""}
                 onValueChange={(value) =>
                   handleChange("sexualOrientation", value)
