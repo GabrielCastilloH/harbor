@@ -167,10 +167,10 @@ export default function SignIn() {
             resizeMode="contain"
           />
         </View>
-        <Text style={styles.title}>Sign In</Text>
+        <Text style={styles.title}>Sign In/Up</Text>
         <Text style={styles.description}>
-          In order to use this app you must sign in with your Cornell email via
-          Google.
+          In order to use this app you must sign in/up with your Cornell email
+          via Google.
         </Text>
 
         {/* Custom Button */}
