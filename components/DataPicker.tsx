@@ -8,6 +8,7 @@ import {
   ScrollView,
   Animated,
   Dimensions,
+  Platform,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Colors from "../constants/Colors";
@@ -38,12 +39,14 @@ export default function DataPicker({
 
   useEffect(() => {
     if (modalVisible) {
+      console.log("[DataPicker] Modal opening");
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 300,
         useNativeDriver: true,
       }).start();
     } else {
+      console.log("[DataPicker] Modal closing");
       slideAnim.setValue(screenHeight);
     }
   }, [modalVisible, slideAnim]);
@@ -52,7 +55,10 @@ export default function DataPicker({
     <>
       <TouchableOpacity
         style={[styles.pickerButton, style]}
-        onPress={() => setModalVisible(true)}
+        onPress={() => {
+          console.log("[DataPicker] Open pressed");
+          setModalVisible(true);
+        }}
       >
         <Text
           style={[
@@ -72,9 +78,16 @@ export default function DataPicker({
         onRequestClose={() => setModalVisible(false)}
       >
         <TouchableOpacity
-          style={styles.modalOverlay}
+          style={[
+            styles.modalOverlay,
+            Platform.OS === "android" ? styles.debugOverlay : null,
+          ]}
           activeOpacity={1}
-          onPress={() => setModalVisible(false)}
+          onPressIn={() => console.log("[DataPicker] Overlay press in")}
+          onPress={() => {
+            console.log("[DataPicker] Overlay pressed -> closing");
+            setModalVisible(false);
+          }}
         >
           <Animated.View
             style={[
@@ -82,15 +95,30 @@ export default function DataPicker({
               {
                 transform: [{ translateY: slideAnim }],
               },
+              Platform.OS === "android" ? styles.debugModalContent : null,
             ]}
+            onLayout={(e) => {
+              const { x, y, width, height } = e.nativeEvent.layout;
+              console.log("[DataPicker] Modal content layout", {
+                x,
+                y,
+                width,
+                height,
+              });
+            }}
           >
             <TouchableOpacity
               activeOpacity={1}
-              onPress={(e) => e.stopPropagation()}
+              onPress={() =>
+                console.log("[DataPicker] Inner container pressed")
+              }
             >
               <View style={styles.modalHeader}>
                 <TouchableOpacity
-                  onPress={() => setModalVisible(false)}
+                  onPress={() => {
+                    console.log("[DataPicker] Cancel pressed");
+                    setModalVisible(false);
+                  }}
                   style={styles.cancelButton}
                 >
                   <Text style={styles.cancelText}>Cancel</Text>
@@ -98,6 +126,7 @@ export default function DataPicker({
                 <Text style={styles.modalTitle}>Select Option</Text>
                 <TouchableOpacity
                   onPress={() => {
+                    console.log("[DataPicker] Done pressed");
                     setModalVisible(false);
                   }}
                   style={styles.doneButton}
@@ -105,20 +134,40 @@ export default function DataPicker({
                   <Text style={styles.doneText}>Done</Text>
                 </TouchableOpacity>
               </View>
-              <View style={styles.pickerContainer}>
+              <View
+                style={[
+                  styles.pickerContainer,
+                  Platform.OS === "android"
+                    ? styles.debugPickerContainer
+                    : null,
+                ]}
+                onLayout={(e) => {
+                  const { x, y, width, height } = e.nativeEvent.layout;
+                  console.log("[DataPicker] Picker container layout", {
+                    x,
+                    y,
+                    width,
+                    height,
+                  });
+                }}
+              >
                 <Picker
                   selectedValue={value}
                   onValueChange={(itemValue) => {
+                    console.log("[DataPicker] onValueChange", itemValue);
                     if (itemValue) {
                       onValueChange(itemValue);
                     }
                   }}
-                  style={styles.picker}
+                  style={[
+                    styles.picker,
+                    Platform.OS === "android" ? styles.debugPicker : null,
+                  ]}
                   itemStyle={styles.pickerItem}
                   mode="dropdown"
                 >
                   <Picker.Item label="Select..." value="" enabled={false} />
-                  {options.map((option) => (
+                  {options.map((option: string) => (
                     <Picker.Item
                       key={option}
                       label={option}
@@ -174,6 +223,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     paddingBottom: 20,
     height: 300,
+    zIndex: 1000,
+    elevation: 12,
   },
   modalHeader: {
     flexDirection: "row",
@@ -216,5 +267,24 @@ const styles = StyleSheet.create({
   pickerItem: {
     fontSize: 16,
     color: "gray",
+  },
+  // Android visual debugging aids
+  debugOverlay: {
+    backgroundColor: "rgba(255, 0, 0, 0.25)",
+  },
+  debugModalContent: {
+    backgroundColor: "rgba(0, 255, 0, 0.25)",
+    borderWidth: 2,
+    borderColor: "#00AA00",
+  },
+  debugPickerContainer: {
+    backgroundColor: "rgba(0, 0, 255, 0.1)",
+    borderWidth: 2,
+    borderColor: "#0000FF",
+  },
+  debugPicker: {
+    backgroundColor: "rgba(255, 255, 0, 0.25)",
+    borderWidth: 2,
+    borderColor: "#AAAA00",
   },
 });
