@@ -88,18 +88,27 @@ export function getUnifiedClarityPercent({
   messageCount: number;
   bothConsented: boolean;
 }): number {
-  const stageOneGain = 100 - BLUR_CONFIG.SERVER_BLUR_PERCENT; // typically 20
+  const stageOneGain = 100 - BLUR_CONFIG.SERVER_BLUR_PERCENT; // e.g., 20
+  const stageTwoGain = BLUR_CONFIG.SERVER_BLUR_PERCENT; // e.g., 80
+
   if (!bothConsented) {
+    // Phase 1: progress from 0 → stageOneGain
     const progress = Math.min(
       messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR,
       1
     );
     return Math.round(stageOneGain * progress);
   }
+
+  // Phase 2: continue from stageOneGain → 100
+  const phase2Messages = Math.max(
+    0,
+    messageCount - BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR
+  );
   const progress = Math.min(
-    messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL,
+    phase2Messages / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL,
     1
   );
-  const clarity = stageOneGain + BLUR_CONFIG.SERVER_BLUR_PERCENT * progress; // 20 + 80*progress
-  return Math.round(Math.max(0, Math.min(100, clarity)));
+  const clarity = stageOneGain + stageTwoGain * progress; // 20 + 80*progress
+  return Math.round(clarity);
 }
