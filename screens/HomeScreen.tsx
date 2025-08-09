@@ -545,8 +545,6 @@ export default function HomeScreen() {
                   width: 40,
                   tintColor: isNoPressed ? Colors.primary100 : Colors.red,
                 }}
-                fadeDuration={0}
-                resizeMode="contain"
               />
             </TouchableOpacity>
             <TouchableOpacity
