@@ -49,6 +49,47 @@ export default function ChatScreen() {
   };
 
   // Default resolver: always compute matchId from the other channel member via backend
+  const fetchAndApplyConsentStatus = useCallback(
+    async (matchId: string) => {
+      try {
+        const status = await ConsentService.getConsentStatus(matchId);
+        setConsentStatus(status);
+
+        const isSelfUser1 = status.user1Id === userId;
+        const showForSelf = isSelfUser1
+          ? status.shouldShowConsentForUser1
+          : status.shouldShowConsentForUser2;
+
+        const channelFrozen = Boolean((channel as any)?.data?.frozen);
+        // Show modal only when consent logic requires it; keep chat frozen if server says so
+        setShowConsentModal(showForSelf);
+        setIsChatFrozen(channelFrozen || showForSelf);
+
+        // Fire-and-forget server-side freeze sync (do not block UI)
+        try {
+          const desiredFreeze = showForSelf;
+          const channelId =
+            (channel as any)?.id || (channel as any)?.cid?.split(":")[1];
+          if (
+            typeof channelId === "string" &&
+            lastAppliedFreezeRef.current !== desiredFreeze
+          ) {
+            fetchUpdateChannelChatStatus(channelId, desiredFreeze)
+              .then(() => {
+                lastAppliedFreezeRef.current = desiredFreeze;
+              })
+              .catch((e) => {
+                console.error("[#CONSENT] freezeSync(fetchAndApply) error:", e);
+              });
+          }
+        } catch {}
+      } catch (e) {
+        console.error("[#CONSENT] fetchAndApplyConsentStatus error:", e);
+      }
+    },
+    [channel, userId]
+  );
+
   const resolveMatchId = useCallback(async (): Promise<string | null> => {
     if (!channel || !userId) {
       debug("resolveMatchId: missing channel/userId", {
@@ -70,6 +111,8 @@ export default function ChatScreen() {
       if (fetchedMatchId) {
         setActiveMatchId(fetchedMatchId);
         debug("resolveMatchId: resolved", { fetchedMatchId, otherUserId });
+        // Start consent UI fetch immediately for faster modal display
+        fetchAndApplyConsentStatus(fetchedMatchId);
         return fetchedMatchId;
       }
       debug("resolveMatchId: null fetchedMatchId");
@@ -77,7 +120,7 @@ export default function ChatScreen() {
       console.error("[#CONSENT] resolveMatchId error:", e);
     }
     return null;
-  }, [channel, userId]);
+  }, [channel, userId, fetchAndApplyConsentStatus]);
 
   // Hide tab bar when this screen is focused
   useEffect(() => {
@@ -114,6 +157,8 @@ export default function ChatScreen() {
     debug("effect: resolveMatchId on channel/user change");
     resolveMatchId();
   }, [resolveMatchId]);
+
+  // (Removed) Immediate modal on frozen channel per user request
 
   // Check consent state when component mounts or when we resolve a matchId
   useEffect(() => {
@@ -357,7 +402,9 @@ export default function ChatScreen() {
     return (
       <View style={styles.loadingContainer}>
         <HeaderBack title="Loading..." onBack={() => navigation.goBack()} />
-        <LoadingScreen loadingText="Loading chat..." />
+        <View style={{ flex: 1 }}>
+          <LoadingScreen loadingText="Loading chat..." />
+        </View>
       </View>
     );
   }
