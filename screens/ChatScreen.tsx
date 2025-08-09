@@ -388,7 +388,19 @@ export default function ChatScreen() {
         <Channel channel={channel}>
           <View style={styles.channelContent}>
             <MessageList />
-            <MessageInput />
+            {isChatFrozen ? (
+              <View style={styles.disabledContainer}>
+                <Text style={styles.disabledText}>
+                  {channel.data?.frozen
+                    ? "This chat has been frozen because one of the users unmatched."
+                    : userConsented
+                    ? "Waiting for the other person to continue the chat..."
+                    : "Chat is paused until both users agree to continue."}
+                </Text>
+              </View>
+            ) : (
+              <MessageInput />
+            )}
           </View>
         </Channel>
 
@@ -482,6 +494,17 @@ const styles = StyleSheet.create({
   channelContent: {
     flex: 1,
     backgroundColor: "white",
+  },
+  disabledContainer: {
+    padding: 16,
+    backgroundColor: Colors.primary100,
+    borderTopWidth: 1,
+    borderTopColor: Colors.primary500,
+  },
+  disabledText: {
+    textAlign: "center",
+    color: Colors.primary500,
+    fontStyle: "italic",
   },
   loadingContainer: {
     flex: 1,
