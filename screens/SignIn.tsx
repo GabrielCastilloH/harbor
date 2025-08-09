@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     height: 120,
-    marginTop: 150,
+    marginTop: "35%",
     justifyContent: "center",
   },
   logo: {
@@ -244,14 +244,14 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: "bold",
     color: Colors.primary500,
-    marginTop: 40,
-    marginBottom: 20,
+    marginTop: "8%",
+    marginBottom: "1%",
   },
   description: {
     fontSize: 18,
     color: Colors.primary500,
     textAlign: "center",
-    marginBottom: 40,
+    marginBottom: "10%",
     paddingHorizontal: 20,
   },
   buttonContainer: {
