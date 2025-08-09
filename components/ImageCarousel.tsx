@@ -47,7 +47,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           justifyContent: "center",
           paddingHorizontal: spacing,
           height: imageSize + 40,
-          backgroundColor: "yellow", // DEBUG container for each image page
         }}
       >
         <View
@@ -130,14 +129,9 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   }, [images, currentIndex]);
 
   return (
-    <View style={{ width: "100%", backgroundColor: "red" }}>
+    <View style={{ width: "100%" }}>
       {/* Stage: image area with taps and indicators, fixed height */}
-      <View
-        style={[
-          styles.container,
-          { height: imageSize + 60, backgroundColor: "blue" },
-        ]}
-      >
+      <View style={[styles.container, { height: imageSize + 60 }]}>
         <FlatList
           ref={flatListRef}
           data={images}
@@ -171,12 +165,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               },
             ]}
           >
-            <View
-              style={[
-                styles.pageIndicator,
-                { width: imageSize, backgroundColor: "pink" },
-              ]}
-            >
+            <View style={[styles.pageIndicator, { width: imageSize }]}>
               {images.map((_, idx) => (
                 <View
                   key={idx}
@@ -191,18 +180,13 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           <View
             style={[
               styles.clarityRow,
-              {
-                width: imageSize,
-                alignSelf: "center",
-                marginVertical: 10,
-                backgroundColor: "purple",
-              },
+              { width: imageSize, alignSelf: "center", marginVertical: 10 },
             ]}
           >
-            <Text style={[styles.clarityLabel, { backgroundColor: "cyan" }]}>
+            <Text style={[styles.clarityLabel]}>
               {Math.round(clarityPercent)}% Clear
             </Text>
-            <View style={[styles.clarityTrack, { backgroundColor: "brown" }]}>
+            <View style={[styles.clarityTrack]}>
               <View
                 style={[
                   styles.clarityFill,
