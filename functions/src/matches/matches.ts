@@ -759,6 +759,68 @@ export const updateConsent = functions.https.onCall(
       const bothConsented =
         updatedMatchData.user1Consented && updatedMatchData.user2Consented;
 
+      // If this action caused both users to consent, send a one-time system message
+      if (bothConsented && !updatedMatchData.consentMessageSent) {
+        try {
+          const { StreamChat } = await import("stream-chat");
+          const { SecretManagerServiceClient } = await import(
+            "@google-cloud/secret-manager"
+          );
+          const secretManager = new SecretManagerServiceClient();
+
+          const [streamApiKeyVersion, streamApiSecretVersion] =
+            await Promise.all([
+              secretManager.accessSecretVersion({
+                name: "projects/harbor-ch/secrets/STREAM_API_KEY/versions/latest",
+              }),
+              secretManager.accessSecretVersion({
+                name: "projects/harbor-ch/secrets/STREAM_API_SECRET/versions/latest",
+              }),
+            ]);
+
+          const apiKey = streamApiKeyVersion[0].payload?.data?.toString() || "";
+          const apiSecret =
+            streamApiSecretVersion[0].payload?.data?.toString() || "";
+
+          if (apiKey && apiSecret) {
+            const serverClient = StreamChat.getInstance(apiKey, apiSecret);
+            // Channel ID is deterministic: sorted user IDs joined by '-'
+            const channelId = [user1Id, user2Id].sort().join("-");
+            const channel = serverClient.channel("messaging", channelId);
+            try {
+              await channel.sendMessage({
+                text: "Both of you have decided to continue getting to know one another! 💕",
+                user_id: "system",
+              });
+            } catch (sendErr) {
+              // Log but do not fail the consent flow
+              console.error(
+                "updateConsent: failed to send system message:",
+                sendErr
+              );
+            }
+            // Mark message as sent to avoid duplicates
+            try {
+              await db.collection("matches").doc(matchId).update({
+                consentMessageSent: true,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+            } catch (flagErr) {
+              console.error(
+                "updateConsent: failed to flag message sent:",
+                flagErr
+              );
+            }
+          }
+        } catch (streamErr) {
+          // Non-fatal; consent update should still succeed
+          console.error(
+            "updateConsent: error preparing Stream client:",
+            streamErr
+          );
+        }
+      }
+
       return {
         success: true,
         bothConsented,
