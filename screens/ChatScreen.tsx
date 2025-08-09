@@ -442,77 +442,81 @@ export default function ChatScreen() {
             <MessageInput />
           </View>
         </Channel>
-      </SafeAreaView>
 
-      {/* Consent Modal */}
-      {showConsentModal && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.warningModalContent}>
-            <Text style={styles.warningTitle}>Continue this chat?</Text>
-            <Text style={styles.warningText}>
-              To keep chatting, both of you need to agree to continue. You can
-              also choose to unmatch.
-            </Text>
-            <View style={styles.warningButtons}>
-              <Pressable
-                style={[styles.warningButton, styles.unmatchButton]}
-                onPress={async () => {
-                  try {
-                    const matchId = activeMatchId || (await resolveMatchId());
-                    if (!matchId || !userId) return;
-                    await ConsentService.updateConsent(matchId, userId, false);
-                    const channelId =
-                      (channel as any)?.id ||
-                      (channel as any)?.cid?.split(":")[1];
-                    if (channelId) {
-                      await fetchUpdateChannelChatStatus(channelId, true);
-                      lastAppliedFreezeRef.current = true;
-                    }
-                    setIsChatFrozen(true);
-                    setShowConsentModal(false);
-                  } catch (e) {
-                    console.error("[#CONSENT] Unmatch/decline error:", e);
-                  }
-                }}
-              >
-                <Text style={styles.warningButtonText}>Unmatch</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.warningButton, styles.continueButton]}
-                onPress={async () => {
-                  try {
-                    const matchId = activeMatchId || (await resolveMatchId());
-                    if (!matchId || !userId) return;
-                    const res = await ConsentService.updateConsent(
-                      matchId,
-                      userId,
-                      true
-                    );
-                    if (res.bothConsented) {
+        {/* Consent Modal - inside SafeAreaView so it never covers the header */}
+        {showConsentModal && (
+          <View style={styles.modalOverlay}>
+            <View style={styles.warningModalContent}>
+              <Text style={styles.warningTitle}>Continue this chat?</Text>
+              <Text style={styles.warningText}>
+                To keep chatting, both of you need to agree to continue. You can
+                also choose to unmatch.
+              </Text>
+              <View style={styles.warningButtons}>
+                <Pressable
+                  style={[styles.warningButton, styles.unmatchButton]}
+                  onPress={async () => {
+                    try {
+                      const matchId = activeMatchId || (await resolveMatchId());
+                      if (!matchId || !userId) return;
+                      await ConsentService.updateConsent(
+                        matchId,
+                        userId,
+                        false
+                      );
                       const channelId =
                         (channel as any)?.id ||
                         (channel as any)?.cid?.split(":")[1];
                       if (channelId) {
-                        await fetchUpdateChannelChatStatus(channelId, false);
-                        lastAppliedFreezeRef.current = false;
+                        await fetchUpdateChannelChatStatus(channelId, true);
+                        lastAppliedFreezeRef.current = true;
                       }
-                      setIsChatFrozen(false);
-                      setShowConsentModal(false);
-                    } else {
-                      setShowConsentModal(false);
                       setIsChatFrozen(true);
+                      setShowConsentModal(false);
+                    } catch (e) {
+                      console.error("[#CONSENT] Unmatch/decline error:", e);
                     }
-                  } catch (e) {
-                    console.error("[#CONSENT] Continue error:", e);
-                  }
-                }}
-              >
-                <Text style={styles.warningButtonText}>Continue</Text>
-              </Pressable>
+                  }}
+                >
+                  <Text style={styles.warningButtonText}>Unmatch</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.warningButton, styles.continueButton]}
+                  onPress={async () => {
+                    try {
+                      const matchId = activeMatchId || (await resolveMatchId());
+                      if (!matchId || !userId) return;
+                      const res = await ConsentService.updateConsent(
+                        matchId,
+                        userId,
+                        true
+                      );
+                      if (res.bothConsented) {
+                        const channelId =
+                          (channel as any)?.id ||
+                          (channel as any)?.cid?.split(":")[1];
+                        if (channelId) {
+                          await fetchUpdateChannelChatStatus(channelId, false);
+                          lastAppliedFreezeRef.current = false;
+                        }
+                        setIsChatFrozen(false);
+                        setShowConsentModal(false);
+                      } else {
+                        setShowConsentModal(false);
+                        setIsChatFrozen(true);
+                      }
+                    } catch (e) {
+                      console.error("[#CONSENT] Continue error:", e);
+                    }
+                  }}
+                >
+                  <Text style={styles.warningButtonText}>Continue</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
-      )}
+        )}
+      </SafeAreaView>
     </View>
   );
 }
