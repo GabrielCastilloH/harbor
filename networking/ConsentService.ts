@@ -41,6 +41,15 @@ export class ConsentService {
     bothConsented: boolean;
     messageCount: number;
     shouldShowConsentScreen: boolean;
+    shouldShowConsentForUser1: boolean;
+    shouldShowConsentForUser2: boolean;
+    state: "both_consented" | "one_consented" | "none_consented";
+    consent: {
+      state: string;
+      messageThreshold: number;
+      bothConsented: boolean;
+      users: { id: string; hasConsented: boolean; shouldShow: boolean }[];
+    };
   }> {
     try {
       const getConsentStatus = httpsCallable(
@@ -56,6 +65,15 @@ export class ConsentService {
         bothConsented: boolean;
         messageCount: number;
         shouldShowConsentScreen: boolean;
+        shouldShowConsentForUser1: boolean;
+        shouldShowConsentForUser2: boolean;
+        state: "both_consented" | "one_consented" | "none_consented";
+        consent: {
+          state: string;
+          messageThreshold: number;
+          bothConsented: boolean;
+          users: { id: string; hasConsented: boolean; shouldShow: boolean }[];
+        };
       };
     } catch (error) {
       console.error("ConsentService - Error getting consent status:", error);
