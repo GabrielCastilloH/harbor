@@ -46,7 +46,8 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           alignItems: "center",
           justifyContent: "center",
           paddingHorizontal: spacing,
-          height: imageSize + 40,
+          height: imageSize + 60, // match stage height
+          backgroundColor: "yellow",
         }}
       >
         <View
@@ -56,6 +57,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               width: imageSize,
               height: imageSize,
               borderRadius,
+              backgroundColor: "orange",
             },
           ]}
         >
@@ -90,6 +92,38 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
             />
           )}
         </View>
+
+        {/* Move clarity row inside page wrapper so the card shadow flows above it */}
+        {typeof clarityPercent === "number" && (
+          <View
+            style={[
+              styles.clarityRow,
+              {
+                width: imageSize,
+                alignSelf: "center",
+                marginTop: 10,
+                backgroundColor: "purple",
+              },
+            ]}
+          >
+            <Text style={[styles.clarityLabel, { backgroundColor: "cyan" }]}>
+              {Math.round(clarityPercent)}% Clear
+            </Text>
+            <View style={[styles.clarityTrack, { backgroundColor: "brown" }]}>
+              <View
+                style={[
+                  styles.clarityFill,
+                  {
+                    width: `${Math.max(
+                      0,
+                      Math.min(100, Math.round(clarityPercent))
+                    )}%`,
+                  },
+                ]}
+              />
+            </View>
+          </View>
+        )}
       </View>
     );
   };
@@ -129,9 +163,14 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   }, [images, currentIndex]);
 
   return (
-    <View style={{ width: "100%" }}>
+    <View style={{ width: "100%", backgroundColor: "red" }}>
       {/* Stage: image area with taps and indicators, fixed height */}
-      <View style={[styles.container, { height: imageSize + 60 }]}>
+      <View
+        style={[
+          styles.container,
+          { height: imageSize + 60, backgroundColor: "blue" },
+        ]}
+      >
         <FlatList
           ref={flatListRef}
           data={images}
@@ -165,7 +204,12 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
               },
             ]}
           >
-            <View style={[styles.pageIndicator, { width: imageSize }]}>
+            <View
+              style={[
+                styles.pageIndicator,
+                { width: imageSize, backgroundColor: "pink" },
+              ]}
+            >
               {images.map((_, idx) => (
                 <View
                   key={idx}
@@ -175,32 +219,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
             </View>
           </View>
         )}
-        {/* Inline clarity row inside carousel container, below images */}
-        {typeof clarityPercent === "number" && (
-          <View
-            style={[
-              styles.clarityRow,
-              { width: imageSize, alignSelf: "center", marginVertical: 10 },
-            ]}
-          >
-            <Text style={[styles.clarityLabel]}>
-              {Math.round(clarityPercent)}% Clear
-            </Text>
-            <View style={[styles.clarityTrack]}>
-              <View
-                style={[
-                  styles.clarityFill,
-                  {
-                    width: `${Math.max(
-                      0,
-                      Math.min(100, Math.round(clarityPercent))
-                    )}%`,
-                  },
-                ]}
-              />
-            </View>
-          </View>
-        )}
+        {/* Clarity row is now rendered per-page above to avoid shadow clipping */}
       </View>
     </View>
   );
