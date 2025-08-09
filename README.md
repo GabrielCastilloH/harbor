@@ -214,3 +214,7 @@ export function getClientBlurLevel({
 
 - Message threshold is currently `30` (kept in sync on server and client).
 - A match can be frozen due to unmatch; in that state, the consent modal is suppressed.
+
+## Known Security Problems (not MVP to Fix)
+
+- When on the consent screen the channel is only client side forzen. This means on a jailbroken iPhone or Android device someone could send more messages on the channel if the like. However, on the actual app the modal will never be dismissed and it will always be client side frozen making it impossible for regular users to do this. Even if they do receive messages they will be hard to see through the modal and there's not much point to this hack lol.
