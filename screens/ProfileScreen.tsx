@@ -29,7 +29,11 @@ import { MatchService, UserService } from "../networking";
 import { RootStackParamList } from "../types/navigation";
 import { getImages } from "../networking/ImageService";
 import { BlurView } from "expo-blur";
-import { getClientBlurLevel, BLUR_CONFIG } from "../constants/blurConfig";
+import {
+  getClientBlurLevel,
+  BLUR_CONFIG,
+  getEmulatedBlurPercent,
+} from "../constants/blurConfig";
 import LoadingScreen from "../components/LoadingScreen";
 import ImageCarousel from "../components/ImageCarousel";
 import { auth } from "../firebaseConfig";
@@ -380,7 +384,17 @@ export default function ProfileScreen() {
           imageSize={350}
           borderRadius={12}
           showIndicators={imagesWithBlur.length > 0}
+          clarityPercent={(() => {
+            if (imagesWithBlur.length === 0) return undefined as any;
+            const first = imagesWithBlur[0];
+            const emu = getEmulatedBlurPercent({
+              messageCount: first.messageCount,
+              bothConsented: first.bothConsented,
+            });
+            return 100 - Math.max(0, Math.min(100, emu));
+          })()}
         />
+        {/* Clarity percent now shown inside ImageCarousel */}
         <View style={{ paddingHorizontal: 24, paddingTop: 0, marginTop: 0 }}>
           <BasicInfoView profile={profile} />
         </View>
@@ -587,5 +601,37 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     fontSize: 16,
+  },
+  blurCard: {
+    marginHorizontal: 24,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: Colors.secondary100,
+    borderWidth: 1,
+    borderColor: Colors.secondary200,
+  },
+  blurInlineRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  blurPercentInline: {
+    color: Colors.primary500,
+    fontWeight: "600",
+    fontSize: 14,
+    minWidth: 72,
+    textAlign: "left",
+  },
+  inlineProgressTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.secondary200,
+    overflow: "hidden",
+  },
+  inlineProgressFill: {
+    height: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.primary500,
   },
 });
