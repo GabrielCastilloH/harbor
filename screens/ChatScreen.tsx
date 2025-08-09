@@ -5,7 +5,6 @@ import {
   Pressable,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Channel, MessageInput, MessageList } from "stream-chat-expo";
 import { useAppContext } from "../context/AppContext";
@@ -165,57 +164,12 @@ export default function ChatScreen() {
     getMatchedUserName();
   }, [channel, userId]);
 
-  // Set layout ready when we have the user name and tab bar height
+  // Set layout ready when we have the user name
   useEffect(() => {
-    // Only require matchedUserName to be loaded, tabBarHeight can be 0
     if (matchedUserName !== "Loading...") {
       setIsLayoutReady(true);
     }
   }, [matchedUserName]);
-
-  const handleConsentResponse = async (consented: boolean) => {
-    try {
-      const matchId = activeMatchId || (await resolveMatchId());
-      if (!matchId || !userId) {
-        return;
-      }
-
-      const response = await ConsentService.updateConsent(
-        matchId,
-        userId,
-        consented
-      );
-
-      if (consented) {
-        setUserConsented(true);
-        // Only hide modal and unfreeze chat if both users have consented
-        if (response.bothConsented) {
-          setShowConsentModal(false);
-          setIsChatFrozen(false);
-
-          // Send system message when both users consent
-          try {
-            await channel?.sendMessage({
-              text: "Both of you have decided to continue getting to know one another! 💕",
-              user_id: "system",
-            });
-          } catch (messageError) {
-            console.error(
-              "Error sending consent system message:",
-              messageError
-            );
-            // Don't fail the consent process if system message fails
-          }
-        }
-      } else {
-        // If user chose to unmatch, keep chat frozen
-        setIsChatFrozen(true);
-        // TODO: Implement unmatch logic
-      }
-    } catch (error) {
-      console.error("Error handling consent response:", error);
-    }
-  };
 
   useEffect(() => {
     if (!channel) {
@@ -399,7 +353,8 @@ export default function ChatScreen() {
                         true
                       );
                       if (res.bothConsented) {
-                        // No server unfreeze here; consent flow is client-only visual gating
+                        // Backend now sends system message when both consent.
+                        // Locally unfreeze UI.
                         setIsChatFrozen(false);
                         setShowConsentModal(false);
                       } else {
