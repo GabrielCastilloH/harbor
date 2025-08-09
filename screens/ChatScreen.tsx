@@ -1,4 +1,10 @@
-import { Text, View, StyleSheet, Pressable } from "react-native";
+import {
+  Text,
+  View,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Channel, MessageInput, MessageList } from "stream-chat-expo";
@@ -27,6 +33,9 @@ export default function ChatScreen() {
   const [isLayoutReady, setIsLayoutReady] = useState(false);
   // local consent status object is not needed beyond immediate decisions; avoid storing full object
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
+  const [consentSubmitting, setConsentSubmitting] = useState<
+    null | "unmatch" | "continue"
+  >(null);
   // debug counters removed
   const lastHandledMessageIdRef = useRef<string | null>(null);
   const lastAppliedFreezeRef = useRef<boolean | null>(null);
@@ -415,8 +424,15 @@ export default function ChatScreen() {
               </Text>
               <View style={styles.warningButtons}>
                 <Pressable
-                  style={[styles.warningButton, styles.unmatchButton]}
+                  style={[
+                    styles.warningButton,
+                    styles.unmatchButton,
+                    consentSubmitting ? { opacity: 0.7 } : null,
+                  ]}
+                  disabled={!!consentSubmitting}
                   onPress={async () => {
+                    if (consentSubmitting) return;
+                    setConsentSubmitting("unmatch");
                     try {
                       const matchId = activeMatchId || (await resolveMatchId());
                       if (!matchId || !userId) return;
@@ -436,14 +452,27 @@ export default function ChatScreen() {
                       setShowConsentModal(false);
                     } catch (e) {
                       console.error("[#CONSENT] Unmatch/decline error:", e);
+                    } finally {
+                      setConsentSubmitting(null);
                     }
                   }}
                 >
-                  <Text style={styles.warningButtonText}>Unmatch</Text>
+                  {consentSubmitting === "unmatch" ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.warningButtonText}>Unmatch</Text>
+                  )}
                 </Pressable>
                 <Pressable
-                  style={[styles.warningButton, styles.continueButton]}
+                  style={[
+                    styles.warningButton,
+                    styles.continueButton,
+                    consentSubmitting ? { opacity: 0.7 } : null,
+                  ]}
+                  disabled={!!consentSubmitting}
                   onPress={async () => {
+                    if (consentSubmitting) return;
+                    setConsentSubmitting("continue");
                     try {
                       const matchId = activeMatchId || (await resolveMatchId());
                       if (!matchId || !userId) return;
@@ -468,10 +497,16 @@ export default function ChatScreen() {
                       }
                     } catch (e) {
                       console.error("[#CONSENT] Continue error:", e);
+                    } finally {
+                      setConsentSubmitting(null);
                     }
                   }}
                 >
-                  <Text style={styles.warningButtonText}>Continue</Text>
+                  {consentSubmitting === "continue" ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.warningButtonText}>Continue</Text>
+                  )}
                 </Pressable>
               </View>
             </View>
