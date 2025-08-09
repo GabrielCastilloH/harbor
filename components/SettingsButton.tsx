@@ -40,8 +40,9 @@ export default function SettingsButton({
         <Switch
           value={switchProps.value}
           onValueChange={switchProps.onValueChange}
-          trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
+          trackColor={{ false: Colors.secondary500, true: Colors.primary500 }}
           thumbColor={Colors.secondary100}
+          ios_backgroundColor={Colors.secondary500}
           style={styles.switch}
         />
       </View>
