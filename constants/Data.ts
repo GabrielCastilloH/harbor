@@ -101,3 +101,13 @@ export const majors = [
   "Women's Studies",
   "Other",
 ];
+
+// Centralize picker option sets used across the app
+export const genders = ["Male", "Female", "Non-Binary"];
+
+export const orientations = [
+  "Heterosexual",
+  "Homosexual",
+  "Bisexual",
+  "Pansexual",
+];
