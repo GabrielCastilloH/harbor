@@ -34,6 +34,7 @@ export default function ChatScreen() {
     null | "unmatch" | "continue"
   >(null);
   const [consentStatus, setConsentStatus] = useState<any>(null);
+  const [isMatchActive, setIsMatchActive] = useState<boolean>(false);
   // debug counters removed
   const lastHandledMessageIdRef = useRef<string | null>(null);
   const lastAppliedFreezeRef = useRef<boolean | null>(null);
@@ -79,12 +80,16 @@ export default function ChatScreen() {
       const fetchedMatchId = await MatchService.getMatchId(userId, otherUserId);
       if (fetchedMatchId) {
         setActiveMatchId(fetchedMatchId);
+        setIsMatchActive(true);
         // Start consent UI fetch immediately for faster modal display
         fetchAndApplyConsentStatus(fetchedMatchId);
         return fetchedMatchId;
+      } else {
+        setIsMatchActive(false);
       }
     } catch (e) {
       console.error("[#CONSENT] resolveMatchId error:", e);
+      setIsMatchActive(false);
     }
     return null;
   }, [channel, userId, fetchAndApplyConsentStatus]);
@@ -256,24 +261,29 @@ export default function ChatScreen() {
       <HeaderBack
         title={matchedUserName}
         onBack={() => navigation.goBack()}
-        onTitlePress={() => {
-          if (matchedUserId) {
-            (navigation as any).navigate("ProfileScreen", {
-              userId: matchedUserId,
-              matchId: null,
-            });
-          }
-        }}
+        onTitlePress={
+          isMatchActive
+            ? () => {
+                if (matchedUserId) {
+                  (navigation as any).navigate("ProfileScreen", {
+                    userId: matchedUserId,
+                    matchId: null,
+                  });
+                }
+              }
+            : undefined
+        }
         rightIcon={{
           name: "person",
           onPress: () => {
-            if (matchedUserId) {
+            if (matchedUserId && isMatchActive) {
               (navigation as any).navigate("ProfileScreen", {
                 userId: matchedUserId,
                 matchId: null,
               });
             }
           },
+          disabled: !isMatchActive,
         }}
       />
 
