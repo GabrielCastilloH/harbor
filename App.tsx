@@ -5,6 +5,7 @@ import TabNavigator from "./navigation/TabNavigator";
 import SignIn from "./screens/SignIn";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
+import { NotificationProvider } from "./context/NotificationContext";
 import AccountSetupScreen from "./screens/AccountSetupScreen";
 
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
@@ -104,7 +105,9 @@ export default function App() {
     <SafeAreaProvider>
       {/* Temporarily remove SuperwallProvider */}
       <AppProvider>
-        <AppContent />
+        <NotificationProvider>
+          <AppContent />
+        </NotificationProvider>
       </AppProvider>
     </SafeAreaProvider>
   );
