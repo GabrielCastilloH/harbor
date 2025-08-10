@@ -431,7 +431,6 @@ export default function ProfileForm({
                         onError={() => {}}
                         onLoad={() => {}}
                         resizeMode="cover"
-                        fadeDuration={0}
                       />
                     </View>
                     <TouchableOpacity
