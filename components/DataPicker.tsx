@@ -5,19 +5,20 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
-  ScrollView,
   Animated,
   Dimensions,
+  Pressable,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Colors from "../constants/Colors";
+import { yearLevels, majors, genders, orientations } from "../constants/Data";
 
 interface DataPickerProps {
   value: string;
   onValueChange: (value: string) => void;
   placeholder: string;
   style?: any;
-  type: "major" | "yearLevel";
+  type: "major" | "yearLevel" | "gender" | "orientation";
 }
 
 const { height: screenHeight } = Dimensions.get("window");
@@ -32,9 +33,15 @@ export default function DataPicker({
   const [modalVisible, setModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 
-  // Import data based on type
-  const { yearLevels, majors } = require("../constants/Data");
-  const options = type === "major" ? majors : yearLevels;
+  // Options based on type
+  const options: string[] =
+    type === "major"
+      ? majors
+      : type === "yearLevel"
+      ? yearLevels
+      : type === "gender"
+      ? genders
+      : orientations;
 
   useEffect(() => {
     if (modalVisible) {
@@ -71,23 +78,18 @@ export default function DataPicker({
         animationType="none"
         onRequestClose={() => setModalVisible(false)}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setModalVisible(false)}
-        >
+        <View style={styles.modalOverlay} pointerEvents="box-none">
+          <Pressable
+            style={styles.backdrop}
+            onPress={() => setModalVisible(false)}
+          />
           <Animated.View
             style={[
               styles.modalContent,
-              {
-                transform: [{ translateY: slideAnim }],
-              },
+              { transform: [{ translateY: slideAnim }] },
             ]}
           >
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={(e) => e.stopPropagation()}
-            >
+            <View>
               <View style={styles.modalHeader}>
                 <TouchableOpacity
                   onPress={() => setModalVisible(false)}
@@ -97,9 +99,7 @@ export default function DataPicker({
                 </TouchableOpacity>
                 <Text style={styles.modalTitle}>Select Option</Text>
                 <TouchableOpacity
-                  onPress={() => {
-                    setModalVisible(false);
-                  }}
+                  onPress={() => setModalVisible(false)}
                   style={styles.doneButton}
                 >
                   <Text style={styles.doneText}>Done</Text>
@@ -118,7 +118,7 @@ export default function DataPicker({
                   mode="dropdown"
                 >
                   <Picker.Item label="Select..." value="" enabled={false} />
-                  {options.map((option) => (
+                  {options.map((option: string) => (
                     <Picker.Item
                       key={option}
                       label={option}
@@ -128,9 +128,9 @@ export default function DataPicker({
                   ))}
                 </Picker>
               </View>
-            </TouchableOpacity>
+            </View>
           </Animated.View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </>
   );
@@ -168,12 +168,17 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-end",
   },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
   modalContent: {
     backgroundColor: Colors.secondary100,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 20,
     height: 300,
+    zIndex: 1000,
+    elevation: 12,
   },
   modalHeader: {
     flexDirection: "row",
