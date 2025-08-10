@@ -19,6 +19,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
+import { useNotification } from "../context/NotificationContext";
 // import { usePlacement, useUser } from "@superwall/react-native-superwall";
 import SettingsButton from "../components/SettingsButton";
 import MainHeading from "../components/MainHeading";
@@ -26,7 +27,12 @@ import MainHeading from "../components/MainHeading";
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { setIsAuthenticated, setUserId, userId } = useAppContext();
-  const [notifications, setNotifications] = useState(true);
+  const {
+    isNotificationsEnabled,
+    isLoading,
+    enableNotifications,
+    disableNotifications,
+  } = useNotification();
   const [darkMode, setDarkMode] = useState(false);
   const [locationServices, setLocationServices] = useState(true);
   // const { subscriptionStatus } = useUser();
@@ -138,8 +144,15 @@ export default function SettingsScreen() {
             icon="notifications-outline"
             text="Notifications"
             switchProps={{
-              value: notifications,
-              onValueChange: setNotifications,
+              value: isNotificationsEnabled,
+              onValueChange: async (enabled: boolean) => {
+                if (enabled) {
+                  await enableNotifications();
+                } else {
+                  await disableNotifications();
+                }
+              },
+              disabled: isLoading,
             }}
           />
         </View>
