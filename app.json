@@ -63,15 +63,19 @@
             "minSdkVersion": 26
           },
           "ios": {
-            "deploymentTarget": "15.1"
+            "deploymentTarget": "15.1",
+            "useFrameworks": "static"
           }
         }
-      ]
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging"
     ],
     "extra": {
       "eas": {
-        "projectId": "f7cf5a98-f4d7-4db2-92e7-8e5bfc641d5b"
+        "projectId": "9d174596-e440-4892-9ffb-bbcd18bcde65"
       }
-    }
+    },
+    "owner": "gabrielcastillo"
   }
 }

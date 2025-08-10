@@ -4,9 +4,10 @@ A unique dating app that focuses on meaningful connections through progressive p
 
 TODO:
 
-- Add push notifications to the app (and make the you've matched system notification silent)
+- ✅ Add push notifications to the app (and make the you've matched system notification silent)
 - show difference between basic and premium plan on payment page
 - Add the ability to see profiles that swiped on you and swipe on them.
+- Make sure the home screen cards are responsive to different screen sizes and the number of characters is capped at 120 not 150.
 
 ## 📋 Validation Rules
 
@@ -50,12 +51,36 @@ All fields must be completed before profile creation:
 - **ACID compliance**: All validations enforced in transactions
 - **Error handling**: Graceful failure with clear error messages
 
+## 🔔 Push Notifications
+
+Harbor uses **Stream Chat** for messaging and **React Native Firebase** specifically for push notifications. This hybrid approach allows us to use the Firebase JS SDK for all other Firebase services while leveraging React Native Firebase's native capabilities for reliable push notifications.
+
+### Notification Features
+
+- **Stream Chat Integration**: Notifications are automatically sent when users receive new messages
+- **Settings Toggle**: Users can enable/disable notifications in the app settings
+- **Background Support**: Notifications work when the app is in the background or closed
+- **Permission Management**: Automatic permission requests with graceful fallbacks
+
+### Technical Implementation
+
+- **React Native Firebase**: Used exclusively for push notifications (messaging module)
+- **Firebase JS SDK**: Used for all other Firebase services (Auth, Firestore, Functions, etc.)
+- **Stream Chat**: Handles message delivery and notification triggers
+- **Background Handler**: Processes notifications when app is not in foreground
+
+### Setup Requirements
+
+1. **Firebase Project**: Must have Cloud Messaging enabled
+2. **Stream Dashboard**: Firebase credentials must be uploaded to Stream Chat dashboard
+3. **Native Configuration**: React Native Firebase requires native project configuration
+
 ## 🚀 Getting Started
 
 ### Prerequisites
 
 - Node.js (v18 or higher)
-- Firebase project
+- Firebase project with Cloud Messaging enabled
 - Google Cloud project (for Secret Manager)
 - Xcode for iOS development
 - npm or yarn package manager
@@ -66,15 +91,21 @@ All fields must be completed before profile creation:
 
    - Visit [Firebase Console](https://console.firebase.google.com)
    - Create a new project
-   - Enable Firestore, Storage, and Functions
+   - Enable Firestore, Storage, Functions, and **Cloud Messaging**
 
-2. **Set up Google Secret Manager:**
+2. **Configure Cloud Messaging:**
+
+   - In Firebase Console, go to Project Settings > Cloud Messaging
+   - Upload your APNs authentication key for iOS
+   - Note your Server Key for Stream Chat configuration
+
+3. **Set up Google Secret Manager:**
 
    - Go to [Google Cloud Console](https://console.cloud.google.com)
    - Navigate to Secret Manager
    - Create secrets for `STREAM_API_KEY` and `STREAM_API_SECRET`
 
-3. **Configure Firebase Functions:**
+4. **Configure Firebase Functions:**
 
    ```bash
    npm install -g firebase-tools
@@ -82,7 +113,17 @@ All fields must be completed before profile creation:
    firebase init functions
    ```
 
-4. **Deploy Functions:**
+5. **Configure Stream Chat Notifications:**
+
+   - Go to [Stream Chat Dashboard](https://dashboard.getstream.io)
+   - Navigate to your app's Chat Overview → Push Configuration
+   - Enable "Push Notifications" toggle
+   - Select "Firebase" as push provider
+   - Upload your Firebase service account credentials JSON file
+   - Configure notification types (new messages, edits, reactions)
+   - Set default push preferences for users
+
+6. **Deploy Functions:**
    ```bash
    cd functions
    npm install
@@ -107,6 +148,13 @@ All fields must be completed before profile creation:
    ```bash
    npx expo run:ios
    ```
+
+### Notification Testing
+
+- **Physical Device Required**: Push notifications don't work in simulators
+- **Background Testing**: Send messages while app is in background to test notifications
+- **Permission Testing**: Test notification permission flow in settings
+- **Token Refresh**: Verify tokens are properly refreshed when FCM tokens change
 
 ## 🎭 Progressive Photo Reveal System
 
