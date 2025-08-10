@@ -66,6 +66,7 @@ Harbor uses **Stream Chat** for messaging and **React Native Firebase** specific
    - `index.ts` - Background message handler
    - `context/NotificationContext.tsx` - Notification context logic
    - `navigation/ChatNavigator.tsx` - Notification initialization
+   - add "@react-native-firebase/app", "@react-native-firebase/messaging" to app.json
 3. **Configure push notifications** in your Apple Developer account
 4. **Update provisioning profiles** to include Push Notifications capability
 
