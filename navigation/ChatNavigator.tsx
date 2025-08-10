@@ -15,7 +15,7 @@ import {
   DeepPartial,
   Theme,
 } from "stream-chat-expo";
-import { streamNotificationService } from "../util/streamNotifService";
+// import { streamNotificationService } from "../util/streamNotifService";
 import { NavigationProp } from "@react-navigation/native";
 import ProfileScreen from "../screens/ProfileScreen";
 import ReportScreen from "../screens/ReportScreen";
@@ -247,31 +247,32 @@ export default function ChatNavigator() {
     tokenOrProvider: chatUserToken || "",
   });
 
+  // TODO: Uncomment when you have a paid Apple Developer account
   // Initialize Stream notifications when chat client is ready
-  useEffect(() => {
-    const initializeNotifications = async () => {
-      if (!chatClient || !userId) return;
+  // useEffect(() => {
+  //   const initializeNotifications = async () => {
+  //     if (!chatClient || !userId) return;
 
-      try {
-        // Set the client in the notification service
-        streamNotificationService.setClient(chatClient);
+  //     try {
+  //       // Set the client in the notification service
+  //       streamNotificationService.setClient(chatClient);
 
-        // Check if notifications are enabled and register device if needed
-        const areEnabled =
-          await streamNotificationService.areNotificationsEnabled();
-        if (areEnabled) {
-          await streamNotificationService.registerDevice(userId);
-        }
-      } catch (error) {
-        console.error(
-          "ChatNavigator - Failed to initialize notifications:",
-          error
-        );
-      }
-    };
+  //       // Check if notifications are enabled and register device if needed
+  //       const areEnabled =
+  //         await streamNotificationService.areNotificationsEnabled();
+  //       if (areEnabled) {
+  //         await streamNotificationService.registerDevice(userId);
+  //       }
+  //     } catch (error) {
+  //       console.error(
+  //         "ChatNavigator - Failed to initialize notifications:",
+  //         error
+  //       );
+  //     }
+  //   };
 
-    initializeNotifications();
-  }, [chatClient, userId]);
+  //   initializeNotifications();
+  // }, [chatClient, userId]);
 
   // Fetch user profile data
   useEffect(() => {
