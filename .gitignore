@@ -180,3 +180,8 @@ temp/
 
 # dataconnect generated files
 .dataconnect
+
+# Firebase & Google Services
+harbor-ch-firebase-adminsdk-fbsvc-69162087da.json
+GoogleService-Info.plist
+google-services.json
