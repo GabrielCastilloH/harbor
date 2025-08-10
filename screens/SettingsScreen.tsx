@@ -20,7 +20,7 @@ import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 import { useNotification } from "../context/NotificationContext";
-// import { usePlacement, useUser } from "@superwall/react-native-superwall";
+import { usePlacement, useUser } from "expo-superwall";
 import SettingsButton from "../components/SettingsButton";
 import MainHeading from "../components/MainHeading";
 
@@ -35,47 +35,42 @@ export default function SettingsScreen() {
   } = useNotification();
   const [darkMode, setDarkMode] = useState(false);
   const [locationServices, setLocationServices] = useState(true);
-  // const { subscriptionStatus } = useUser();
+  const { user } = useUser();
 
-  // Temporarily disable Superwall functionality
-  // const { registerPlacement } = usePlacement({
-  //   onError: (err) => {
-  //     console.error("Premium Paywall Error:", err);
-  //     Alert.alert("Error", "Failed to load premium options. Please try again.");
-  //   },
-  //   onPresent: (info) => {
-  //     // Premium paywall presented
-  //   },
-  //   onDismiss: (info, result) => {
-  //     // Handle dismissal - user can continue using the app
-  //   },
-  //   onSkip: (reason) => {
-  //     // User was allowed through without paywall (e.g., already subscribed)
-  //   },
-  // });
+  // Superwall paywall placement
+  const { registerPlacement } = usePlacement({
+    onError: (err) => {
+      console.error("Premium Paywall Error:", err);
+      Alert.alert("Error", "Failed to load premium options. Please try again.");
+    },
+    onPresent: (info) => {
+      // Premium paywall presented
+    },
+    onDismiss: (info, result) => {
+      // Handle dismissal - user can continue using the app
+    },
+    onSkip: (reason) => {
+      // User was allowed through without paywall (e.g., already subscribed)
+    },
+  });
 
   const handlePremiumUpgrade = async () => {
     try {
-      // Temporarily disable Superwall functionality
-      // await registerPlacement({
-      //   placement: "settings_premium", // This should match your Superwall dashboard placement
-      //   feature: () => {
-      //     // This runs if no paywall is shown (user already has access)
-      //     // Check if user actually has premium or if it's due to no products
-      //     if (subscriptionStatus?.status === "ACTIVE") {
-      //       Alert.alert("Premium", "You already have premium access!");
-      //     } else {
-      //       Alert.alert(
-      //         "Premium",
-      //         "Premium features are not yet available. Please check back later!"
-      //       );
-      //     }
-      //   },
-      // });
-      Alert.alert(
-        "Premium",
-        "Premium features are not yet available. Please check back later!"
-      );
+      await registerPlacement({
+        placement: "settings_premium", // This should match your Superwall dashboard placement
+        feature: () => {
+          // This runs if no paywall is shown (user already has access)
+          // Check if user actually has premium or if it's due to no products
+          if (user?.subscriptionStatus === "ACTIVE") {
+            Alert.alert("Premium", "You already have premium access!");
+          } else {
+            Alert.alert(
+              "Premium",
+              "Premium features are not yet available. Please check back later!"
+            );
+          }
+        },
+      });
     } catch (error) {
       console.error("Error showing premium paywall:", error);
       Alert.alert("Error", "Failed to show premium options. Please try again.");
@@ -130,7 +125,7 @@ export default function SettingsScreen() {
     Linking.openURL("https://www.tryharbor.app/terms");
   };
 
-  const isPremium = false; // Temporarily set to false as Superwall is disabled
+  const isPremium = user?.subscriptionStatus === "ACTIVE";
 
   return (
     <>
