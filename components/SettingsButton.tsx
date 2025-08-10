@@ -10,6 +10,7 @@ interface SettingsButtonProps {
   switchProps?: {
     value: boolean;
     onValueChange: (value: boolean) => void;
+    disabled?: boolean;
   };
   iconColor?: string;
   textColor?: string;
@@ -40,6 +41,7 @@ export default function SettingsButton({
         <Switch
           value={switchProps.value}
           onValueChange={switchProps.onValueChange}
+          disabled={switchProps.disabled}
           trackColor={{ false: Colors.primary500, true: Colors.primary500 }}
           thumbColor={Colors.secondary100}
           style={styles.switch}
