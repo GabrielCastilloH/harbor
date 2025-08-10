@@ -33,6 +33,41 @@ local.properties
 !debug.keystore
 
 # React Native specific
+# OSX
+.DS_Store
+
+# Xcode
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+*.xcuserstate
+project.xcworkspace
+
+# Android/IntelliJ
+/android/
+build/
+.idea
+.gradle
+local.properties
+*.iml
+*.hprof
+.cxx/
+*.keystore
+!debug.keystore
+
+# React Native specific
 *.orig.*
 *.jks
 *.p8
@@ -94,7 +129,88 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+# Flipper
+ios/Pods/
+android/app/src/debug/java/com/example/reactnativeflipper/
 
+# Bundle artifacts
+*.jsbundle
+
+# CocoaPods
+/ios/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Expo CLI
+.expo-cli/
+
+# Expo DevTools
+.expo-shared/
+
+# Expo Updates
+.expo-updates/
+
+# Expo Web
+web-build/
+
+# Expo Config
+.expo/
+
+# Firebase
+.firebase/
+firebase-debug.log*
+firebase-debug.*.log*
+
+# Firebase config (uncomment if you want to prevent committing Firebase config)
+# .firebaserc
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+# Bower dependency directory (https://bower.io/)
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons (https://nodejs.org/api/addons.html)
+build/Release
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript cache
 # Runtime data
 pids
 *.pid
