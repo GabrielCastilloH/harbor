@@ -6,14 +6,15 @@ import React, {
   useRef,
   ReactNode,
 } from "react";
-import * as Notifications from "expo-notifications";
-import { EventSubscription } from "expo-modules-core";
-import { registerForPushNotificationsAsync } from "../util/notifUtils";
+import { streamNotificationService } from "../util/streamNotifService";
+import { StreamChat } from "stream-chat";
 
 interface NotificationContextType {
-  expoPushToken: string | null;
-  notification: Notifications.Notification | null;
+  isNotificationsEnabled: boolean;
+  isLoading: boolean;
   error: Error | null;
+  enableNotifications: () => Promise<void>;
+  disableNotifications: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(
@@ -37,55 +38,68 @@ interface NotificationProviderProps {
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   children,
 }) => {
-  const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
-  const [notification, setNotification] =
-    useState<Notifications.Notification | null>(null);
+  const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const notificationListener = useRef<EventSubscription>();
-  const responseListener = useRef<EventSubscription>();
-
+  // Check notification status on mount
   useEffect(() => {
-    registerForPushNotificationsAsync().then(
-      (token: string) => setExpoPushToken(token),
-      (error: Error) => setError(error)
-    );
-
-    notificationListener.current =
-      Notifications.addNotificationReceivedListener(
-        (notification: Notifications.Notification) => {
-          console.log("🔔 Notification Received: ", notification);
-          setNotification(notification);
-        }
-      );
-
-    responseListener.current =
-      Notifications.addNotificationResponseReceivedListener(
-        (response: Notifications.NotificationResponse) => {
-          console.log(
-            "🔔 Notification Response: ",
-            JSON.stringify(response, null, 2),
-            JSON.stringify(response.notification.request.content.data, null, 2)
-          );
-          // Handle the notification response here
-        }
-      );
-
-    return () => {
-      if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(
-          notificationListener.current
-        );
-      }
-      if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
-      }
-    };
+    checkNotificationStatus();
   }, []);
+
+  const checkNotificationStatus = async () => {
+    try {
+      const enabled = await streamNotificationService.areNotificationsEnabled();
+      setIsNotificationsEnabled(enabled);
+    } catch (error) {
+      console.error("🔔 Error checking notification status:", error);
+      setError(error as Error);
+    }
+  };
+
+  const enableNotifications = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const granted = await streamNotificationService.requestPermission();
+      setIsNotificationsEnabled(granted);
+
+      if (!granted) {
+        throw new Error("Notification permission denied");
+      }
+    } catch (error) {
+      console.error("🔔 Error enabling notifications:", error);
+      setError(error as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const disableNotifications = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await streamNotificationService.unregisterDevice();
+      setIsNotificationsEnabled(false);
+    } catch (error) {
+      console.error("🔔 Error disabling notifications:", error);
+      setError(error as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <NotificationContext.Provider
-      value={{ expoPushToken, notification, error }}
+      value={{
+        isNotificationsEnabled,
+        isLoading,
+        error,
+        enableNotifications,
+        disableNotifications,
+      }}
     >
       {children}
     </NotificationContext.Provider>
