@@ -7,6 +7,7 @@ TODO:
 - Add push notifications to the app (and make the you've matched system notification silent)
 - show difference between basic and premium plan on payment page
 - Add the ability to see profiles that swiped on you and swipe on them.
+- Make sure the home screen cards are responsive to different screen sizes and the number of characters is capped at 120 not 150.
 
 ## 📋 Validation Rules
 
