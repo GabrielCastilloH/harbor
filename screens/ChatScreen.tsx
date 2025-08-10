@@ -128,9 +128,9 @@ export default function ChatScreen() {
         // Chat should be frozen if:
         // 1. Channel is frozen due to unmatch, OR
         // 2. Consent screen should be shown for current user, OR
-        // 3. Both users haven't consented yet (even if current user has consented)
+        // 3. Consent screen should be shown for either user (meaning message threshold reached but not both consented)
         const shouldFreezeChat =
-          isChannelFrozen || showForSelf || !status.bothConsented;
+          isChannelFrozen || showForSelf || status.shouldShowConsentScreen;
         setIsChatFrozen(shouldFreezeChat);
 
         const currentUserConsented = isSelfUser1
@@ -222,8 +222,9 @@ export default function ChatScreen() {
 
             // Chat should be frozen if:
             // 1. Consent screen should be shown for current user, OR
-            // 2. Both users haven't consented yet (even if current user has consented)
-            const shouldFreezeChat = showForSelf || !status.bothConsented;
+            // 2. Consent screen should be shown for either user (meaning message threshold reached but not both consented)
+            const shouldFreezeChat =
+              showForSelf || status.shouldShowConsentScreen;
             setIsChatFrozen(shouldFreezeChat);
             setShowConsentModal(showForSelf);
 
