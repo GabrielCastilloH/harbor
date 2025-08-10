@@ -33,6 +33,7 @@ export default function ChatScreen() {
   const [consentSubmitting, setConsentSubmitting] = useState<
     null | "unmatch" | "continue"
   >(null);
+  const [consentStatus, setConsentStatus] = useState<any>(null);
   // debug counters removed
   const lastHandledMessageIdRef = useRef<string | null>(null);
   const lastAppliedFreezeRef = useRef<boolean | null>(null);
@@ -44,6 +45,7 @@ export default function ChatScreen() {
     async (matchId: string) => {
       try {
         const status = await ConsentService.getConsentStatus(matchId);
+        setConsentStatus(status);
 
         const isSelfUser1 = status.user1Id === userId;
         const showForSelf = isSelfUser1
@@ -107,6 +109,7 @@ export default function ChatScreen() {
         } catch (migrationError) {}
 
         const status = await ConsentService.getConsentStatus(activeMatchId);
+        setConsentStatus(status);
 
         const isChannelFrozen = (channel.data as any)?.frozen || false;
         const isSelfUser1 = status.user1Id === userId;
@@ -116,7 +119,14 @@ export default function ChatScreen() {
 
         // Always surface modal when current user must consent
         setShowConsentModal(showForSelf);
-        setIsChatFrozen(isChannelFrozen || showForSelf);
+
+        // Chat should be frozen if:
+        // 1. Channel is frozen due to unmatch, OR
+        // 2. Consent screen should be shown for current user, OR
+        // 3. Both users haven't consented yet (even if current user has consented)
+        const shouldFreezeChat =
+          isChannelFrozen || showForSelf || !status.bothConsented;
+        setIsChatFrozen(shouldFreezeChat);
 
         const currentUserConsented = isSelfUser1
           ? status.user1Consented
@@ -191,6 +201,7 @@ export default function ChatScreen() {
 
           // Check if we need to show consent screen
           const status = await ConsentService.getConsentStatus(matchId);
+          setConsentStatus(status);
 
           // Check if channel is frozen due to unmatch
           const isChannelFrozen = channel.data?.frozen || false;
@@ -203,7 +214,12 @@ export default function ChatScreen() {
             const showForSelf = isSelfUser1
               ? status.shouldShowConsentForUser1
               : status.shouldShowConsentForUser2;
-            setIsChatFrozen(showForSelf);
+
+            // Chat should be frozen if:
+            // 1. Consent screen should be shown for current user, OR
+            // 2. Both users haven't consented yet (even if current user has consented)
+            const shouldFreezeChat = showForSelf || !status.bothConsented;
+            setIsChatFrozen(shouldFreezeChat);
             setShowConsentModal(showForSelf);
 
             // Do NOT touch server-side freeze/unfreeze for consent flow
@@ -281,14 +297,15 @@ export default function ChatScreen() {
           </View>
         </Channel>
 
-        {/* Consent Modal - inside SafeAreaView so it never covers the header */}
+        {/* Consent Modal - Inside the Channel view */}
         {showConsentModal && (
           <View style={styles.modalOverlay}>
             <View style={styles.warningModalContent}>
-              <Text style={styles.warningTitle}>Continue this chat?</Text>
+              <Text style={styles.warningTitle}>Photos Will Be Revealed</Text>
               <Text style={styles.warningText}>
-                To keep chatting, both of you need to agree to continue. You can
-                also choose to unmatch.
+                You have been talking to your match for a short while. Your
+                photos will start becoming clearer. This is your last chance to
+                unmatch while remaining anonymous.
               </Text>
               <View style={styles.warningButtons}>
                 <Pressable
