@@ -759,6 +759,68 @@ export const updateConsent = functions.https.onCall(
       const bothConsented =
         updatedMatchData.user1Consented && updatedMatchData.user2Consented;
 
+      // If this action caused both users to consent, send a one-time system message
+      if (bothConsented && !updatedMatchData.consentMessageSent) {
+        try {
+          const { StreamChat } = await import("stream-chat");
+          const { SecretManagerServiceClient } = await import(
+            "@google-cloud/secret-manager"
+          );
+          const secretManager = new SecretManagerServiceClient();
+
+          const [streamApiKeyVersion, streamApiSecretVersion] =
+            await Promise.all([
+              secretManager.accessSecretVersion({
+                name: "projects/harbor-ch/secrets/STREAM_API_KEY/versions/latest",
+              }),
+              secretManager.accessSecretVersion({
+                name: "projects/harbor-ch/secrets/STREAM_API_SECRET/versions/latest",
+              }),
+            ]);
+
+          const apiKey = streamApiKeyVersion[0].payload?.data?.toString() || "";
+          const apiSecret =
+            streamApiSecretVersion[0].payload?.data?.toString() || "";
+
+          if (apiKey && apiSecret) {
+            const serverClient = StreamChat.getInstance(apiKey, apiSecret);
+            // Channel ID is deterministic: sorted user IDs joined by '-'
+            const channelId = [user1Id, user2Id].sort().join("-");
+            const channel = serverClient.channel("messaging", channelId);
+            try {
+              await channel.sendMessage({
+                text: "Both of you have decided to continue getting to know one another! 💕",
+                user_id: "system",
+              });
+            } catch (sendErr) {
+              // Log but do not fail the consent flow
+              console.error(
+                "updateConsent: failed to send system message:",
+                sendErr
+              );
+            }
+            // Mark message as sent to avoid duplicates
+            try {
+              await db.collection("matches").doc(matchId).update({
+                consentMessageSent: true,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+            } catch (flagErr) {
+              console.error(
+                "updateConsent: failed to flag message sent:",
+                flagErr
+              );
+            }
+          }
+        } catch (streamErr) {
+          // Non-fatal; consent update should still succeed
+          console.error(
+            "updateConsent: error preparing Stream client:",
+            streamErr
+          );
+        }
+      }
+
       return {
         success: true,
         bothConsented,
@@ -834,13 +896,30 @@ export const getConsentStatus = functions.https.onCall(
         );
       }
 
-      const user1Consented = matchData.user1Consented || false;
-      const user2Consented = matchData.user2Consented || false;
+      const user1Consented = Boolean(matchData.user1Consented);
+      const user2Consented = Boolean(matchData.user2Consented);
       const bothConsented = user1Consented && user2Consented;
       const messageCount = matchData.messageCount || 0;
 
-      // Check if consent screen should be shown (30 messages threshold)
-      const shouldShowConsentScreen = messageCount >= 30 && !bothConsented;
+      // Threshold for showing consent screen; keep in sync with client constant
+      const MESSAGE_THRESHOLD = 30;
+
+      // Edge-case aware: any count >= threshold should trigger consent if not both consented
+      const shouldShowConsentScreen =
+        messageCount >= MESSAGE_THRESHOLD && !bothConsented;
+
+      // Per-user requirement flags
+      const shouldShowConsentForUser1 =
+        shouldShowConsentScreen && !user1Consented;
+      const shouldShowConsentForUser2 =
+        shouldShowConsentScreen && !user2Consented;
+
+      // Human-readable state
+      const state = bothConsented
+        ? "both_consented"
+        : user1Consented || user2Consented
+        ? "one_consented"
+        : "none_consented";
 
       return {
         user1Id,
@@ -850,6 +929,26 @@ export const getConsentStatus = functions.https.onCall(
         bothConsented,
         messageCount,
         shouldShowConsentScreen,
+        shouldShowConsentForUser1,
+        shouldShowConsentForUser2,
+        state,
+        consent: {
+          state,
+          messageThreshold: MESSAGE_THRESHOLD,
+          bothConsented,
+          users: [
+            {
+              id: user1Id,
+              hasConsented: user1Consented,
+              shouldShow: shouldShowConsentForUser1,
+            },
+            {
+              id: user2Id,
+              hasConsented: user2Consented,
+              shouldShow: shouldShowConsentForUser2,
+            },
+          ],
+        },
       };
     } catch (error: any) {
       console.error("Error getting consent status:", error);
