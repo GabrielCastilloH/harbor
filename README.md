@@ -5,7 +5,8 @@ A unique dating app that focuses on meaningful connections through progressive p
 TODO:
 
 - Add push notifications to the app (and make the you've matched system notification silent)
-- show difference between basic and premium plan.
+- show difference between basic and premium plan on payment page
+- Add the ability to see profiles that swiped on you and swipe on them.
 
 ## 📋 Validation Rules
 
