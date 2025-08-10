@@ -55,22 +55,7 @@ All fields must be completed before profile creation:
 
 Harbor uses **Stream Chat** for messaging and **React Native Firebase** specifically for push notifications. This hybrid approach allows us to use the Firebase JS SDK for all other Firebase services while leveraging React Native Firebase's native capabilities for reliable push notifications.
 
-### ⚠️ **IMPORTANT: Developer Account Required**
-
-**Push notifications are currently disabled** because they require a **paid Apple Developer account** ($99/year). The iOS Team Provisioning Profile (free) doesn't support Push Notifications capability.
-
-### To Enable Push Notifications:
-
-1. **Get a paid Apple Developer account** from Apple Developer Program
-2. **Uncomment the following files**:
-   - `index.ts` - Background message handler
-   - `context/NotificationContext.tsx` - Notification context logic
-   - `navigation/ChatNavigator.tsx` - Notification initialization
-   - add "@react-native-firebase/app", "@react-native-firebase/messaging" to app.json
-3. **Configure push notifications** in your Apple Developer account
-4. **Update provisioning profiles** to include Push Notifications capability
-
-### Notification Features (When Enabled)
+### Notification Features
 
 - **Stream Chat Integration**: Notifications are automatically sent when users receive new messages
 - **Settings Toggle**: Users can enable/disable notifications in the app settings
@@ -84,12 +69,11 @@ Harbor uses **Stream Chat** for messaging and **React Native Firebase** specific
 - **Stream Chat**: Handles message delivery and notification triggers
 - **Background Handler**: Processes notifications when app is not in foreground
 
-### Setup Requirements (When Ready)
+### Setup Requirements
 
-1. **Paid Apple Developer Account**: Required for Push Notifications capability
-2. **Firebase Project**: Must have Cloud Messaging enabled
-3. **Stream Dashboard**: Firebase credentials must be uploaded to Stream Chat dashboard
-4. **Native Configuration**: React Native Firebase requires native project configuration
+1. **Firebase Project**: Must have Cloud Messaging enabled
+2. **Stream Dashboard**: Firebase credentials must be uploaded to Stream Chat dashboard
+3. **Native Configuration**: React Native Firebase requires native project configuration
 
 ## 🚀 Getting Started
 

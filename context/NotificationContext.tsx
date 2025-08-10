@@ -6,8 +6,8 @@ import React, {
   useRef,
   ReactNode,
 } from "react";
-// import { streamNotificationService } from "../util/streamNotifService";
-// import { StreamChat } from "stream-chat";
+import { streamNotificationService } from "../util/streamNotifService";
+import { StreamChat } from "stream-chat";
 
 interface NotificationContextType {
   isNotificationsEnabled: boolean;
@@ -42,37 +42,32 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // TODO: Uncomment when you have a paid Apple Developer account
   // Check notification status on mount
-  // useEffect(() => {
-  //   checkNotificationStatus();
-  // }, []);
+  useEffect(() => {
+    checkNotificationStatus();
+  }, []);
 
-  // const checkNotificationStatus = async () => {
-  //   try {
-  //     const enabled = await streamNotificationService.areNotificationsEnabled();
-  //     setIsNotificationsEnabled(enabled);
-  //   } catch (error) {
-  //     console.error("🔔 Error checking notification status:", error);
-  //     setError(error as Error);
-  //   }
-  // };
+  const checkNotificationStatus = async () => {
+    try {
+      const enabled = await streamNotificationService.areNotificationsEnabled();
+      setIsNotificationsEnabled(enabled);
+    } catch (error) {
+      console.error("🔔 Error checking notification status:", error);
+      setError(error as Error);
+    }
+  };
 
   const enableNotifications = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // TODO: Uncomment when you have a paid Apple Developer account
-      // const granted = await streamNotificationService.requestPermission();
-      // setIsNotificationsEnabled(granted);
+      const granted = await streamNotificationService.requestPermission();
+      setIsNotificationsEnabled(granted);
 
-      // if (!granted) {
-      //   throw new Error("Notification permission denied");
-      // }
-
-      // Temporary: just set to false for now
-      setIsNotificationsEnabled(false);
+      if (!granted) {
+        throw new Error("Notification permission denied");
+      }
     } catch (error) {
       console.error("🔔 Error enabling notifications:", error);
       setError(error as Error);
@@ -86,8 +81,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     setError(null);
 
     try {
-      // TODO: Uncomment when you have a paid Apple Developer account
-      // await streamNotificationService.unregisterDevice();
+      await streamNotificationService.unregisterDevice();
       setIsNotificationsEnabled(false);
     } catch (error) {
       console.error("🔔 Error disabling notifications:", error);
