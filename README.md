@@ -116,10 +116,12 @@ Harbor uses **Stream Chat** for messaging and **React Native Firebase** specific
 5. **Configure Stream Chat Notifications:**
 
    - Go to [Stream Chat Dashboard](https://dashboard.getstream.io)
-   - Navigate to your app's Chat Overview
-   - Enable Firebase Notifications toggle
+   - Navigate to your app's Chat Overview → Push Configuration
+   - Enable "Push Notifications" toggle
+   - Select "Firebase" as push provider
    - Upload your Firebase service account credentials JSON file
-   - Configure notification templates if needed
+   - Configure notification types (new messages, edits, reactions)
+   - Set default push preferences for users
 
 6. **Deploy Functions:**
    ```bash
