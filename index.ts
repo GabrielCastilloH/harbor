@@ -1,15 +1,23 @@
-import { registerRootComponent } from 'expo';
-import messaging from '@react-native-firebase/messaging';
+import { registerRootComponent } from "expo";
+import messaging from "@react-native-firebase/messaging";
 
-import App from './App';
+import App from "./App";
 
 // Handle background messages for Stream Chat notifications
-messaging().setBackgroundMessageHandler(async remoteMessage => {
-  console.log('🔔 Background message received:', remoteMessage);
-  
-  // For Stream Chat notifications, the message will be automatically displayed
-  // by Firebase when the app is in the background
-  // We don't need to manually display notifications here
+messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+  console.log("🔔 Background message received:", remoteMessage);
+
+  // Stream Chat v2 payload format
+  // The payload contains message_id and channel information
+  // Firebase will automatically display the notification
+  // We can optionally handle the data for custom logic
+  if (remoteMessage.data?.type === "message.new") {
+    console.log("🔔 New message notification:", {
+      messageId: remoteMessage.data.message_id,
+      channelId: remoteMessage.data.channel_id,
+      channelType: remoteMessage.data.channel_type,
+    });
+  }
 });
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
