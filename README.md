@@ -5,7 +5,8 @@ A unique dating app that focuses on meaningful connections through progressive p
 TODO:
 
 - Add push notifications to the app (and make the you've matched system notification silent)
-- show difference between basic and premium plan.
+- show difference between basic and premium plan on payment page
+- Add the ability to see profiles that swiped on you and swipe on them.
 
 ## 📋 Validation Rules
 
@@ -172,3 +173,49 @@ export function getClientBlurLevel({
   }
 }
 ```
+
+### Consent State Implementation
+
+#### How consent is stored (Firestore)
+
+- Each match document contains explicit, per-user consent fields and message count:
+  - `user1Id`, `user2Id`
+  - `user1Consented: boolean`
+  - `user2Consented: boolean`
+  - `messageCount: number`
+  - Other metadata (timestamps, isActive, etc.)
+
+#### Server response shape
+
+- The `matchFunctions-getConsentStatus` callable returns a structured, edge-case–aware payload:
+  - `user1Id`, `user2Id`
+  - `user1Consented`, `user2Consented`, `bothConsented`
+  - `messageCount`
+  - `shouldShowConsentScreen` (true when `messageCount >= threshold` and not both have consented)
+  - `shouldShowConsentForUser1`, `shouldShowConsentForUser2` (per-user modal visibility flags)
+  - `state` ("none_consented" | "one_consented" | "both_consented")
+  - `consent` block summarizing current state and threshold
+
+#### Client detection (ChatScreen)
+
+- The client resolves `matchId` authoritatively from the other channel member via backend and caches it.
+- On every new message and on mount:
+  - Increments `messageCount` via `chatFunctions-updateMessageCount`.
+  - Calls `getConsentStatus(matchId)` and applies:
+    - If channel is frozen: hide modal, freeze chat
+    - Else: show modal only for the current user if their `shouldShowConsentForUserX` is true
+    - When both users consent: hide modal and unfreeze chat
+
+#### Edge-case handling
+
+- If `messageCount` exceeds the threshold (due to duplicate updates or race conditions), the server still returns `shouldShowConsentScreen = true` until both have explicitly consented.
+  - This ensures we never skip the continue screen.
+
+#### Assumptions
+
+- Message threshold is currently `30` (kept in sync on server and client).
+- A match can be frozen due to unmatch; in that state, the consent modal is suppressed.
+
+## Known Security Problems (not MVP to Fix)
+
+- When on the consent screen the channel is only client side forzen. This means on a jailbroken iPhone or Android device someone could send more messages on the channel if the like. However, on the actual app the modal will never be dismissed and it will always be client side frozen making it impossible for regular users to do this. Even if they do receive messages they will be hard to see through the modal and there's not much point to this hack lol.

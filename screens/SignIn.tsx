@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Linking,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "../constants/Colors";
@@ -156,7 +157,7 @@ export default function SignIn() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.secondary100 }}>
       <View style={styles.container}>
         <View style={styles.logoContainer}>
           <Image
@@ -166,10 +167,10 @@ export default function SignIn() {
             resizeMode="contain"
           />
         </View>
-        <Text style={styles.title}>Sign In</Text>
+        <Text style={styles.title}>Sign In/Up</Text>
         <Text style={styles.description}>
-          In order to use this app you must sign in with your Cornell email via
-          Google.
+          In order to use this app you must sign in/up with your Cornell email
+          via Google.
         </Text>
 
         {/* Custom Button */}
@@ -233,7 +234,7 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     height: 120,
-    marginTop: "35%",
+    marginTop: Platform.OS === "ios" ? "45%" : "35%",
     justifyContent: "center",
   },
   logo: {
@@ -244,14 +245,14 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: "bold",
     color: Colors.primary500,
-    marginTop: "8%",
-    marginBottom: "1%",
+    marginTop: Platform.OS === "ios" ? "15%" : "8%",
+    marginBottom: Platform.OS === "ios" ? "5%" : "3%",
   },
   description: {
     fontSize: 18,
     color: Colors.primary500,
     textAlign: "center",
-    marginBottom: "10%",
+    marginBottom: Platform.OS === "ios" ? "10%" : "10%",
     paddingHorizontal: 20,
   },
   buttonContainer: {
