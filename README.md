@@ -8,6 +8,9 @@ TODO:
 - show difference between basic and premium plan on payment page
 - Add the ability to see profiles that swiped on you and swipe on them.
 - Make sure the home screen cards are responsive to different screen sizes and the number of characters is capped at 120 not 150.
+- when you leave the chat the chat is paused is removed on consent screen;
+- change the consent screen message;
+- disable clicking on profile when the match is not active
 
 ## 📋 Validation Rules
 
