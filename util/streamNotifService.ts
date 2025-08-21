@@ -1,3 +1,5 @@
+// Import Firebase config first to ensure Firebase is initialized
+import "../firebaseConfig";
 import messaging from "@react-native-firebase/messaging";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StreamChat } from "stream-chat";
