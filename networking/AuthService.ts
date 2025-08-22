@@ -4,17 +4,13 @@ import app from "../firebaseConfig";
 const functions = getFunctions(app, "us-central1");
 
 export class AuthService {
-  static async signUpWithEmail(
-    email: string,
-    password: string,
-    firstName: string
-  ) {
+  static async signUpWithEmail(email: string, password: string) {
     try {
       const signUpWithEmail = httpsCallable(
         functions,
         "authFunctions-signUpWithEmail"
       );
-      const result = await signUpWithEmail({ email, password, firstName });
+      const result = await signUpWithEmail({ email, password });
       const data = result.data as any;
       return data;
     } catch (error) {
