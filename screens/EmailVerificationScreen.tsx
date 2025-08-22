@@ -17,25 +17,27 @@ import { useAppContext } from "../context/AppContext";
 export default function EmailVerificationScreen({ navigation, route }: any) {
   const { email } = route.params || {};
   const { setUserId } = useAppContext();
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState<"pending" | "verified" | "error">("pending");
+  const [verificationStatus, setVerificationStatus] = useState<
+    "pending" | "verified" | "error"
+  >("pending");
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
 
   // Auto-check verification status every 5 seconds
   useEffect(() => {
     const checkVerification = async () => {
       if (verificationStatus === "verified" || !email) return;
-      
+
       setIsChecking(true);
       try {
         const result = await AuthService.checkEmailVerificationByEmail(email);
         if (result.emailVerified) {
           setVerificationStatus("verified");
           setLastChecked(new Date());
-          
+
           // Navigate to account setup after a short delay
           setTimeout(() => {
             navigation.replace("AccountSetup");
@@ -72,7 +74,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
       if (result.emailVerified) {
         setVerificationStatus("verified");
         setLastChecked(new Date());
-        
+
         // Navigate to account setup
         navigation.replace("AccountSetup");
       } else {
@@ -149,29 +151,34 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
             resizeMode="contain"
           />
         </View>
-        
+
         <View style={styles.contentContainer}>
           <View style={styles.iconContainer}>
             <Text style={styles.icon}>📧</Text>
           </View>
-          
+
           <Text style={styles.title}>Check Your Email</Text>
-          
+
           <Text style={styles.description}>
             We sent a verification link to:
           </Text>
-          
+
           <Text style={styles.emailText}>{email}</Text>
-          
+
           <Text style={styles.instructions}>
-            Click the link in your email to verify your account and continue to Harbor.
+            Click the link in your email to verify your account and continue to
+            Harbor.
           </Text>
 
           {verificationStatus === "verified" && (
             <View style={styles.successContainer}>
               <Text style={styles.successIcon}>✅</Text>
-              <Text style={styles.successText}>Email verified successfully!</Text>
-              <Text style={styles.successSubtext}>Redirecting to account setup...</Text>
+              <Text style={styles.successText}>
+                Email verified successfully!
+              </Text>
+              <Text style={styles.successSubtext}>
+                Redirecting to account setup...
+              </Text>
             </View>
           )}
 
@@ -184,10 +191,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={[
-              styles.checkButton,
-              isChecking && styles.buttonDisabled,
-            ]}
+            style={[styles.checkButton, isChecking && styles.buttonDisabled]}
             onPress={handleCheckVerification}
             disabled={isChecking || verificationStatus === "verified"}
           >
@@ -197,10 +201,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.resendButton,
-              isResending && styles.buttonDisabled,
-            ]}
+            style={[styles.resendButton, isResending && styles.buttonDisabled]}
             onPress={handleResendEmail}
             disabled={isResending || verificationStatus === "verified"}
           >
