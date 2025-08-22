@@ -15,7 +15,7 @@ import { AuthService } from "../networking/AuthService";
 import { useAppContext } from "../context/AppContext";
 
 export default function EmailVerificationScreen({ navigation, route }: any) {
-  const { email } = route.params || {};
+  const { email, fromSignIn } = route.params || {};
   const { setUserId } = useAppContext();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -38,9 +38,16 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
           setVerificationStatus("verified");
           setLastChecked(new Date());
 
-          // Navigate to account setup after a short delay
+          // Navigate based on where user came from
           setTimeout(() => {
-            navigation.replace("AccountSetup");
+            if (fromSignIn) {
+              // User came from sign in - they should already be authenticated
+              // Just go back to main app
+              navigation.replace("HomeScreen");
+            } else {
+              // User came from account creation - go to account setup
+              navigation.replace("AccountSetup");
+            }
           }, 1500);
         } else {
           setLastChecked(new Date());
@@ -56,8 +63,8 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
     // Initial check
     checkVerification();
 
-    // Set up interval for periodic checks
-    const interval = setInterval(checkVerification, 5000);
+    // Set up interval for periodic checks - reduced frequency to save costs
+    const interval = setInterval(checkVerification, 30000); // Check every 30 seconds instead of 5
 
     return () => clearInterval(interval);
   }, [verificationStatus, navigation, email]);
@@ -75,8 +82,15 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
         setVerificationStatus("verified");
         setLastChecked(new Date());
 
-        // Navigate to account setup
-        navigation.replace("AccountSetup");
+        // Navigate based on where user came from
+        if (fromSignIn) {
+          // User came from sign in - they should already be authenticated
+          // Just go back to main app
+          navigation.replace("HomeScreen");
+        } else {
+          // User came from account creation - go to account setup
+          navigation.replace("AccountSetup");
+        }
       } else {
         setLastChecked(new Date());
         Alert.alert(
