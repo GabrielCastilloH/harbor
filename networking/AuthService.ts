@@ -49,6 +49,24 @@ export class AuthService {
     }
   }
 
+  static async sendVerificationEmailByEmail(email: string) {
+    try {
+      const sendVerificationEmailByEmail = httpsCallable(
+        functions,
+        "authFunctions-sendVerificationEmailByEmail"
+      );
+      const result = await sendVerificationEmailByEmail({ email });
+      const data = result.data as any;
+      return data;
+    } catch (error) {
+      console.error(
+        "AuthService - Error sending verification email by email:",
+        error
+      );
+      throw error;
+    }
+  }
+
   static async checkEmailVerification() {
     try {
       const checkEmailVerification = httpsCallable(
@@ -60,6 +78,24 @@ export class AuthService {
       return data;
     } catch (error) {
       console.error("AuthService - Error checking email verification:", error);
+      throw error;
+    }
+  }
+
+  static async checkEmailVerificationByEmail(email: string) {
+    try {
+      const checkEmailVerificationByEmail = httpsCallable(
+        functions,
+        "authFunctions-checkEmailVerificationByEmail"
+      );
+      const result = await checkEmailVerificationByEmail({ email });
+      const data = result.data as any;
+      return data;
+    } catch (error) {
+      console.error(
+        "AuthService - Error checking email verification by email:",
+        error
+      );
       throw error;
     }
   }

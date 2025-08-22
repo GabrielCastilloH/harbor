@@ -130,21 +130,11 @@ export default function CreateAccountScreen({ navigation }: any) {
       );
 
       if (result.success) {
-        // Sign in the user automatically
-        try {
-          await signInWithEmailAndPassword(auth, normalizedEmail, password);
-
-          // Navigate to email verification screen
-          navigation.navigate("EmailVerification", {
-            email: normalizedEmail,
-          });
-        } catch (signInError: any) {
-          console.error("Auto sign-in failed:", signInError);
-          // Still navigate to verification screen
-          navigation.navigate("EmailVerification", {
-            email: normalizedEmail,
-          });
-        }
+        // Don't sign in automatically - let user verify email first
+        // Navigate to email verification screen
+        navigation.navigate("EmailVerification", {
+          email: normalizedEmail,
+        });
       }
     } catch (error: any) {
       console.error("❌ [CREATE ACCOUNT] Error:", error);

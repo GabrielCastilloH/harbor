@@ -123,8 +123,9 @@ export const signUpWithEmail = functions.https.onCall(
         emailVerified: false,
       });
 
-      // Send verification email to normalized email
-      await admin.auth().generateEmailVerificationLink(normalizedEmail);
+      // Send verification email - Firebase Auth automatically sends verification email
+      // when a user is created with emailVerified: false
+      // We don't need to manually send it
 
       return {
         success: true,
@@ -326,6 +327,82 @@ export const sendVerificationEmail = functions.https.onCall(
 );
 
 /**
+ * Sends verification email by email address (no auth required)
+ */
+export const sendVerificationEmailByEmail = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ email: string }>) => {
+    try {
+      const { email } = request.data;
+
+      if (!email) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Email is required"
+        );
+      }
+
+      // Normalize email to prevent + alias abuse
+      const normalizedEmail = normalizeEmail(email);
+
+      // Validate Cornell email
+      if (!validateCornellEmail(normalizedEmail)) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Only Cornell email addresses are allowed"
+        );
+      }
+
+      // Get user by email
+      const userRecord = await admin.auth().getUserByEmail(normalizedEmail);
+
+      if (userRecord.emailVerified) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "Email is already verified"
+        );
+      }
+
+      // Send verification email
+      await admin.auth().generateEmailVerificationLink(normalizedEmail);
+
+      return {
+        success: true,
+        message: "Verification email sent successfully",
+      };
+    } catch (error: any) {
+      console.error("Error in sendVerificationEmailByEmail:", error);
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      if (error.code === "auth/user-not-found") {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "No account found with this email address"
+        );
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to send verification email"
+      );
+    }
+  }
+);
+
+/**
  * Checks if the current user's email is verified
  */
 export const checkEmailVerification = functions.https.onCall(
@@ -360,6 +437,73 @@ export const checkEmailVerification = functions.https.onCall(
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to check email verification status"
+      );
+    }
+  }
+);
+
+/**
+ * Checks if a user's email is verified by email address (no auth required)
+ */
+export const checkEmailVerificationByEmail = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ email: string }>) => {
+    try {
+      const { email } = request.data;
+
+      if (!email) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Email is required"
+        );
+      }
+
+      // Normalize email to prevent + alias abuse
+      const normalizedEmail = normalizeEmail(email);
+
+      // Validate Cornell email
+      if (!validateCornellEmail(normalizedEmail)) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Only Cornell email addresses are allowed"
+        );
+      }
+
+      // Get user by email
+      const userRecord = await admin.auth().getUserByEmail(normalizedEmail);
+
+      return {
+        emailVerified: userRecord.emailVerified,
+        email: userRecord.email,
+        userId: userRecord.uid,
+      };
+    } catch (error: any) {
+      console.error("Error in checkEmailVerificationByEmail:", error);
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      if (error.code === "auth/user-not-found") {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "No account found with this email address"
+        );
       }
 
       throw new functions.https.HttpsError(
@@ -446,6 +590,8 @@ export const authFunctions = {
   signUpWithEmail,
   signInWithEmail,
   sendVerificationEmail,
+  sendVerificationEmailByEmail,
   checkEmailVerification,
+  checkEmailVerificationByEmail,
   resetPassword,
 };

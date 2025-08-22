@@ -27,11 +27,11 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   // Auto-check verification status every 5 seconds
   useEffect(() => {
     const checkVerification = async () => {
-      if (verificationStatus === "verified") return;
+      if (verificationStatus === "verified" || !email) return;
       
       setIsChecking(true);
       try {
-        const result = await AuthService.checkEmailVerification();
+        const result = await AuthService.checkEmailVerificationByEmail(email);
         if (result.emailVerified) {
           setVerificationStatus("verified");
           setLastChecked(new Date());
@@ -58,12 +58,17 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
     const interval = setInterval(checkVerification, 5000);
 
     return () => clearInterval(interval);
-  }, [verificationStatus, navigation]);
+  }, [verificationStatus, navigation, email]);
 
   const handleCheckVerification = async () => {
+    if (!email) {
+      Alert.alert("Error", "No email address found");
+      return;
+    }
+
     setIsChecking(true);
     try {
-      const result = await AuthService.checkEmailVerification();
+      const result = await AuthService.checkEmailVerificationByEmail(email);
       if (result.emailVerified) {
         setVerificationStatus("verified");
         setLastChecked(new Date());
@@ -89,9 +94,14 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   };
 
   const handleResendEmail = async () => {
+    if (!email) {
+      Alert.alert("Error", "No email address found");
+      return;
+    }
+
     setIsResending(true);
     try {
-      await AuthService.sendVerificationEmail();
+      await AuthService.sendVerificationEmailByEmail(email);
       Alert.alert(
         "Email Sent",
         "Verification email has been resent. Please check your inbox."
