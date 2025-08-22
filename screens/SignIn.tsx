@@ -102,10 +102,16 @@ export default function SignIn({ navigation }: any) {
       setEmailError("Email is required");
       isValid = false;
     } else {
-      const emailRegex = /^[^\s@]+@cornell\.edu$/i;
-      if (!emailRegex.test(email)) {
-        setEmailError("Please enter a valid Cornell email address");
+      // Reject emails with + symbols to prevent alias abuse
+      if (email.includes("+")) {
+        setEmailError("Email addresses with + symbols are not allowed");
         isValid = false;
+      } else {
+        const emailRegex = /^[^\s@]+@cornell\.edu$/i;
+        if (!emailRegex.test(email)) {
+          setEmailError("Please enter a valid Cornell email address");
+          isValid = false;
+        }
       }
     }
 
@@ -118,6 +124,13 @@ export default function SignIn({ navigation }: any) {
     return isValid;
   };
 
+  // Normalize email by removing + alias part
+  const normalizeEmail = (email: string): string => {
+    const [localPart, domain] = email.split("@");
+    const normalizedLocalPart = localPart.split("+")[0]; // Remove everything after +
+    return `${normalizedLocalPart}@${domain}`.toLowerCase();
+  };
+
   const handleSignIn = async () => {
     if (!validateForm()) {
       return;
@@ -126,7 +139,11 @@ export default function SignIn({ navigation }: any) {
     setIsLoading(true);
 
     try {
-      const result = await AuthService.signInWithEmail(email.trim(), password);
+      const normalizedEmail = normalizeEmail(email.trim());
+      const result = await AuthService.signInWithEmail(
+        normalizedEmail,
+        password
+      );
 
       if (result.user) {
         // Existing user with profile
@@ -180,6 +197,15 @@ export default function SignIn({ navigation }: any) {
       return;
     }
 
+    // Reject emails with + symbols to prevent alias abuse
+    if (email.includes("+")) {
+      Alert.alert(
+        "Forgot Password",
+        "Email addresses with + symbols are not allowed"
+      );
+      return;
+    }
+
     const emailRegex = /^[^\s@]+@cornell\.edu$/i;
     if (!emailRegex.test(email)) {
       Alert.alert(
@@ -189,16 +215,18 @@ export default function SignIn({ navigation }: any) {
       return;
     }
 
+    const normalizedEmail = normalizeEmail(email.trim());
+
     Alert.alert(
       "Reset Password",
-      `We'll send a password reset link to ${email}`,
+      `We'll send a password reset link to ${normalizedEmail}`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Send Reset Link",
           onPress: async () => {
             try {
-              await AuthService.resetPassword(email.trim());
+              await AuthService.resetPassword(normalizedEmail);
               Alert.alert(
                 "Reset Link Sent",
                 "Check your email for a password reset link"
