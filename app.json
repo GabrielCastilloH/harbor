@@ -7,6 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "description": "Harbor is a unique dating app for Cornell students that focuses on meaningful connections through progressive photo reveal and limited daily interactions. Connect with fellow Cornell students in a safe, respectful environment.",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -16,6 +17,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.gabrielach.harbor",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "buildNumber": "1",
       "infoPlist": {
         "CFBundleURLTypes": [
           {
@@ -25,7 +27,14 @@
             ]
           }
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Harbor needs access to your camera to take profile photos.",
+        "NSPhotoLibraryUsageDescription": "Harbor needs access to your photo library to select profile photos.",
+        "NSMicrophoneUsageDescription": "Harbor needs access to your microphone for voice messages in chat.",
+        "CFBundleDisplayName": "Harbor",
+        "CFBundleName": "Harbor",
+        "CFBundleShortVersionString": "1.0.0",
+        "NSUserTrackingUsageDescription": "This app does not track users across other companies' apps or websites."
       }
     },
     "android": {
@@ -77,6 +86,10 @@
         "projectId": "9d174596-e440-4892-9ffb-bbcd18bcde65"
       }
     },
-    "owner": "gabrielcastillo"
+    "owner": "gabrielcastillo",
+    "contact": {
+      "email": "support@tryharbor.app",
+      "website": "https://www.tryharbor.app"
+    }
   }
 }
