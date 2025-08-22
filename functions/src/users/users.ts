@@ -437,11 +437,11 @@ export const getAllUsers = functions.https.onCall(
       const users = usersSnapshot.docs.map((doc) => {
         const userData = doc.data();
 
-        // Remove images from each user for security
-        const { images, ...userDataWithoutImages } = userData;
+        // Remove sensitive data from each user for security
+        const { images, email, ...userDataWithoutSensitiveInfo } = userData;
         return {
           _id: doc.id,
-          ...userDataWithoutImages,
+          ...userDataWithoutSensitiveInfo,
         };
       });
 
@@ -485,31 +485,19 @@ export const getUserById = functions.https.onCall(
         );
       }
 
-      // Try to get user by UID first
-      let userDoc = await db.collection("users").doc(id).get();
-      let userData = null;
+      // Only allow lookup by UID for security - never by email
+      const userDoc = await db.collection("users").doc(id).get();
 
-      if (userDoc.exists) {
-        userData = userDoc.data();
-      } else {
-        // If not found by UID, try to find by email
-        const emailQuery = await db
-          .collection("users")
-          .where("email", "==", id)
-          .limit(1)
-          .get();
-
-        if (!emailQuery.empty) {
-          userData = emailQuery.docs[0].data();
-        } else {
-          throw new functions.https.HttpsError("not-found", "User not found");
-        }
+      if (!userDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "User not found");
       }
 
-      // Remove images from the response for security - images should only be fetched via getImages
+      const userData = userDoc.data();
+
+      // Remove sensitive data from the response for security
       if (userData) {
-        const { images, ...userDataWithoutImages } = userData;
-        return { user: userDataWithoutImages };
+        const { images, email, ...userDataWithoutSensitiveInfo } = userData;
+        return { user: userDataWithoutSensitiveInfo };
       }
 
       return { user: userData };
