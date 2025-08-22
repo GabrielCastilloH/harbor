@@ -1,13 +1,14 @@
 import { registerRootComponent } from "expo";
 // Import Firebase config first to ensure Firebase is initialized
 import "./firebaseConfig";
-import messaging from "@react-native-firebase/messaging";
+import { getMessaging, onMessage, setBackgroundMessageHandler } from "@react-native-firebase/messaging";
 
 import App from "./App";
 
 // Handle background messages for Stream Chat notifications
 try {
-  messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+  const messaging = getMessaging();
+  setBackgroundMessageHandler(messaging, async (remoteMessage: any) => {
     console.log("🔔 Background message received:", remoteMessage);
 
     // Stream Chat v2 payload format

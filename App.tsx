@@ -68,7 +68,6 @@ function AppContent() {
       </GestureHandlerRootView>
     );
   }
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
@@ -100,22 +99,35 @@ export default function App() {
     throw new Error(error);
   }
 
-  return (
-    <SafeAreaProvider>
-      <SuperwallProvider
-        apiKeys={{
-          ios: superwallApiKeys.ios,
-          android: superwallApiKeys.android,
-        }}
-      >
-        <SuperwallLoaded>
-          <AppProvider>
-            <NotificationProvider>
-              <AppContent />
-            </NotificationProvider>
-          </AppProvider>
-        </SuperwallLoaded>
-      </SuperwallProvider>
-    </SafeAreaProvider>
-  );
+  // Add error boundary for debugging
+  try {
+    return (
+      <SafeAreaProvider>
+        <SuperwallProvider
+          apiKeys={{
+            ios: superwallApiKeys.ios,
+            android: superwallApiKeys.android,
+          }}
+        >
+          <SuperwallLoaded>
+            <AppProvider>
+              <NotificationProvider>
+                <AppContent />
+              </NotificationProvider>
+            </AppProvider>
+          </SuperwallLoaded>
+        </SuperwallProvider>
+      </SafeAreaProvider>
+    );
+  } catch (error) {
+    return (
+      <SafeAreaProvider>
+        <AppProvider>
+          <NotificationProvider>
+            <AppContent />
+          </NotificationProvider>
+        </AppProvider>
+      </SafeAreaProvider>
+    );
+  }
 }
