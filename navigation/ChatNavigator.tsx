@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { TouchableOpacity, Text } from "react-native";
+import { TouchableOpacity, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ChatList from "../screens/ChatList";
 import ChatScreen from "../screens/ChatScreen";
@@ -14,7 +14,7 @@ import {
   useCreateChatClient,
   DeepPartial,
   Theme,
-} from "stream-chat-expo";
+} from "stream-chat-react-native";
 import { streamNotificationService } from "../util/streamNotifService";
 import { NavigationProp } from "@react-navigation/native";
 import ProfileScreen from "../screens/ProfileScreen";
@@ -171,8 +171,10 @@ export default function ChatNavigator() {
     setStreamApiKey,
     setStreamUserToken,
   } = useAppContext();
+
   const [profile, setProfile] = useState<any>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Use pre-loaded credentials from context, fallback to fetching if not available
   const [chatUserToken, setChatUserToken] = useState<string | null>(
@@ -206,6 +208,7 @@ export default function ChatNavigator() {
         setStreamApiKey(apiKey); // Store in context for future use
       } catch (error) {
         console.error("ChatNavigator - Failed to fetch API key:", error);
+        setError("Failed to fetch API key");
       }
     };
 
@@ -225,6 +228,7 @@ export default function ChatNavigator() {
         setStreamUserToken(token); // Store in context for future use
       } catch (error) {
         console.error("ChatNavigator - Failed to fetch chat token:", error);
+        setError("Failed to fetch chat token");
       }
     };
 
@@ -233,7 +237,9 @@ export default function ChatNavigator() {
 
   // Create a memoized user object to avoid recreating on each render
   const user = useMemo(() => {
-    if (!profile || !userId) return { id: "loading", name: "Loading" };
+    if (!profile || !userId) {
+      return { id: "loading", name: "Loading" };
+    }
     return {
       id: userId,
       name: profile.firstName || "User",
@@ -241,16 +247,24 @@ export default function ChatNavigator() {
   }, [profile, userId]);
 
   // ALWAYS call this hook at the top level, with a consistent value
-  const chatClient = useCreateChatClient({
-    apiKey: chatApiKey || "",
-    userData: user,
-    tokenOrProvider: chatUserToken || "",
-  });
+  let chatClient: any = null;
+  try {
+    chatClient = useCreateChatClient({
+      apiKey: chatApiKey || "",
+      userData: user,
+      tokenOrProvider: chatUserToken || "",
+    });
+  } catch (error) {
+    console.error("[DEBUG] ChatNavigator - Error creating chat client:", error);
+    setError("Failed to create chat client");
+  }
 
   // Initialize Stream notifications when chat client is ready
   useEffect(() => {
     const initializeNotifications = async () => {
-      if (!chatClient || !userId) return;
+      if (!chatClient || !userId) {
+        return;
+      }
 
       try {
         // Set the client in the notification service
@@ -303,6 +317,7 @@ export default function ChatNavigator() {
               "ChatNavigator - Invalid profile data format:",
               response
             );
+            setError("Invalid profile data format");
             return;
           }
 
@@ -314,12 +329,15 @@ export default function ChatNavigator() {
               "ChatNavigator - Missing required profile fields:",
               profileData
             );
+            setError("Missing required profile fields");
           }
         } else {
           console.error("ChatNavigator - No data in response:", response);
+          setError("No profile data received");
         }
       } catch (error) {
         console.error("ChatNavigator - Failed to fetch user profile:", error);
+        setError("Failed to fetch user profile");
       } finally {
         setIsLoadingProfile(false);
       }
@@ -327,6 +345,15 @@ export default function ChatNavigator() {
 
     fetchUserProfile();
   }, [userId]);
+
+  // Show error if there's an issue
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text>Error: {error}</Text>
+      </View>
+    );
+  }
 
   // Conditionally render loading or chat UI
   if (isLoadingProfile || !profile) {
