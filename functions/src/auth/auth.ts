@@ -67,17 +67,16 @@ export const signUpWithEmail = functions.https.onCall(
     request: CallableRequest<{
       email: string;
       password: string;
-      firstName: string;
     }>
   ) => {
     try {
-      const { email, password, firstName } = request.data;
+      const { email, password } = request.data;
 
       // Validate input
-      if (!email || !password || !firstName) {
+      if (!email || !password) {
         throw new functions.https.HttpsError(
           "invalid-argument",
-          "Email, password, and first name are required"
+          "Email and password are required"
         );
       }
 
@@ -121,7 +120,6 @@ export const signUpWithEmail = functions.https.onCall(
       const userRecord = await admin.auth().createUser({
         email: normalizedEmail,
         password: password,
-        displayName: firstName,
         emailVerified: false,
       });
 
@@ -134,7 +132,6 @@ export const signUpWithEmail = functions.https.onCall(
           "Account created successfully. Please check your email to verify your account.",
         userId: userRecord.uid,
         email: normalizedEmail,
-        firstName: firstName,
       };
     } catch (error: any) {
       console.error("Error in signUpWithEmail:", error);

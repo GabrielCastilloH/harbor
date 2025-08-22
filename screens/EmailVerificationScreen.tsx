@@ -15,7 +15,7 @@ import { AuthService } from "../networking/AuthService";
 import { useAppContext } from "../context/AppContext";
 
 export default function EmailVerificationScreen({ navigation, route }: any) {
-  const { email, firstName } = route.params || {};
+  const { email } = route.params || {};
   const { setUserId } = useAppContext();
   
   const [isLoading, setIsLoading] = useState(false);

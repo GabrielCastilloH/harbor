@@ -26,11 +26,9 @@ export default function CreateAccountScreen({ navigation }: any) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
-  const [firstNameError, setFirstNameError] = useState("");
 
   const validateForm = (): boolean => {
     let isValid = true;
@@ -39,19 +37,6 @@ export default function CreateAccountScreen({ navigation }: any) {
     setEmailError("");
     setPasswordError("");
     setConfirmPasswordError("");
-    setFirstNameError("");
-
-    // Validate first name
-    if (!firstName.trim()) {
-      setFirstNameError("First name is required");
-      isValid = false;
-    } else if (firstName.trim().length < 2) {
-      setFirstNameError("First name must be at least 2 characters");
-      isValid = false;
-    } else if (firstName.trim().length > 50) {
-      setFirstNameError("First name must be 50 characters or less");
-      isValid = false;
-    }
 
     // Validate email
     if (!email.trim()) {
@@ -137,8 +122,7 @@ export default function CreateAccountScreen({ navigation }: any) {
       // Create account with Cloud Function
       const result = await AuthService.signUpWithEmail(
         normalizedEmail,
-        password,
-        firstName.trim()
+        password
       );
 
       if (result.success) {
@@ -149,14 +133,12 @@ export default function CreateAccountScreen({ navigation }: any) {
           // Navigate to email verification screen
           navigation.navigate("EmailVerification", {
             email: normalizedEmail,
-            firstName: firstName.trim(),
           });
         } catch (signInError: any) {
           console.error("Auto sign-in failed:", signInError);
           // Still navigate to verification screen
           navigation.navigate("EmailVerification", {
             email: normalizedEmail,
-            firstName: firstName.trim(),
           });
         }
       }
@@ -217,24 +199,6 @@ export default function CreateAccountScreen({ navigation }: any) {
             </Text>
 
             <View style={styles.formContainer}>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={[
-                    styles.textInput,
-                    firstNameError ? styles.inputError : null,
-                  ]}
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  placeholder="First name"
-                  placeholderTextColor={Colors.secondary500}
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                  returnKeyType="next"
-                />
-                {firstNameError ? (
-                  <Text style={styles.errorText}>{firstNameError}</Text>
-                ) : null}
-              </View>
 
               <EmailInput
                 value={email}
