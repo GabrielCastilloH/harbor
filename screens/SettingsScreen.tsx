@@ -14,7 +14,6 @@ import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
@@ -87,9 +86,6 @@ export default function SettingsScreen() {
         text: "Sign Out",
         onPress: async () => {
           try {
-            // Sign out from Google Sign-In
-            await GoogleSignin.signOut();
-
             // Sign out from Firebase Auth
             await signOut(auth);
 
