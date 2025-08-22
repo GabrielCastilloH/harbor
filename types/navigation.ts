@@ -13,3 +13,13 @@ export type RootStackParamList = {
     matchId: string;
   };
 };
+
+export type AuthStackParamList = {
+  SignIn: undefined;
+  CreateAccount: undefined;
+  EmailVerification: {
+    email: string;
+    firstName: string;
+  };
+  AccountSetup: undefined;
+};
