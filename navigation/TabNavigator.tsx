@@ -9,8 +9,6 @@ import Colors from "../constants/Colors";
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
-  console.log("[DEBUG] TabNavigator rendering");
-
   return (
     <Tab.Navigator
       screenOptions={{

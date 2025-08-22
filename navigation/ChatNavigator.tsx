@@ -238,24 +238,13 @@ export default function ChatNavigator() {
   // Create a memoized user object to avoid recreating on each render
   const user = useMemo(() => {
     if (!profile || !userId) {
-      console.log("[DEBUG] ChatNavigator - Creating loading user object");
       return { id: "loading", name: "Loading" };
     }
-    console.log("[DEBUG] ChatNavigator - Creating user object:", {
-      id: userId,
-      name: profile.firstName,
-    });
     return {
       id: userId,
       name: profile.firstName || "User",
     };
   }, [profile, userId]);
-
-  console.log("[DEBUG] ChatNavigator - About to create chat client with:", {
-    apiKey: !!chatApiKey,
-    userData: user,
-    tokenOrProvider: !!chatUserToken,
-  });
 
   // ALWAYS call this hook at the top level, with a consistent value
   let chatClient: any = null;
@@ -265,7 +254,6 @@ export default function ChatNavigator() {
       userData: user,
       tokenOrProvider: chatUserToken || "",
     });
-    console.log("[DEBUG] ChatNavigator - Chat client created:", !!chatClient);
   } catch (error) {
     console.error("[DEBUG] ChatNavigator - Error creating chat client:", error);
     setError("Failed to create chat client");
@@ -275,14 +263,9 @@ export default function ChatNavigator() {
   useEffect(() => {
     const initializeNotifications = async () => {
       if (!chatClient || !userId) {
-        console.log("[DEBUG] ChatNavigator - Skipping notification init:", {
-          hasClient: !!chatClient,
-          userId,
-        });
         return;
       }
 
-      console.log("[DEBUG] ChatNavigator - Initializing notifications");
       try {
         // Set the client in the notification service
         streamNotificationService.setClient(chatClient);
@@ -308,13 +291,9 @@ export default function ChatNavigator() {
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!userId) {
-        console.log(
-          "[DEBUG] ChatNavigator - No userId, skipping profile fetch"
-        );
         return;
       }
 
-      console.log("[DEBUG] ChatNavigator - Fetching user profile for:", userId);
       setIsLoadingProfile(true);
       try {
         const response = await UserService.getUserById(userId);
@@ -344,10 +323,6 @@ export default function ChatNavigator() {
 
           // Ensure we have the required fields for the chat user
           if (profileData && profileData.firstName) {
-            console.log(
-              "[DEBUG] ChatNavigator - Profile fetched successfully:",
-              profileData.firstName
-            );
             setProfile(profileData);
           } else {
             console.error(
@@ -373,7 +348,6 @@ export default function ChatNavigator() {
 
   // Show error if there's an issue
   if (error) {
-    console.log("[DEBUG] ChatNavigator - Showing error:", error);
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <Text>Error: {error}</Text>
@@ -383,68 +357,52 @@ export default function ChatNavigator() {
 
   // Conditionally render loading or chat UI
   if (isLoadingProfile || !profile) {
-    console.log("[DEBUG] ChatNavigator - Showing loading screen");
     return <LoadingScreen loadingText="Loading..." />;
   }
 
   if (!chatUserToken || !chatClient) {
-    console.log("[DEBUG] ChatNavigator - Missing chat credentials:", {
-      hasToken: !!chatUserToken,
-      hasClient: !!chatClient,
-    });
     return <LoadingScreen loadingText="Loading..." />;
   }
 
-  console.log("[DEBUG] ChatNavigator - Rendering chat UI");
-
-  try {
-    return (
-      <OverlayProvider value={{ style: theme }}>
-        <Chat client={chatClient}>
-          <Stack.Navigator
-            screenOptions={{
-              headerStyle: { backgroundColor: Colors.primary100 },
-              headerTintColor: Colors.black,
+  return (
+    <OverlayProvider value={{ style: theme }}>
+      <Chat client={chatClient}>
+        <Stack.Navigator
+          screenOptions={{
+            headerStyle: { backgroundColor: Colors.primary100 },
+            headerTintColor: Colors.black,
+          }}
+        >
+          <Stack.Screen
+            name="Chats"
+            component={ChatListWithHeader}
+            options={{
+              headerShown: false,
             }}
-          >
-            <Stack.Screen
-              name="Chats"
-              component={ChatListWithHeader}
-              options={{
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen
-              name="ChatScreen"
-              component={ChatScreen}
-              options={{
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen
-              name="ProfileScreen"
-              component={ProfileScreen}
-              options={{
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen
-              name="ReportScreen"
-              component={ReportScreen}
-              options={{
-                headerShown: false,
-              }}
-            />
-          </Stack.Navigator>
-        </Chat>
-      </OverlayProvider>
-    );
-  } catch (error) {
-    console.error("[DEBUG] ChatNavigator - Error rendering chat UI:", error);
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text>Error rendering chat: {String(error)}</Text>
-      </View>
-    );
-  }
+          />
+          <Stack.Screen
+            name="ChatScreen"
+            component={ChatScreen}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="ProfileScreen"
+            component={ProfileScreen}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="ReportScreen"
+            component={ReportScreen}
+            options={{
+              headerShown: false,
+            }}
+          />
+        </Stack.Navigator>
+      </Chat>
+    </OverlayProvider>
+  );
 }
