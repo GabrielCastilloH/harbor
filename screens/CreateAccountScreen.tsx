@@ -58,10 +58,16 @@ export default function CreateAccountScreen({ navigation }: any) {
       setEmailError("Email is required");
       isValid = false;
     } else {
-      const emailRegex = /^[^\s@]+@cornell\.edu$/i;
-      if (!emailRegex.test(email)) {
-        setEmailError("Please enter a valid Cornell email address");
+      // Reject emails with + symbols to prevent alias abuse
+      if (email.includes('+')) {
+        setEmailError("Email addresses with + symbols are not allowed");
         isValid = false;
+      } else {
+        const emailRegex = /^[^\s@]+@cornell\.edu$/i;
+        if (!emailRegex.test(email)) {
+          setEmailError("Please enter a valid Cornell email address");
+          isValid = false;
+        }
       }
     }
 
@@ -87,6 +93,13 @@ export default function CreateAccountScreen({ navigation }: any) {
     }
 
     return isValid;
+  };
+
+  // Normalize email by removing + alias part
+  const normalizeEmail = (email: string): string => {
+    const [localPart, domain] = email.split('@');
+    const normalizedLocalPart = localPart.split('+')[0]; // Remove everything after +
+    return `${normalizedLocalPart}@${domain}`.toLowerCase();
   };
 
   const validatePassword = (password: string): { isValid: boolean; errors: string[] } => {
@@ -119,9 +132,11 @@ export default function CreateAccountScreen({ navigation }: any) {
     setIsLoading(true);
 
     try {
+      const normalizedEmail = normalizeEmail(email.trim());
+      
       // Create account with Cloud Function
       const result = await AuthService.signUpWithEmail(
-        email.trim(),
+        normalizedEmail,
         password,
         firstName.trim()
       );
@@ -129,18 +144,18 @@ export default function CreateAccountScreen({ navigation }: any) {
       if (result.success) {
         // Sign in the user automatically
         try {
-          await signInWithEmailAndPassword(auth, email.trim(), password);
+          await signInWithEmailAndPassword(auth, normalizedEmail, password);
           
           // Navigate to email verification screen
           navigation.navigate("EmailVerification", {
-            email: email.trim(),
+            email: normalizedEmail,
             firstName: firstName.trim(),
           });
         } catch (signInError: any) {
           console.error("Auto sign-in failed:", signInError);
           // Still navigate to verification screen
           navigation.navigate("EmailVerification", {
-            email: email.trim(),
+            email: normalizedEmail,
             firstName: firstName.trim(),
           });
         }

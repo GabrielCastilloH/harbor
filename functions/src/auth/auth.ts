@@ -13,6 +13,15 @@ const validateCornellEmail = (email: string): boolean => {
 };
 
 /**
+ * Normalizes email by removing + alias part
+ */
+const normalizeEmail = (email: string): string => {
+  const [localPart, domain] = email.split("@");
+  const normalizedLocalPart = localPart.split("+")[0]; // Remove everything after +
+  return `${normalizedLocalPart}@${domain}`.toLowerCase();
+};
+
+/**
  * Validates password strength
  */
 const validatePassword = (
@@ -72,8 +81,11 @@ export const signUpWithEmail = functions.https.onCall(
         );
       }
 
+      // Normalize email to prevent + alias abuse
+      const normalizedEmail = normalizeEmail(email);
+
       // Validate Cornell email
-      if (!validateCornellEmail(email)) {
+      if (!validateCornellEmail(normalizedEmail)) {
         throw new functions.https.HttpsError(
           "invalid-argument",
           "Only Cornell email addresses are allowed"
@@ -89,9 +101,9 @@ export const signUpWithEmail = functions.https.onCall(
         );
       }
 
-      // Check if user already exists
+      // Check if user already exists using normalized email
       try {
-        const existingUser = await admin.auth().getUserByEmail(email);
+        const existingUser = await admin.auth().getUserByEmail(normalizedEmail);
         if (existingUser) {
           throw new functions.https.HttpsError(
             "already-exists",
@@ -105,23 +117,23 @@ export const signUpWithEmail = functions.https.onCall(
         }
       }
 
-      // Create Firebase user
+      // Create Firebase user with normalized email
       const userRecord = await admin.auth().createUser({
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         password: password,
         displayName: firstName,
         emailVerified: false,
       });
 
-      // Send verification email
-      await admin.auth().generateEmailVerificationLink(email.toLowerCase());
+      // Send verification email to normalized email
+      await admin.auth().generateEmailVerificationLink(normalizedEmail);
 
       return {
         success: true,
         message:
           "Account created successfully. Please check your email to verify your account.",
         userId: userRecord.uid,
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         firstName: firstName,
       };
     } catch (error: any) {
@@ -180,16 +192,19 @@ export const signInWithEmail = functions.https.onCall(
         );
       }
 
+      // Normalize email to prevent + alias abuse
+      const normalizedEmail = normalizeEmail(email);
+
       // Validate Cornell email
-      if (!validateCornellEmail(email)) {
+      if (!validateCornellEmail(normalizedEmail)) {
         throw new functions.https.HttpsError(
           "invalid-argument",
           "Only Cornell email addresses are allowed"
         );
       }
 
-      // Get user by email
-      const userRecord = await admin.auth().getUserByEmail(email.toLowerCase());
+      // Get user by normalized email
+      const userRecord = await admin.auth().getUserByEmail(normalizedEmail);
 
       // Check if email is verified
       if (!userRecord.emailVerified) {
@@ -384,17 +399,20 @@ export const resetPassword = functions.https.onCall(
         );
       }
 
+      // Normalize email to prevent + alias abuse
+      const normalizedEmail = normalizeEmail(email);
+
       // Validate Cornell email
-      if (!validateCornellEmail(email)) {
+      if (!validateCornellEmail(normalizedEmail)) {
         throw new functions.https.HttpsError(
           "invalid-argument",
           "Only Cornell email addresses are allowed"
         );
       }
 
-      // Check if user exists
+      // Check if user exists using normalized email
       try {
-        await admin.auth().getUserByEmail(email.toLowerCase());
+        await admin.auth().getUserByEmail(normalizedEmail);
       } catch (error: any) {
         if (error.code === "auth/user-not-found") {
           throw new functions.https.HttpsError(
@@ -405,8 +423,8 @@ export const resetPassword = functions.https.onCall(
         throw error;
       }
 
-      // Send password reset email
-      await admin.auth().generatePasswordResetLink(email.toLowerCase());
+      // Send password reset email to normalized email
+      await admin.auth().generatePasswordResetLink(normalizedEmail);
 
       return {
         success: true,
