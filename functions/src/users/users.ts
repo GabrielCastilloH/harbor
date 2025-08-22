@@ -213,40 +213,40 @@ export const createUser = functions.https.onCall(
 
       // Validate text fields with character limits
       const textFieldValidations = [
-        { field: "aboutMe", maxLength: 300, minLength: 5, name: "about me" },
+        { field: "aboutMe", maxLength: 200, minLength: 5, name: "about me" },
         {
           field: "q1",
-          maxLength: 150,
+          maxLength: 120,
           minLength: 5,
           name: "answer to 'This year, I really want to'",
         },
         {
           field: "q2",
-          maxLength: 150,
+          maxLength: 120,
           minLength: 5,
           name: "answer to 'Together we could'",
         },
         {
           field: "q3",
-          maxLength: 150,
+          maxLength: 120,
           minLength: 5,
           name: "answer to 'Favorite book, movie or song'",
         },
         {
           field: "q4",
-          maxLength: 150,
+          maxLength: 120,
           minLength: 5,
           name: "answer to 'I chose my major because'",
         },
         {
           field: "q5",
-          maxLength: 150,
+          maxLength: 120,
           minLength: 5,
           name: "answer to 'My favorite study spot is'",
         },
         {
           field: "q6",
-          maxLength: 150,
+          maxLength: 120,
           minLength: 5,
           name: "answer to 'Some of my hobbies are'",
         },

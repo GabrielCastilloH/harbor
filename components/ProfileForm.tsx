@@ -100,40 +100,40 @@ export default function ProfileForm({
       name: string;
     }[] = [
       { field: "firstName", maxLength: 50, minLength: 2, name: "first name" },
-      { field: "aboutMe", maxLength: 300, minLength: 5, name: "about me" },
+      { field: "aboutMe", maxLength: 200, minLength: 5, name: "about me" },
       {
         field: "q1",
-        maxLength: 150,
+        maxLength: 120,
         minLength: 5,
         name: "answer to 'This year, I really want to'",
       },
       {
         field: "q2",
-        maxLength: 150,
+        maxLength: 120,
         minLength: 5,
         name: "answer to 'Together we could'",
       },
       {
         field: "q3",
-        maxLength: 150,
+        maxLength: 120,
         minLength: 5,
         name: "answer to 'Favorite book, movie or song'",
       },
       {
         field: "q4",
-        maxLength: 150,
+        maxLength: 120,
         minLength: 5,
         name: "answer to 'I chose my major because'",
       },
       {
         field: "q5",
-        maxLength: 150,
+        maxLength: 120,
         minLength: 5,
         name: "answer to 'My favorite study spot is'",
       },
       {
         field: "q6",
-        maxLength: 150,
+        maxLength: 120,
         minLength: 5,
         name: "answer to 'Some of my hobbies are'",
       },
@@ -306,7 +306,7 @@ export default function ProfileForm({
           <View style={styles.labelContainer}>
             <Text style={styles.label}>About Me</Text>
             <Text style={styles.characterCount}>
-              {profileData.aboutMe?.length || 0}/300
+              {profileData.aboutMe?.length || 0}/200
             </Text>
           </View>
           <TextInput
@@ -321,7 +321,7 @@ export default function ProfileForm({
           <View style={styles.labelContainer}>
             <Text style={styles.label}>This year, I really want to</Text>
             <Text style={styles.characterCount}>
-              {profileData.q1?.length || 0}/150
+              {profileData.q1?.length || 0}/120
             </Text>
           </View>
           <TextInput
@@ -336,7 +336,7 @@ export default function ProfileForm({
           <View style={styles.labelContainer}>
             <Text style={styles.label}>Together we could</Text>
             <Text style={styles.characterCount}>
-              {profileData.q2?.length || 0}/150
+              {profileData.q2?.length || 0}/120
             </Text>
           </View>
           <TextInput
@@ -351,7 +351,7 @@ export default function ProfileForm({
           <View style={styles.labelContainer}>
             <Text style={styles.label}>Favorite book, movie or song</Text>
             <Text style={styles.characterCount}>
-              {profileData.q3?.length || 0}/150
+              {profileData.q3?.length || 0}/120
             </Text>
           </View>
           <TextInput
@@ -366,7 +366,7 @@ export default function ProfileForm({
           <View style={styles.labelContainer}>
             <Text style={styles.label}>I chose my major because...</Text>
             <Text style={styles.characterCount}>
-              {profileData.q4?.length || 0}/150
+              {profileData.q4?.length || 0}/120
             </Text>
           </View>
           <TextInput
@@ -381,7 +381,7 @@ export default function ProfileForm({
           <View style={styles.labelContainer}>
             <Text style={styles.label}>My favorite study spot is</Text>
             <Text style={styles.characterCount}>
-              {profileData.q5?.length || 0}/150
+              {profileData.q5?.length || 0}/120
             </Text>
           </View>
           <TextInput
@@ -396,7 +396,7 @@ export default function ProfileForm({
           <View style={styles.labelContainer}>
             <Text style={styles.label}>Some of my hobbies are</Text>
             <Text style={styles.characterCount}>
-              {profileData.q6?.length || 0}/150
+              {profileData.q6?.length || 0}/120
             </Text>
           </View>
           <TextInput
