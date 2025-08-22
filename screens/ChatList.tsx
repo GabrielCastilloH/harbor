@@ -1,5 +1,5 @@
 import { ChannelList } from "stream-chat-react-native";
-import { ChannelSort, DefaultGenerics } from "stream-chat";
+import { ChannelSort } from "stream-chat";
 import { View, Text } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
@@ -13,7 +13,7 @@ export default function ChatList() {
     members: { $in: [userId] },
   };
 
-  const sort: ChannelSort<DefaultGenerics> = {
+  const sort: ChannelSort = {
     last_message_at: -1 as const,
   };
 
