@@ -348,32 +348,32 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logoContainer: {
-    height: 120,
-    marginTop: Platform.OS === "ios" ? "15%" : "10%",
+    height: 100,
+    marginTop: Platform.OS === "ios" ? "10%" : "8%",
     justifyContent: "center",
   },
   logo: {
-    width: 150,
-    height: 150,
+    width: 120,
+    height: 120,
   },
   title: {
     fontSize: 32,
     fontWeight: "bold",
     color: Colors.primary500,
-    marginTop: Platform.OS === "ios" ? "8%" : "5%",
-    marginBottom: "3%",
+    marginTop: Platform.OS === "ios" ? "5%" : "3%",
+    marginBottom: "2%",
   },
   description: {
     fontSize: 18,
     color: Colors.primary500,
     textAlign: "center",
-    marginBottom: "8%",
+    marginBottom: "6%",
     paddingHorizontal: 20,
   },
   formContainer: {
     width: "100%",
     maxWidth: 300,
-    marginBottom: "5%",
+    marginBottom: "3%",
   },
   signInButton: {
     backgroundColor: Colors.primary500,
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   },
   forgotPasswordButton: {
     alignItems: "center",
-    marginTop: 16,
+    marginTop: 12,
   },
   forgotPasswordText: {
     color: Colors.primary500,
@@ -403,7 +403,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     maxWidth: 300,
-    marginVertical: 20,
+    marginTop: 5,
+    marginBottom: 15,
   },
   dividerLine: {
     flex: 1,
@@ -417,8 +418,8 @@ const styles = StyleSheet.create({
   },
   createAccountButton: {
     backgroundColor: Colors.primary100,
-    paddingVertical: 16,
-    paddingHorizontal: 30,
+    paddingVertical: 14,
+    paddingHorizontal: 25,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
