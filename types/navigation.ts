@@ -19,7 +19,6 @@ export type AuthStackParamList = {
   CreateAccount: undefined;
   EmailVerification: {
     email: string;
-    firstName: string;
   };
   AccountSetup: undefined;
 };
