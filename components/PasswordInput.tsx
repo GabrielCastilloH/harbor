@@ -34,9 +34,11 @@ export default function PasswordInput({
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const validatePassword = (password: string): { isValid: boolean; errors: string[] } => {
+  const validatePassword = (
+    password: string
+  ): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
-    
+
     if (password.length < 8) {
       errors.push("At least 8 characters");
     }
@@ -49,37 +51,15 @@ export default function PasswordInput({
     if (!/\d/.test(password)) {
       errors.push("One number");
     }
-    
+
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
-  };
-
-  const getPasswordStrength = (password: string): { strength: string; color: string } => {
-    if (!password) return { strength: "", color: Colors.secondary500 };
-    
-    const validation = validatePassword(password);
-    const hasLength = password.length >= 8;
-    const hasUpper = /[A-Z]/.test(password);
-    const hasLower = /[a-z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    
-    const criteria = [hasLength, hasUpper, hasLower, hasNumber];
-    const metCriteria = criteria.filter(Boolean).length;
-    
-    if (metCriteria === 0) return { strength: "Very Weak", color: Colors.red };
-    if (metCriteria === 1) return { strength: "Weak", color: Colors.red };
-    if (metCriteria === 2) return { strength: "Fair", color: Colors.secondary500 };
-    if (metCriteria === 3) return { strength: "Good", color: Colors.green };
-    if (metCriteria === 4) return { strength: "Strong", color: Colors.green };
-    
-    return { strength: "", color: Colors.secondary500 };
   };
 
   const isValidPassword = value ? validatePassword(value).isValid : true;
   const showError = error || (value && !isValidPassword);
-  const { strength, color } = getPasswordStrength(value);
 
   return (
     <View style={styles.container}>
@@ -91,10 +71,7 @@ export default function PasswordInput({
         ]}
       >
         <TextInput
-          style={[
-            styles.input,
-            !editable && styles.inputDisabled,
-          ]}
+          style={[styles.input, !editable && styles.inputDisabled]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -116,26 +93,17 @@ export default function PasswordInput({
           onPress={() => setShowPassword(!showPassword)}
           disabled={!editable}
         >
-          <Text style={styles.eyeButtonText}>
-            {showPassword ? "🙈" : "👁️"}
-          </Text>
+          <Text style={styles.eyeButtonText}>{showPassword ? "🙈" : "👁️"}</Text>
         </TouchableOpacity>
       </View>
-      
-      {showStrengthIndicator && value && (
-        <View style={styles.strengthContainer}>
-          <Text style={[styles.strengthText, { color }]}>
-            Password strength: {strength}
-          </Text>
-        </View>
-      )}
-      
+
       {showError && (
         <Text style={styles.errorText}>
-          {error || "Password must be at least 8 characters with uppercase, lowercase, and number"}
+          {error ||
+            "Password must be at least 8 characters with uppercase, lowercase, and number"}
         </Text>
       )}
-      
+
       {value && isValidPassword && !error && (
         <Text style={styles.successText}>✓ Password meets requirements</Text>
       )}
@@ -179,14 +147,6 @@ const styles = StyleSheet.create({
   },
   eyeButtonText: {
     fontSize: 20,
-  },
-  strengthContainer: {
-    marginTop: 4,
-    marginLeft: 4,
-  },
-  strengthText: {
-    fontSize: 14,
-    fontWeight: "500",
   },
   errorText: {
     color: Colors.red,
