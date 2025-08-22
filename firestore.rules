@@ -7,9 +7,10 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Allow users to read other users' profiles for matching
+    // Users can only read their own data - all other user data must go through Cloud Functions
+    // This prevents direct access to sensitive information like emails
     match /users/{userId} {
-      allow read: if request.auth != null;
+      allow read: if false; // Disable direct reads - force use of Cloud Functions
     }
     
     // Allow users to read their own matches

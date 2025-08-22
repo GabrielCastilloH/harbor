@@ -132,12 +132,17 @@ export const getRecommendations = functions.https.onCall(
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
-      // Get all other users
+      // Get all other users (excluding sensitive data)
       const allUsersSnapshot = await db.collection("users").get();
-      const allUsers = allUsersSnapshot.docs.map((doc) => ({
-        uid: doc.id,
-        ...doc.data(),
-      }));
+      const allUsers = allUsersSnapshot.docs.map((doc) => {
+        const userData = doc.data();
+        // Remove sensitive data for security
+        const { images, email, ...userDataWithoutSensitiveInfo } = userData;
+        return {
+          uid: doc.id,
+          ...userDataWithoutSensitiveInfo,
+        };
+      });
 
       // Filter out the current user and users they've already swiped on
       const otherUsers = allUsers.filter((user) => user.uid !== userId);
