@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, AntDesign } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
@@ -26,13 +25,6 @@ interface ProfileFormProps {
   onSave: (images?: string[]) => void;
   onLogout?: () => void;
 }
-
-const truncateForLog = (str: string): string => {
-  if (!str) return "";
-  return str.length > 6
-    ? `${str.substring(0, 3)}...${str.substring(str.length - 3)}`
-    : str;
-};
 
 // Utility to wrap URIs with keys
 function wrapImagesWithKeys(images: any[]) {
