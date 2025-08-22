@@ -32,7 +32,7 @@ export default function CreateAccountScreen({ navigation }: any) {
 
   const validateForm = (): boolean => {
     let isValid = true;
-    
+
     // Clear previous errors
     setEmailError("");
     setPasswordError("");
@@ -44,7 +44,7 @@ export default function CreateAccountScreen({ navigation }: any) {
       isValid = false;
     } else {
       // Reject emails with + symbols to prevent alias abuse
-      if (email.includes('+')) {
+      if (email.includes("+")) {
         setEmailError("Email addresses with + symbols are not allowed");
         isValid = false;
       } else {
@@ -63,7 +63,9 @@ export default function CreateAccountScreen({ navigation }: any) {
     } else {
       const passwordValidation = validatePassword(password);
       if (!passwordValidation.isValid) {
-        setPasswordError(`Password must be at least 8 characters with uppercase, lowercase, and number`);
+        setPasswordError(
+          `Password must be at least 8 characters with uppercase, lowercase, and number`
+        );
         isValid = false;
       }
     }
@@ -82,14 +84,16 @@ export default function CreateAccountScreen({ navigation }: any) {
 
   // Normalize email by removing + alias part
   const normalizeEmail = (email: string): string => {
-    const [localPart, domain] = email.split('@');
-    const normalizedLocalPart = localPart.split('+')[0]; // Remove everything after +
+    const [localPart, domain] = email.split("@");
+    const normalizedLocalPart = localPart.split("+")[0]; // Remove everything after +
     return `${normalizedLocalPart}@${domain}`.toLowerCase();
   };
 
-  const validatePassword = (password: string): { isValid: boolean; errors: string[] } => {
+  const validatePassword = (
+    password: string
+  ): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
-    
+
     if (password.length < 8) {
       errors.push("At least 8 characters");
     }
@@ -102,10 +106,10 @@ export default function CreateAccountScreen({ navigation }: any) {
     if (!/\d/.test(password)) {
       errors.push("One number");
     }
-    
+
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   };
 
@@ -118,7 +122,7 @@ export default function CreateAccountScreen({ navigation }: any) {
 
     try {
       const normalizedEmail = normalizeEmail(email.trim());
-      
+
       // Create account with Cloud Function
       const result = await AuthService.signUpWithEmail(
         normalizedEmail,
@@ -129,7 +133,7 @@ export default function CreateAccountScreen({ navigation }: any) {
         // Sign in the user automatically
         try {
           await signInWithEmailAndPassword(auth, normalizedEmail, password);
-          
+
           // Navigate to email verification screen
           navigation.navigate("EmailVerification", {
             email: normalizedEmail,
@@ -144,16 +148,17 @@ export default function CreateAccountScreen({ navigation }: any) {
       }
     } catch (error: any) {
       console.error("❌ [CREATE ACCOUNT] Error:", error);
-      
+
       let errorMessage = "Failed to create account. Please try again.";
-      
+
       if (error.code === "functions/already-exists") {
         errorMessage = "An account with this email already exists";
       } else if (error.code === "functions/invalid-argument") {
         if (error.message?.includes("Cornell")) {
           errorMessage = "Only Cornell email addresses are allowed";
         } else if (error.message?.includes("Password")) {
-          errorMessage = "Password is too weak. Please use a stronger password.";
+          errorMessage =
+            "Password is too weak. Please use a stronger password.";
         } else {
           errorMessage = "Please check your information and try again";
         }
@@ -182,6 +187,7 @@ export default function CreateAccountScreen({ navigation }: any) {
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.container}>
             <View style={styles.logoContainer}>
@@ -192,14 +198,13 @@ export default function CreateAccountScreen({ navigation }: any) {
                 resizeMode="contain"
               />
             </View>
-            
+
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.description}>
               Join Harbor with your Cornell email
             </Text>
 
             <View style={styles.formContainer}>
-
               <EmailInput
                 value={email}
                 onChangeText={setEmail}
@@ -213,7 +218,6 @@ export default function CreateAccountScreen({ navigation }: any) {
                 onChangeText={setPassword}
                 placeholder="Create a password"
                 error={passwordError}
-                showStrengthIndicator={true}
                 returnKeyType="next"
               />
 
@@ -231,7 +235,9 @@ export default function CreateAccountScreen({ navigation }: any) {
                 onPress={handleCreateAccount}
                 disabled={isLoading}
               >
-                <Text style={styles.createAccountButtonText}>Create Account</Text>
+                <Text style={styles.createAccountButtonText}>
+                  Create Account
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -241,41 +247,46 @@ export default function CreateAccountScreen({ navigation }: any) {
             >
               <Text style={styles.backToSignInText}>Back to Sign In</Text>
             </TouchableOpacity>
+
+            {/* Terms and Privacy Disclaimer */}
+            <View style={styles.termsContainer}>
+              <Text style={styles.termsText}>
+                By creating an account you agree to our{" "}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => {
+                    window.open
+                      ? window.open(
+                          "https://www.tryharbor.app/terms.html",
+                          "_blank"
+                        )
+                      : Linking.openURL("https://www.tryharbor.app/terms.html");
+                  }}
+                >
+                  Terms of Service
+                </Text>{" "}
+                and{" "}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => {
+                    window.open
+                      ? window.open(
+                          "https://www.tryharbor.app/privacy.html",
+                          "_blank"
+                        )
+                      : Linking.openURL(
+                          "https://www.tryharbor.app/privacy.html"
+                        );
+                  }}
+                >
+                  Privacy Policy
+                </Text>
+                .
+              </Text>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Terms and Privacy Disclaimer */}
-      <View style={styles.termsContainer}>
-        <Text style={styles.termsText}>
-          By creating an account you agree to our{" "}
-          <Text
-            style={styles.termsLink}
-            onPress={() => {
-              window.open
-                ? window.open("https://www.tryharbor.app/terms.html", "_blank")
-                : Linking.openURL("https://www.tryharbor.app/terms.html");
-            }}
-          >
-            Terms of Service
-          </Text>{" "}
-          and{" "}
-          <Text
-            style={styles.termsLink}
-            onPress={() => {
-              window.open
-                ? window.open(
-                    "https://www.tryharbor.app/privacy.html",
-                    "_blank"
-                  )
-                : Linking.openURL("https://www.tryharbor.app/privacy.html");
-            }}
-          >
-            Privacy Policy
-          </Text>
-          .
-        </Text>
-      </View>
     </SafeAreaView>
   );
 }
@@ -283,12 +294,14 @@ export default function CreateAccountScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
+    paddingBottom: 40,
   },
   container: {
     flex: 1,
     backgroundColor: Colors.secondary100,
     alignItems: "center",
     padding: 20,
+    minHeight: "100%",
   },
   logoContainer: {
     height: 100,
@@ -366,7 +379,8 @@ const styles = StyleSheet.create({
   },
   termsContainer: {
     alignItems: "center",
-    marginVertical: 20,
+    marginTop: 30,
+    marginBottom: 20,
     paddingHorizontal: 20,
     maxWidth: 300,
     alignSelf: "center",
