@@ -1,14 +1,16 @@
 import React from "react";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import TabNavigator from "./navigation/TabNavigator";
 import SignIn from "./screens/SignIn";
+import CreateAccountScreen from "./screens/CreateAccountScreen";
+import EmailVerificationScreen from "./screens/EmailVerificationScreen";
+import AccountSetupScreen from "./screens/AccountSetupScreen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import { NotificationProvider } from "./context/NotificationContext";
-import AccountSetupScreen from "./screens/AccountSetupScreen";
 
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
 import LoadingScreen from "./components/LoadingScreen";
@@ -17,6 +19,9 @@ import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
 import { SUPERWALL_CONFIG } from "./firebaseConfig";
+
+// Define the authentication stack navigator
+const AuthStack = createNativeStackNavigator();
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component<
@@ -50,14 +55,23 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// Configure Google Sign-In
-GoogleSignin.configure({
-  webClientId:
-    "838717009645-sd8ije9crjfkn8ged999d0lnj2n9msnf.apps.googleusercontent.com",
-  iosClientId:
-    "838717009645-961tv8m765fpj2dk96ecg2epv13igjdu.apps.googleusercontent.com",
-  offlineAccess: true,
-});
+function AuthNavigator() {
+  return (
+    <AuthStack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <AuthStack.Screen name="SignIn" component={SignIn} />
+      <AuthStack.Screen name="CreateAccount" component={CreateAccountScreen} />
+      <AuthStack.Screen
+        name="EmailVerification"
+        component={EmailVerificationScreen}
+      />
+      <AuthStack.Screen name="AccountSetup" component={AccountSetupScreen} />
+    </AuthStack.Navigator>
+  );
+}
 
 function AppContent() {
   const { isAuthenticated, userId, isInitialized, profile, isCheckingProfile } =
@@ -100,17 +114,13 @@ function AppContent() {
       </GestureHandlerRootView>
     );
   }
+
+  // Show authentication screens
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
         <StatusBar style="dark" />
-        {!isAuthenticated ? (
-          <SignIn />
-        ) : userId && userId.trim() !== "" ? (
-          <TabNavigator />
-        ) : (
-          <AccountSetupScreen />
-        )}
+        <AuthNavigator />
       </NavigationContainer>
     </GestureHandlerRootView>
   );

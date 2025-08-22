@@ -10,7 +10,6 @@ import ProfileForm from "../components/ProfileForm";
 import LoadingScreen from "../components/LoadingScreen";
 import { signOut } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { preloadChatCredentials } from "../util/chatPreloader";
 
 export default function AccountSetupScreen({
@@ -65,7 +64,6 @@ export default function AccountSetupScreen({
 
   const handleLogout = async () => {
     try {
-      await GoogleSignin.signOut();
       await signOut(auth);
       setUserId(null);
       setProfile(null);
@@ -83,7 +81,7 @@ export default function AccountSetupScreen({
         if (currentUser) {
           setProfileData((prev) => ({
             ...prev,
-            firstName: currentUser.displayName?.split(" ")[0] || "",
+            firstName: currentUser.displayName || "",
             email: currentUser.email || "",
           }));
         }
@@ -243,6 +241,7 @@ export default function AccountSetupScreen({
         email: currentUser.email || "",
         images: imageFilenames,
       });
+      setIsAuthenticated(true);
     } catch (error) {
       console.error("Error creating profile:", error);
       Alert.alert("Error", "Failed to create profile. Please try again.");
