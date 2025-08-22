@@ -171,16 +171,25 @@ export default function SignIn({ navigation }: any) {
     } catch (error: any) {
       console.error("❌ [SIGN IN] Sign-in error:", error);
 
+      if (
+        error.code === "functions/permission-denied" &&
+        error.message?.includes("verify")
+      ) {
+        // Email not verified - redirect to verification screen
+        const normalizedEmail = normalizeEmail(email.trim());
+        navigation.navigate("EmailVerification", {
+          email: normalizedEmail,
+          fromSignIn: true,
+        });
+        return;
+      }
+
       let errorMessage = "Failed to sign in. Please try again.";
 
       if (error.code === "functions/not-found") {
         errorMessage = "No account found with this email address";
       } else if (error.code === "functions/permission-denied") {
-        if (error.message?.includes("verify")) {
-          errorMessage = "Please verify your email address before signing in";
-        } else {
-          errorMessage = "Incorrect password";
-        }
+        errorMessage = "Incorrect password";
       } else if (error.code === "functions/invalid-argument") {
         errorMessage = "Please check your email and password";
       }
