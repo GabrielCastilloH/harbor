@@ -38,8 +38,19 @@ export default function EmailInput({
   const [isFocused, setIsFocused] = useState(false);
 
   const validateCornellEmail = (email: string): boolean => {
+    // Reject emails with + symbols to prevent alias abuse
+    if (email.includes("+")) {
+      return false;
+    }
     const emailRegex = /^[^\s@]+@cornell\.edu$/i;
     return emailRegex.test(email);
+  };
+
+  // Normalize email by removing + alias part
+  const normalizeEmail = (email: string): string => {
+    const [localPart, domain] = email.split("@");
+    const normalizedLocalPart = localPart.split("+")[0]; // Remove everything after +
+    return `${normalizedLocalPart}@${domain}`.toLowerCase();
   };
 
   const isValidEmail = value ? validateCornellEmail(value) : true;
@@ -55,10 +66,7 @@ export default function EmailInput({
         ]}
       >
         <TextInput
-          style={[
-            styles.input,
-            !editable && styles.inputDisabled,
-          ]}
+          style={[styles.input, !editable && styles.inputDisabled]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -78,10 +86,13 @@ export default function EmailInput({
       </View>
       {showError && (
         <Text style={styles.errorText}>
-          {error || "Please enter a valid Cornell email address"}
+          {error ||
+            (value && value.includes("+")
+              ? "Email addresses with + symbols are not allowed"
+              : "Please enter a valid Cornell email address")}
         </Text>
       )}
-      {value && isValidEmail && !error && (
+      {value && isValidEmail && !error && !value.includes("+") && (
         <Text style={styles.successText}>✓ Valid Cornell email</Text>
       )}
     </View>
