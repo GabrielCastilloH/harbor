@@ -5,12 +5,11 @@ A unique dating app that focuses on meaningful connections through progressive p
 TODO:
 
 - ✅ Add push notifications to the app (and make the you've matched system notification silent)
-- show difference between basic and premium plan on payment page
+
+## Future Enhancements:
+
 - Add the ability to see profiles that swiped on you and swipe on them.
-- Make sure the home screen cards are responsive to different screen sizes and the number of characters is capped at 120 not 150.
-- when you leave the chat the chat is paused is removed on consent screen;
-- change the consent screen message;
-- disable clicking on profile when the match is not active
+- show difference between basic and premium plan on payment page
 
 ## 📋 Validation Rules
 
@@ -39,13 +38,13 @@ All fields must be completed before profile creation:
 | Field                              | Min Length | Max Length | Description                    |
 | ---------------------------------- | ---------- | ---------- | ------------------------------ |
 | First Name                         | 2          | 50         | First name or initial/nickname |
-| About Me                           | 5          | 300        | Personal description           |
-| Q1: "This year, I really want to"  | 5          | 150        | Personal goal                  |
-| Q2: "Together we could"            | 5          | 150        | Shared activity                |
-| Q3: "Favorite book, movie or song" | 5          | 150        | Cultural preference            |
-| Q4: "I chose my major because"     | 5          | 150        | Academic motivation            |
-| Q5: "My favorite study spot is"    | 5          | 150        | Study preference               |
-| Q6: "Some of my hobbies are"       | 5          | 150        | Personal interests             |
+| About Me                           | 5          | 200        | Personal description           |
+| Q1: "This year, I really want to"  | 5          | 120        | Personal goal                  |
+| Q2: "Together we could"            | 5          | 120        | Shared activity                |
+| Q3: "Favorite book, movie or song" | 5          | 120        | Cultural preference            |
+| Q4: "I chose my major because"     | 5          | 120        | Academic motivation            |
+| Q5: "My favorite study spot is"    | 5          | 120        | Study preference               |
+| Q6: "Some of my hobbies are"       | 5          | 120        | Personal interests             |
 
 #### Backend Enforcement
 
