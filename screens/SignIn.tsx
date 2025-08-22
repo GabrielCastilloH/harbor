@@ -246,7 +246,7 @@ export default function SignIn({ navigation }: any) {
 
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.description}>
-              Sign in with your Cornell email to continue
+              Sign in with your Cornell email
             </Text>
 
             <View style={styles.formContainer}>
@@ -284,20 +284,20 @@ export default function SignIn({ navigation }: any) {
               >
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
-            </View>
 
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
-            <TouchableOpacity
-              style={styles.createAccountButton}
-              onPress={handleCreateAccount}
-            >
-              <Text style={styles.createAccountText}>Create Account</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.createAccountButton}
+                onPress={handleCreateAccount}
+              >
+                <Text style={styles.createAccountText}>Create Account</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   },
   forgotPasswordButton: {
     alignItems: "center",
-    marginTop: 12,
+    marginTop: 16,
   },
   forgotPasswordText: {
     color: Colors.primary500,
@@ -403,8 +403,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     maxWidth: 300,
-    marginTop: 5,
-    marginBottom: 15,
+    marginTop: 15,
+    marginVertical: 10,
   },
   dividerLine: {
     flex: 1,
@@ -418,18 +418,19 @@ const styles = StyleSheet.create({
   },
   createAccountButton: {
     backgroundColor: Colors.primary100,
-    paddingVertical: 14,
-    paddingHorizontal: 25,
+    paddingVertical: 16,
+    paddingHorizontal: 30,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: Colors.primary500,
+    marginTop: 8,
   },
   createAccountText: {
     color: Colors.primary500,
     fontWeight: "600",
-    fontSize: 18,
+    fontSize: 16,
   },
   termsContainer: {
     alignItems: "center",
