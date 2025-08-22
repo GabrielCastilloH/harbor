@@ -18,6 +18,38 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
 import { SUPERWALL_CONFIG } from "./firebaseConfig";
 
+// Error Boundary Component
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("App crashed:", error, errorInfo);
+    // Log to your error reporting service here
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <SafeAreaProvider>
+          <LoadingScreen loadingText="Something went wrong. Please restart the app." />
+        </SafeAreaProvider>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 // Configure Google Sign-In
 GoogleSignin.configure({
   webClientId:
@@ -112,7 +144,9 @@ export default function App() {
           <SuperwallLoaded>
             <AppProvider>
               <NotificationProvider>
-                <AppContent />
+                <ErrorBoundary>
+                  <AppContent />
+                </ErrorBoundary>
               </NotificationProvider>
             </AppProvider>
           </SuperwallLoaded>
@@ -124,7 +158,9 @@ export default function App() {
       <SafeAreaProvider>
         <AppProvider>
           <NotificationProvider>
-            <AppContent />
+            <ErrorBoundary>
+              <AppContent />
+            </ErrorBoundary>
           </NotificationProvider>
         </AppProvider>
       </SafeAreaProvider>
