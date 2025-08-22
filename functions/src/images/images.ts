@@ -33,6 +33,46 @@ async function blurImageBuffer(
 }
 
 /**
+ * Basic content moderation check for images
+ */
+async function moderateImage(
+  imageBuffer: Buffer
+): Promise<{ isAppropriate: boolean; reason?: string }> {
+  try {
+    // Basic file size check (prevent extremely large files)
+    if (imageBuffer.length > 10 * 1024 * 1024) {
+      // 10MB limit
+      return { isAppropriate: false, reason: "File too large" };
+    }
+
+    // Basic file type validation
+    const header = imageBuffer.slice(0, 4);
+    const isJPEG =
+      header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+    const isPNG =
+      header[0] === 0x89 &&
+      header[1] === 0x50 &&
+      header[2] === 0x4e &&
+      header[3] === 0x47;
+
+    if (!isJPEG && !isPNG) {
+      return { isAppropriate: false, reason: "Invalid image format" };
+    }
+
+    // TODO: Integrate with Google Cloud Vision API or similar for actual content moderation
+    // For now, return true but log for future implementation
+    console.log(
+      "Image moderation: Basic checks passed, consider implementing AI-based moderation"
+    );
+
+    return { isAppropriate: true };
+  } catch (error) {
+    console.error("Image moderation error:", error);
+    return { isAppropriate: false, reason: "Moderation check failed" };
+  }
+}
+
+/**
  * Uploads image to Firebase Storage with original and 70% blurred versions
  */
 export const uploadImage = functions.https.onCall(
@@ -67,6 +107,15 @@ export const uploadImage = functions.https.onCall(
 
       // Convert to buffer
       const imageBuffer = Buffer.from(imageData, "base64");
+
+      // Moderate image
+      const moderationResult = await moderateImage(imageBuffer);
+      if (!moderationResult.isAppropriate) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          `Image failed moderation: ${moderationResult.reason}`
+        );
+      }
 
       // Generate file paths with _original and _blurred suffixes
       const timestamp = Date.now();

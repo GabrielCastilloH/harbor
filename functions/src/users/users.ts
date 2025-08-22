@@ -164,6 +164,8 @@ export const createUser = functions.https.onCall(
 
       if (!userData.age || userData.age < 18) {
         validationErrors.push("Age must be 18 or older");
+      } else if (userData.age > 100) {
+        validationErrors.push("Please enter a valid age");
       }
 
       if (!userData.gender?.trim()) {
@@ -265,6 +267,44 @@ export const createUser = functions.https.onCall(
           );
         }
       });
+
+      // Additional safety checks for dating apps
+      if (!userData.email?.endsWith("@cornell.edu")) {
+        validationErrors.push("Only Cornell email addresses are allowed");
+      }
+
+      // Validate profile content for inappropriate content
+      const textFields = [
+        userData.firstName,
+        userData.aboutMe,
+        userData.q1,
+        userData.q2,
+        userData.q3,
+        userData.q4,
+        userData.q5,
+        userData.q6,
+      ];
+
+      const inappropriateWords = [
+        "spam",
+        "bot",
+        "fake",
+        "scam",
+        "money",
+        "cash",
+        "payment",
+      ];
+      for (const field of textFields) {
+        if (
+          field &&
+          inappropriateWords.some((word) =>
+            field.toLowerCase().includes(word.toLowerCase())
+          )
+        ) {
+          validationErrors.push("Profile contains inappropriate content");
+          break;
+        }
+      }
 
       // If validation fails, return error
       if (validationErrors.length > 0) {
