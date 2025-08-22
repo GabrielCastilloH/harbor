@@ -1,6 +1,13 @@
 // Import Firebase config first to ensure Firebase is initialized
 import "../firebaseConfig";
-import messaging from "@react-native-firebase/messaging";
+import { 
+  getMessaging, 
+  requestPermission, 
+  getToken, 
+  onTokenRefresh, 
+  hasPermission,
+  AuthorizationStatus 
+} from "@react-native-firebase/messaging";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StreamChat } from "stream-chat";
 
@@ -30,10 +37,11 @@ export class StreamNotificationService {
    */
   async requestPermission(): Promise<boolean> {
     try {
-      const authStatus = await messaging().requestPermission();
+      const messaging = getMessaging();
+      const authStatus = await requestPermission(messaging);
       const enabled =
-        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+        authStatus === AuthorizationStatus.AUTHORIZED ||
+        authStatus === AuthorizationStatus.PROVISIONAL;
 
       if (enabled) {
         console.log("🔔 Notification permission granted:", authStatus);
@@ -58,7 +66,8 @@ export class StreamNotificationService {
 
     try {
       // Get current FCM token
-      const token = await messaging().getToken();
+      const messaging = getMessaging();
+      const token = await getToken(messaging);
 
       // Register device with Stream Chat using the new v2 format
       await this.client.addDevice(
@@ -72,7 +81,7 @@ export class StreamNotificationService {
       await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
 
       // Set up token refresh listener
-      this.unsubscribeTokenRefresh = messaging().onTokenRefresh(
+      this.unsubscribeTokenRefresh = onTokenRefresh(messaging,
         async (newToken) => {
           await this.handleTokenRefresh(newToken, userId);
         }
@@ -155,10 +164,11 @@ export class StreamNotificationService {
    */
   async areNotificationsEnabled(): Promise<boolean> {
     try {
-      const authStatus = await messaging().hasPermission();
+      const messaging = getMessaging();
+      const authStatus = await hasPermission(messaging);
       return (
-        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-        authStatus === messaging.AuthorizationStatus.PROVISIONAL
+        authStatus === AuthorizationStatus.AUTHORIZED ||
+        authStatus === AuthorizationStatus.PROVISIONAL
       );
     } catch (error) {
       console.error("🔔 Error checking notification status:", error);
