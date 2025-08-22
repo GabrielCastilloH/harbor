@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { Channel, MessageInput, MessageList } from "stream-chat-expo";
+import { Channel, MessageInput, MessageList } from "stream-chat-react-native";
 import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
 import {

@@ -31,9 +31,20 @@ function AppContent() {
   const { isAuthenticated, userId, isInitialized, profile, isCheckingProfile } =
     useAppContext();
 
+  console.log("[DEBUG] AppContent render:", {
+    isAuthenticated,
+    userId,
+    isInitialized,
+    isCheckingProfile,
+    hasProfile: !!profile,
+  });
+
   // Show loading screen while Firebase Auth is determining the auth state
   // OR while we're checking the user profile in Firestore
   if (!isInitialized || isCheckingProfile) {
+    console.log(
+      "[DEBUG] Showing loading screen - not initialized or checking profile"
+    );
     return <LoadingScreen loadingText="Signing you in..." />;
   }
 
@@ -45,6 +56,7 @@ function AppContent() {
 
   // Don't render SignIn if user is already authenticated
   if (isAuthenticated && userId && userId.trim() !== "") {
+    console.log("[DEBUG] User authenticated with userId, showing TabNavigator");
     // Render main app
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -59,6 +71,9 @@ function AppContent() {
 
   // Additional check: if user is authenticated but userId is not set yet, don't render SignIn
   if (isAuthenticated && (!userId || userId.trim() === "")) {
+    console.log(
+      "[DEBUG] User authenticated but no userId, showing AccountSetupScreen"
+    );
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
@@ -69,6 +84,7 @@ function AppContent() {
     );
   }
 
+  console.log("[DEBUG] User not authenticated, showing SignIn");
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
@@ -86,6 +102,8 @@ function AppContent() {
 }
 
 export default function App() {
+  console.log("[DEBUG] App component rendering");
+
   const apiKeys = SUPERWALL_CONFIG.apiKeys;
   const [superwallApiKeys, setSuperwallApiKeys] = useState<{
     ios: string;
@@ -94,28 +112,51 @@ export default function App() {
   const [isLoadingSuperwall, setIsLoadingSuperwall] = useState(false);
   const [superwallError, setSuperwallError] = useState<string | null>(null);
 
+  console.log("[DEBUG] Superwall API keys:", {
+    hasKeys: !!superwallApiKeys,
+    hasIosKey: !!superwallApiKeys?.ios,
+    hasAndroidKey: !!superwallApiKeys?.android,
+  });
+
   // Ensure we have API keys before proceeding
   if (!superwallApiKeys || !superwallApiKeys.ios || !superwallApiKeys.android) {
     const error = "Superwall API keys are missing or invalid";
+    console.error("[DEBUG] Superwall API keys error:", error);
     throw new Error(error);
   }
 
-  return (
-    <SafeAreaProvider>
-      <SuperwallProvider
-        apiKeys={{
-          ios: superwallApiKeys.ios,
-          android: superwallApiKeys.android,
-        }}
-      >
-        <SuperwallLoaded>
-          <AppProvider>
-            <NotificationProvider>
-              <AppContent />
-            </NotificationProvider>
-          </AppProvider>
-        </SuperwallLoaded>
-      </SuperwallProvider>
-    </SafeAreaProvider>
-  );
+  console.log("[DEBUG] Rendering App with SuperwallProvider");
+
+  // Add error boundary for debugging
+  try {
+    return (
+      <SafeAreaProvider>
+        <SuperwallProvider
+          apiKeys={{
+            ios: superwallApiKeys.ios,
+            android: superwallApiKeys.android,
+          }}
+        >
+          <SuperwallLoaded>
+            <AppProvider>
+              <NotificationProvider>
+                <AppContent />
+              </NotificationProvider>
+            </AppProvider>
+          </SuperwallLoaded>
+        </SuperwallProvider>
+      </SafeAreaProvider>
+    );
+  } catch (error) {
+    console.error("[DEBUG] Error in App component:", error);
+    return (
+      <SafeAreaProvider>
+        <AppProvider>
+          <NotificationProvider>
+            <AppContent />
+          </NotificationProvider>
+        </AppProvider>
+      </SafeAreaProvider>
+    );
+  }
 }

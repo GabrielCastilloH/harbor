@@ -1,4 +1,4 @@
-import { ChannelList } from "stream-chat-expo";
+import { ChannelList } from "stream-chat-react-native";
 import { ChannelSort, DefaultGenerics } from "stream-chat";
 import { View, Text } from "react-native";
 import { useNavigation } from "@react-navigation/native";
