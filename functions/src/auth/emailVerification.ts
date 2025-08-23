@@ -184,7 +184,7 @@ export const sendVerificationCode = functions.https.onCall(
       console.log("📧 [VERIFICATION] Mailgun API response:", result);
 
       console.log(`✅ [VERIFICATION] Verification code sent to ${email}`);
-      return { success: true };
+      return { success: true, expiresAt: expiresAt };
     } catch (error: any) {
       console.error(
         "📧 [VERIFICATION] Error sending verification code:",
