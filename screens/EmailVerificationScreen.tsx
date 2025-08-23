@@ -7,13 +7,14 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "../constants/Colors";
 import LoadingScreen from "../components/LoadingScreen";
 import { auth } from "../firebaseConfig";
-import { sendEmailVerification } from "firebase/auth";
 import { useAppContext } from "../context/AppContext";
+import { AuthService } from "../networking/AuthService";
 
 export default function EmailVerificationScreen({ navigation, route }: any) {
   const { currentUser, refreshAuthState } = useAppContext(); // Get currentUser and refreshAuthState from context
@@ -25,14 +26,13 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   );
 
   const [isResending, setIsResending] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
-  const [lastResendTime, setLastResendTime] = useState<number | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
   const [countdown, setCountdown] = useState<number>(0);
 
-  // Start countdown timer when screen first loads (user just created account)
+  // Send initial verification code when screen first loads
   useEffect(() => {
-    // Start countdown timer (2 minutes and 30 seconds = 150 seconds)
-    setCountdown(150);
+    handleResendEmail();
   }, []);
 
   // Countdown timer effect
@@ -67,53 +67,40 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   // Check if resend button should be disabled
   const isResendDisabled = countdown > 0 || isResending;
 
-  const handleCheckVerification = async () => {
-    setIsChecking(true);
+  const handleVerifyCode = async () => {
+    if (verificationCode.length !== 6) {
+      Alert.alert(
+        "Invalid Code",
+        "Please enter the 6-digit verification code."
+      );
+      return;
+    }
+
+    setIsVerifying(true);
     try {
-      if (currentUser) {
-        console.log(
-          "📧 [EMAIL VERIFICATION] Before reload - emailVerified:",
-          currentUser.emailVerified
-        );
-        await currentUser.reload();
-        // Get the updated user object after reload
-        const updatedUser = auth.currentUser;
-        console.log(
-          "📧 [EMAIL VERIFICATION] After reload - emailVerified:",
-          updatedUser?.emailVerified
-        );
+      await AuthService.verifyVerificationCode(verificationCode);
+      Alert.alert("Success", "Your email is now verified! Redirecting...");
 
-        if (updatedUser && updatedUser.emailVerified) {
-          Alert.alert("Success", "Your email is now verified! Redirecting...");
-
-          // Call the new function to trigger a state update in the AppContext
-          await refreshAuthState(updatedUser);
-
-          // The AppContext's state change will handle navigation automatically
-        } else {
-          Alert.alert(
-            "Still Not Verified",
-            "Please check your email and click the verification link."
-          );
-        }
+      // Reload user to get updated emailVerified status
+      await currentUser?.reload();
+      const updatedUser = auth.currentUser;
+      if (updatedUser) {
+        await refreshAuthState(updatedUser);
       }
-    } catch (error) {
-      console.error("Error checking verification:", error);
+    } catch (error: any) {
+      console.error("Error verifying code:", error);
       Alert.alert(
         "Error",
-        "Failed to check verification status. Please try again."
+        "Failed to verify code. Please check your code and try again."
       );
     } finally {
-      setIsChecking(false);
+      setIsVerifying(false);
     }
   };
 
   const handleResendEmail = async () => {
     if (!currentUser) {
-      Alert.alert(
-        "Cannot Resend",
-        "You must be signed in to resend the email."
-      );
+      Alert.alert("Cannot Resend", "You must be signed in to resend the code.");
       return;
     }
 
@@ -124,16 +111,15 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
     setIsResending(true);
     try {
-      await sendEmailVerification(currentUser);
-      setLastResendTime(Date.now());
+      await AuthService.sendVerificationCode(currentUser.email!);
       // Start countdown timer (2 minutes and 30 seconds = 150 seconds)
       setCountdown(150);
       Alert.alert(
-        "Email Sent",
-        "Verification email has been resent. Please check your inbox."
+        "Code Sent",
+        "A new verification code has been sent to your email."
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to resend email.");
+      Alert.alert("Error", "Failed to resend code.");
     } finally {
       setIsResending(false);
     }
@@ -164,27 +150,36 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
           <Text style={styles.title}>Check Your Email</Text>
 
           <Text style={styles.description}>
-            We sent a verification link to:
+            We sent a verification code to:
           </Text>
 
           <Text style={styles.emailText}>{email}</Text>
 
           <Text style={styles.instructions}>
-            Click the link in your email to verify your account and continue to
-            Harbor.
+            Enter the 6-digit code from the email below:
           </Text>
+
+          <TextInput
+            style={styles.codeInput}
+            value={verificationCode}
+            onChangeText={setVerificationCode}
+            keyboardType="number-pad"
+            maxLength={6}
+            placeholder="XXXXXX"
+            placeholderTextColor={Colors.secondary500}
+          />
 
           {/* AppContext will handle navigation automatically when email is verified */}
         </View>
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={[styles.checkButton, isChecking && styles.buttonDisabled]}
-            onPress={handleCheckVerification}
-            disabled={isChecking}
+            style={[styles.checkButton, isVerifying && styles.buttonDisabled]}
+            onPress={handleVerifyCode}
+            disabled={isVerifying}
           >
             <Text style={styles.checkButtonText}>
-              {isChecking ? "Checking..." : "Check Verification Status"}
+              {isVerifying ? "Verifying..." : "Verify Code"}
             </Text>
           </TouchableOpacity>
 
@@ -201,7 +196,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
                 ? "Sending..."
                 : countdown > 0
                 ? `Resend in ${formatCountdown(countdown)}`
-                : "Resend Email"}
+                : "Resend Code"}
             </Text>
           </TouchableOpacity>
 
@@ -215,7 +210,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
         <View style={styles.helpContainer}>
           <Text style={styles.helpText}>
-            Didn't receive the email? Check your spam folder or try resending.
+            Didn't receive the code? Check your spam folder or try resending.
           </Text>
         </View>
       </View>
@@ -361,5 +356,18 @@ const styles = StyleSheet.create({
     color: Colors.secondary500,
     textAlign: "center",
     lineHeight: 20,
+  },
+  codeInput: {
+    height: 50,
+    width: 200,
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    borderColor: Colors.primary500,
+    borderWidth: 2,
+    borderRadius: 8,
+    marginTop: 20,
+    color: Colors.primary500,
+    backgroundColor: Colors.secondary100,
   },
 });

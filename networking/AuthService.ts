@@ -18,4 +18,34 @@ export class AuthService {
       throw error;
     }
   }
+
+  static async sendVerificationCode(email: string) {
+    try {
+      const sendVerificationCode = httpsCallable(
+        functions,
+        "authFunctions-sendVerificationCode"
+      );
+      const result = await sendVerificationCode({ email });
+      const data = result.data as any;
+      return data;
+    } catch (error) {
+      console.error("AuthService - Error sending verification code:", error);
+      throw error;
+    }
+  }
+
+  static async verifyVerificationCode(code: string) {
+    try {
+      const verifyVerificationCode = httpsCallable(
+        functions,
+        "authFunctions-verifyVerificationCode"
+      );
+      const result = await verifyVerificationCode({ code });
+      const data = result.data as any;
+      return data;
+    } catch (error) {
+      console.error("AuthService - Error verifying code:", error);
+      throw error;
+    }
+  }
 }
