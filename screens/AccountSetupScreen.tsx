@@ -18,7 +18,7 @@ export default function AccountSetupScreen({
   const {
     setUserId,
     setProfile,
-    setIsAuthenticated,
+
     setStreamApiKey,
     setStreamUserToken,
   } = useAppContext();
@@ -67,7 +67,6 @@ export default function AccountSetupScreen({
       await signOut(auth);
       setUserId(null);
       setProfile(null);
-      setIsAuthenticated(false);
       await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
     } catch (error) {
       // Handle logout error silently
@@ -241,7 +240,6 @@ export default function AccountSetupScreen({
         email: currentUser.email || "",
         images: imageFilenames,
       });
-      setIsAuthenticated(true);
     } catch (error) {
       console.error("Error creating profile:", error);
       Alert.alert("Error", "Failed to create profile. Please try again.");
