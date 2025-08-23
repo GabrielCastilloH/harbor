@@ -88,6 +88,20 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         console.log("✅ [APP CONTEXT] User signed in");
         setCurrentUser(user);
 
+        // Force token refresh to get accurate email verification status
+        console.log(
+          "🔄 [APP CONTEXT] Forcing token refresh to check email verification"
+        );
+        try {
+          await user.reload();
+          console.log(
+            "✅ [APP CONTEXT] Token refreshed, emailVerified:",
+            user.emailVerified
+          );
+        } catch (error) {
+          console.error("❌ [APP CONTEXT] Error refreshing token:", error);
+        }
+
         // Only consider user authenticated if email is verified
         if (user.emailVerified) {
           console.log(

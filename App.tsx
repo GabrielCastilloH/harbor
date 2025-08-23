@@ -56,17 +56,28 @@ class ErrorBoundary extends React.Component<
 }
 
 function AuthNavigator() {
+  const { currentUser } = useAppContext();
+
+  // If user is signed in but not verified, start with EmailVerification
+  const initialRouteName =
+    currentUser && !currentUser.emailVerified ? "EmailVerification" : "SignIn";
+
   return (
     <AuthStack.Navigator
       screenOptions={{
         headerShown: false,
       }}
+      initialRouteName={initialRouteName}
     >
       <AuthStack.Screen name="SignIn" component={SignIn} />
       <AuthStack.Screen name="CreateAccount" component={CreateAccountScreen} />
       <AuthStack.Screen
         name="EmailVerification"
         component={EmailVerificationScreen}
+        initialParams={{
+          email: currentUser?.email || "",
+          fromSignIn: false,
+        }}
       />
       <AuthStack.Screen name="AccountSetup" component={AccountSetupScreen} />
     </AuthStack.Navigator>
@@ -118,10 +129,7 @@ function AppContent() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
           <StatusBar style="dark" />
-          <EmailVerificationScreen
-            route={{ params: { email: currentUser.email, fromSignIn: false } }}
-            navigation={null}
-          />
+          <AuthNavigator />
         </NavigationContainer>
       </GestureHandlerRootView>
     );
