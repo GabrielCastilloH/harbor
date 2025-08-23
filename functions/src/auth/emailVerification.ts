@@ -129,13 +129,13 @@ export const sendVerificationCode = functions.https.onCall(
         subject: "Your Harbor Verification Code",
         text: `Hello,\n\nYour verification code for Harbor is: ${code}\n\nThis code is valid for 5 minutes.\n\nIf you did not request this verification code, please ignore this email.`,
         html: `
-          <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #4CAF50; margin-bottom: 30px;">Harbor</h1>
-            <p style="font-size: 18px; color: #333; margin-bottom: 20px;">Your verification code is:</p>
-            <h2 style="font-size: 36px; font-weight: bold; color: #333; letter-spacing: 5px; padding: 15px; border: 2px dashed #ccc; display: inline-block; border-radius: 8px; background-color: #f9f9f9;">${code}</h2>
-            <p style="font-size: 14px; color: #777; margin-top: 20px;">This code is valid for 5 minutes.</p>
-            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-            <p style="font-size: 12px; color: #999;">If you did not request this verification code, please ignore this email.</p>
+          <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; max-width: 600px; margin: 0 auto; background-color: #FeFeFe;">
+            <h1 style="color: #1299a3; margin-bottom: 30px; font-size: 32px; font-weight: bold;">Harbor</h1>
+            <p style="font-size: 18px; color: #231f20; margin-bottom: 20px;">Your verification code is:</p>
+            <h2 style="font-size: 36px; font-weight: bold; color: #1299a3; letter-spacing: 5px; padding: 20px; border: 2px solid #1299a3; display: inline-block; border-radius: 12px; background-color: #e8f6f7; margin: 20px 0;">${code}</h2>
+            <p style="font-size: 14px; color: #a7b3b1; margin-top: 20px;">This code is valid for 5 minutes.</p>
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #edf3f3;">
+            <p style="font-size: 12px; color: #a7b3b1;">If you did not request this verification code, please ignore this email.</p>
           </div>
         `,
       };
@@ -293,14 +293,14 @@ export const sendTestEmail = functions.https.onCall(
         subject: "🧪 Harbor Test Email",
         text: `Hello Gabriel,\n\nThis is a test email from Harbor to verify that the Mailgun integration is working correctly.\n\nTimestamp: ${new Date().toISOString()}\n\nIf you receive this, the email system is working! 🎉`,
         html: `
-          <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #4CAF50; margin-bottom: 30px;">🧪 Harbor Test Email</h1>
-            <p style="font-size: 18px; color: #333; margin-bottom: 20px;">Hello Gabriel,</p>
-            <p style="font-size: 16px; color: #666; margin-bottom: 20px;">This is a test email from Harbor to verify that the Mailgun integration is working correctly.</p>
-            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-              <p style="font-size: 14px; color: #777; margin: 0;"><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
+          <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; max-width: 600px; margin: 0 auto; background-color: #FeFeFe;">
+            <h1 style="color: #1299a3; margin-bottom: 30px; font-size: 32px; font-weight: bold;">🧪 Harbor Test Email</h1>
+            <p style="font-size: 18px; color: #231f20; margin-bottom: 20px;">Hello Gabriel,</p>
+            <p style="font-size: 16px; color: #a7b3b1; margin-bottom: 20px;">This is a test email from Harbor to verify that the Mailgun integration is working correctly.</p>
+            <div style="background-color: #e8f6f7; padding: 15px; border-radius: 12px; margin: 20px 0; border: 1px solid #1299a3;">
+              <p style="font-size: 14px; color: #231f20; margin: 0;"><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
             </div>
-            <p style="font-size: 16px; color: #4CAF50; font-weight: bold;">If you receive this, the email system is working! 🎉</p>
+            <p style="font-size: 16px; color: #1299a3; font-weight: bold;">If you receive this, the email system is working! 🎉</p>
           </div>
         `,
       };
