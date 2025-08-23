@@ -216,16 +216,28 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
     setIsVerifying(true);
     try {
+      console.log("🔍 [EMAIL VERIFICATION] Verifying code:", verificationCode);
       await AuthService.verifyVerificationCode(verificationCode);
+      console.log("✅ [EMAIL VERIFICATION] Code verified successfully");
+
       Alert.alert("Success", "Your email is now verified! Redirecting...");
 
-      // Reload user to get updated emailVerified status
+      // Force reload user to get updated emailVerified status
+      console.log("🔄 [EMAIL VERIFICATION] Reloading user...");
       await currentUser?.reload();
       const updatedUser = auth.currentUser;
+      console.log(
+        "🔍 [EMAIL VERIFICATION] Updated user emailVerified:",
+        updatedUser?.emailVerified
+      );
+
       if (updatedUser) {
+        console.log("🔄 [EMAIL VERIFICATION] Refreshing auth state...");
         await refreshAuthState(updatedUser);
+        console.log("✅ [EMAIL VERIFICATION] Auth state refreshed");
       }
     } catch (error: any) {
+      console.error("❌ [EMAIL VERIFICATION] Error verifying code:", error);
       console.error("Error verifying code:", error);
 
       // Handle expired code specifically
