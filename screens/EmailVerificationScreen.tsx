@@ -31,15 +31,30 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [countdown, setCountdown] = useState<number>(0);
+  const [initialEmailSent, setInitialEmailSent] = useState(false);
 
-  // Send initial verification code when screen first loads
+  // Use a single useEffect to handle the initial email send
+  // It waits until currentUser is available and we haven't sent an email yet
   useEffect(() => {
-    if (currentUser) {
-      handleResendEmail(true); // Pass true for initial call
-      // Start countdown timer (2 minutes = 120 seconds)
-      setCountdown(120);
-    }
-  }, [currentUser]);
+    const sendInitialEmail = async () => {
+      if (currentUser && !initialEmailSent) {
+        try {
+          // Wait for the auth token to be available
+          const idTokenResult = await currentUser.getIdTokenResult(true);
+          if (idTokenResult.token) {
+            console.log(
+              "✅ [EMAIL VERIFICATION] Current user and token are ready. Sending initial verification code."
+            );
+            handleResendEmail(true);
+            setInitialEmailSent(true);
+          }
+        } catch (error) {
+          console.error("❌ [EMAIL VERIFICATION] Error getting token:", error);
+        }
+      }
+    };
+    sendInitialEmail();
+  }, [currentUser, initialEmailSent]);
 
   // Countdown timer effect
   useEffect(() => {
@@ -127,6 +142,10 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
         );
       }
     } catch (error) {
+      console.error(
+        "❌ [EMAIL VERIFICATION] Error sending verification code:",
+        error
+      );
       if (!isInitialCall) {
         Alert.alert("Error", "Failed to resend code.");
       }
