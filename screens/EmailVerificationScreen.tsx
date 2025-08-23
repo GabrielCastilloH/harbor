@@ -33,6 +33,8 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   // Send initial verification code when screen first loads
   useEffect(() => {
     handleResendEmail();
+    // Start countdown timer (2 minutes = 120 seconds)
+    setCountdown(120);
   }, []);
 
   // Countdown timer effect
@@ -112,8 +114,8 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
     setIsResending(true);
     try {
       await AuthService.sendVerificationCode(currentUser.email!);
-      // Start countdown timer (2 minutes and 30 seconds = 150 seconds)
-      setCountdown(150);
+      // Start countdown timer (2 minutes = 120 seconds)
+      setCountdown(120);
       Alert.alert(
         "Code Sent",
         "A new verification code has been sent to your email."
