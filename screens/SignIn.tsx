@@ -47,16 +47,6 @@ export default function SignIn({ navigation }: any) {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
-  // If user is already authenticated or has a current user, don't show SignIn screen
-  if (isAuthenticated || currentUser) {
-    return null;
-  }
-
-  // Additional check: if we have a userId in context, don't show SignIn screen
-  if (userId && userId.trim() !== "") {
-    return null;
-  }
-
   // Only clean up auth state if user is not already authenticated
   useEffect(() => {
     if (!isAuthenticated) {
@@ -92,6 +82,16 @@ export default function SignIn({ navigation }: any) {
     setStreamApiKey,
     setStreamUserToken,
   ]);
+
+  // If user is already authenticated or has a current user, don't show SignIn screen
+  if (isAuthenticated || currentUser) {
+    return null;
+  }
+
+  // Additional check: if we have a userId in context, don't show SignIn screen
+  if (userId && userId.trim() !== "") {
+    return null;
+  }
 
   const validateForm = (): boolean => {
     let isValid = true;
@@ -152,8 +152,15 @@ export default function SignIn({ navigation }: any) {
 
       const user = userCredential.user;
 
-      // Reload user to get latest verification status
+      // Force token refresh to get accurate verification status
+      console.log(
+        "🔄 [SIGN IN] Forcing token refresh to check email verification"
+      );
       await user.reload();
+      console.log(
+        "✅ [SIGN IN] Token refreshed, emailVerified:",
+        user.emailVerified
+      );
 
       // Check if email is verified
       if (!user.emailVerified) {
