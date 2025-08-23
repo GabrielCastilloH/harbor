@@ -17,12 +17,9 @@ import Colors from "../constants/Colors";
 import LoadingScreen from "../components/LoadingScreen";
 import EmailInput from "../components/EmailInput";
 import PasswordInput from "../components/PasswordInput";
-import {
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-  signOut,
-} from "firebase/auth";
+import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
+import { AuthService } from "../networking/AuthService";
 
 export default function CreateAccountScreen({ navigation }: any) {
   const [isLoading, setIsLoading] = useState(false);
@@ -146,10 +143,10 @@ export default function CreateAccountScreen({ navigation }: any) {
         userCredential.user.emailVerified
       );
 
-      // Send verification email
-      console.log("📧 [CREATE ACCOUNT] Sending verification email...");
-      await sendEmailVerification(userCredential.user);
-      console.log("✅ [CREATE ACCOUNT] Verification email sent successfully");
+      // Send verification code using new system
+      console.log("📧 [CREATE ACCOUNT] Sending verification code...");
+      await AuthService.sendVerificationCode(normalizedEmail);
+      console.log("✅ [CREATE ACCOUNT] Verification code sent successfully");
 
       // Don't sign out - let the user remain signed in with unverified email
       // The App.tsx logic will handle navigation to EmailVerificationScreen
