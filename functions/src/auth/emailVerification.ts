@@ -70,7 +70,7 @@ export const sendVerificationCode = functions.https.onCall(
 
       // Get Mailgun API key
       const apiKey = await getMailgunApiKey();
-      const domain = "sandboxfc147ea9963d4fbd8e90f2d49891c3a5.mailgun.org"; // Use sandbox domain for testing
+      const domain = "tryharbor.app"; // Use verified domain
 
       // Initialize Mailgun
       const mailgun = new Mailgun(formData);
