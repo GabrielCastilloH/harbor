@@ -8,6 +8,8 @@ import {
   Alert,
   Platform,
   TextInput,
+  KeyboardAvoidingView,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "../constants/Colors";
@@ -134,93 +136,112 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.secondary100 }}>
-      <View style={styles.container}>
-        <View style={styles.logoContainer}>
-          <Image
-            tintColor={Colors.primary500}
-            source={require("../assets/logo.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.container}>
+            <View style={styles.logoContainer}>
+              <Image
+                tintColor={Colors.primary500}
+                source={require("../assets/logo.png")}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
 
-        <View style={styles.contentContainer}>
-          <View style={styles.iconContainer}>
-            <Text style={styles.icon}>📧</Text>
+            <View style={styles.contentContainer}>
+              <View style={styles.iconContainer}>
+                <Text style={styles.icon}>📧</Text>
+              </View>
+
+              <Text style={styles.title}>Check Your Email</Text>
+
+              <Text style={styles.description}>
+                We sent a verification code to:
+              </Text>
+
+              <Text style={styles.emailText}>{email}</Text>
+
+              <Text style={styles.instructions}>
+                Enter the 6-digit code from the email below:
+              </Text>
+
+              <TextInput
+                style={styles.codeInput}
+                value={verificationCode}
+                onChangeText={setVerificationCode}
+                keyboardType="number-pad"
+                maxLength={6}
+                placeholder="XXXXXX"
+                placeholderTextColor={Colors.secondary500}
+              />
+
+              {/* AppContext will handle navigation automatically when email is verified */}
+            </View>
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.checkButton,
+                  isVerifying && styles.buttonDisabled,
+                ]}
+                onPress={handleVerifyCode}
+                disabled={isVerifying}
+              >
+                <Text style={styles.checkButtonText}>
+                  {isVerifying ? "Verifying..." : "Verify Code"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.resendButton,
+                  isResendDisabled && styles.buttonDisabled,
+                ]}
+                onPress={handleResendEmail}
+                disabled={isResendDisabled}
+              >
+                <Text style={styles.resendButtonText}>
+                  {isResending
+                    ? "Sending..."
+                    : countdown > 0
+                    ? `Resend in ${formatCountdown(countdown)}`
+                    : "Resend Code"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={handleBackToSignIn}
+              >
+                <Text style={styles.backButtonText}>Back to Sign In</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.helpContainer}>
+              <Text style={styles.helpText}>
+                Didn't receive the code? Check your spam folder or try
+                resending.
+              </Text>
+            </View>
           </View>
-
-          <Text style={styles.title}>Check Your Email</Text>
-
-          <Text style={styles.description}>
-            We sent a verification code to:
-          </Text>
-
-          <Text style={styles.emailText}>{email}</Text>
-
-          <Text style={styles.instructions}>
-            Enter the 6-digit code from the email below:
-          </Text>
-
-          <TextInput
-            style={styles.codeInput}
-            value={verificationCode}
-            onChangeText={setVerificationCode}
-            keyboardType="number-pad"
-            maxLength={6}
-            placeholder="XXXXXX"
-            placeholderTextColor={Colors.secondary500}
-          />
-
-          {/* AppContext will handle navigation automatically when email is verified */}
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.checkButton, isVerifying && styles.buttonDisabled]}
-            onPress={handleVerifyCode}
-            disabled={isVerifying}
-          >
-            <Text style={styles.checkButtonText}>
-              {isVerifying ? "Verifying..." : "Verify Code"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.resendButton,
-              isResendDisabled && styles.buttonDisabled,
-            ]}
-            onPress={handleResendEmail}
-            disabled={isResendDisabled}
-          >
-            <Text style={styles.resendButtonText}>
-              {isResending
-                ? "Sending..."
-                : countdown > 0
-                ? `Resend in ${formatCountdown(countdown)}`
-                : "Resend Code"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBackToSignIn}
-          >
-            <Text style={styles.backButtonText}>Back to Sign In</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.helpContainer}>
-          <Text style={styles.helpText}>
-            Didn't receive the code? Check your spam folder or try resending.
-          </Text>
-        </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.secondary100,
