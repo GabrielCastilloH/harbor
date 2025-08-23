@@ -19,6 +19,9 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   const { email, fromSignIn } = route.params || {};
   const { setUserId } = useAppContext();
 
+  console.log("📧 [EMAIL VERIFICATION] Screen loaded with email:", email);
+  console.log("📧 [EMAIL VERIFICATION] fromSignIn:", fromSignIn);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -29,18 +32,36 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
   // Listen for auth state changes to detect email verification
   useEffect(() => {
+    console.log("📧 [EMAIL VERIFICATION] Setting up auth state listener");
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log(
+        "📧 [EMAIL VERIFICATION] Auth state changed - user:",
+        user?.uid
+      );
+      console.log("📧 [EMAIL VERIFICATION] User email:", user?.email);
+      console.log(
+        "📧 [EMAIL VERIFICATION] Email verified:",
+        user?.emailVerified
+      );
+
       if (user && user.email === email && user.emailVerified) {
+        console.log("✅ [EMAIL VERIFICATION] Email verified! Navigating...");
         setVerificationStatus("verified");
         setLastChecked(new Date());
 
         // Navigate based on where user came from
         setTimeout(() => {
           if (fromSignIn) {
+            console.log(
+              "🧭 [EMAIL VERIFICATION] Navigating to HomeScreen (from sign in)"
+            );
             // User came from sign in - they should already be authenticated
             // Just go back to main app
             navigation.replace("HomeScreen");
           } else {
+            console.log(
+              "🧭 [EMAIL VERIFICATION] Navigating to AccountSetup (from account creation)"
+            );
             // User came from account creation - go to account setup
             navigation.replace("AccountSetup");
           }
