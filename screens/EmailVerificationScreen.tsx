@@ -34,10 +34,12 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
   // Send initial verification code when screen first loads
   useEffect(() => {
-    handleResendEmail();
-    // Start countdown timer (2 minutes = 120 seconds)
-    setCountdown(120);
-  }, []);
+    if (currentUser) {
+      handleResendEmail(true); // Pass true for initial call
+      // Start countdown timer (2 minutes = 120 seconds)
+      setCountdown(120);
+    }
+  }, [currentUser]);
 
   // Countdown timer effect
   useEffect(() => {
@@ -102,14 +104,14 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
     }
   };
 
-  const handleResendEmail = async () => {
+  const handleResendEmail = async (isInitialCall = false) => {
     if (!currentUser) {
       Alert.alert("Cannot Resend", "You must be signed in to resend the code.");
       return;
     }
 
-    // Check if countdown is still active
-    if (countdown > 0) {
+    // Check if countdown is still active (but allow initial calls)
+    if (countdown > 0 && !isInitialCall) {
       return;
     }
 
@@ -118,12 +120,16 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
       await AuthService.sendVerificationCode(currentUser.email!);
       // Start countdown timer (2 minutes = 120 seconds)
       setCountdown(120);
-      Alert.alert(
-        "Code Sent",
-        "A new verification code has been sent to your email."
-      );
+      if (!isInitialCall) {
+        Alert.alert(
+          "Code Sent",
+          "A new verification code has been sent to your email."
+        );
+      }
     } catch (error) {
-      Alert.alert("Error", "Failed to resend code.");
+      if (!isInitialCall) {
+        Alert.alert("Error", "Failed to resend code.");
+      }
     } finally {
       setIsResending(false);
     }
@@ -204,7 +210,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
                   styles.resendButton,
                   isResendDisabled && styles.buttonDisabled,
                 ]}
-                onPress={handleResendEmail}
+                onPress={() => handleResendEmail(false)}
                 disabled={isResendDisabled}
               >
                 <Text style={styles.resendButtonText}>
