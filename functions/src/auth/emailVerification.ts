@@ -1,25 +1,26 @@
 import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { CallableRequest } from "firebase-functions/v2/https";
-import * as sgMail from "@sendgrid/mail";
+import formData from "form-data";
+import Mailgun from "mailgun.js";
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 
 const db = admin.firestore();
 const secretManager = new SecretManagerServiceClient();
 
-// Get SendGrid API key from Secret Manager
-async function getSendGridApiKey(): Promise<string> {
+// Get Mailgun API key from Secret Manager
+async function getMailgunApiKey(): Promise<string> {
   try {
-    const name = "projects/harbor-ch/secrets/sendgrid-api-key/versions/latest";
+    const name = "projects/harbor-ch/secrets/MAILGUN_API_KEY/versions/latest";
     const [version] = await secretManager.accessSecretVersion({ name });
     return version.payload?.data?.toString() || "";
   } catch (error) {
     console.error(
-      "Error accessing SendGrid API key from Secret Manager:",
+      "Error accessing Mailgun API key from Secret Manager:",
       error
     );
     // Return a placeholder key for now - this will be replaced with actual setup
-    return "SG.placeholder_key_for_development";
+    return "key-placeholder_for_development";
   }
 }
 
@@ -67,14 +68,18 @@ export const sendVerificationCode = functions.https.onCall(
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Get SendGrid API key
-      const apiKey = await getSendGridApiKey();
-      sgMail.setApiKey(apiKey);
+      // Get Mailgun API key
+      const apiKey = await getMailgunApiKey();
+      const domain = "sandboxfc147ea9963d4fbd8e90f2d49891c3a5.mailgun.org"; // Use sandbox domain for testing
+
+      // Initialize Mailgun
+      const mailgun = new Mailgun(formData);
+      const mg = mailgun.client({ username: "api", key: apiKey });
 
       // Send verification email
       const msg = {
+        from: `Harbor <noreply@${domain}>`,
         to: email,
-        from: "noreply@harbor-app.com", // Replace with your verified sender
         subject: "Your Harbor Verification Code",
         text: `Hello,\n\nYour verification code for Harbor is: ${code}\n\nThis code is valid for 5 minutes.\n\nIf you did not request this verification code, please ignore this email.`,
         html: `
@@ -89,7 +94,7 @@ export const sendVerificationCode = functions.https.onCall(
         `,
       };
 
-      await sgMail.send(msg);
+      await mg.messages.create(domain, msg);
 
       console.log(`Verification code ${code} sent to ${email}`);
       return { success: true };
