@@ -1,6 +1,7 @@
 import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { CallableRequest } from "firebase-functions/v2/https";
+import { emailVerificationFunctions } from "./emailVerification";
 
 const db = admin.firestore();
 
@@ -92,4 +93,5 @@ export const signInWithEmail = functions.https.onCall(
 
 export const authFunctions = {
   signInWithEmail,
+  ...emailVerificationFunctions,
 };

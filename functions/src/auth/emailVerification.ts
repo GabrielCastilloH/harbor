@@ -1,0 +1,179 @@
+import * as functions from "firebase-functions/v2";
+import * as admin from "firebase-admin";
+import { CallableRequest } from "firebase-functions/v2/https";
+import * as sgMail from "@sendgrid/mail";
+import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
+
+const db = admin.firestore();
+const secretManager = new SecretManagerServiceClient();
+
+// Get SendGrid API key from Secret Manager
+async function getSendGridApiKey(): Promise<string> {
+  try {
+    const name = "projects/harbor-ch/secrets/sendgrid-api-key/versions/latest";
+    const [version] = await secretManager.accessSecretVersion({ name });
+    return version.payload?.data?.toString() || "";
+  } catch (error) {
+    console.error(
+      "Error accessing SendGrid API key from Secret Manager:",
+      error
+    );
+    // Return a placeholder key for now - this will be replaced with actual setup
+    return "SG.placeholder_key_for_development";
+  }
+}
+
+export const sendVerificationCode = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ email: string }>) => {
+    try {
+      const { email } = request.data;
+      const userId = request.auth?.uid;
+
+      if (!userId) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      if (!email) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Email is required"
+        );
+      }
+
+      // Generate 6-digit verification code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt =
+        admin.firestore.Timestamp.now().toMillis() + 5 * 60 * 1000; // 5 minutes
+
+      // Store code in Firestore
+      await db.collection("verificationCodes").doc(userId).set({
+        code,
+        email,
+        expiresAt,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Get SendGrid API key
+      const apiKey = await getSendGridApiKey();
+      sgMail.setApiKey(apiKey);
+
+      // Send verification email
+      const msg = {
+        to: email,
+        from: "noreply@harbor-app.com", // Replace with your verified sender
+        subject: "Your Harbor Verification Code",
+        text: `Hello,\n\nYour verification code for Harbor is: ${code}\n\nThis code is valid for 5 minutes.\n\nIf you did not request this verification code, please ignore this email.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #4CAF50; margin-bottom: 30px;">Harbor</h1>
+            <p style="font-size: 18px; color: #333; margin-bottom: 20px;">Your verification code is:</p>
+            <h2 style="font-size: 36px; font-weight: bold; color: #333; letter-spacing: 5px; padding: 15px; border: 2px dashed #ccc; display: inline-block; border-radius: 8px; background-color: #f9f9f9;">${code}</h2>
+            <p style="font-size: 14px; color: #777; margin-top: 20px;">This code is valid for 5 minutes.</p>
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+            <p style="font-size: 12px; color: #999;">If you did not request this verification code, please ignore this email.</p>
+          </div>
+        `,
+      };
+
+      await sgMail.send(msg);
+
+      console.log(`Verification code ${code} sent to ${email}`);
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error sending verification code:", error);
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to send verification code"
+      );
+    }
+  }
+);
+
+export const verifyVerificationCode = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ code: string }>) => {
+    try {
+      const { code } = request.data;
+      const userId = request.auth?.uid;
+
+      if (!userId) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      if (!code) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Verification code is required"
+        );
+      }
+
+      // Get stored verification code
+      const doc = await db.collection("verificationCodes").doc(userId).get();
+
+      if (!doc.exists) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "No pending verification code found"
+        );
+      }
+
+      const storedData = doc.data();
+      const now = admin.firestore.Timestamp.now().toMillis();
+
+      // Check if code is correct and not expired
+      if (storedData?.code !== code || storedData?.expiresAt < now) {
+        await doc.ref.delete(); // Clean up invalid/expired code
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "Invalid or expired verification code"
+        );
+      }
+
+      // Mark email as verified using Admin SDK
+      await admin.auth().updateUser(userId, {
+        emailVerified: true,
+      });
+
+      // Clean up used code
+      await doc.ref.delete();
+
+      console.log(`User ${userId} successfully verified email`);
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error verifying code:", error);
+      throw new functions.https.HttpsError("internal", "Failed to verify code");
+    }
+  }
+);
+
+export const emailVerificationFunctions = {
+  sendVerificationCode,
+  verifyVerificationCode,
+};
