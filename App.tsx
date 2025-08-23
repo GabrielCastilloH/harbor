@@ -98,42 +98,70 @@ function AppContent() {
   console.log("🔍 [APP] AppContent render - profileExists:", profileExists);
   console.log("🔍 [APP] AppContent render - isInitialized:", isInitialized);
 
+  // Check initialization status first
   if (!isInitialized) {
     console.log("⏳ [APP] Showing loading screen");
     return <LoadingScreen loadingText="Signing you in..." />;
   }
 
-  return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer>
-        <StatusBar style="dark" />
-        {/*
-          This is the primary navigation logic. It will only render one
-          main navigator based on the app's state.
-        */}
-        {currentUser ? (
-          // User is signed in.
-          currentUser.emailVerified ? (
-            // Email is verified.
-            isAuthenticated ? (
-              // Has a profile.
-              <TabNavigator />
-            ) : (
-              // No profile.
-              <AccountSetupScreen />
-            )
-          ) : (
-            // Email not verified.
-            <EmailVerificationScreen />
-          )
-        ) : (
-          // User is not signed in.
+  // Handle unauthenticated users
+  if (!currentUser) {
+    console.log("🔐 [APP] User not signed in - showing auth screens");
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer>
+          <StatusBar style="dark" />
           <AuthNavigator />
-        )}
-        <UnviewedMatchesHandler />
-      </NavigationContainer>
-    </GestureHandlerRootView>
-  );
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    );
+  }
+
+  // Handle authenticated users with unverified email
+  if (currentUser && !currentUser.emailVerified) {
+    console.log(
+      "📧 [APP] User signed in but email not verified - showing EmailVerification"
+    );
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer>
+          <StatusBar style="dark" />
+          <EmailVerificationScreen />
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    );
+  }
+
+  // Handle verified users with no profile
+  if (isAuthenticated && !profileExists) {
+    console.log("⚙️ [APP] User verified but no profile - showing AccountSetup");
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer>
+          <StatusBar style="dark" />
+          <AccountSetupScreen />
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    );
+  }
+
+  // Handle verified users with a profile
+  if (isAuthenticated && profileExists) {
+    console.log("🏠 [APP] User verified with profile - showing main app");
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer>
+          <StatusBar style="dark" />
+          <TabNavigator />
+          <UnviewedMatchesHandler />
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    );
+  }
+
+  // Fallback - should not reach here
+  console.log("⚠️ [APP] Unexpected state - showing loading screen");
+  return <LoadingScreen loadingText="Loading..." />;
 }
 
 export default function App() {
