@@ -66,6 +66,14 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
             navigation.replace("AccountSetup");
           }
         }, 1500);
+      } else if (user && user.email === email && !user.emailVerified) {
+        console.log(
+          "📧 [EMAIL VERIFICATION] User signed in but email not verified yet"
+        );
+      } else if (!user) {
+        console.log(
+          "📧 [EMAIL VERIFICATION] No user signed in - this is expected after account creation"
+        );
       }
     });
 
@@ -131,11 +139,21 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
     setIsChecking(true);
     try {
+      console.log(
+        "🔍 [EMAIL VERIFICATION] Manual verification check for:",
+        email
+      );
+
       // Check if user is signed in and email is verified
       const user = auth.currentUser;
       if (user && user.email === email) {
-        // Reload user to get latest verification status
+        // Force token refresh to get latest verification status
+        console.log("🔄 [EMAIL VERIFICATION] Forcing token refresh");
         await user.reload();
+        console.log(
+          "✅ [EMAIL VERIFICATION] Token refreshed, emailVerified:",
+          user.emailVerified
+        );
 
         if (user.emailVerified) {
           setVerificationStatus("verified");
@@ -183,19 +201,38 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
     setIsResending(true);
     try {
-      // Send verification email using Firebase Auth
-      const user = auth.currentUser;
-      if (user) {
-        await sendEmailVerification(user);
-      } else {
-        throw new Error("No user signed in");
-      }
-      Alert.alert(
-        "Email Sent",
-        "Verification email has been resent. Please check your inbox."
+      console.log(
+        "📧 [EMAIL VERIFICATION] Attempting to resend email for:",
+        email
       );
+
+      // Check if user is signed in
+      const user = auth.currentUser;
+      if (user && user.email === email) {
+        console.log("📧 [EMAIL VERIFICATION] User signed in, resending email");
+        await sendEmailVerification(user);
+        Alert.alert(
+          "Email Sent",
+          "Verification email has been resent. Please check your inbox."
+        );
+      } else {
+        console.log(
+          "📧 [EMAIL VERIFICATION] No user signed in, cannot resend email"
+        );
+        Alert.alert(
+          "Cannot Resend Email",
+          "You need to be signed in to resend the verification email. Please go back to sign in and try again.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Go to Sign In",
+              onPress: () => navigation.navigate("SignIn"),
+            },
+          ]
+        );
+      }
     } catch (error: any) {
-      console.error("Error resending email:", error);
+      console.error("📧 [EMAIL VERIFICATION] Error resending email:", error);
       Alert.alert(
         "Error",
         "Failed to resend verification email. Please try again."
@@ -283,6 +320,16 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
           >
             <Text style={styles.checkButtonText}>
               {isChecking ? "Checking..." : "Check Verification Status"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.verifiedButton, isChecking && styles.buttonDisabled]}
+            onPress={handleCheckVerification}
+            disabled={isChecking || verificationStatus === "verified"}
+          >
+            <Text style={styles.verifiedButtonText}>
+              I've Verified My Email
             </Text>
           </TouchableOpacity>
 
@@ -411,6 +458,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   checkButtonText: {
+    color: Colors.secondary100,
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  verifiedButton: {
+    backgroundColor: Colors.green,
+    paddingVertical: 16,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  verifiedButtonText: {
     color: Colors.secondary100,
     fontWeight: "600",
     fontSize: 16,
