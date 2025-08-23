@@ -220,7 +220,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
       await AuthService.verifyVerificationCode(verificationCode);
       console.log("✅ [EMAIL VERIFICATION] Code verified successfully");
 
-      Alert.alert("Success", "Your email is now verified! Redirecting...");
+      Alert.alert("Success", "Your email is now verified!");
 
       // Force reload user to get updated emailVerified status
       console.log("🔄 [EMAIL VERIFICATION] Reloading user...");
