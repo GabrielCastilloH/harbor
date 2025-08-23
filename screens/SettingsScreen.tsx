@@ -26,6 +26,7 @@ import MainHeading from "../components/MainHeading";
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { setUserId, userId } = useAppContext();
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const {
     isNotificationsEnabled,
     isLoading,
@@ -77,6 +78,8 @@ export default function SettingsScreen() {
   };
 
   const handleSignOut = async () => {
+    if (isSigningOut) return; // Prevent multiple sign out attempts
+
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
       {
         text: "Cancel",
@@ -85,22 +88,32 @@ export default function SettingsScreen() {
       {
         text: "Sign Out",
         onPress: async () => {
+          setIsSigningOut(true);
           try {
-            // Sign out from Firebase Auth
-            await signOut(auth);
+            console.log("🔄 [SETTINGS] Starting sign out process...");
 
-            // Clear AsyncStorage
-            await AsyncStorage.multiRemove([
-              "@user",
-              "@authToken",
-              "@streamApiKey",
-              "@streamUserToken",
+            // Run operations in parallel for better performance
+            await Promise.all([
+              // Sign out from Firebase Auth
+              signOut(auth),
+              // Clear AsyncStorage
+              AsyncStorage.multiRemove([
+                "@user",
+                "@authToken",
+                "@streamApiKey",
+                "@streamUserToken",
+              ]),
             ]);
 
-            // Clear app context state
-            setUserId(null); // Use null instead of empty string
+            // Clear app context state (this happens instantly)
+            setUserId(null);
+
+            console.log("✅ [SETTINGS] Sign out completed successfully");
           } catch (error) {
             console.error("❌ [SETTINGS] Error signing out:", error);
+            Alert.alert("Error", "Failed to sign out. Please try again.");
+          } finally {
+            setIsSigningOut(false);
           }
         },
       },
@@ -194,6 +207,8 @@ export default function SettingsScreen() {
             text="Sign Out"
             onPress={handleSignOut}
             isDestructive={true}
+            isLoading={isSigningOut}
+            disabled={isSigningOut}
           />
         </View>
       </ScrollView>
