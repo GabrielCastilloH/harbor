@@ -100,18 +100,35 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
               setProfile(response.user);
               setIsAuthenticated(true); // Set isAuthenticated to true only after profile check
             } else {
-              console.log("📝 [APP CONTEXT] No user profile in Firestore");
+              console.log(
+                "📝 [APP CONTEXT] No user profile in Firestore (null response)"
+              );
               setUserId(null);
               setProfileExists(false);
               setProfile(null);
               setIsAuthenticated(true); // User is still authenticated but has no profile
             }
-          } catch (error) {
-            console.error("❌ [APP CONTEXT] Error checking profile:", error);
-            setProfileExists(false);
-            setUserId(null);
-            setProfile(null);
-            setIsAuthenticated(true); // Still authenticated, but an error occurred
+          } catch (error: any) {
+            // Check for the "User not found" error code from Cloud Function
+            if (error?.code === "functions/not-found") {
+              console.log(
+                "📝 [APP CONTEXT] User profile not found (expected for new user)"
+              );
+              setUserId(null);
+              setProfileExists(false);
+              setProfile(null);
+              setIsAuthenticated(true);
+            } else {
+              // Log unexpected errors
+              console.error(
+                "❌ [APP CONTEXT] Unexpected error checking profile:",
+                error
+              );
+              setProfileExists(false);
+              setUserId(null);
+              setProfile(null);
+              setIsAuthenticated(true);
+            }
           }
         } else {
           // User is signed in but email NOT verified
