@@ -36,24 +36,50 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   // Use a single useEffect to handle the initial email send
   // It waits until currentUser is available and we haven't sent an email yet
   useEffect(() => {
-    const sendInitialEmail = async () => {
-      if (currentUser && !initialEmailSent) {
-        try {
-          // Wait for the auth token to be available
-          const idTokenResult = await currentUser.getIdTokenResult(true);
-          if (idTokenResult.token) {
-            console.log(
-              "✅ [EMAIL VERIFICATION] Current user and token are ready. Sending initial verification code."
-            );
-            handleResendEmail(true);
-            setInitialEmailSent(true);
-          }
-        } catch (error) {
-          console.error("❌ [EMAIL VERIFICATION] Error getting token:", error);
+    const sendInitialEmailWithRetry = async (retryCount = 0) => {
+      const MAX_RETRIES = 5;
+      const RETRY_DELAY = 1000; // 1 second
+
+      if (!currentUser || initialEmailSent) {
+        return;
+      }
+
+      try {
+        // Wait for the auth token to be available
+        const idTokenResult = await currentUser.getIdTokenResult(true);
+
+        if (idTokenResult.token) {
+          console.log(
+            "✅ [EMAIL VERIFICATION] Current user and token are ready. Sending initial verification code."
+          );
+          handleResendEmail(true);
+          setInitialEmailSent(true);
+        }
+      } catch (error: any) {
+        // If the error is 'unauthenticated' and we still have retries left, try again
+        if (
+          error.code === "auth/internal-error" ||
+          (error.code === "auth/unauthenticated" && retryCount < MAX_RETRIES)
+        ) {
+          console.log(
+            `⏳ [EMAIL VERIFICATION] Token not ready, retrying in ${RETRY_DELAY}ms (Attempt ${
+              retryCount + 1
+            }/${MAX_RETRIES})`
+          );
+          setTimeout(() => {
+            sendInitialEmailWithRetry(retryCount + 1);
+          }, RETRY_DELAY);
+        } else {
+          // It's a different error or max retries reached, so log it and stop
+          console.error(
+            "❌ [EMAIL VERIFICATION] Final error getting token:",
+            error
+          );
         }
       }
     };
-    sendInitialEmail();
+
+    sendInitialEmailWithRetry();
   }, [currentUser, initialEmailSent]);
 
   // Countdown timer effect
@@ -132,7 +158,13 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
     setIsResending(true);
     try {
+      console.log(
+        `📧 [EMAIL VERIFICATION] Attempting to send verification code to ${currentUser.email} (initial: ${isInitialCall})`
+      );
       await AuthService.sendVerificationCode(currentUser.email!);
+      console.log(
+        "✅ [EMAIL VERIFICATION] Verification code sent successfully"
+      );
       // Start countdown timer (2 minutes = 120 seconds)
       setCountdown(120);
       if (!isInitialCall) {
