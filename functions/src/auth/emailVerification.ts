@@ -89,6 +89,12 @@ export const sendVerificationCode = functions.https.onCall(
       const expiresAt =
         admin.firestore.Timestamp.now().toMillis() + 5 * 60 * 1000; // 5 minutes
 
+      console.log("📧 [VERIFICATION] Generated code for user:", userId);
+      console.log(
+        "📧 [VERIFICATION] Code expires at:",
+        new Date(expiresAt).toISOString()
+      );
+
       // Store code in Firestore
       await db.collection("verificationCodes").doc(userId).set({
         code,
@@ -97,13 +103,24 @@ export const sendVerificationCode = functions.https.onCall(
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
+      console.log("📧 [VERIFICATION] Code stored in Firestore");
+
       // Get Mailgun API key
+      console.log("📧 [VERIFICATION] Getting Mailgun API key...");
       const apiKey = await getMailgunApiKey();
+      console.log(
+        "📧 [VERIFICATION] API key retrieved, length:",
+        apiKey.length
+      );
+
       const domain = "tryharbor.app"; // Use verified domain
+      console.log("📧 [VERIFICATION] Using domain:", domain);
 
       // Initialize Mailgun
+      console.log("📧 [VERIFICATION] Initializing Mailgun client...");
       const mailgun = new Mailgun(formData);
       const mg = mailgun.client({ username: "api", key: apiKey });
+      console.log("📧 [VERIFICATION] Mailgun client initialized successfully");
 
       // Send verification email
       const msg = {
@@ -123,14 +140,38 @@ export const sendVerificationCode = functions.https.onCall(
         `,
       };
 
-      await mg.messages.create(domain, msg);
+      console.log(
+        "📧 [VERIFICATION] Message object created, attempting to send..."
+      );
+      console.log("📧 [VERIFICATION] Message details:", {
+        from: msg.from,
+        to: msg.to,
+        subject: msg.subject,
+        textLength: msg.text.length,
+        htmlLength: msg.html.length,
+      });
 
+      const result = await mg.messages.create(domain, msg);
+      console.log("📧 [VERIFICATION] Mailgun API response:", result);
+
+      console.log(`✅ [VERIFICATION] Verification code sent to ${email}`);
       return { success: true };
     } catch (error: any) {
-      console.error("Error sending verification code:", error);
+      console.error(
+        "📧 [VERIFICATION] Error sending verification code:",
+        error
+      );
+      console.error("📧 [VERIFICATION] Error details:", {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        status: error.status,
+        statusCode: error.statusCode,
+        details: error.details,
+      });
       throw new functions.https.HttpsError(
         "internal",
-        "Failed to send verification code"
+        `Failed to send verification code: ${error.message}`
       );
     }
   }
@@ -234,8 +275,8 @@ export const sendTestEmail = functions.https.onCall(
         apiKey.substring(0, 10) + "..."
       );
 
-      const domain = "sandboxfc147ea9963d4fbd8e90f2d49891c3a5.mailgun.org";
-      console.log("🧪 [TEST EMAIL] Using sandbox domain:", domain);
+      const domain = "tryharbor.app";
+      console.log("🧪 [TEST EMAIL] Using domain:", domain);
 
       console.log("🧪 [TEST EMAIL] Initializing Mailgun client...");
       // Initialize Mailgun
@@ -243,14 +284,12 @@ export const sendTestEmail = functions.https.onCall(
       const mg = mailgun.client({ username: "api", key: apiKey });
       console.log("🧪 [TEST EMAIL] Mailgun client initialized successfully");
 
-      console.log(
-        "🧪 [TEST EMAIL] Sending test email to gabocastillo321@gmail.com"
-      );
+      console.log("🧪 [TEST EMAIL] Sending test email to gac232@cornell.edu");
 
       // Send test email
       const msg = {
         from: `Harbor Test <noreply@${domain}>`,
-        to: "gabocastillo321@gmail.com",
+        to: "gac232@cornell.edu",
         subject: "🧪 Harbor Test Email",
         text: `Hello Gabriel,\n\nThis is a test email from Harbor to verify that the Mailgun integration is working correctly.\n\nTimestamp: ${new Date().toISOString()}\n\nIf you receive this, the email system is working! 🎉`,
         html: `
