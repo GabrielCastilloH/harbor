@@ -26,6 +26,12 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   const [lastResendTime, setLastResendTime] = useState<number | null>(null);
   const [countdown, setCountdown] = useState<number>(0);
 
+  // Start countdown timer when screen first loads (user just created account)
+  useEffect(() => {
+    // Start countdown timer (2 minutes and 30 seconds = 150 seconds)
+    setCountdown(150);
+  }, []);
+
   // Countdown timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
