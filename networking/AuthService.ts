@@ -48,4 +48,19 @@ export class AuthService {
       throw error;
     }
   }
+
+  static async sendTestEmail() {
+    try {
+      const sendTestEmail = httpsCallable(
+        functions,
+        "authFunctions-sendTestEmail"
+      );
+      const result = await sendTestEmail({});
+      const data = result.data as any;
+      return data;
+    } catch (error) {
+      console.error("AuthService - Error sending test email:", error);
+      throw error;
+    }
+  }
 }
