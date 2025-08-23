@@ -196,6 +196,9 @@ export default function SignIn({ navigation }: any) {
         errorMessage = "Incorrect password";
       } else if (error.code === "auth/invalid-email") {
         errorMessage = "Please enter a valid Cornell email address";
+      } else if (error.code === "auth/invalid-credential") {
+        errorMessage =
+          "We couldn't find an account with this email. Please create an account.";
       }
 
       Alert.alert("Sign In Error", errorMessage);
