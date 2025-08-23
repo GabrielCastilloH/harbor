@@ -22,6 +22,7 @@ interface AppContextType {
   isInitialized: boolean;
   profileExists: boolean;
   refreshAuthState: (user: User) => void;
+  setProfileExists: (exists: boolean) => void;
 }
 
 const defaultValue: AppContextType = {
@@ -42,6 +43,7 @@ const defaultValue: AppContextType = {
   isInitialized: false,
   profileExists: false,
   refreshAuthState: () => {},
+  setProfileExists: () => {},
 };
 
 export const AppContext = React.createContext<AppContextType>(defaultValue);
@@ -209,6 +211,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         isInitialized,
         profileExists,
         refreshAuthState,
+        setProfileExists,
       }}
     >
       {children}
