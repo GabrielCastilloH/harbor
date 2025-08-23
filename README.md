@@ -11,9 +11,9 @@ TODO:
 - Add the ability to see profiles that swiped on you and swipe on them.
 - show difference between basic and premium plan on payment page
 
-## 🔐 Authentication Flow
+## 🔐 Authentication & Email Verification Flow
 
-Harbor uses Firebase Auth's native email/password authentication with email verification. The system uses Firebase's built-in methods without custom complications.
+Harbor uses Firebase Auth with a **custom code-based email verification system** that replaces Firebase's default link-based verification. This system is specifically designed to work with university email systems that pre-fetch verification links.
 
 ### Flow Logic
 
@@ -24,128 +24,122 @@ The app has 4 distinct authentication states handled in `App.tsx`:
 3. **User verified AND has profile** → Main App (`TabNavigator`)
 4. **User not signed in** → Auth screens (`SignIn`/`CreateAccount`)
 
-### Firebase Implementation
+### Email Verification System
 
-#### Account Creation (`CreateAccountScreen.tsx`)
+#### Overview
 
-```typescript
-// 1. Create user with Firebase Auth
-const userCredential = await createUserWithEmailAndPassword(
-  auth,
-  email,
-  password
-);
+Instead of using Firebase's built-in email verification links, Harbor implements a custom verification system using:
 
-// 2. Send verification email (Firebase's native method)
-await sendEmailVerification(userCredential.user);
+- **6-digit verification codes** sent via email
+- **5-minute expiration** for security
+- **Mailgun integration** for reliable email delivery
+- **Google Secret Manager** for secure API key storage
 
-// 3. Sign out user to prevent auto-navigation
-await signOut(auth);
+#### Complete Verification Flow
 
-// 4. Navigate to EmailVerificationScreen
-navigation.navigate("EmailVerification", { email });
-```
+1. **User Signs Up** (`CreateAccountScreen.tsx`)
 
-#### Email Verification (`EmailVerificationScreen.tsx`)
+   ```typescript
+   // 1. Create user with Firebase Auth
+   const userCredential = await createUserWithEmailAndPassword(
+     auth,
+     email,
+     password
+   );
 
-```typescript
-// Listen for real-time verification status
-useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (user) => {
-    if (user && user.emailVerified) {
-      // Email verified - navigate based on context
-      if (fromSignIn) {
-        navigation.replace("HomeScreen"); // Existing user
-      } else {
-        navigation.replace("AccountSetup"); // New user
-      }
-    }
-  });
-  return () => unsubscribe();
-}, []);
+   // 2. User automatically navigated to EmailVerificationScreen
+   // 3. No manual email sending - handled by EmailVerificationScreen
+   ```
 
-// Manual check with reload
-const handleCheckVerification = async () => {
-  const user = auth.currentUser;
-  if (user) {
-    await user.reload(); // Get latest verification status
-    if (user.emailVerified) {
-      // Handle verification...
-    }
-  }
-};
+2. **Code Generation & Sending** (`EmailVerificationScreen.tsx`)
 
-// Resend email
-const handleResendEmail = async () => {
-  const user = auth.currentUser;
-  if (user) {
-    await sendEmailVerification(user);
-  }
-};
-```
+   ```typescript
+   // Screen loads → automatically calls sendVerificationCode Firebase Function
+   useEffect(() => {
+     if (currentUser && !initialEmailSent) {
+       handleResendEmail(true); // Send initial verification code
+       setInitialEmailSent(true);
+     }
+   }, [currentUser, initialEmailSent]);
+   ```
 
-#### Sign In (`SignIn.tsx`)
+3. **Backend Code Processing** (`functions/src/auth/emailVerification.ts`)
 
-```typescript
-// Sign in and check verification
-const userCredential = await signInWithEmailAndPassword(auth, email, password);
-await userCredential.user.reload();
+   ```typescript
+   // Generate 6-digit code
+   const code = Math.floor(100000 + Math.random() * 900000).toString();
+   const expiresAt = admin.firestore.Timestamp.now().toMillis() + 5 * 60 * 1000;
 
-if (!userCredential.user.emailVerified) {
-  // Redirect to verification
-  navigation.navigate("EmailVerification", {
-    email,
-    fromSignIn: true,
-  });
-} else {
-  // Proceed with sign-in flow
-}
-```
+   // Store in Firestore
+   await db.collection("verificationCodes").doc(userId).set({
+     code,
+     email,
+     expiresAt,
+     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+   });
 
-#### AppContext Logic (`context/AppContext.tsx`)
+   // Send via Mailgun
+   const msg = {
+     from: `Harbor <noreply@tryharbor.app>`,
+     to: email,
+     subject: "Your Harbor Verification Code",
+     html: `<div>Your verification code is: <h2>${code}</h2></div>`,
+   };
+   await mg.messages.create(domain, msg);
+   ```
 
-```typescript
-useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      setCurrentUser(user);
+4. **User Enters Code** (`EmailVerificationScreen.tsx`)
 
-      // Only set authenticated if email is verified
-      if (user.emailVerified) {
-        setIsAuthenticated(true);
+   ```typescript
+   // Modern 6-box input UI
+   <VerificationCodeInput
+     value={verificationCode}
+     onChangeText={setVerificationCode}
+     maxLength={6}
+   />
+   ```
 
-        // Check if user profile exists in Firestore
-        const response = await UserService.getUserById(user.uid);
-        if (response?.user) {
-          setUserId(user.uid);
-          setProfile(response.user);
-        } else {
-          setUserId(null);
-          setProfile(null);
-        }
-      } else {
-        setIsAuthenticated(false);
-        setUserId(null);
-        setProfile(null);
-      }
-    } else {
-      // User signed out
-      setCurrentUser(null);
-      setIsAuthenticated(false);
-      setUserId(null);
-      setProfile(null);
-    }
-  });
-}, []);
-```
+5. **Code Verification** (`functions/src/auth/emailVerification.ts`)
+
+   ```typescript
+   // Verify code against Firestore
+   const doc = await db.collection("verificationCodes").doc(userId).get();
+   const storedData = doc.data();
+
+   if (storedData?.code === code && storedData?.expiresAt > now) {
+     // Mark email as verified using Firebase Admin SDK
+     await admin.auth().updateUser(userId, { emailVerified: true });
+     await doc.ref.delete(); // Clean up used code
+     return { success: true };
+   }
+   ```
+
+6. **Access Granted**
+   - Once verified, app automatically navigates to `AccountSetupScreen`
+   - User can now access full app features
+
+#### Security Features
+
+- **6-digit codes** with 5-minute expiration
+- **One-time use** (deleted after verification)
+- **Server-side verification** (cannot be bypassed)
+- **Mailgun integration** with verified domain (`tryharbor.app`)
+- **Google Secret Manager** for secure API key storage
+
+#### Resend Functionality
+
+- **2-minute countdown** between resend attempts
+- **Rate limiting** prevents abuse
+- **Automatic retry** with exponential backoff for failed sends
 
 ### Key Design Principles
 
-- **Use Firebase's native methods**: `createUserWithEmailAndPassword`, `sendEmailVerification`, `signInWithEmailAndPassword`, `user.reload()`, `onAuthStateChanged`
-- **No custom Cloud Functions for auth**: Authentication is handled entirely client-side with Firebase Auth SDK
-- **Email verification required**: Users cannot access the main app until email is verified
-- **Separation of concerns**: Account creation → Email verification → Profile setup → Main app
-- **Real-time status updates**: Use `onAuthStateChanged` listener for immediate verification detection
+- **Custom verification system**: Replaces Firebase's link-based verification
+- **University email compatibility**: Works with pre-fetching email systems
+- **Secure code generation**: Server-side generation and validation
+- **User-friendly UI**: Modern 6-box input with real-time feedback
+- **Automatic flow**: Seamless navigation between verification states
+- **Production-ready**: Proper error handling and logging
 
 ### Cornell Email Validation
 
