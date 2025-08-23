@@ -10,17 +10,25 @@ const secretManager = new SecretManagerServiceClient();
 
 // Get Mailgun API key from Secret Manager
 async function getMailgunApiKey(): Promise<string> {
+  const name = "projects/harbor-ch/secrets/MAILGUN_API_KEY/versions/latest";
   try {
-    const name = "projects/harbor-ch/secrets/MAILGUN_API_KEY/versions/latest";
     const [version] = await secretManager.accessSecretVersion({ name });
-    return version.payload?.data?.toString() || "";
+    const apiKey = version.payload?.data?.toString();
+    if (!apiKey) {
+      throw new Error(
+        "Mailgun API key is empty or not found in Secret Manager."
+      );
+    }
+    return apiKey;
   } catch (error) {
     console.error(
       "Error accessing Mailgun API key from Secret Manager:",
       error
     );
-    // Return a placeholder key for now - this will be replaced with actual setup
-    return "key-placeholder_for_development";
+    throw new functions.https.HttpsError(
+      "internal",
+      "Could not access Mailgun API key from Secret Manager."
+    );
   }
 }
 
