@@ -47,15 +47,9 @@ export default function SignIn({ navigation }: any) {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
-  // If user is already authenticated or has a current user, don't show SignIn screen
-  if (isAuthenticated || currentUser) {
-    return null;
-  }
-
-  // Additional check: if we have a userId in context, don't show SignIn screen
-  if (userId && userId.trim() !== "") {
-    return null;
-  }
+  // Check if we should show SignIn screen
+  const shouldShowSignIn =
+    !isAuthenticated && !currentUser && (!userId || userId.trim() === "");
 
   // Only clean up auth state if user is not already authenticated
   useEffect(() => {
@@ -257,6 +251,11 @@ export default function SignIn({ navigation }: any) {
 
   if (isLoading) {
     return <LoadingScreen loadingText="Signing you in..." />;
+  }
+
+  // Don't render if user is already authenticated
+  if (!shouldShowSignIn) {
+    return null;
   }
 
   return (

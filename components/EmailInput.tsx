@@ -109,7 +109,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: Colors.secondary100,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    height: 56, // Fixed height to match password input
+    justifyContent: "center",
   },
   inputContainerFocused: {
     borderColor: Colors.primary500,

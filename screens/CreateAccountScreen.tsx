@@ -17,7 +17,11 @@ import Colors from "../constants/Colors";
 import LoadingScreen from "../components/LoadingScreen";
 import EmailInput from "../components/EmailInput";
 import PasswordInput from "../components/PasswordInput";
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  signOut,
+} from "firebase/auth";
 import { auth } from "../firebaseConfig";
 
 export default function CreateAccountScreen({ navigation }: any) {
@@ -121,6 +125,10 @@ export default function CreateAccountScreen({ navigation }: any) {
 
     try {
       const normalizedEmail = normalizeEmail(email.trim());
+      console.log(
+        "🔍 [CREATE ACCOUNT] Starting account creation for:",
+        normalizedEmail
+      );
 
       // Create account with Firebase Auth directly
       const userCredential = await createUserWithEmailAndPassword(
@@ -129,10 +137,28 @@ export default function CreateAccountScreen({ navigation }: any) {
         password
       );
 
+      console.log(
+        "✅ [CREATE ACCOUNT] User created successfully:",
+        userCredential.user.uid
+      );
+      console.log(
+        "📧 [CREATE ACCOUNT] Email verification status:",
+        userCredential.user.emailVerified
+      );
+
       // Send verification email
+      console.log("📧 [CREATE ACCOUNT] Sending verification email...");
       await sendEmailVerification(userCredential.user);
+      console.log("✅ [CREATE ACCOUNT] Verification email sent successfully");
+
+      // Sign out the user so they don't get automatically taken to main app
+      console.log(
+        "🚪 [CREATE ACCOUNT] Signing out user to prevent auto-navigation"
+      );
+      await signOut(auth);
 
       // Navigate to email verification screen
+      console.log("🧭 [CREATE ACCOUNT] Navigating to EmailVerification screen");
       navigation.navigate("EmailVerification", {
         email: normalizedEmail,
       });

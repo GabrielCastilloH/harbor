@@ -56,17 +56,29 @@ class ErrorBoundary extends React.Component<
 }
 
 function AuthNavigator() {
+  const { authState, currentUser } = useAppContext();
+
+  console.log("🧭 [AUTH NAVIGATOR] Current authState:", authState);
+  console.log("🧭 [AUTH NAVIGATOR] Current user email:", currentUser?.email);
+
   return (
     <AuthStack.Navigator
       screenOptions={{
         headerShown: false,
       }}
+      initialRouteName={
+        authState === "unverified" ? "EmailVerification" : "SignIn"
+      }
     >
       <AuthStack.Screen name="SignIn" component={SignIn} />
       <AuthStack.Screen name="CreateAccount" component={CreateAccountScreen} />
       <AuthStack.Screen
         name="EmailVerification"
         component={EmailVerificationScreen}
+        initialParams={{
+          email: currentUser?.email || "",
+          fromSignIn: false,
+        }}
       />
       <AuthStack.Screen name="AccountSetup" component={AccountSetupScreen} />
     </AuthStack.Navigator>
@@ -74,12 +86,29 @@ function AuthNavigator() {
 }
 
 function AppContent() {
-  const { isAuthenticated, userId, isInitialized, profile, isCheckingProfile } =
-    useAppContext();
+  const {
+    isAuthenticated,
+    userId,
+    isInitialized,
+    profile,
+    isCheckingProfile,
+    authState,
+    currentUser,
+  } = useAppContext();
+
+  console.log("🔍 [APP] AppContent render - authState:", authState);
+  console.log("🔍 [APP] AppContent render - isAuthenticated:", isAuthenticated);
+  console.log("🔍 [APP] AppContent render - userId:", userId);
+  console.log("🔍 [APP] AppContent render - isInitialized:", isInitialized);
+  console.log(
+    "🔍 [APP] AppContent render - isCheckingProfile:",
+    isCheckingProfile
+  );
 
   // Show loading screen while Firebase Auth is determining the auth state
   // OR while we're checking the user profile in Firestore
   if (!isInitialized || isCheckingProfile) {
+    console.log("⏳ [APP] Showing loading screen");
     return <LoadingScreen loadingText="Signing you in..." />;
   }
 
@@ -89,41 +118,56 @@ function AppContent() {
   //  - if userId exists (user has profile in Firestore), show TabNavigator
   //  - if authenticated but no userId (no profile in Firestore), show AccountSetupScreen
 
-  // Don't render SignIn if user is already authenticated
-  if (isAuthenticated && userId && userId.trim() !== "") {
-    // Render main app
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer>
-          <StatusBar style="dark" />
-          <TabNavigator />
-          <UnviewedMatchesHandler />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
+  // Handle different authentication states
+  switch (authState) {
+    case "authenticated":
+      console.log("🏠 [APP] User fully authenticated - showing main app");
+      return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <NavigationContainer>
+            <StatusBar style="dark" />
+            <TabNavigator />
+            <UnviewedMatchesHandler />
+          </NavigationContainer>
+        </GestureHandlerRootView>
+      );
 
-  // Additional check: if user is authenticated but userId is not set yet, don't render SignIn
-  if (isAuthenticated && (!userId || userId.trim() === "")) {
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer>
-          <StatusBar style="dark" />
-          <AccountSetupScreen />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
+    case "no-profile":
+      console.log(
+        "⚙️ [APP] Email verified but no profile - showing AccountSetup"
+      );
+      return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <NavigationContainer>
+            <StatusBar style="dark" />
+            <AccountSetupScreen />
+          </NavigationContainer>
+        </GestureHandlerRootView>
+      );
 
-  // Show authentication screens
-  return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer>
-        <StatusBar style="dark" />
-        <AuthNavigator />
-      </NavigationContainer>
-    </GestureHandlerRootView>
-  );
+    case "unverified":
+      console.log("📧 [APP] Email not verified - showing EmailVerification");
+      return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <NavigationContainer>
+            <StatusBar style="dark" />
+            <AuthNavigator />
+          </NavigationContainer>
+        </GestureHandlerRootView>
+      );
+
+    case "unauthenticated":
+    default:
+      console.log("🔐 [APP] User not authenticated - showing auth screens");
+      return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <NavigationContainer>
+            <StatusBar style="dark" />
+            <AuthNavigator />
+          </NavigationContainer>
+        </GestureHandlerRootView>
+      );
+  }
 }
 
 export default function App() {
