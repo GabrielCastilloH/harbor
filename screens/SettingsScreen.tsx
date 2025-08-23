@@ -98,7 +98,6 @@ export default function SettingsScreen() {
             ]);
 
             // Clear app context state
-            setIsAuthenticated(false);
             setUserId(null); // Use null instead of empty string
           } catch (error) {
             console.error("❌ [SETTINGS] Error signing out:", error);
