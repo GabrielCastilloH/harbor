@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: Colors.secondary100,
     paddingHorizontal: 16,
-    height: 56, // Fixed height to match email input
+    paddingVertical: 14,
     flexDirection: "row",
     alignItems: "center",
   },
