@@ -66,12 +66,21 @@ export default function AccountSetupScreen({
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      console.log("🔄 [ACCOUNT SETUP] Starting logout...");
+
+      // Run operations in parallel for better performance
+      await Promise.all([
+        signOut(auth),
+        AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]),
+      ]);
+
+      // Clear context state
       setUserId(null);
       setProfile(null);
-      await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
+
+      console.log("✅ [ACCOUNT SETUP] Logout completed");
     } catch (error) {
-      // Handle logout error silently
+      console.error("❌ [ACCOUNT SETUP] Error during logout:", error);
     }
   };
 
