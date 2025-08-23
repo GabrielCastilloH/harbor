@@ -84,6 +84,35 @@ export const sendVerificationCode = functions.https.onCall(
         );
       }
 
+      // Check for existing verification code and enforce cooldown
+      const existingDoc = await db
+        .collection("verificationCodes")
+        .doc(userId)
+        .get();
+      const COOLDOWN_MINUTES = 2;
+      const COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000;
+
+      if (existingDoc.exists) {
+        const existingData = existingDoc.data();
+        const createdAt = existingData?.createdAt?.toMillis();
+        const now = admin.firestore.Timestamp.now().toMillis();
+
+        if (createdAt && now - createdAt < COOLDOWN_MS) {
+          const remainingTime = Math.ceil(
+            (COOLDOWN_MS - (now - createdAt)) / 1000
+          );
+          console.log(
+            `📧 [VERIFICATION] Cooldown active for user ${userId}, ${remainingTime}s remaining`
+          );
+          throw new functions.https.HttpsError(
+            "resource-exhausted",
+            `Please wait ${COOLDOWN_MINUTES} minutes between verification code requests. ${Math.floor(
+              remainingTime / 60
+            )}:${(remainingTime % 60).toString().padStart(2, "0")} remaining.`
+          );
+        }
+      }
+
       // Generate 6-digit verification code
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt =
@@ -223,11 +252,20 @@ export const verifyVerificationCode = functions.https.onCall(
 
       // Check if code is correct and not expired
       if (storedData?.code !== code || storedData?.expiresAt < now) {
-        await doc.ref.delete(); // Clean up invalid/expired code
-        throw new functions.https.HttpsError(
-          "unauthenticated",
-          "Invalid or expired verification code"
-        );
+        // Don't delete the code on incorrect attempts - let user try again
+        // Only delete if the code is expired
+        if (storedData?.expiresAt < now) {
+          await doc.ref.delete(); // Clean up expired code
+          throw new functions.https.HttpsError(
+            "unauthenticated",
+            "Verification code has expired. Please request a new code."
+          );
+        } else {
+          throw new functions.https.HttpsError(
+            "unauthenticated",
+            "Incorrect verification code. Please try again."
+          );
+        }
       }
 
       // Mark email as verified using Admin SDK
@@ -246,7 +284,66 @@ export const verifyVerificationCode = functions.https.onCall(
   }
 );
 
+export const getVerificationCooldown = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{}>) => {
+    try {
+      const userId = request.auth?.uid;
+
+      if (!userId) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const doc = await db.collection("verificationCodes").doc(userId).get();
+      const COOLDOWN_MINUTES = 2;
+      const COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000;
+
+      if (!doc.exists) {
+        return { hasCooldown: false, remainingSeconds: 0 };
+      }
+
+      const data = doc.data();
+      const createdAt = data?.createdAt?.toMillis();
+      const now = admin.firestore.Timestamp.now().toMillis();
+
+      if (!createdAt) {
+        return { hasCooldown: false, remainingSeconds: 0 };
+      }
+
+      const timeElapsed = now - createdAt;
+      const remainingTime = Math.max(0, COOLDOWN_MS - timeElapsed);
+      const remainingSeconds = Math.ceil(remainingTime / 1000);
+
+      return {
+        hasCooldown: remainingSeconds > 0,
+        remainingSeconds,
+        cooldownMinutes: COOLDOWN_MINUTES,
+      };
+    } catch (error: any) {
+      console.error("Error getting verification cooldown:", error);
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to get cooldown status"
+      );
+    }
+  }
+);
+
 export const emailVerificationFunctions = {
   sendVerificationCode,
   verifyVerificationCode,
+  getVerificationCooldown,
 };

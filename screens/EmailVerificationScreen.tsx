@@ -27,6 +27,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   const [verificationCode, setVerificationCode] = useState("");
   const [countdown, setCountdown] = useState<number>(0);
   const [initialEmailSent, setInitialEmailSent] = useState(false);
+  const [backendCooldown, setBackendCooldown] = useState<number>(0);
 
   // Use a single useEffect to handle the initial email send
   // It waits until currentUser is available and we haven't sent an email yet
@@ -77,6 +78,13 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
     sendInitialEmailWithRetry();
   }, [currentUser, initialEmailSent]);
 
+  // Check backend cooldown on mount
+  useEffect(() => {
+    if (currentUser && initialEmailSent) {
+      checkBackendCooldown();
+    }
+  }, [currentUser, initialEmailSent]);
+
   // Countdown timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -99,6 +107,28 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
     };
   }, [countdown]);
 
+  // Backend cooldown timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (backendCooldown > 0) {
+      interval = setInterval(() => {
+        setBackendCooldown((prevCooldown) => {
+          if (prevCooldown <= 1) {
+            return 0;
+          }
+          return prevCooldown - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [backendCooldown]);
+
   // Format countdown time as MM:SS
   const formatCountdown = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
@@ -106,8 +136,26 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
+  // Check backend cooldown status
+  const checkBackendCooldown = async () => {
+    try {
+      const cooldownData = await AuthService.getVerificationCooldown();
+      if (cooldownData.hasCooldown) {
+        setBackendCooldown(cooldownData.remainingSeconds);
+        console.log(
+          `⏳ [EMAIL VERIFICATION] Backend cooldown active: ${cooldownData.remainingSeconds}s remaining`
+        );
+      } else {
+        setBackendCooldown(0);
+      }
+    } catch (error) {
+      console.error("Error checking backend cooldown:", error);
+      setBackendCooldown(0);
+    }
+  };
+
   // Check if resend button should be disabled
-  const isResendDisabled = countdown > 0 || isResending;
+  const isResendDisabled = countdown > 0 || backendCooldown > 0 || isResending;
 
   const handleVerifyCode = async () => {
     if (verificationCode.length !== 6) {
@@ -160,18 +208,29 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
       console.log("✅ [EMAIL VERIFICATION] Code sent successfully");
       // Start countdown timer (2 minutes = 120 seconds)
       setCountdown(120);
+      // Update backend cooldown
+      await checkBackendCooldown();
       if (!isInitialCall) {
         Alert.alert(
           "Code Sent",
           "A new verification code has been sent to your email."
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(
         "❌ [EMAIL VERIFICATION] Error sending verification code:",
         error
       );
-      if (!isInitialCall) {
+
+      // Handle backend cooldown error specifically
+      if (error.code === "functions/resource-exhausted") {
+        Alert.alert(
+          "Cooldown Active",
+          error.message || "Please wait before requesting another code."
+        );
+        // Update backend cooldown to show correct time
+        await checkBackendCooldown();
+      } else if (!isInitialCall) {
         Alert.alert("Error", "Failed to resend code.");
       }
     } finally {
@@ -258,6 +317,8 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
                     ? "Sending..."
                     : countdown > 0
                     ? `Resend in ${formatCountdown(countdown)}`
+                    : backendCooldown > 0
+                    ? `Resend in ${formatCountdown(backendCooldown)}`
                     : "Resend Code"}
                 </Text>
               </TouchableOpacity>
