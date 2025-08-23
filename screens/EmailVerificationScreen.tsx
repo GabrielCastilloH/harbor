@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import { sendEmailVerification } from "firebase/auth";
 import { useAppContext } from "../context/AppContext";
 
 export default function EmailVerificationScreen({ navigation, route }: any) {
-  const { currentUser } = useAppContext(); // Get currentUser from context
+  const { currentUser, refreshAuthState } = useAppContext(); // Get currentUser and refreshAuthState from context
   const email = currentUser?.email; // Get email from currentUser
 
   console.log("📧 [EMAIL VERIFICATION] Screen loaded with email:", email);
@@ -24,14 +24,55 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   const [isResending, setIsResending] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [lastResendTime, setLastResendTime] = useState<number | null>(null);
+  const [countdown, setCountdown] = useState<number>(0);
+
+  // Countdown timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (countdown > 0) {
+      interval = setInterval(() => {
+        setCountdown((prevCountdown) => {
+          if (prevCountdown <= 1) {
+            return 0;
+          }
+          return prevCountdown - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [countdown]);
+
+  // Format countdown time as MM:SS
+  const formatCountdown = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
+
+  // Check if resend button should be disabled
+  const isResendDisabled = countdown > 0 || isResending;
 
   const handleCheckVerification = async () => {
     setIsChecking(true);
     try {
       if (currentUser) {
         await currentUser.reload();
-        if (currentUser.emailVerified) {
+        // Get the updated user object after reload
+        const updatedUser = auth.currentUser;
+
+        if (updatedUser && updatedUser.emailVerified) {
           Alert.alert("Success", "Your email is now verified! Redirecting...");
+
+          // Call the new function to trigger a state update in the AppContext
+          await refreshAuthState(updatedUser);
+
+          // The AppContext's state change will handle navigation automatically
         } else {
           Alert.alert(
             "Still Not Verified",
@@ -59,27 +100,17 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
       return;
     }
 
-    // Check if 3 minutes have passed since last resend
-    const now = Date.now();
-    const threeMinutes = 3 * 60 * 1000; // 3 minutes in milliseconds
-
-    if (lastResendTime && now - lastResendTime < threeMinutes) {
-      const remainingTime = Math.ceil(
-        (threeMinutes - (now - lastResendTime)) / 1000 / 60
-      );
-      Alert.alert(
-        "Please Wait",
-        `You can resend the email in ${remainingTime} minute${
-          remainingTime !== 1 ? "s" : ""
-        }.`
-      );
+    // Check if countdown is still active
+    if (countdown > 0) {
       return;
     }
 
     setIsResending(true);
     try {
       await sendEmailVerification(currentUser);
-      setLastResendTime(now);
+      setLastResendTime(Date.now());
+      // Start countdown timer (2 minutes and 30 seconds = 150 seconds)
+      setCountdown(150);
       Alert.alert(
         "Email Sent",
         "Verification email has been resent. Please check your inbox."
@@ -141,12 +172,19 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.resendButton, isResending && styles.buttonDisabled]}
+            style={[
+              styles.resendButton,
+              isResendDisabled && styles.buttonDisabled,
+            ]}
             onPress={handleResendEmail}
-            disabled={isResending}
+            disabled={isResendDisabled}
           >
             <Text style={styles.resendButtonText}>
-              {isResending ? "Sending..." : "Resend Email"}
+              {isResending
+                ? "Sending..."
+                : countdown > 0
+                ? `Resend in ${formatCountdown(countdown)}`
+                : "Resend Email"}
             </Text>
           </TouchableOpacity>
 

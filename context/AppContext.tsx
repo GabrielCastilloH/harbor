@@ -22,6 +22,7 @@ interface AppContextType {
   setStreamUserToken: (token: string | null) => void;
   isInitialized: boolean;
   profileExists: boolean;
+  refreshAuthState: (user: User) => void;
 }
 
 const defaultValue: AppContextType = {
@@ -42,6 +43,7 @@ const defaultValue: AppContextType = {
   setStreamUserToken: () => {},
   isInitialized: false,
   profileExists: false,
+  refreshAuthState: () => {},
 };
 
 export const AppContext = React.createContext<AppContextType>(defaultValue);
@@ -61,6 +63,66 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [streamUserToken, setStreamUserToken] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [profileExists, setProfileExists] = useState(false);
+
+  // Function to manually refresh auth state
+  const refreshAuthState = async (user: User) => {
+    console.log(
+      "🔄 [APP CONTEXT] Manually refreshing auth state for user:",
+      user.uid
+    );
+    setCurrentUser(user);
+
+    if (user.emailVerified) {
+      console.log("✅ [APP CONTEXT] Email verified. Checking profile...");
+
+      try {
+        const { UserService } = require("../networking");
+        const response = await UserService.getUserById(user.uid);
+
+        if (response && response.user) {
+          console.log("✅ [APP CONTEXT] User profile found in Firestore");
+          setUserId(user.uid);
+          setProfileExists(true);
+          setProfile(response.user);
+          setIsAuthenticated(true);
+        } else {
+          console.log(
+            "📝 [APP CONTEXT] No user profile in Firestore (null response)"
+          );
+          setUserId(null);
+          setProfileExists(false);
+          setProfile(null);
+          setIsAuthenticated(true);
+        }
+      } catch (error: any) {
+        if (
+          error?.code === "not-found" ||
+          error?.code === "functions/not-found"
+        ) {
+          console.log(
+            "📝 [APP CONTEXT] User profile not found (expected for new user)"
+          );
+          setUserId(null);
+          setProfileExists(false);
+          setProfile(null);
+          setIsAuthenticated(true);
+        } else {
+          console.error(
+            "❌ [APP CONTEXT] Unexpected error checking profile:",
+            error
+          );
+          setProfileExists(false);
+          setUserId(null);
+          setProfile(null);
+          setIsAuthenticated(true);
+        }
+      }
+    } else {
+      setIsAuthenticated(false);
+      setUserId(null);
+      setProfileExists(false);
+    }
+  };
 
   // Ensure userId is never an empty string - convert to null
   useEffect(() => {
@@ -198,6 +260,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setStreamUserToken,
         isInitialized,
         profileExists,
+        refreshAuthState,
       }}
     >
       {children}
