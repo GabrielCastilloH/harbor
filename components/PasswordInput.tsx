@@ -122,6 +122,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.secondary100,
     paddingHorizontal: 16,
     paddingVertical: 14,
+    height: 60, // Fixed height for consistency
     flexDirection: "row",
     alignItems: "center",
   },

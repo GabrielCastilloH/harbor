@@ -11,6 +11,148 @@ TODO:
 - Add the ability to see profiles that swiped on you and swipe on them.
 - show difference between basic and premium plan on payment page
 
+## 🔐 Authentication Flow
+
+Harbor uses Firebase Auth's native email/password authentication with email verification. The system uses Firebase's built-in methods without custom complications.
+
+### Flow Logic
+
+The app has 4 distinct authentication states handled in `App.tsx`:
+
+1. **User signed in but email NOT verified** → `EmailVerificationScreen`
+2. **User verified but NO profile in database** → `AccountSetupScreen`
+3. **User verified AND has profile** → Main App (`TabNavigator`)
+4. **User not signed in** → Auth screens (`SignIn`/`CreateAccount`)
+
+### Firebase Implementation
+
+#### Account Creation (`CreateAccountScreen.tsx`)
+
+```typescript
+// 1. Create user with Firebase Auth
+const userCredential = await createUserWithEmailAndPassword(
+  auth,
+  email,
+  password
+);
+
+// 2. Send verification email (Firebase's native method)
+await sendEmailVerification(userCredential.user);
+
+// 3. Sign out user to prevent auto-navigation
+await signOut(auth);
+
+// 4. Navigate to EmailVerificationScreen
+navigation.navigate("EmailVerification", { email });
+```
+
+#### Email Verification (`EmailVerificationScreen.tsx`)
+
+```typescript
+// Listen for real-time verification status
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (user && user.emailVerified) {
+      // Email verified - navigate based on context
+      if (fromSignIn) {
+        navigation.replace("HomeScreen"); // Existing user
+      } else {
+        navigation.replace("AccountSetup"); // New user
+      }
+    }
+  });
+  return () => unsubscribe();
+}, []);
+
+// Manual check with reload
+const handleCheckVerification = async () => {
+  const user = auth.currentUser;
+  if (user) {
+    await user.reload(); // Get latest verification status
+    if (user.emailVerified) {
+      // Handle verification...
+    }
+  }
+};
+
+// Resend email
+const handleResendEmail = async () => {
+  const user = auth.currentUser;
+  if (user) {
+    await sendEmailVerification(user);
+  }
+};
+```
+
+#### Sign In (`SignIn.tsx`)
+
+```typescript
+// Sign in and check verification
+const userCredential = await signInWithEmailAndPassword(auth, email, password);
+await userCredential.user.reload();
+
+if (!userCredential.user.emailVerified) {
+  // Redirect to verification
+  navigation.navigate("EmailVerification", {
+    email,
+    fromSignIn: true,
+  });
+} else {
+  // Proceed with sign-in flow
+}
+```
+
+#### AppContext Logic (`context/AppContext.tsx`)
+
+```typescript
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      setCurrentUser(user);
+
+      // Only set authenticated if email is verified
+      if (user.emailVerified) {
+        setIsAuthenticated(true);
+
+        // Check if user profile exists in Firestore
+        const response = await UserService.getUserById(user.uid);
+        if (response?.user) {
+          setUserId(user.uid);
+          setProfile(response.user);
+        } else {
+          setUserId(null);
+          setProfile(null);
+        }
+      } else {
+        setIsAuthenticated(false);
+        setUserId(null);
+        setProfile(null);
+      }
+    } else {
+      // User signed out
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      setUserId(null);
+      setProfile(null);
+    }
+  });
+}, []);
+```
+
+### Key Design Principles
+
+- **Use Firebase's native methods**: `createUserWithEmailAndPassword`, `sendEmailVerification`, `signInWithEmailAndPassword`, `user.reload()`, `onAuthStateChanged`
+- **No custom Cloud Functions for auth**: Authentication is handled entirely client-side with Firebase Auth SDK
+- **Email verification required**: Users cannot access the main app until email is verified
+- **Separation of concerns**: Account creation → Email verification → Profile setup → Main app
+- **Real-time status updates**: Use `onAuthStateChanged` listener for immediate verification detection
+
+### Cornell Email Validation
+
+- **Frontend validation**: Explicit rejection of emails containing `+` symbols
+- **Backend normalization**: Strip `+` aliases in Cloud Functions (when needed)
+- **Domain enforcement**: Only `@cornell.edu` emails accepted
+
 ## 📋 Validation Rules
 
 ### Profile Validation Requirements
