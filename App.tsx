@@ -68,100 +68,63 @@ function AuthNavigator() {
   );
 }
 
-// NEW: AuthenticatedNavigator for users who are signed in
-function AuthenticatedNavigator() {
-  const AuthSetupStack = createNativeStackNavigator();
+// Main Navigator for authenticated users
+function MainNavigator() {
+  const AppStack = createNativeStackNavigator();
+  const { currentUser, isAuthenticated, profileExists } = useAppContext();
+
+  if (!currentUser) {
+    return null; // This should not happen if isAuthenticated is true
+  }
+
+  if (!currentUser.emailVerified) {
+    return (
+      <AppStack.Navigator screenOptions={{ headerShown: false }}>
+        <AppStack.Screen
+          name="EmailVerification"
+          component={EmailVerificationScreen}
+        />
+      </AppStack.Navigator>
+    );
+  }
+
+  if (!profileExists) {
+    return (
+      <AppStack.Navigator screenOptions={{ headerShown: false }}>
+        <AppStack.Screen name="AccountSetup" component={AccountSetupScreen} />
+      </AppStack.Navigator>
+    );
+  }
+
+  // User is fully authenticated and has a profile
   return (
-    <AuthSetupStack.Navigator screenOptions={{ headerShown: false }}>
-      <AuthSetupStack.Screen
-        name="EmailVerification"
-        component={EmailVerificationScreen}
-      />
-      <AuthSetupStack.Screen
-        name="AccountSetup"
-        component={AccountSetupScreen}
-      />
-    </AuthSetupStack.Navigator>
+    <AppStack.Navigator screenOptions={{ headerShown: false }}>
+      <AppStack.Screen name="Tab" component={TabNavigator} />
+    </AppStack.Navigator>
   );
 }
 
 function AppContent() {
-  const { isInitialized, currentUser, isAuthenticated, profileExists } =
-    useAppContext();
+  const { isInitialized, isAuthenticated } = useAppContext();
 
-  console.log("🔍 [APP] AppContent render - currentUser:", currentUser?.uid);
-  console.log(
-    "🔍 [APP] AppContent render - emailVerified:",
-    currentUser?.emailVerified
-  );
   console.log("🔍 [APP] AppContent render - isAuthenticated:", isAuthenticated);
-  console.log("🔍 [APP] AppContent render - profileExists:", profileExists);
   console.log("🔍 [APP] AppContent render - isInitialized:", isInitialized);
 
-  // Check initialization status first
   if (!isInitialized) {
     console.log("⏳ [APP] Showing loading screen");
     return <LoadingScreen loadingText="Signing you in..." />;
   }
 
-  // Handle unauthenticated users
-  if (!currentUser) {
-    console.log("🔐 [APP] User not signed in - showing auth screens");
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer>
-          <StatusBar style="dark" />
-          <AuthNavigator />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
-
-  // Handle authenticated users with unverified email
-  if (currentUser && !currentUser.emailVerified) {
-    console.log(
-      "📧 [APP] User signed in but email not verified - showing EmailVerification"
-    );
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer>
-          <StatusBar style="dark" />
-          <EmailVerificationScreen />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
-
-  // Handle verified users with no profile
-  if (isAuthenticated && !profileExists) {
-    console.log("⚙️ [APP] User verified but no profile - showing AccountSetup");
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer>
-          <StatusBar style="dark" />
-          <AccountSetupScreen />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
-
-  // Handle verified users with a profile
-  if (isAuthenticated && profileExists) {
-    console.log("🏠 [APP] User verified with profile - showing main app");
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer>
-          <StatusBar style="dark" />
-          <TabNavigator />
-          <UnviewedMatchesHandler />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
-
-  // Fallback - should not reach here
-  console.log("⚠️ [APP] Unexpected state - showing loading screen");
-  return <LoadingScreen loadingText="Loading..." />;
+  // Single NavigationContainer for the entire app
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <NavigationContainer>
+        <StatusBar style="dark" />
+        {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
+        {isAuthenticated && <UnviewedMatchesHandler />}
+      </NavigationContainer>
+    </GestureHandlerRootView>
+  );
 }
 
 export default function App() {
