@@ -17,14 +17,17 @@ import { useAppContext } from "../context/AppContext";
 import LoadingScreen from "../components/LoadingScreen";
 import EmailInput from "../components/EmailInput";
 import PasswordInput from "../components/PasswordInput";
-import { signOut } from "firebase/auth";
+import {
+  signOut,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+} from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   preloadChatCredentials,
   clearChatCredentials,
 } from "../util/chatPreloader";
-import { AuthService } from "../networking/AuthService";
 
 export default function SignIn({ navigation }: any) {
   const {
@@ -140,43 +143,21 @@ export default function SignIn({ navigation }: any) {
 
     try {
       const normalizedEmail = normalizeEmail(email.trim());
-      const result = await AuthService.signInWithEmail(
+      // Sign in with Firebase Auth directly
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
         normalizedEmail,
         password
       );
 
-      if (result.user) {
-        // Existing user with profile
-        try {
-          // Pre-load chat credentials for existing users
-          const { apiKey, userToken } = await preloadChatCredentials(
-            result.authInfo.uid
-          );
-          setStreamApiKey(apiKey);
-          setStreamUserToken(userToken);
-        } catch (error) {
-          // Don't block sign-in if chat pre-loading fails
-          console.error("Failed to pre-load chat credentials:", error);
-        }
+      const user = userCredential.user;
 
-        setUserId(result.authInfo.uid);
-        setProfile(result.user);
-        setIsAuthenticated(true);
-      } else if (result.authInfo) {
-        // New user without profile - navigate to account setup
-        setUserId(result.authInfo.uid);
-        // Don't set profile or authenticated yet - let account setup handle it
-        navigation.navigate("AccountSetup");
-      }
-    } catch (error: any) {
-      console.error("❌ [SIGN IN] Sign-in error:", error);
+      // Reload user to get latest verification status
+      await user.reload();
 
-      if (
-        error.code === "functions/permission-denied" &&
-        error.message?.includes("verify")
-      ) {
+      // Check if email is verified
+      if (!user.emailVerified) {
         // Email not verified - redirect to verification screen
-        const normalizedEmail = normalizeEmail(email.trim());
         navigation.navigate("EmailVerification", {
           email: normalizedEmail,
           fromSignIn: true,
@@ -184,14 +165,30 @@ export default function SignIn({ navigation }: any) {
         return;
       }
 
+      // Email is verified - proceed with sign in
+      try {
+        // Pre-load chat credentials for existing users
+        const { apiKey, userToken } = await preloadChatCredentials(user.uid);
+        setStreamApiKey(apiKey);
+        setStreamUserToken(userToken);
+      } catch (error) {
+        // Don't block sign-in if chat pre-loading fails
+        console.error("Failed to pre-load chat credentials:", error);
+      }
+
+      setUserId(user.uid);
+      setIsAuthenticated(true);
+    } catch (error: any) {
+      console.error("❌ [SIGN IN] Sign-in error:", error);
+
       let errorMessage = "Failed to sign in. Please try again.";
 
-      if (error.code === "functions/not-found") {
+      if (error.code === "auth/user-not-found") {
         errorMessage = "No account found with this email address";
-      } else if (error.code === "functions/permission-denied") {
+      } else if (error.code === "auth/wrong-password") {
         errorMessage = "Incorrect password";
-      } else if (error.code === "functions/invalid-argument") {
-        errorMessage = "Please check your email and password";
+      } else if (error.code === "auth/invalid-email") {
+        errorMessage = "Please enter a valid Cornell email address";
       }
 
       Alert.alert("Sign In Error", errorMessage);
@@ -235,7 +232,8 @@ export default function SignIn({ navigation }: any) {
           text: "Send Reset Link",
           onPress: async () => {
             try {
-              await AuthService.resetPassword(normalizedEmail);
+              // Use Firebase Auth's built-in password reset
+              await sendPasswordResetEmail(auth, normalizedEmail);
               Alert.alert(
                 "Reset Link Sent",
                 "Check your email for a password reset link"

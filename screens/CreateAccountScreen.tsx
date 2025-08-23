@@ -17,8 +17,7 @@ import Colors from "../constants/Colors";
 import LoadingScreen from "../components/LoadingScreen";
 import EmailInput from "../components/EmailInput";
 import PasswordInput from "../components/PasswordInput";
-import { AuthService } from "../networking/AuthService";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 
 export default function CreateAccountScreen({ navigation }: any) {
@@ -123,35 +122,31 @@ export default function CreateAccountScreen({ navigation }: any) {
     try {
       const normalizedEmail = normalizeEmail(email.trim());
 
-      // Create account with Cloud Function
-      const result = await AuthService.signUpWithEmail(
+      // Create account with Firebase Auth directly
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
         normalizedEmail,
         password
       );
 
-      if (result.success) {
-        // Don't sign in automatically - let user verify email first
-        // Navigate to email verification screen
-        navigation.navigate("EmailVerification", {
-          email: normalizedEmail,
-        });
-      }
+      // Send verification email
+      await sendEmailVerification(userCredential.user);
+
+      // Navigate to email verification screen
+      navigation.navigate("EmailVerification", {
+        email: normalizedEmail,
+      });
     } catch (error: any) {
       console.error("❌ [CREATE ACCOUNT] Error:", error);
 
       let errorMessage = "Failed to create account. Please try again.";
 
-      if (error.code === "functions/already-exists") {
+      if (error.code === "auth/email-already-in-use") {
         errorMessage = "An account with this email already exists";
-      } else if (error.code === "functions/invalid-argument") {
-        if (error.message?.includes("Cornell")) {
-          errorMessage = "Only Cornell email addresses are allowed";
-        } else if (error.message?.includes("Password")) {
-          errorMessage =
-            "Password is too weak. Please use a stronger password.";
-        } else {
-          errorMessage = "Please check your information and try again";
-        }
+      } else if (error.code === "auth/weak-password") {
+        errorMessage = "Password is too weak. Please use a stronger password.";
+      } else if (error.code === "auth/invalid-email") {
+        errorMessage = "Please enter a valid Cornell email address";
       }
 
       Alert.alert("Create Account Error", errorMessage);

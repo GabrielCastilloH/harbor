@@ -11,7 +11,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "../constants/Colors";
 import LoadingScreen from "../components/LoadingScreen";
-import { AuthService } from "../networking/AuthService";
+import { auth } from "../firebaseConfig";
+import { sendEmailVerification, onAuthStateChanged } from "firebase/auth";
 import { useAppContext } from "../context/AppContext";
 
 export default function EmailVerificationScreen({ navigation, route }: any) {
@@ -26,29 +27,61 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   >("pending");
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
 
-  // Auto-check verification status every 5 seconds
+  // Listen for auth state changes to detect email verification
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && user.email === email && user.emailVerified) {
+        setVerificationStatus("verified");
+        setLastChecked(new Date());
+
+        // Navigate based on where user came from
+        setTimeout(() => {
+          if (fromSignIn) {
+            // User came from sign in - they should already be authenticated
+            // Just go back to main app
+            navigation.replace("HomeScreen");
+          } else {
+            // User came from account creation - go to account setup
+            navigation.replace("AccountSetup");
+          }
+        }, 1500);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [email, fromSignIn, navigation]);
+
+  // Auto-check verification status every 30 seconds as backup
   useEffect(() => {
     const checkVerification = async () => {
       if (verificationStatus === "verified" || !email) return;
 
       setIsChecking(true);
       try {
-        const result = await AuthService.checkEmailVerificationByEmail(email);
-        if (result.emailVerified) {
-          setVerificationStatus("verified");
-          setLastChecked(new Date());
+        // Check if user is signed in and email is verified
+        const user = auth.currentUser;
+        if (user && user.email === email) {
+          // Reload user to get latest verification status
+          await user.reload();
 
-          // Navigate based on where user came from
-          setTimeout(() => {
-            if (fromSignIn) {
-              // User came from sign in - they should already be authenticated
-              // Just go back to main app
-              navigation.replace("HomeScreen");
-            } else {
-              // User came from account creation - go to account setup
-              navigation.replace("AccountSetup");
-            }
-          }, 1500);
+          if (user.emailVerified) {
+            setVerificationStatus("verified");
+            setLastChecked(new Date());
+
+            // Navigate based on where user came from
+            setTimeout(() => {
+              if (fromSignIn) {
+                // User came from sign in - they should already be authenticated
+                // Just go back to main app
+                navigation.replace("HomeScreen");
+              } else {
+                // User came from account creation - go to account setup
+                navigation.replace("AccountSetup");
+              }
+            }, 1500);
+          } else {
+            setLastChecked(new Date());
+          }
         } else {
           setLastChecked(new Date());
         }
@@ -64,10 +97,10 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
     checkVerification();
 
     // Set up interval for periodic checks - reduced frequency to save costs
-    const interval = setInterval(checkVerification, 30000); // Check every 30 seconds instead of 5
+    const interval = setInterval(checkVerification, 30000); // Check every 30 seconds
 
     return () => clearInterval(interval);
-  }, [verificationStatus, navigation, email]);
+  }, [verificationStatus, navigation, email, fromSignIn]);
 
   const handleCheckVerification = async () => {
     if (!email) {
@@ -77,19 +110,31 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
     setIsChecking(true);
     try {
-      const result = await AuthService.checkEmailVerificationByEmail(email);
-      if (result.emailVerified) {
-        setVerificationStatus("verified");
-        setLastChecked(new Date());
+      // Check if user is signed in and email is verified
+      const user = auth.currentUser;
+      if (user && user.email === email) {
+        // Reload user to get latest verification status
+        await user.reload();
 
-        // Navigate based on where user came from
-        if (fromSignIn) {
-          // User came from sign in - they should already be authenticated
-          // Just go back to main app
-          navigation.replace("HomeScreen");
+        if (user.emailVerified) {
+          setVerificationStatus("verified");
+          setLastChecked(new Date());
+
+          // Navigate based on where user came from
+          if (fromSignIn) {
+            // User came from sign in - they should already be authenticated
+            // Just go back to main app
+            navigation.replace("HomeScreen");
+          } else {
+            // User came from account creation - go to account setup
+            navigation.replace("AccountSetup");
+          }
         } else {
-          // User came from account creation - go to account setup
-          navigation.replace("AccountSetup");
+          setLastChecked(new Date());
+          Alert.alert(
+            "Email Not Verified",
+            "Your email hasn't been verified yet. Please check your inbox and click the verification link."
+          );
         }
       } else {
         setLastChecked(new Date());
@@ -117,7 +162,13 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
     setIsResending(true);
     try {
-      await AuthService.sendVerificationEmailByEmail(email);
+      // Send verification email using Firebase Auth
+      const user = auth.currentUser;
+      if (user) {
+        await sendEmailVerification(user);
+      } else {
+        throw new Error("No user signed in");
+      }
       Alert.alert(
         "Email Sent",
         "Verification email has been resent. Please check your inbox."
