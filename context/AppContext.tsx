@@ -66,10 +66,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Function to manually refresh auth state
   const refreshAuthState = async (user: User) => {
-    console.log(
-      "🔄 [APP CONTEXT] Manually refreshing auth state for user:",
-      user.uid
-    );
+    console.log("🔄 [APP CONTEXT] Refreshing auth state");
     setCurrentUser(user);
     // The auth state listener will handle the rest automatically
   };
@@ -84,7 +81,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // Listen to Firebase Auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log("🔍 [APP CONTEXT] Auth state changed - user:", user?.uid);
+      console.log(
+        "🔍 [APP CONTEXT] Auth state changed:",
+        user?.uid ? "user signed in" : "user signed out"
+      );
       setCurrentUser(user);
 
       if (user) {
@@ -97,7 +97,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
         // Check verification first
         if (user.emailVerified) {
-          console.log("✅ [APP CONTEXT] Email verified. Checking profile...");
+          console.log("✅ [APP CONTEXT] Email verified, checking profile...");
 
           // Now, check for the profile
           try {
@@ -105,12 +105,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             const response = await UserService.getUserById(user.uid);
 
             if (response && response.user) {
-              console.log("✅ [APP CONTEXT] User profile found in Firestore");
+              console.log("✅ [APP CONTEXT] Profile found");
               setUserId(user.uid);
               setProfileExists(true);
               setProfile(response.user);
             } else {
-              console.log("📝 [APP CONTEXT] No user profile in Firestore");
+              console.log("📝 [APP CONTEXT] No profile found");
               setUserId(null);
               setProfileExists(false);
               setProfile(null);
@@ -120,7 +120,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
               error?.code === "not-found" ||
               error?.code === "functions/not-found"
             ) {
-              console.log("📝 [APP CONTEXT] User profile not found (new user)");
+              console.log("📝 [APP CONTEXT] No profile found (new user)");
               setUserId(null);
               setProfileExists(false);
               setProfile(null);
@@ -133,9 +133,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           }
         } else {
           // User is signed in but email NOT verified
-          console.log(
-            "📧 [APP CONTEXT] User is signed in but email is not verified"
-          );
+          console.log("📧 [APP CONTEXT] Email not verified");
           setUserId(null);
           setProfileExists(false);
           setProfile(null);
