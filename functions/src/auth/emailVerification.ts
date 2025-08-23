@@ -96,7 +96,6 @@ export const sendVerificationCode = functions.https.onCall(
 
       await mg.messages.create(domain, msg);
 
-      console.log(`Verification code ${code} sent to ${email}`);
       return { success: true };
     } catch (error: any) {
       console.error("Error sending verification code:", error);
@@ -169,7 +168,6 @@ export const verifyVerificationCode = functions.https.onCall(
       // Clean up used code
       await doc.ref.delete();
 
-      console.log(`User ${userId} successfully verified email`);
       return { success: true };
     } catch (error: any) {
       console.error("Error verifying code:", error);
