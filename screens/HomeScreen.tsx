@@ -41,6 +41,12 @@ import { RootStackParamList } from "../types/navigation";
 
 export default function HomeScreen() {
   const { userId, isAuthenticated, currentUser } = useAppContext();
+
+  console.log("🏠 [HOME SCREEN] Rendering with context:", {
+    userId,
+    isAuthenticated,
+    currentUserExists: !!currentUser,
+  });
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] =
