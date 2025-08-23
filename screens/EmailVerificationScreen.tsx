@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
-  TextInput,
   KeyboardAvoidingView,
   ScrollView,
 } from "react-native";
@@ -17,6 +16,7 @@ import LoadingScreen from "../components/LoadingScreen";
 import { auth } from "../firebaseConfig";
 import { useAppContext } from "../context/AppContext";
 import { AuthService } from "../networking/AuthService";
+import VerificationCodeInput from "../components/VerificationCodeInput";
 
 export default function EmailVerificationScreen({ navigation, route }: any) {
   const { currentUser, refreshAuthState } = useAppContext(); // Get currentUser and refreshAuthState from context
@@ -229,14 +229,10 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
                 Enter the 6-digit code from the email below:
               </Text>
 
-              <TextInput
-                style={styles.codeInput}
+              <VerificationCodeInput
                 value={verificationCode}
                 onChangeText={setVerificationCode}
-                keyboardType="number-pad"
                 maxLength={6}
-                placeholder="XXXXXX"
-                placeholderTextColor={Colors.secondary500}
               />
 
               {/* AppContext will handle navigation automatically when email is verified */}
@@ -436,18 +432,5 @@ const styles = StyleSheet.create({
     color: Colors.secondary500,
     textAlign: "center",
     lineHeight: 20,
-  },
-  codeInput: {
-    height: 50,
-    width: 200,
-    fontSize: 24,
-    fontWeight: "bold",
-    textAlign: "center",
-    borderColor: Colors.primary500,
-    borderWidth: 2,
-    borderRadius: 8,
-    marginTop: 20,
-    color: Colors.primary500,
-    backgroundColor: Colors.secondary100,
   },
 });
