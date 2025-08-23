@@ -28,6 +28,7 @@ import {
   preloadChatCredentials,
   clearChatCredentials,
 } from "../util/chatPreloader";
+import { AuthService } from "../networking/AuthService";
 
 export default function SignIn({ navigation }: any) {
   const {
@@ -45,6 +46,7 @@ export default function SignIn({ navigation }: any) {
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [isTestEmailLoading, setIsTestEmailLoading] = useState(false);
 
   // Only clean up auth state if user is not already authenticated
   useEffect(() => {
@@ -261,6 +263,23 @@ export default function SignIn({ navigation }: any) {
     navigation.navigate("CreateAccount");
   };
 
+  const handleTestEmail = async () => {
+    setIsTestEmailLoading(true);
+    try {
+      console.log("🧪 [SIGN IN] Sending test email...");
+      await AuthService.sendTestEmail();
+      Alert.alert(
+        "Success",
+        "Test email sent! Check gabocastillo321@gmail.com"
+      );
+    } catch (error: any) {
+      console.error("🧪 [SIGN IN] Error sending test email:", error);
+      Alert.alert("Error", `Failed to send test email: ${error.message}`);
+    } finally {
+      setIsTestEmailLoading(false);
+    }
+  };
+
   if (isLoading) {
     return <LoadingScreen loadingText="Signing you in..." />;
   }
@@ -337,6 +356,20 @@ export default function SignIn({ navigation }: any) {
                 onPress={handleCreateAccount}
               >
                 <Text style={styles.createAccountText}>Create Account</Text>
+              </TouchableOpacity>
+
+              {/* Test Email Button */}
+              <TouchableOpacity
+                style={[
+                  styles.testEmailButton,
+                  isTestEmailLoading && styles.buttonDisabled,
+                ]}
+                onPress={handleTestEmail}
+                disabled={isTestEmailLoading}
+              >
+                <Text style={styles.testEmailText}>
+                  {isTestEmailLoading ? "Sending..." : "🧪 Send Test Email"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -472,6 +505,25 @@ const styles = StyleSheet.create({
     color: Colors.primary500,
     fontWeight: "600",
     fontSize: 16,
+  },
+  testEmailButton: {
+    backgroundColor: Colors.secondary200,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: Colors.secondary500,
+  },
+  testEmailText: {
+    color: Colors.secondary500,
+    fontWeight: "500",
+    fontSize: 14,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   termsContainer: {
     alignItems: "center",
