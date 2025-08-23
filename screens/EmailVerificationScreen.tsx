@@ -16,173 +16,33 @@ import { sendEmailVerification, onAuthStateChanged } from "firebase/auth";
 import { useAppContext } from "../context/AppContext";
 
 export default function EmailVerificationScreen({ navigation, route }: any) {
-  const { email, fromSignIn } = route.params || {};
-  const { setUserId } = useAppContext();
+  const { currentUser } = useAppContext(); // Get currentUser from context
+  const email = currentUser?.email; // Get email from currentUser
 
   console.log("📧 [EMAIL VERIFICATION] Screen loaded with email:", email);
-  console.log("📧 [EMAIL VERIFICATION] fromSignIn:", fromSignIn);
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState<
-    "pending" | "verified" | "error"
-  >("pending");
-  const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
 
-  // Listen for auth state changes to detect email verification
-  useEffect(() => {
-    console.log("📧 [EMAIL VERIFICATION] Setting up auth state listener");
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log(
-        "📧 [EMAIL VERIFICATION] Auth state changed - user:",
-        user?.uid
-      );
-      console.log("📧 [EMAIL VERIFICATION] User email:", user?.email);
-      console.log(
-        "📧 [EMAIL VERIFICATION] Email verified:",
-        user?.emailVerified
-      );
-
-      if (user && user.email === email && user.emailVerified) {
-        console.log("✅ [EMAIL VERIFICATION] Email verified! Navigating...");
-        setVerificationStatus("verified");
-        setLastChecked(new Date());
-
-        // Navigate based on where user came from
-        setTimeout(() => {
-          if (fromSignIn) {
-            console.log(
-              "🧭 [EMAIL VERIFICATION] Navigating to HomeScreen (from sign in)"
-            );
-            // User came from sign in - they should already be authenticated
-            // Just go back to main app
-            navigation.replace("HomeScreen");
-          } else {
-            console.log(
-              "🧭 [EMAIL VERIFICATION] Navigating to AccountSetup (from account creation)"
-            );
-            // User came from account creation - go to account setup
-            navigation.replace("AccountSetup");
-          }
-        }, 1500);
-      } else if (user && user.email === email && !user.emailVerified) {
-        console.log(
-          "📧 [EMAIL VERIFICATION] User signed in but email not verified yet"
-        );
-      } else if (!user) {
-        console.log(
-          "📧 [EMAIL VERIFICATION] No user signed in - this is expected after account creation"
-        );
-      }
-    });
-
-    return () => unsubscribe();
-  }, [email, fromSignIn, navigation]);
-
-  // Auto-check verification status every 30 seconds as backup
-  useEffect(() => {
-    const checkVerification = async () => {
-      if (verificationStatus === "verified" || !email) return;
-
-      setIsChecking(true);
-      try {
-        // Check if user is signed in and email is verified
-        const user = auth.currentUser;
-        if (user && user.email === email) {
-          // Reload user to get latest verification status
-          await user.reload();
-
-          if (user.emailVerified) {
-            setVerificationStatus("verified");
-            setLastChecked(new Date());
-
-            // Navigate based on where user came from
-            setTimeout(() => {
-              if (fromSignIn) {
-                // User came from sign in - they should already be authenticated
-                // Just go back to main app
-                navigation.replace("HomeScreen");
-              } else {
-                // User came from account creation - go to account setup
-                navigation.replace("AccountSetup");
-              }
-            }, 1500);
-          } else {
-            setLastChecked(new Date());
-          }
-        } else {
-          setLastChecked(new Date());
-        }
-      } catch (error) {
-        console.error("Error checking verification status:", error);
-        setVerificationStatus("error");
-      } finally {
-        setIsChecking(false);
-      }
-    };
-
-    // Initial check
-    checkVerification();
-
-    // Set up interval for periodic checks - reduced frequency to save costs
-    const interval = setInterval(checkVerification, 30000); // Check every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [verificationStatus, navigation, email, fromSignIn]);
+  // No more useEffect listeners here! AppContext handles it.
 
   const handleCheckVerification = async () => {
-    if (!email) {
-      Alert.alert("Error", "No email address found");
-      return;
-    }
-
     setIsChecking(true);
     try {
-      console.log(
-        "🔍 [EMAIL VERIFICATION] Manual verification check for:",
-        email
-      );
-
-      // Check if user is signed in and email is verified
-      const user = auth.currentUser;
-      if (user && user.email === email) {
-        // Force token refresh to get latest verification status
-        console.log("🔄 [EMAIL VERIFICATION] Forcing token refresh");
-        await user.reload();
-        console.log(
-          "✅ [EMAIL VERIFICATION] Token refreshed, emailVerified:",
-          user.emailVerified
-        );
-
-        if (user.emailVerified) {
-          setVerificationStatus("verified");
-          setLastChecked(new Date());
-
-          // Navigate based on where user came from
-          if (fromSignIn) {
-            // User came from sign in - they should already be authenticated
-            // Just go back to main app
-            navigation.replace("HomeScreen");
-          } else {
-            // User came from account creation - go to account setup
-            navigation.replace("AccountSetup");
-          }
+      // We don't need a separate check here. The `user.reload()` in AppContext is sufficient.
+      // We'll just force a reload and the AppContext listener will take care of the rest.
+      if (currentUser) {
+        await currentUser.reload();
+        if (currentUser.emailVerified) {
+          Alert.alert("Success", "Your email is now verified! Redirecting...");
         } else {
-          setLastChecked(new Date());
           Alert.alert(
-            "Email Not Verified",
-            "Your email hasn't been verified yet. Please check your inbox and click the verification link."
+            "Still Not Verified",
+            "Please check your email and click the verification link."
           );
         }
-      } else {
-        setLastChecked(new Date());
-        Alert.alert(
-          "Email Not Verified",
-          "Your email hasn't been verified yet. Please check your inbox and click the verification link."
-        );
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error checking verification:", error);
       Alert.alert(
         "Error",
@@ -194,74 +54,32 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   };
 
   const handleResendEmail = async () => {
-    if (!email) {
-      Alert.alert("Error", "No email address found");
+    // Your existing logic is good here, just ensure you are using the currentUser from context
+    if (!currentUser) {
+      Alert.alert(
+        "Cannot Resend",
+        "You must be signed in to resend the email."
+      );
       return;
     }
-
     setIsResending(true);
     try {
-      console.log(
-        "📧 [EMAIL VERIFICATION] Attempting to resend email for:",
-        email
-      );
-
-      // Check if user is signed in
-      const user = auth.currentUser;
-      if (user && user.email === email) {
-        console.log("📧 [EMAIL VERIFICATION] User signed in, resending email");
-        await sendEmailVerification(user);
-        Alert.alert(
-          "Email Sent",
-          "Verification email has been resent. Please check your inbox."
-        );
-      } else {
-        console.log(
-          "📧 [EMAIL VERIFICATION] No user signed in, cannot resend email"
-        );
-        Alert.alert(
-          "Cannot Resend Email",
-          "You need to be signed in to resend the verification email. Please go back to sign in and try again.",
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Go to Sign In",
-              onPress: () => navigation.navigate("SignIn"),
-            },
-          ]
-        );
-      }
-    } catch (error: any) {
-      console.error("📧 [EMAIL VERIFICATION] Error resending email:", error);
+      await sendEmailVerification(currentUser);
       Alert.alert(
-        "Error",
-        "Failed to resend verification email. Please try again."
+        "Email Sent",
+        "Verification email has been resent. Please check your inbox."
       );
+    } catch (error) {
+      Alert.alert("Error", "Failed to resend email.");
     } finally {
       setIsResending(false);
     }
   };
 
   const handleBackToSignIn = () => {
-    Alert.alert(
-      "Go Back to Sign In",
-      "Are you sure you want to go back? You'll need to verify your email to continue.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Go Back",
-          style: "destructive",
-          onPress: () => {
-            navigation.navigate("SignIn");
-          },
-        },
-      ]
-    );
+    // This is correct, it will trigger the onAuthStateChanged listener to sign out the user
+    auth.signOut();
   };
-
-  if (isLoading) {
-    return <LoadingScreen loadingText="Setting up verification..." />;
-  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.secondary100 }}>
@@ -293,30 +111,14 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
             Harbor.
           </Text>
 
-          {verificationStatus === "verified" && (
-            <View style={styles.successContainer}>
-              <Text style={styles.successIcon}>✅</Text>
-              <Text style={styles.successText}>
-                Email verified successfully!
-              </Text>
-              <Text style={styles.successSubtext}>
-                Redirecting to account setup...
-              </Text>
-            </View>
-          )}
-
-          {lastChecked && (
-            <Text style={styles.lastCheckedText}>
-              Last checked: {lastChecked.toLocaleTimeString()}
-            </Text>
-          )}
+          {/* AppContext will handle navigation automatically when email is verified */}
         </View>
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[styles.checkButton, isChecking && styles.buttonDisabled]}
             onPress={handleCheckVerification}
-            disabled={isChecking || verificationStatus === "verified"}
+            disabled={isChecking}
           >
             <Text style={styles.checkButtonText}>
               {isChecking ? "Checking..." : "Check Verification Status"}
@@ -326,7 +128,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
           <TouchableOpacity
             style={[styles.verifiedButton, isChecking && styles.buttonDisabled]}
             onPress={handleCheckVerification}
-            disabled={isChecking || verificationStatus === "verified"}
+            disabled={isChecking}
           >
             <Text style={styles.verifiedButtonText}>
               I've Verified My Email
@@ -336,7 +138,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
           <TouchableOpacity
             style={[styles.resendButton, isResending && styles.buttonDisabled]}
             onPress={handleResendEmail}
-            disabled={isResending || verificationStatus === "verified"}
+            disabled={isResending}
           >
             <Text style={styles.resendButtonText}>
               {isResending ? "Sending..." : "Resend Email"}

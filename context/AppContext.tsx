@@ -21,7 +21,7 @@ interface AppContextType {
   streamUserToken: string | null;
   setStreamUserToken: (token: string | null) => void;
   isInitialized: boolean;
-  isCheckingProfile: boolean;
+  profileExists: boolean;
 }
 
 const defaultValue: AppContextType = {
@@ -41,7 +41,7 @@ const defaultValue: AppContextType = {
   streamUserToken: null,
   setStreamUserToken: () => {},
   isInitialized: false,
-  isCheckingProfile: false,
+  profileExists: false,
 };
 
 export const AppContext = React.createContext<AppContextType>(defaultValue);
@@ -60,8 +60,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [streamApiKey, setStreamApiKey] = useState<string | null>(null);
   const [streamUserToken, setStreamUserToken] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isAuthDetermined, setIsAuthDetermined] = useState(false);
-  const [isCheckingProfile, setIsCheckingProfile] = useState(false);
+  const [profileExists, setProfileExists] = useState(false);
 
   // Ensure userId is never an empty string - convert to null
   useEffect(() => {
@@ -74,96 +73,47 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log("🔍 [APP CONTEXT] Auth state changed - user:", user?.uid);
-      console.log("🔍 [APP CONTEXT] User email:", user?.email);
-      console.log("🔍 [APP CONTEXT] Email verified:", user?.emailVerified);
-
-      // Prevent multiple rapid state changes during initialization
-      if (isAuthDetermined && user?.uid === currentUser?.uid) {
-        console.log("🔄 [APP CONTEXT] Skipping duplicate auth state change");
-        return;
-      }
+      setCurrentUser(user);
 
       if (user) {
-        // User is signed in
-        console.log("✅ [APP CONTEXT] User signed in");
-        setCurrentUser(user);
-
-        // Force token refresh to get accurate email verification status
-        console.log(
-          "🔄 [APP CONTEXT] Forcing token refresh to check email verification"
-        );
+        // User is signed in. Force a reload to check the latest status.
+        // This is the ONLY place this should happen.
         try {
           await user.reload();
-          console.log(
-            "✅ [APP CONTEXT] Token refreshed, emailVerified:",
-            user.emailVerified
-          );
         } catch (error) {
-          console.error("❌ [APP CONTEXT] Error refreshing token:", error);
+          console.error("❌ [APP CONTEXT] Error reloading user:", error);
         }
 
-        // Only consider user authenticated if email is verified
+        // Check verification first
         if (user.emailVerified) {
-          console.log(
-            "✅ [APP CONTEXT] Email verified - setting authenticated"
-          );
           setIsAuthenticated(true);
-        } else {
-          console.log(
-            "📧 [APP CONTEXT] Email not verified - not setting authenticated"
-          );
-          setIsAuthenticated(false);
-        }
+          console.log("✅ [APP CONTEXT] Email verified. Checking profile...");
 
-        // Only check Firestore if email is verified
-        if (user.emailVerified) {
-          console.log(
-            "🔍 [APP CONTEXT] Checking Firestore profile for verified user"
-          );
-          // Always check Firestore when user changes to ensure we have the correct profile
-          // This fixes the issue where switching accounts doesn't properly check the new user's profile
-          setIsCheckingProfile(true);
+          // Now, check for the profile
           try {
             const { UserService } = require("../networking");
             const response = await UserService.getUserById(user.uid);
+
             if (response && response.user) {
               console.log("✅ [APP CONTEXT] User profile found in Firestore");
               setUserId(user.uid);
+              setProfileExists(true);
               setProfile(response.user);
             } else {
               console.log("📝 [APP CONTEXT] No user profile in Firestore");
               setUserId(null);
+              setProfileExists(false);
               setProfile(null);
             }
-          } catch (error: any) {
-            if (
-              error?.code === "functions/not-found" ||
-              error?.code === "not-found" ||
-              error?.message?.includes("not found")
-            ) {
-              console.log(
-                "📝 [APP CONTEXT] User profile not found in Firestore"
-              );
-              setUserId(null);
-              setProfile(null);
-            } else {
-              console.error(
-                "❌ [APP CONTEXT] Unexpected error checking user profile:",
-                error
-              );
-              setUserId(null);
-              setProfile(null);
-            }
-          } finally {
-            setIsCheckingProfile(false);
+          } catch (error) {
+            console.error("❌ [APP CONTEXT] Error checking profile:", error);
+            setProfileExists(false);
           }
         } else {
-          console.log(
-            "📧 [APP CONTEXT] Email not verified - skipping Firestore check"
-          );
+          // User is signed in but email NOT verified
+          setIsAuthenticated(false);
           setUserId(null);
-          setProfile(null);
-          setIsCheckingProfile(false);
+          setProfileExists(false);
         }
 
         // Load cached Stream credentials
@@ -184,13 +134,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         } catch (error) {}
       } else {
         // User is signed out
-        setCurrentUser(null);
         setIsAuthenticated(false);
-        setUserId(null); // Ensure this is null, not empty string
+        setUserId(null);
+        setProfileExists(false);
         setProfile(null);
         setStreamApiKey(null);
         setStreamUserToken(null);
-        setIsCheckingProfile(false);
 
         // Clear stored data
         try {
@@ -199,19 +148,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           console.error("Error clearing stored data:", error);
         }
       }
-
-      setIsAuthDetermined(true);
+      setIsInitialized(true);
     });
 
     return () => unsubscribe();
-  }, [isAuthDetermined, currentUser]);
-
-  // Set initialized to true when profile checking is complete
-  useEffect(() => {
-    if (isAuthDetermined && !isCheckingProfile) {
-      setIsInitialized(true);
-    }
-  }, [isAuthDetermined, isCheckingProfile]);
+  }, []); // The dependency array should be empty to prevent re-running on state changes.
 
   return (
     <AppContext.Provider
@@ -232,7 +173,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         streamUserToken,
         setStreamUserToken,
         isInitialized,
-        isCheckingProfile,
+        profileExists,
       }}
     >
       {children}

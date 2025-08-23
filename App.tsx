@@ -55,120 +55,82 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+// AuthNavigator remains the same, but it's only for unauthenticated users.
 function AuthNavigator() {
-  const { currentUser } = useAppContext();
-
-  // If user is signed in but not verified, start with EmailVerification
-  const initialRouteName =
-    currentUser && !currentUser.emailVerified ? "EmailVerification" : "SignIn";
-
   return (
     <AuthStack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-      initialRouteName={initialRouteName}
+      screenOptions={{ headerShown: false }}
+      initialRouteName="SignIn"
     >
       <AuthStack.Screen name="SignIn" component={SignIn} />
       <AuthStack.Screen name="CreateAccount" component={CreateAccountScreen} />
-      <AuthStack.Screen
-        name="EmailVerification"
-        component={EmailVerificationScreen}
-        initialParams={{
-          email: currentUser?.email || "",
-          fromSignIn: false,
-        }}
-      />
-      <AuthStack.Screen name="AccountSetup" component={AccountSetupScreen} />
     </AuthStack.Navigator>
   );
 }
 
-function AppContent() {
-  const {
-    isAuthenticated,
-    userId,
-    isInitialized,
-    profile,
-    isCheckingProfile,
-    currentUser,
-  } = useAppContext();
+// NEW: AuthenticatedNavigator for users who are signed in
+function AuthenticatedNavigator() {
+  const AuthSetupStack = createNativeStackNavigator();
+  return (
+    <AuthSetupStack.Navigator screenOptions={{ headerShown: false }}>
+      <AuthSetupStack.Screen
+        name="EmailVerification"
+        component={EmailVerificationScreen}
+      />
+      <AuthSetupStack.Screen
+        name="AccountSetup"
+        component={AccountSetupScreen}
+      />
+    </AuthSetupStack.Navigator>
+  );
+}
 
-  console.log("🔍 [APP] AppContent render - isAuthenticated:", isAuthenticated);
-  console.log("🔍 [APP] AppContent render - userId:", userId);
+function AppContent() {
+  const { isInitialized, currentUser, isAuthenticated, profileExists } =
+    useAppContext();
+
   console.log("🔍 [APP] AppContent render - currentUser:", currentUser?.uid);
   console.log(
     "🔍 [APP] AppContent render - emailVerified:",
     currentUser?.emailVerified
   );
+  console.log("🔍 [APP] AppContent render - isAuthenticated:", isAuthenticated);
+  console.log("🔍 [APP] AppContent render - profileExists:", profileExists);
   console.log("🔍 [APP] AppContent render - isInitialized:", isInitialized);
-  console.log(
-    "🔍 [APP] AppContent render - isCheckingProfile:",
-    isCheckingProfile
-  );
 
-  // Show loading screen while Firebase Auth is determining the auth state
-  // OR while we're checking the user profile in Firestore
-  if (!isInitialized || isCheckingProfile) {
+  if (!isInitialized) {
     console.log("⏳ [APP] Showing loading screen");
     return <LoadingScreen loadingText="Signing you in..." />;
   }
 
-  // Authentication Flow Logic:
-  // 1. If user is signed in but email NOT verified → EmailVerificationScreen
-  // 2. If user is verified but NO profile in database → AccountSetupScreen
-  // 3. If user is verified AND has profile → Main App (TabNavigator)
-  // 4. If user is not signed in → Auth screens (SignIn/CreateAccount)
-
-  // Case 1: User signed in but email not verified
-  if (currentUser && !currentUser.emailVerified) {
-    console.log(
-      "📧 [APP] User signed in but email not verified - showing EmailVerification"
-    );
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer>
-          <StatusBar style="dark" />
-          <AuthNavigator />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
-
-  // Case 2: User verified and has profile in database → Main App
-  if (isAuthenticated && userId && userId.trim() !== "") {
-    console.log("🏠 [APP] User verified with profile - showing main app");
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer>
-          <StatusBar style="dark" />
-          <TabNavigator />
-          <UnviewedMatchesHandler />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
-
-  // Case 3: User verified but no profile in database → Account Setup
-  if (isAuthenticated && (!userId || userId.trim() === "")) {
-    console.log("⚙️ [APP] User verified but no profile - showing AccountSetup");
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer>
-          <StatusBar style="dark" />
-          <AccountSetupScreen />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
-
-  // Case 4: User not signed in → Auth screens
-  console.log("🔐 [APP] User not signed in - showing auth screens");
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
         <StatusBar style="dark" />
-        <AuthNavigator />
+        {/*
+          This is the primary navigation logic. It will only render one
+          main navigator based on the app's state.
+        */}
+        {currentUser ? (
+          // User is signed in.
+          currentUser.emailVerified ? (
+            // Email is verified.
+            isAuthenticated ? (
+              // Has a profile.
+              <TabNavigator />
+            ) : (
+              // No profile.
+              <AccountSetupScreen />
+            )
+          ) : (
+            // Email not verified.
+            <EmailVerificationScreen />
+          )
+        ) : (
+          // User is not signed in.
+          <AuthNavigator />
+        )}
+        <UnviewedMatchesHandler />
       </NavigationContainer>
     </GestureHandlerRootView>
   );

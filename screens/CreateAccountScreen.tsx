@@ -151,17 +151,11 @@ export default function CreateAccountScreen({ navigation }: any) {
       await sendEmailVerification(userCredential.user);
       console.log("✅ [CREATE ACCOUNT] Verification email sent successfully");
 
-      // Sign out the user so they don't get automatically taken to main app
+      // Don't sign out - let the user remain signed in with unverified email
+      // The App.tsx logic will handle navigation to EmailVerificationScreen
       console.log(
-        "🚪 [CREATE ACCOUNT] Signing out user to prevent auto-navigation"
+        "✅ [CREATE ACCOUNT] Account created successfully - user remains signed in"
       );
-      await signOut(auth);
-
-      // Navigate to email verification screen
-      console.log("🧭 [CREATE ACCOUNT] Navigating to EmailVerification screen");
-      navigation.navigate("EmailVerification", {
-        email: normalizedEmail,
-      });
     } catch (error: any) {
       console.error("❌ [CREATE ACCOUNT] Error:", error);
 
