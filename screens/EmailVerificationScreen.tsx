@@ -28,6 +28,10 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   const [countdown, setCountdown] = useState<number>(0);
   const [initialEmailSent, setInitialEmailSent] = useState(false);
   const [backendCooldown, setBackendCooldown] = useState<number>(0);
+  const [codeExpired, setCodeExpired] = useState<boolean>(false);
+  const [codeExpirationTimestamp, setCodeExpirationTimestamp] = useState<
+    number | null
+  >(null);
 
   // Use a single useEffect to handle the initial email send
   // It waits until currentUser is available and we haven't sent an email yet
@@ -48,7 +52,8 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
           console.log(
             "✅ [EMAIL VERIFICATION] Sending initial verification code"
           );
-          handleResendEmail(true);
+          // Send initial email without triggering countdown
+          await sendInitialEmailOnly();
           setInitialEmailSent(true);
         }
       } catch (error: any) {
@@ -129,11 +134,74 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
     };
   }, [backendCooldown]);
 
+  // Proactive code expiration detection
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (codeExpirationTimestamp && !codeExpired) {
+      interval = setInterval(() => {
+        const now = Date.now();
+        const timeUntilExpiration = codeExpirationTimestamp - now;
+
+        if (timeUntilExpiration <= 0) {
+          console.log("⏰ [EMAIL VERIFICATION] Code has expired proactively");
+          setCodeExpired(true);
+          setCodeExpirationTimestamp(null); // Clear timestamp
+        }
+      }, 1000); // Check every second
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [codeExpirationTimestamp, codeExpired]);
+
   // Format countdown time as MM:SS
   const formatCountdown = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
+
+  // Send initial email only (no countdown)
+  const sendInitialEmailOnly = async () => {
+    if (!currentUser) {
+      return;
+    }
+
+    try {
+      console.log(
+        `📧 [EMAIL VERIFICATION] Sending initial code to ${currentUser.email}`
+      );
+      const result = await AuthService.sendVerificationCode(currentUser.email!);
+      console.log("✅ [EMAIL VERIFICATION] Initial code sent successfully");
+
+      // Store expiration timestamp for proactive expiration detection
+      if (result.expiresAt) {
+        setCodeExpirationTimestamp(result.expiresAt);
+        console.log(
+          `⏰ [EMAIL VERIFICATION] Code expires at: ${new Date(
+            result.expiresAt
+          ).toISOString()}`
+        );
+      }
+
+      // Don't start countdown for initial send
+    } catch (error: any) {
+      console.error(
+        "❌ [EMAIL VERIFICATION] Error sending initial code:",
+        error
+      );
+      // Handle backend cooldown error for initial send
+      if (error.code === "functions/resource-exhausted") {
+        console.log(
+          "⏳ [EMAIL VERIFICATION] Backend cooldown active for initial send"
+        );
+        await checkBackendCooldown();
+      }
+    }
   };
 
   // Check backend cooldown status
@@ -179,10 +247,20 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
       }
     } catch (error: any) {
       console.error("Error verifying code:", error);
-      Alert.alert(
-        "Error",
-        "Failed to verify code. Please check your code and try again."
-      );
+
+      // Handle expired code specifically
+      if (error.message?.includes("expired")) {
+        setCodeExpired(true);
+        Alert.alert(
+          "Code Expired",
+          "Your verification code has expired. Please request a new code."
+        );
+      } else {
+        Alert.alert(
+          "Error",
+          "Failed to verify code. Please check your code and try again."
+        );
+      }
     } finally {
       setIsVerifying(false);
     }
@@ -204,10 +282,23 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
       console.log(
         `📧 [EMAIL VERIFICATION] Sending code to ${currentUser.email}`
       );
-      await AuthService.sendVerificationCode(currentUser.email!);
+      const result = await AuthService.sendVerificationCode(currentUser.email!);
       console.log("✅ [EMAIL VERIFICATION] Code sent successfully");
+
+      // Store expiration timestamp for proactive expiration detection
+      if (result.expiresAt) {
+        setCodeExpirationTimestamp(result.expiresAt);
+        console.log(
+          `⏰ [EMAIL VERIFICATION] Code expires at: ${new Date(
+            result.expiresAt
+          ).toISOString()}`
+        );
+      }
       // Start countdown timer (2 minutes = 120 seconds)
       setCountdown(120);
+      // Reset expired state since we have a new code
+      setCodeExpired(false);
+      setCodeExpirationTimestamp(null); // Will be set by the result above
       // Update backend cooldown
       await checkBackendCooldown();
       if (!isInitialCall) {
@@ -278,7 +369,9 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
               <Text style={styles.emailText}>{email}</Text>
 
               <Text style={styles.instructions}>
-                Enter the 6-digit code from the email below:
+                {codeExpired
+                  ? "Your verification code has expired. Please request a new code below."
+                  : "Enter the 6-digit code from the email below:"}
               </Text>
 
               <VerificationCodeInput
@@ -294,13 +387,17 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
               <TouchableOpacity
                 style={[
                   styles.checkButton,
-                  isVerifying && styles.buttonDisabled,
+                  (isVerifying || codeExpired) && styles.buttonDisabled,
                 ]}
                 onPress={handleVerifyCode}
-                disabled={isVerifying}
+                disabled={isVerifying || codeExpired}
               >
                 <Text style={styles.checkButtonText}>
-                  {isVerifying ? "Verifying..." : "Verify Code"}
+                  {isVerifying
+                    ? "Verifying..."
+                    : codeExpired
+                    ? "Code Expired - Request New Code"
+                    : "Verify Code"}
                 </Text>
               </TouchableOpacity>
 
