@@ -25,7 +25,7 @@ interface EmailInputProps {
 export default function EmailInput({
   value,
   onChangeText,
-  placeholder = "Enter your Cornell email",
+  placeholder = "Enter your email", // Changed from Cornell email
   error,
   onBlur,
   autoCapitalize = "none",
@@ -37,12 +37,20 @@ export default function EmailInput({
 }: EmailInputProps) {
   const [isFocused, setIsFocused] = useState(false);
 
-  const validateCornellEmail = (email: string): boolean => {
-    // Reject emails with + symbols to prevent alias abuse
-    if (email.includes("+")) {
-      return false;
-    }
-    const emailRegex = /^[^\s@]+@cornell\.edu$/i;
+  // Cornell email validation - commented out to allow any email
+  // const validateCornellEmail = (email: string): boolean => {
+  //   // Reject emails with + symbols to prevent alias abuse
+  //   if (email.includes("+")) {
+  //     return false;
+  //   }
+  //   const emailRegex = /^[^\s@]+@cornell\.edu$/i;
+  //   return emailRegex.test(email);
+  // };
+
+  // Allow any valid email format
+  const validateEmail = (email: string): boolean => {
+    if (!email) return true;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
@@ -53,7 +61,7 @@ export default function EmailInput({
     return `${normalizedLocalPart}@${domain}`.toLowerCase();
   };
 
-  const isValidEmail = value ? validateCornellEmail(value) : true;
+  const isValidEmail = value ? validateEmail(value) : true;
   const showError = error || (value && !isValidEmail);
 
   return (
@@ -89,11 +97,11 @@ export default function EmailInput({
           {error ||
             (value && value.includes("+")
               ? "Email addresses with + symbols are not allowed"
-              : "Please enter a valid Cornell email address")}
+              : "Please enter a valid email address")}
         </Text>
       )}
       {value && isValidEmail && !error && !value.includes("+") && (
-        <Text style={styles.successText}>✓ Valid Cornell email</Text>
+        <Text style={styles.successText}>✓ Valid email</Text>
       )}
     </View>
   );

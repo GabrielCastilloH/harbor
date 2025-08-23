@@ -269,9 +269,10 @@ export const createUser = functions.https.onCall(
       });
 
       // Additional safety checks for dating apps
-      if (!userData.email?.endsWith("@cornell.edu")) {
-        validationErrors.push("Only Cornell email addresses are allowed");
-      }
+          // Cornell email restriction - commented out to allow any email
+    // if (!userData.email?.endsWith("@cornell.edu")) {
+    //   validationErrors.push("Only Cornell email addresses are allowed");
+    // }
 
       // Validate profile content for inappropriate content
       const textFields = [
