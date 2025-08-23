@@ -7,8 +7,10 @@ import Colors from "../constants/Colors";
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function HomeStack() {
+  console.log("🧭 [HOME STACK] Rendering HomeStack");
   return (
     <Stack.Navigator
+      initialRouteName="HomeScreen"
       screenOptions={{
         headerShown: false,
       }}
