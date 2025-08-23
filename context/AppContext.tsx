@@ -86,7 +86,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
         // Check verification first
         if (user.emailVerified) {
-          setIsAuthenticated(true);
           console.log("✅ [APP CONTEXT] Email verified. Checking profile...");
 
           // Now, check for the profile
@@ -99,15 +98,20 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
               setUserId(user.uid);
               setProfileExists(true);
               setProfile(response.user);
+              setIsAuthenticated(true); // Set isAuthenticated to true only after profile check
             } else {
               console.log("📝 [APP CONTEXT] No user profile in Firestore");
               setUserId(null);
               setProfileExists(false);
               setProfile(null);
+              setIsAuthenticated(true); // User is still authenticated but has no profile
             }
           } catch (error) {
             console.error("❌ [APP CONTEXT] Error checking profile:", error);
             setProfileExists(false);
+            setUserId(null);
+            setProfile(null);
+            setIsAuthenticated(true); // Still authenticated, but an error occurred
           }
         } else {
           // User is signed in but email NOT verified
