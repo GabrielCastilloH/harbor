@@ -48,4 +48,19 @@ export class AuthService {
       throw error;
     }
   }
+
+  static async getVerificationCooldown() {
+    try {
+      const getVerificationCooldown = httpsCallable(
+        functions,
+        "authFunctions-getVerificationCooldown"
+      );
+      const result = await getVerificationCooldown({});
+      const data = result.data as any;
+      return data;
+    } catch (error) {
+      console.error("AuthService - Error getting cooldown:", error);
+      throw error;
+    }
+  }
 }

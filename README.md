@@ -111,6 +111,13 @@ Instead of using Firebase's built-in email verification links, Harbor implements
      await admin.auth().updateUser(userId, { emailVerified: true });
      await doc.ref.delete(); // Clean up used code
      return { success: true };
+   } else if (storedData?.expiresAt < now) {
+     // Code expired - delete and require new code
+     await doc.ref.delete();
+     throw new functions.https.HttpsError("unauthenticated", "Code expired");
+   } else {
+     // Incorrect code - keep code active for retry
+     throw new functions.https.HttpsError("unauthenticated", "Incorrect code");
    }
    ```
 
@@ -125,11 +132,21 @@ Instead of using Firebase's built-in email verification links, Harbor implements
 - **Server-side verification** (cannot be bypassed)
 - **Mailgun integration** with verified domain (`tryharbor.app`)
 - **Google Secret Manager** for secure API key storage
+- **Forgiving verification** (codes stay active for typos)
+
+#### Cooldown & Rate Limiting
+
+- **2-minute cooldown** enforced on both frontend and backend
+- **Server-side protection** against abuse (cannot be bypassed)
+- **Real-time countdown** showing remaining time
+- **Smart button states** (disabled during cooldown)
+- **Graceful error handling** for cooldown violations
 
 #### Resend Functionality
 
-- **2-minute countdown** between resend attempts
-- **Rate limiting** prevents abuse
+- **Automatic code sending** when verification screen loads
+- **Manual resend** with cooldown protection
+- **Rate limiting** prevents abuse and reduces costs
 - **Automatic retry** with exponential backoff for failed sends
 
 ### Key Design Principles
@@ -139,6 +156,8 @@ Instead of using Firebase's built-in email verification links, Harbor implements
 - **Secure code generation**: Server-side generation and validation
 - **User-friendly UI**: Modern 6-box input with real-time feedback
 - **Automatic flow**: Seamless navigation between verification states
+- **Forgiving verification**: Codes stay active for typos, better UX
+- **Robust cooldown**: Frontend and backend protection against abuse
 - **Production-ready**: Proper error handling and logging
 
 ### Cornell Email Validation
