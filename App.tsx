@@ -73,11 +73,22 @@ function MainNavigator() {
   const AppStack = createNativeStackNavigator();
   const { currentUser, isAuthenticated, profileExists } = useAppContext();
 
+  console.log("🧭 [MAIN NAVIGATOR] Rendering with:", {
+    currentUserId: currentUser?.uid,
+    emailVerified: currentUser?.emailVerified,
+    profileExists,
+    isAuthenticated,
+  });
+
   if (!currentUser) {
+    console.log("🧭 [MAIN NAVIGATOR] No current user, returning null");
     return null; // This should not happen if isAuthenticated is true
   }
 
   if (!currentUser.emailVerified) {
+    console.log(
+      "🧭 [MAIN NAVIGATOR] Email not verified, showing EmailVerificationScreen"
+    );
     return (
       <AppStack.Navigator screenOptions={{ headerShown: false }}>
         <AppStack.Screen
@@ -89,6 +100,9 @@ function MainNavigator() {
   }
 
   if (!profileExists) {
+    console.log(
+      "🧭 [MAIN NAVIGATOR] No profile exists, showing AccountSetupScreen"
+    );
     return (
       <AppStack.Navigator screenOptions={{ headerShown: false }}>
         <AppStack.Screen name="AccountSetup" component={AccountSetupScreen} />
@@ -97,6 +111,7 @@ function MainNavigator() {
   }
 
   // User is fully authenticated and has a profile
+  console.log("🧭 [MAIN NAVIGATOR] User has profile, showing TabNavigator");
   return (
     <AppStack.Navigator screenOptions={{ headerShown: false }}>
       <AppStack.Screen name="Tab" component={TabNavigator} />
