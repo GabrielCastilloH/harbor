@@ -84,12 +84,6 @@ function AppContent() {
       initialRouteName = "AccountSetup";
     } else {
       console.log("🧭 [APP] User fully set up, starting with MainTabs");
-      console.log("🧭 [APP] Current context state:", {
-        isAuthenticated,
-        emailVerified: currentUser.emailVerified,
-        profileExists,
-        userId: currentUser.uid,
-      });
       initialRouteName = "MainTabs";
     }
   } else {

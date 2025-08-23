@@ -9,7 +9,6 @@ import Colors from "../constants/Colors";
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
-  console.log("🧭 [TAB NAVIGATOR] Rendering TabNavigator");
   return (
     <Tab.Navigator
       initialRouteName="HomeTab"
