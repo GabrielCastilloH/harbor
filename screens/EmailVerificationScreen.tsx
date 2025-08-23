@@ -19,7 +19,10 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   const { currentUser, refreshAuthState } = useAppContext(); // Get currentUser and refreshAuthState from context
   const email = currentUser?.email; // Get email from currentUser
 
-  console.log("📧 [EMAIL VERIFICATION] Screen loaded with email:", email);
+  console.log(
+    "📧 [EMAIL VERIFICATION] Email verification status:",
+    currentUser?.emailVerified
+  );
 
   const [isResending, setIsResending] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
@@ -68,9 +71,17 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
     setIsChecking(true);
     try {
       if (currentUser) {
+        console.log(
+          "📧 [EMAIL VERIFICATION] Before reload - emailVerified:",
+          currentUser.emailVerified
+        );
         await currentUser.reload();
         // Get the updated user object after reload
         const updatedUser = auth.currentUser;
+        console.log(
+          "📧 [EMAIL VERIFICATION] After reload - emailVerified:",
+          updatedUser?.emailVerified
+        );
 
         if (updatedUser && updatedUser.emailVerified) {
           Alert.alert("Success", "Your email is now verified! Redirecting...");
