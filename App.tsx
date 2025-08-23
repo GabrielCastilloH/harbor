@@ -74,11 +74,22 @@ function AuthNavigator() {
 }
 
 function AppContent() {
-  const { isAuthenticated, userId, isInitialized, profile, isCheckingProfile } =
-    useAppContext();
+  const {
+    isAuthenticated,
+    userId,
+    isInitialized,
+    profile,
+    isCheckingProfile,
+    currentUser,
+  } = useAppContext();
 
   console.log("🔍 [APP] AppContent render - isAuthenticated:", isAuthenticated);
   console.log("🔍 [APP] AppContent render - userId:", userId);
+  console.log("🔍 [APP] AppContent render - currentUser:", currentUser?.uid);
+  console.log(
+    "🔍 [APP] AppContent render - emailVerified:",
+    currentUser?.emailVerified
+  );
   console.log("🔍 [APP] AppContent render - isInitialized:", isInitialized);
   console.log(
     "🔍 [APP] AppContent render - isCheckingProfile:",
@@ -92,16 +103,33 @@ function AppContent() {
     return <LoadingScreen loadingText="Signing you in..." />;
   }
 
-  // Security check: Only allow access to main app if user exists in Firestore
-  // If not signed in, show SignIn.
-  // Once authenticated:
-  //  - if userId exists (user has profile in Firestore), show TabNavigator
-  //  - if authenticated but no userId (no profile in Firestore), show AccountSetupScreen
+  // Authentication Flow Logic:
+  // 1. If user is signed in but email NOT verified → EmailVerificationScreen
+  // 2. If user is verified but NO profile in database → AccountSetupScreen
+  // 3. If user is verified AND has profile → Main App (TabNavigator)
+  // 4. If user is not signed in → Auth screens (SignIn/CreateAccount)
 
-  // Don't render SignIn if user is already authenticated
+  // Case 1: User signed in but email not verified
+  if (currentUser && !currentUser.emailVerified) {
+    console.log(
+      "📧 [APP] User signed in but email not verified - showing EmailVerification"
+    );
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer>
+          <StatusBar style="dark" />
+          <EmailVerificationScreen
+            route={{ params: { email: currentUser.email, fromSignIn: false } }}
+            navigation={null}
+          />
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    );
+  }
+
+  // Case 2: User verified and has profile in database → Main App
   if (isAuthenticated && userId && userId.trim() !== "") {
-    console.log("🏠 [APP] User authenticated with profile - showing main app");
-    // Render main app
+    console.log("🏠 [APP] User verified with profile - showing main app");
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
@@ -113,11 +141,9 @@ function AppContent() {
     );
   }
 
-  // Additional check: if user is authenticated but userId is not set yet, don't render SignIn
+  // Case 3: User verified but no profile in database → Account Setup
   if (isAuthenticated && (!userId || userId.trim() === "")) {
-    console.log(
-      "⚙️ [APP] User authenticated but no profile - showing AccountSetup"
-    );
+    console.log("⚙️ [APP] User verified but no profile - showing AccountSetup");
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
@@ -128,8 +154,8 @@ function AppContent() {
     );
   }
 
-  // Show authentication screens
-  console.log("🔐 [APP] User not authenticated - showing auth screens");
+  // Case 4: User not signed in → Auth screens
+  console.log("🔐 [APP] User not signed in - showing auth screens");
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
