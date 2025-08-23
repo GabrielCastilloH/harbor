@@ -110,7 +110,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             }
           } catch (error: any) {
             // Check for the "User not found" error code from Cloud Function
-            if (error?.code === "functions/not-found") {
+            if (
+              error?.code === "not-found" ||
+              error?.code === "functions/not-found"
+            ) {
               console.log(
                 "📝 [APP CONTEXT] User profile not found (expected for new user)"
               );

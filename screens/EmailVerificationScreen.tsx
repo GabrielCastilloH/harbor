@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "../constants/Colors";
 import LoadingScreen from "../components/LoadingScreen";
 import { auth } from "../firebaseConfig";
-import { sendEmailVerification, onAuthStateChanged } from "firebase/auth";
+import { sendEmailVerification } from "firebase/auth";
 import { useAppContext } from "../context/AppContext";
 
 export default function EmailVerificationScreen({ navigation, route }: any) {
@@ -23,14 +23,11 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
   const [isResending, setIsResending] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
-
-  // No more useEffect listeners here! AppContext handles it.
+  const [lastResendTime, setLastResendTime] = useState<number | null>(null);
 
   const handleCheckVerification = async () => {
     setIsChecking(true);
     try {
-      // We don't need a separate check here. The `user.reload()` in AppContext is sufficient.
-      // We'll just force a reload and the AppContext listener will take care of the rest.
       if (currentUser) {
         await currentUser.reload();
         if (currentUser.emailVerified) {
@@ -54,7 +51,6 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   };
 
   const handleResendEmail = async () => {
-    // Your existing logic is good here, just ensure you are using the currentUser from context
     if (!currentUser) {
       Alert.alert(
         "Cannot Resend",
@@ -62,9 +58,28 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
       );
       return;
     }
+
+    // Check if 3 minutes have passed since last resend
+    const now = Date.now();
+    const threeMinutes = 3 * 60 * 1000; // 3 minutes in milliseconds
+
+    if (lastResendTime && now - lastResendTime < threeMinutes) {
+      const remainingTime = Math.ceil(
+        (threeMinutes - (now - lastResendTime)) / 1000 / 60
+      );
+      Alert.alert(
+        "Please Wait",
+        `You can resend the email in ${remainingTime} minute${
+          remainingTime !== 1 ? "s" : ""
+        }.`
+      );
+      return;
+    }
+
     setIsResending(true);
     try {
       await sendEmailVerification(currentUser);
+      setLastResendTime(now);
       Alert.alert(
         "Email Sent",
         "Verification email has been resent. Please check your inbox."
@@ -122,16 +137,6 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
           >
             <Text style={styles.checkButtonText}>
               {isChecking ? "Checking..." : "Check Verification Status"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.verifiedButton, isChecking && styles.buttonDisabled]}
-            onPress={handleCheckVerification}
-            disabled={isChecking}
-          >
-            <Text style={styles.verifiedButtonText}>
-              I've Verified My Email
             </Text>
           </TouchableOpacity>
 
@@ -260,20 +265,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   checkButtonText: {
-    color: Colors.secondary100,
-    fontWeight: "600",
-    fontSize: 16,
-  },
-  verifiedButton: {
-    backgroundColor: Colors.green,
-    paddingVertical: 16,
-    paddingHorizontal: 30,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  verifiedButtonText: {
     color: Colors.secondary100,
     fontWeight: "600",
     fontSize: 16,
