@@ -22,11 +22,6 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   const { currentUser, refreshAuthState } = useAppContext(); // Get currentUser and refreshAuthState from context
   const email = currentUser?.email; // Get email from currentUser
 
-  console.log(
-    "📧 [EMAIL VERIFICATION] Email verification status:",
-    currentUser?.emailVerified
-  );
-
   const [isResending, setIsResending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
@@ -50,7 +45,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
         if (idTokenResult.token) {
           console.log(
-            "✅ [EMAIL VERIFICATION] Current user and token are ready. Sending initial verification code."
+            "✅ [EMAIL VERIFICATION] Sending initial verification code"
           );
           handleResendEmail(true);
           setInitialEmailSent(true);
@@ -62,7 +57,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
           (error.code === "auth/unauthenticated" && retryCount < MAX_RETRIES)
         ) {
           console.log(
-            `⏳ [EMAIL VERIFICATION] Token not ready, retrying in ${RETRY_DELAY}ms (Attempt ${
+            `⏳ [EMAIL VERIFICATION] Retrying... (${
               retryCount + 1
             }/${MAX_RETRIES})`
           );
@@ -159,12 +154,10 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
     setIsResending(true);
     try {
       console.log(
-        `📧 [EMAIL VERIFICATION] Attempting to send verification code to ${currentUser.email} (initial: ${isInitialCall})`
+        `📧 [EMAIL VERIFICATION] Sending code to ${currentUser.email}`
       );
       await AuthService.sendVerificationCode(currentUser.email!);
-      console.log(
-        "✅ [EMAIL VERIFICATION] Verification code sent successfully"
-      );
+      console.log("✅ [EMAIL VERIFICATION] Code sent successfully");
       // Start countdown timer (2 minutes = 120 seconds)
       setCountdown(120);
       if (!isInitialCall) {
