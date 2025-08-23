@@ -11,23 +11,44 @@ const secretManager = new SecretManagerServiceClient();
 // Get Mailgun API key from Secret Manager
 async function getMailgunApiKey(): Promise<string> {
   const name = "projects/harbor-ch/secrets/MAILGUN_API_KEY/versions/latest";
+  console.log("🔑 [SECRET MANAGER] Attempting to access secret:", name);
+
   try {
+    console.log(
+      "🔑 [SECRET MANAGER] Calling secretManager.accessSecretVersion..."
+    );
     const [version] = await secretManager.accessSecretVersion({ name });
+    console.log("🔑 [SECRET MANAGER] Secret version retrieved:", version.name);
+
     const apiKey = version.payload?.data?.toString();
+    console.log(
+      "🔑 [SECRET MANAGER] API key extracted, length:",
+      apiKey?.length || 0
+    );
+
     if (!apiKey) {
+      console.error("🔑 [SECRET MANAGER] API key is empty or null");
       throw new Error(
         "Mailgun API key is empty or not found in Secret Manager."
       );
     }
+
+    console.log("🔑 [SECRET MANAGER] API key validation passed");
     return apiKey;
-  } catch (error) {
+  } catch (error: any) {
     console.error(
-      "Error accessing Mailgun API key from Secret Manager:",
+      "🔑 [SECRET MANAGER] Error accessing Mailgun API key:",
       error
     );
+    console.error("🔑 [SECRET MANAGER] Error details:", {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      status: error.status,
+    });
     throw new functions.https.HttpsError(
       "internal",
-      "Could not access Mailgun API key from Secret Manager."
+      `Could not access Mailgun API key from Secret Manager: ${error.message}`
     );
   }
 }
@@ -184,7 +205,103 @@ export const verifyVerificationCode = functions.https.onCall(
   }
 );
 
+export const sendTestEmail = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{}>) => {
+    try {
+      console.log("🧪 [TEST EMAIL] Starting test email function");
+      console.log(
+        "🧪 [TEST EMAIL] Request auth:",
+        request.auth?.uid || "No auth"
+      );
+
+      // Get Mailgun API key
+      console.log("🧪 [TEST EMAIL] Attempting to get Mailgun API key...");
+      const apiKey = await getMailgunApiKey();
+      console.log("🧪 [TEST EMAIL] API key retrieved, length:", apiKey.length);
+      console.log(
+        "🧪 [TEST EMAIL] API key starts with:",
+        apiKey.substring(0, 10) + "..."
+      );
+
+      const domain = "sandboxfc147ea9963d4fbd8e90f2d49891c3a5.mailgun.org";
+      console.log("🧪 [TEST EMAIL] Using sandbox domain:", domain);
+
+      console.log("🧪 [TEST EMAIL] Initializing Mailgun client...");
+      // Initialize Mailgun
+      const mailgun = new Mailgun(formData);
+      const mg = mailgun.client({ username: "api", key: apiKey });
+      console.log("🧪 [TEST EMAIL] Mailgun client initialized successfully");
+
+      console.log(
+        "🧪 [TEST EMAIL] Sending test email to gabocastillo321@gmail.com"
+      );
+
+      // Send test email
+      const msg = {
+        from: `Harbor Test <noreply@${domain}>`,
+        to: "gabocastillo321@gmail.com",
+        subject: "🧪 Harbor Test Email",
+        text: `Hello Gabriel,\n\nThis is a test email from Harbor to verify that the Mailgun integration is working correctly.\n\nTimestamp: ${new Date().toISOString()}\n\nIf you receive this, the email system is working! 🎉`,
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #4CAF50; margin-bottom: 30px;">🧪 Harbor Test Email</h1>
+            <p style="font-size: 18px; color: #333; margin-bottom: 20px;">Hello Gabriel,</p>
+            <p style="font-size: 16px; color: #666; margin-bottom: 20px;">This is a test email from Harbor to verify that the Mailgun integration is working correctly.</p>
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p style="font-size: 14px; color: #777; margin: 0;"><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
+            </div>
+            <p style="font-size: 16px; color: #4CAF50; font-weight: bold;">If you receive this, the email system is working! 🎉</p>
+          </div>
+        `,
+      };
+
+      console.log(
+        "🧪 [TEST EMAIL] Message object created, attempting to send..."
+      );
+      console.log("🧪 [TEST EMAIL] Message details:", {
+        from: msg.from,
+        to: msg.to,
+        subject: msg.subject,
+        textLength: msg.text.length,
+        htmlLength: msg.html.length,
+      });
+
+      const result = await mg.messages.create(domain, msg);
+      console.log("🧪 [TEST EMAIL] Mailgun API response:", result);
+
+      console.log("🧪 [TEST EMAIL] Test email sent successfully");
+      return { success: true, message: "Test email sent successfully", result };
+    } catch (error: any) {
+      console.error("🧪 [TEST EMAIL] Error sending test email:", error);
+      console.error("🧪 [TEST EMAIL] Error details:", {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        status: error.status,
+        statusCode: error.statusCode,
+        details: error.details,
+      });
+      throw new functions.https.HttpsError(
+        "internal",
+        `Failed to send test email: ${error.message}`
+      );
+    }
+  }
+);
+
 export const emailVerificationFunctions = {
   sendVerificationCode,
   verifyVerificationCode,
+  sendTestEmail,
 };
