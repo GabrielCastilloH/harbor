@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -15,7 +15,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
 import LoadingScreen from "./components/LoadingScreen";
 import UnviewedMatchesHandler from "./components/UnviewedMatchesHandler";
-import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
 import { SUPERWALL_CONFIG } from "./firebaseConfig";
@@ -73,11 +72,17 @@ function MainNavigator() {
   const AppStack = createNativeStackNavigator();
   const { currentUser, isAuthenticated, profileExists } = useAppContext();
 
+  // Debug effect to track changes
+  React.useEffect(() => {
+    console.log("🧭 [MAIN NAVIGATOR] Values changed:", {
+      emailVerified: currentUser?.emailVerified,
+      profileExists,
+    });
+  }, [currentUser?.emailVerified, profileExists]);
+
   console.log("🧭 [MAIN NAVIGATOR] Rendering with:", {
-    currentUserId: currentUser?.uid,
     emailVerified: currentUser?.emailVerified,
     profileExists,
-    isAuthenticated,
   });
 
   if (!currentUser) {
@@ -122,11 +127,15 @@ function MainNavigator() {
 function AppContent() {
   const { isInitialized, isAuthenticated } = useAppContext();
 
-  console.log("🔍 [APP] AppContent render - isAuthenticated:", isAuthenticated);
-  console.log("🔍 [APP] AppContent render - isInitialized:", isInitialized);
+  console.log(
+    "🔍 [APP] Render - auth:",
+    isAuthenticated,
+    "init:",
+    isInitialized
+  );
 
   if (!isInitialized) {
-    console.log("⏳ [APP] Showing loading screen");
+    console.log("⏳ [APP] Loading...");
     return <LoadingScreen loadingText="Signing you in..." />;
   }
 
