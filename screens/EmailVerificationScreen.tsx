@@ -83,13 +83,6 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
     sendInitialEmailWithRetry();
   }, [currentUser, initialEmailSent]);
 
-  // Check backend cooldown on mount
-  useEffect(() => {
-    if (currentUser && initialEmailSent) {
-      checkBackendCooldown();
-    }
-  }, [currentUser, initialEmailSent]);
-
   // Countdown timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -195,30 +188,17 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
         error
       );
       // Handle backend cooldown error for initial send
-      if (error.code === "functions/resource-exhausted") {
-        console.log(
-          "⏳ [EMAIL VERIFICATION] Backend cooldown active for initial send"
-        );
-        await checkBackendCooldown();
+      if (
+        error.code === "functions/resource-exhausted" ||
+        (error.code === "functions/internal" &&
+          error.message?.includes("Please wait"))
+      ) {
+        console.log("⏳ [EMAIL VERIFICATION] Cooldown active, updating state.");
+        const cooldownData = await AuthService.getVerificationCooldown();
+        if (cooldownData.hasCooldown) {
+          setBackendCooldown(cooldownData.remainingSeconds);
+        }
       }
-    }
-  };
-
-  // Check backend cooldown status
-  const checkBackendCooldown = async () => {
-    try {
-      const cooldownData = await AuthService.getVerificationCooldown();
-      if (cooldownData.hasCooldown) {
-        setBackendCooldown(cooldownData.remainingSeconds);
-        console.log(
-          `⏳ [EMAIL VERIFICATION] Backend cooldown active: ${cooldownData.remainingSeconds}s remaining`
-        );
-      } else {
-        setBackendCooldown(0);
-      }
-    } catch (error) {
-      console.error("Error checking backend cooldown:", error);
-      setBackendCooldown(0);
     }
   };
 
@@ -299,8 +279,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
       // Reset expired state since we have a new code
       setCodeExpired(false);
       setCodeExpirationTimestamp(null); // Will be set by the result above
-      // Update backend cooldown
-      await checkBackendCooldown();
+
       if (!isInitialCall) {
         Alert.alert(
           "Code Sent",
@@ -314,13 +293,19 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
       );
 
       // Handle backend cooldown error specifically
-      if (error.code === "functions/resource-exhausted") {
+      if (
+        error.code === "functions/resource-exhausted" ||
+        (error.code === "functions/internal" &&
+          error.message?.includes("Please wait"))
+      ) {
         Alert.alert(
           "Cooldown Active",
           error.message || "Please wait before requesting another code."
         );
-        // Update backend cooldown to show correct time
-        await checkBackendCooldown();
+        const cooldownData = await AuthService.getVerificationCooldown();
+        if (cooldownData.hasCooldown) {
+          setBackendCooldown(cooldownData.remainingSeconds);
+        }
       } else if (!isInitialCall) {
         Alert.alert("Error", "Failed to resend code.");
       }
