@@ -143,13 +143,9 @@ export default function CreateAccountScreen({ navigation }: any) {
         userCredential.user.emailVerified
       );
 
-      // Send verification code using new system
-      console.log("📧 [CREATE ACCOUNT] Sending verification code...");
-      await AuthService.sendVerificationCode(normalizedEmail);
-      console.log("✅ [CREATE ACCOUNT] Verification code sent successfully");
-
       // Don't sign out - let the user remain signed in with unverified email
       // The App.tsx logic will handle navigation to EmailVerificationScreen
+      // EmailVerificationScreen will automatically send the verification code
       console.log(
         "✅ [CREATE ACCOUNT] Account created successfully - user remains signed in"
       );

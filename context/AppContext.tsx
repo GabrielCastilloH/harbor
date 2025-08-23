@@ -10,7 +10,6 @@ interface AppContextType {
   thread: any;
   setThread: (thread: any) => void;
   isAuthenticated: boolean;
-  setIsAuthenticated: (isAuthenticated: boolean) => void;
   userId: string | null;
   setUserId: (userId: string | null) => void;
   profile: Profile | null;
@@ -31,7 +30,6 @@ const defaultValue: AppContextType = {
   thread: null,
   setThread: () => {},
   isAuthenticated: false,
-  setIsAuthenticated: () => {},
   userId: null,
   setUserId: () => {},
   profile: null,
@@ -55,7 +53,6 @@ interface AppProviderProps {
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [channel, setChannel] = useState<any>(null);
   const [thread, setThread] = useState<any>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -64,6 +61,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [profileExists, setProfileExists] = useState(false);
 
+  // A computed value that reflects the current authentication state
+  const isAuthenticated = !!currentUser;
+
   // Function to manually refresh auth state
   const refreshAuthState = async (user: User) => {
     console.log(
@@ -71,57 +71,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       user.uid
     );
     setCurrentUser(user);
-
-    if (user.emailVerified) {
-      console.log("✅ [APP CONTEXT] Email verified. Checking profile...");
-
-      try {
-        const { UserService } = require("../networking");
-        const response = await UserService.getUserById(user.uid);
-
-        if (response && response.user) {
-          console.log("✅ [APP CONTEXT] User profile found in Firestore");
-          setUserId(user.uid);
-          setProfileExists(true);
-          setProfile(response.user);
-          setIsAuthenticated(true);
-        } else {
-          console.log(
-            "📝 [APP CONTEXT] No user profile in Firestore (null response)"
-          );
-          setUserId(null);
-          setProfileExists(false);
-          setProfile(null);
-          setIsAuthenticated(true);
-        }
-      } catch (error: any) {
-        if (
-          error?.code === "not-found" ||
-          error?.code === "functions/not-found"
-        ) {
-          console.log(
-            "📝 [APP CONTEXT] User profile not found (expected for new user)"
-          );
-          setUserId(null);
-          setProfileExists(false);
-          setProfile(null);
-          setIsAuthenticated(true);
-        } else {
-          console.error(
-            "❌ [APP CONTEXT] Unexpected error checking profile:",
-            error
-          );
-          setProfileExists(false);
-          setUserId(null);
-          setProfile(null);
-          setIsAuthenticated(true);
-        }
-      }
-    } else {
-      setIsAuthenticated(false);
-      setUserId(null);
-      setProfileExists(false);
-    }
+    // The auth state listener will handle the rest automatically
   };
 
   // Ensure userId is never an empty string - convert to null
@@ -139,7 +89,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       if (user) {
         // User is signed in. Force a reload to check the latest status.
-        // This is the ONLY place this should happen.
         try {
           await user.reload();
         } catch (error) {
@@ -160,46 +109,36 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
               setUserId(user.uid);
               setProfileExists(true);
               setProfile(response.user);
-              setIsAuthenticated(true); // Set isAuthenticated to true only after profile check
             } else {
-              console.log(
-                "📝 [APP CONTEXT] No user profile in Firestore (null response)"
-              );
+              console.log("📝 [APP CONTEXT] No user profile in Firestore");
               setUserId(null);
               setProfileExists(false);
               setProfile(null);
-              setIsAuthenticated(true); // User is still authenticated but has no profile
             }
           } catch (error: any) {
-            // Check for the "User not found" error code from Cloud Function
             if (
               error?.code === "not-found" ||
               error?.code === "functions/not-found"
             ) {
-              console.log(
-                "📝 [APP CONTEXT] User profile not found (expected for new user)"
-              );
+              console.log("📝 [APP CONTEXT] User profile not found (new user)");
               setUserId(null);
               setProfileExists(false);
               setProfile(null);
-              setIsAuthenticated(true);
             } else {
-              // Log unexpected errors
-              console.error(
-                "❌ [APP CONTEXT] Unexpected error checking profile:",
-                error
-              );
+              console.error("❌ [APP CONTEXT] Error checking profile:", error);
               setProfileExists(false);
               setUserId(null);
               setProfile(null);
-              setIsAuthenticated(true);
             }
           }
         } else {
           // User is signed in but email NOT verified
-          setIsAuthenticated(false);
+          console.log(
+            "📧 [APP CONTEXT] User is signed in but email is not verified"
+          );
           setUserId(null);
           setProfileExists(false);
+          setProfile(null);
         }
 
         // Load cached Stream credentials
@@ -220,7 +159,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         } catch (error) {}
       } else {
         // User is signed out
-        setIsAuthenticated(false);
         setUserId(null);
         setProfileExists(false);
         setProfile(null);
@@ -248,7 +186,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         thread,
         setThread,
         isAuthenticated,
-        setIsAuthenticated,
         userId,
         setUserId,
         profile,

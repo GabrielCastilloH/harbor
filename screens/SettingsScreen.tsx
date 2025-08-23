@@ -25,7 +25,7 @@ import MainHeading from "../components/MainHeading";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
-  const { setIsAuthenticated, setUserId, userId } = useAppContext();
+  const { setUserId, userId } = useAppContext();
   const {
     isNotificationsEnabled,
     isLoading,

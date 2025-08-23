@@ -34,7 +34,6 @@ export default function SignIn({ navigation }: any) {
     isAuthenticated,
     currentUser,
     userId,
-    setIsAuthenticated,
     setUserId,
     setProfile,
     setStreamApiKey,
@@ -58,7 +57,6 @@ export default function SignIn({ navigation }: any) {
           // Clear app context state
           setUserId(null);
           setProfile(null);
-          setIsAuthenticated(false);
           setStreamApiKey(null);
           setStreamUserToken(null);
 
@@ -78,7 +76,6 @@ export default function SignIn({ navigation }: any) {
     isAuthenticated,
     setUserId,
     setProfile,
-    setIsAuthenticated,
     setStreamApiKey,
     setStreamUserToken,
   ]);
@@ -184,7 +181,6 @@ export default function SignIn({ navigation }: any) {
       }
 
       setUserId(user.uid);
-      setIsAuthenticated(true);
     } catch (error: any) {
       console.error("❌ [SIGN IN] Sign-in error:", error);
 
