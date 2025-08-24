@@ -1,6 +1,6 @@
 import React from "react";
 import { Alert, Pressable, Text, StyleSheet } from "react-native";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 
 interface SignOutButtonProps {
@@ -18,16 +18,13 @@ export default function SignOutButton({
 }: SignOutButtonProps) {
   const handleSignOut = async () => {
     try {
-      // Sign out from Google
-      await GoogleSignin.signOut();
-
-      // Sign out from Firebase
-      await auth.signOut();
+      // Sign out from Firebase (this handles the main auth state)
+      await signOut(auth);
 
       // Call your callback
       onSignOut();
     } catch (error) {
-      console.error("Error signing out:", error);
+      console.error("❌ [SIGN OUT BUTTON] Error signing out:", error);
       Alert.alert("Error", "Failed to sign out. Please try again.");
     }
   };

@@ -11,7 +11,7 @@ const reactNativePersistence = (firebaseAuth as any).getReactNativePersistence;
 import "@react-native-firebase/app";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDydx9TbO0u7Auexci8iLQV-AljrPus9lI",
+  apiKey: "AIzaSyCoMkTjfYne2GQ-OpWODSYo9GiMlXqzRg4",
   authDomain: "harbor-ch.firebaseapp.com",
   projectId: "harbor-ch",
   storageBucket: "harbor-ch.firebasestorage.app",

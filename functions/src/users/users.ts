@@ -158,8 +158,8 @@ export const createUser = functions.https.onCall(
         validationErrors.push("First name is required");
       } else if (userData.firstName.trim().length < 2) {
         validationErrors.push("First name must be at least 2 characters");
-      } else if (userData.firstName.trim().length > 50) {
-        validationErrors.push("First name must be 50 characters or less");
+      } else if (userData.firstName.trim().length > 11) {
+        validationErrors.push("First name must be 11 characters or less");
       }
 
       if (!userData.age || userData.age < 18) {
@@ -213,40 +213,40 @@ export const createUser = functions.https.onCall(
 
       // Validate text fields with character limits
       const textFieldValidations = [
-        { field: "aboutMe", maxLength: 200, minLength: 5, name: "about me" },
+        { field: "aboutMe", maxLength: 180, minLength: 5, name: "about me" },
         {
           field: "q1",
-          maxLength: 120,
+          maxLength: 100,
           minLength: 5,
           name: "answer to 'This year, I really want to'",
         },
         {
           field: "q2",
-          maxLength: 120,
+          maxLength: 100,
           minLength: 5,
           name: "answer to 'Together we could'",
         },
         {
           field: "q3",
-          maxLength: 120,
+          maxLength: 100,
           minLength: 5,
           name: "answer to 'Favorite book, movie or song'",
         },
         {
           field: "q4",
-          maxLength: 120,
+          maxLength: 100,
           minLength: 5,
           name: "answer to 'I chose my major because'",
         },
         {
           field: "q5",
-          maxLength: 120,
+          maxLength: 100,
           minLength: 5,
           name: "answer to 'My favorite study spot is'",
         },
         {
           field: "q6",
-          maxLength: 120,
+          maxLength: 100,
           minLength: 5,
           name: "answer to 'Some of my hobbies are'",
         },
@@ -557,8 +557,8 @@ export const updateUser = functions.https.onCall(
           validationErrors.push("First name is required");
         } else if (userData.firstName.trim().length < 2) {
           validationErrors.push("First name must be at least 2 characters");
-        } else if (userData.firstName.trim().length > 50) {
-          validationErrors.push("First name must be 50 characters or less");
+        } else if (userData.firstName.trim().length > 11) {
+          validationErrors.push("First name must be 11 characters or less");
         }
       }
 
@@ -619,40 +619,40 @@ export const updateUser = functions.https.onCall(
 
       // Validate text fields if provided
       const textFieldValidations = [
-        { field: "aboutMe", maxLength: 300, minLength: 5, name: "about me" },
+        { field: "aboutMe", maxLength: 180, minLength: 5, name: "about me" },
         {
           field: "q1",
-          maxLength: 150,
+          maxLength: 100,
           minLength: 5,
           name: "answer to 'This year, I really want to'",
         },
         {
           field: "q2",
-          maxLength: 150,
+          maxLength: 100,
           minLength: 5,
           name: "answer to 'Together we could'",
         },
         {
           field: "q3",
-          maxLength: 150,
+          maxLength: 100,
           minLength: 5,
           name: "answer to 'Favorite book, movie or song'",
         },
         {
           field: "q4",
-          maxLength: 150,
+          maxLength: 100,
           minLength: 5,
           name: "answer to 'I chose my major because'",
         },
         {
           field: "q5",
-          maxLength: 150,
+          maxLength: 100,
           minLength: 5,
           name: "answer to 'My favorite study spot is'",
         },
         {
           field: "q6",
-          maxLength: 150,
+          maxLength: 100,
           minLength: 5,
           name: "answer to 'Some of my hobbies are'",
         },
@@ -690,6 +690,21 @@ export const updateUser = functions.https.onCall(
       };
 
       await db.collection("users").doc(id).update(updateData);
+
+      // Update Stream Chat user if firstName is being updated
+      if (userData.firstName !== undefined) {
+        try {
+          const client = await getStreamClient();
+          await client.upsertUser({
+            id: id,
+            name: userData.firstName.trim(),
+            role: "user",
+          });
+        } catch (streamError) {
+          console.error("Failed to update Stream Chat user name:", streamError);
+          // Don't fail the entire operation if Stream Chat update fails
+        }
+      }
 
       return {
         message: "User updated successfully",

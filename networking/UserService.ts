@@ -83,19 +83,25 @@ export class UserService {
     }
   }
 
+  // PREMIUM DISABLED: Paywall function commented out
   static async markPaywallAsSeen(userId: string) {
-    try {
-      const markPaywallAsSeen = httpsCallable(
-        functions,
-        "userFunctions-markPaywallAsSeen"
-      );
-      const result = await markPaywallAsSeen({ userId });
-      const data = result.data as any;
+    // Premium functionality disabled - return success without calling backend
+    console.log("Premium disabled: markPaywallAsSeen called but ignored");
+    return { success: true };
 
-      return data;
-    } catch (error) {
-      console.error("UserService - Error marking paywall as seen:", error);
-      throw error;
-    }
+    // Original implementation commented out:
+    // try {
+    //   const markPaywallAsSeen = httpsCallable(
+    //     functions,
+    //     "userFunctions-markPaywallAsSeen"
+    //   );
+    //   const result = await markPaywallAsSeen({ userId });
+    //   const data = result.data as any;
+
+    //   return data;
+    // } catch (error) {
+    //   console.error("UserService - Error marking paywall as seen:", error);
+    //   throw error;
+    // }
   }
 }
