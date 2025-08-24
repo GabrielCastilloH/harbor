@@ -6,6 +6,7 @@ import {
   Image,
   TouchableOpacity,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import BasicInfoView from "./BasicInfoView";
@@ -59,6 +60,29 @@ export default function Card({
           <PersonalView profile={profile} />
         )}
       </View>
+
+      {/* Navigation arrows - only show on top card */}
+      {isTopCard && (
+        <View style={styles.navigationContainer}>
+          {/* Left arrow - show if we can go back */}
+          {currentView > 0 && (
+            <View style={styles.leftArrowContainer}>
+              <Ionicons name="arrow-back" size={24} color={Colors.primary500} />
+            </View>
+          )}
+
+          {/* Right arrow - show if we can go forward - always position on right */}
+          {currentView < 2 && (
+            <View style={styles.rightArrowContainer}>
+              <Ionicons
+                name="arrow-forward"
+                size={24}
+                color={Colors.primary500}
+              />
+            </View>
+          )}
+        </View>
+      )}
     </Animated.View>
   );
 }
@@ -98,5 +122,27 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 2,
     borderColor: Colors.primary500,
+  },
+  navigationContainer: {
+    position: "absolute",
+    bottom: 20,
+    left: 24,
+    right: 24,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    pointerEvents: "none", // Allow taps to pass through to the gesture handler
+  },
+  leftArrowContainer: {
+    backgroundColor: `${Colors.secondary100}E6`, // Semi-transparent background
+    borderRadius: 20,
+    padding: 8,
+    alignSelf: "flex-start",
+  },
+  rightArrowContainer: {
+    backgroundColor: `${Colors.secondary100}E6`, // Semi-transparent background
+    borderRadius: 20,
+    padding: 8,
+    alignSelf: "flex-end",
+    marginLeft: "auto", // Push to the right even when left arrow is hidden
   },
 });
