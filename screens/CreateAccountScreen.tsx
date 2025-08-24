@@ -122,10 +122,6 @@ export default function CreateAccountScreen({ navigation }: any) {
 
     try {
       const normalizedEmail = normalizeEmail(email.trim());
-      console.log(
-        "🔍 [CREATE ACCOUNT] Starting account creation for:",
-        normalizedEmail
-      );
 
       // Create account with Firebase Auth directly
       const userCredential = await createUserWithEmailAndPassword(
@@ -134,21 +130,10 @@ export default function CreateAccountScreen({ navigation }: any) {
         password
       );
 
-      console.log(
-        "✅ [CREATE ACCOUNT] User created successfully:",
-        userCredential.user.uid
-      );
-      console.log(
-        "📧 [CREATE ACCOUNT] Email verification status:",
-        userCredential.user.emailVerified
-      );
 
       // Don't sign out - let the user remain signed in with unverified email
       // The App.tsx logic will handle navigation to EmailVerificationScreen
       // EmailVerificationScreen will automatically send the verification code
-      console.log(
-        "✅ [CREATE ACCOUNT] Account created successfully - user remains signed in"
-      );
     } catch (error: any) {
       console.error("❌ [CREATE ACCOUNT] Error:", error);
 
