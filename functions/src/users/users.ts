@@ -691,6 +691,21 @@ export const updateUser = functions.https.onCall(
 
       await db.collection("users").doc(id).update(updateData);
 
+      // Update Stream Chat user if firstName is being updated
+      if (userData.firstName !== undefined) {
+        try {
+          const client = await getStreamClient();
+          await client.upsertUser({
+            id: id,
+            name: userData.firstName.trim(),
+            role: "user",
+          });
+        } catch (streamError) {
+          console.error("Failed to update Stream Chat user name:", streamError);
+          // Don't fail the entire operation if Stream Chat update fails
+        }
+      }
+
       return {
         message: "User updated successfully",
         user: { id, ...updateData },

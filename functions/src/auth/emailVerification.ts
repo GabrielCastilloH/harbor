@@ -140,7 +140,7 @@ export const sendVerificationCode = functions.https.onCall(
         `,
       };
 
-      const result = await mg.messages.create(domain, msg);
+      await mg.messages.create(domain, msg);
       return { success: true, expiresAt: expiresAt };
     } catch (error: any) {
       console.error(
