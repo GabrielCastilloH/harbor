@@ -151,14 +151,7 @@ export default function SignIn({ navigation }: any) {
       const user = userCredential.user;
 
       // Force token refresh to get accurate verification status
-      console.log(
-        "🔄 [SIGN IN] Forcing token refresh to check email verification"
-      );
       await user.reload();
-      console.log(
-        "✅ [SIGN IN] Token refreshed, emailVerified:",
-        user.emailVerified
-      );
 
       // Check if email is verified
       if (!user.emailVerified) {

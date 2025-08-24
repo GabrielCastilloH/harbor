@@ -49,9 +49,6 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
         const idTokenResult = await currentUser.getIdTokenResult(true);
 
         if (idTokenResult.token) {
-          console.log(
-            "✅ [EMAIL VERIFICATION] Sending initial verification code"
-          );
           // Send initial email without triggering countdown
           await sendInitialEmailOnly();
           setInitialEmailSent(true);
@@ -62,11 +59,6 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
           error.code === "auth/internal-error" ||
           (error.code === "auth/unauthenticated" && retryCount < MAX_RETRIES)
         ) {
-          console.log(
-            `⏳ [EMAIL VERIFICATION] Retrying... (${
-              retryCount + 1
-            }/${MAX_RETRIES})`
-          );
           setTimeout(() => {
             sendInitialEmailWithRetry(retryCount + 1);
           }, RETRY_DELAY);
@@ -137,7 +129,6 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
         const timeUntilExpiration = codeExpirationTimestamp - now;
 
         if (timeUntilExpiration <= 0) {
-          console.log("⏰ [EMAIL VERIFICATION] Code has expired proactively");
           setCodeExpired(true);
           setCodeExpirationTimestamp(null); // Clear timestamp
         }
@@ -165,20 +156,11 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
     }
 
     try {
-      console.log(
-        `📧 [EMAIL VERIFICATION] Sending initial code to ${currentUser.email}`
-      );
       const result = await AuthService.sendVerificationCode(currentUser.email!);
-      console.log("✅ [EMAIL VERIFICATION] Initial code sent successfully");
 
       // Store expiration timestamp for proactive expiration detection
       if (result.expiresAt) {
         setCodeExpirationTimestamp(result.expiresAt);
-        console.log(
-          `⏰ [EMAIL VERIFICATION] Code expires at: ${new Date(
-            result.expiresAt
-          ).toISOString()}`
-        );
       }
 
       // Don't start countdown for initial send
@@ -193,7 +175,6 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
         (error.code === "functions/internal" &&
           error.message?.includes("Please wait"))
       ) {
-        console.log("⏳ [EMAIL VERIFICATION] Cooldown active, updating state.");
         const cooldownData = await AuthService.getVerificationCooldown();
         if (cooldownData.hasCooldown) {
           setBackendCooldown(cooldownData.remainingSeconds);
@@ -216,25 +197,16 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
     setIsVerifying(true);
     try {
-      console.log("🔍 [EMAIL VERIFICATION] Verifying code:", verificationCode);
       await AuthService.verifyVerificationCode(verificationCode);
-      console.log("✅ [EMAIL VERIFICATION] Code verified successfully");
 
       Alert.alert("Success", "Your email is now verified!");
 
       // Force reload user to get updated emailVerified status
-      console.log("🔄 [EMAIL VERIFICATION] Reloading user...");
       await currentUser?.reload();
       const updatedUser = auth.currentUser;
-      console.log(
-        "🔍 [EMAIL VERIFICATION] Updated user emailVerified:",
-        updatedUser?.emailVerified
-      );
 
       if (updatedUser) {
-        console.log("🔄 [EMAIL VERIFICATION] Refreshing auth state...");
         await refreshAuthState(updatedUser);
-        console.log("✅ [EMAIL VERIFICATION] Auth state refreshed");
       }
     } catch (error: any) {
       console.error("❌ [EMAIL VERIFICATION] Error verifying code:", error);
@@ -271,20 +243,11 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
     setIsResending(true);
     try {
-      console.log(
-        `📧 [EMAIL VERIFICATION] Sending code to ${currentUser.email}`
-      );
       const result = await AuthService.sendVerificationCode(currentUser.email!);
-      console.log("✅ [EMAIL VERIFICATION] Code sent successfully");
 
       // Store expiration timestamp for proactive expiration detection
       if (result.expiresAt) {
         setCodeExpirationTimestamp(result.expiresAt);
-        console.log(
-          `⏰ [EMAIL VERIFICATION] Code expires at: ${new Date(
-            result.expiresAt
-          ).toISOString()}`
-        );
       }
       // Start countdown timer (2 minutes = 120 seconds)
       setCountdown(120);

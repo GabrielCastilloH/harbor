@@ -1,7 +1,11 @@
 import { registerRootComponent } from "expo";
 // Import Firebase config first to ensure Firebase is initialized
 import "./firebaseConfig";
-import { getMessaging, onMessage, setBackgroundMessageHandler } from "@react-native-firebase/messaging";
+import {
+  getMessaging,
+  onMessage,
+  setBackgroundMessageHandler,
+} from "@react-native-firebase/messaging";
 
 import App from "./App";
 
@@ -9,18 +13,12 @@ import App from "./App";
 try {
   const messaging = getMessaging();
   setBackgroundMessageHandler(messaging, async (remoteMessage: any) => {
-    console.log("🔔 Background message received:", remoteMessage);
-
     // Stream Chat v2 payload format
     // The payload contains message_id and channel information
     // Firebase will automatically display the notification
     // We can optionally handle the data for custom logic
     if (remoteMessage.data?.type === "message.new") {
-      console.log("🔔 New message notification:", {
-        messageId: remoteMessage.data.message_id,
-        channelId: remoteMessage.data.channel_id,
-        channelType: remoteMessage.data.channel_type,
-      });
+      // Handle new message notification
     }
   });
 } catch (error) {

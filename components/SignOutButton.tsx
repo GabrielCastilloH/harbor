@@ -18,15 +18,11 @@ export default function SignOutButton({
 }: SignOutButtonProps) {
   const handleSignOut = async () => {
     try {
-      console.log("🔄 [SIGN OUT BUTTON] Starting sign out...");
-
       // Sign out from Firebase (this handles the main auth state)
       await signOut(auth);
 
       // Call your callback
       onSignOut();
-
-      console.log("✅ [SIGN OUT BUTTON] Sign out completed");
     } catch (error) {
       console.error("❌ [SIGN OUT BUTTON] Error signing out:", error);
       Alert.alert("Error", "Failed to sign out. Please try again.");
