@@ -44,10 +44,6 @@ export class StreamNotificationService {
         authStatus === AuthorizationStatus.PROVISIONAL;
 
       if (enabled) {
-        console.log("🔔 Notification permission granted:", authStatus);
-        return true;
-      } else {
-        console.log("🔔 Notification permission denied:", authStatus);
         return false;
       }
     } catch (error) {
@@ -87,10 +83,6 @@ export class StreamNotificationService {
         }
       );
 
-      console.log(
-        "🔔 Device registered with Stream Chat:",
-        token.substring(0, 20) + "..."
-      );
     } catch (error) {
       console.error("🔔 Error registering device:", error);
       throw error;
@@ -122,9 +114,6 @@ export class StreamNotificationService {
       );
       await AsyncStorage.setItem(PUSH_TOKEN_KEY, newToken);
 
-      console.log("🔔 Token refreshed and updated with Stream Chat");
-    } catch (error) {
-      console.error("🔔 Error handling token refresh:", error);
     }
   }
 
@@ -146,9 +135,6 @@ export class StreamNotificationService {
         this.unsubscribeTokenRefresh = null;
       }
 
-      console.log("🔔 Device unregistered from Stream Chat");
-    } catch (error) {
-      console.error("🔔 Error unregistering device:", error);
     }
   }
 
