@@ -16,8 +16,9 @@ import "react-native-get-random-values";
 import LoadingScreen from "./components/LoadingScreen";
 import UnviewedMatchesHandler from "./components/UnviewedMatchesHandler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
-import { SUPERWALL_CONFIG } from "./firebaseConfig";
+// PREMIUM DISABLED: Superwall imports commented out
+// import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
+// import { SUPERWALL_CONFIG } from "./firebaseConfig";
 
 // Define the authentication stack navigator
 const AuthStack = createNativeStackNavigator();
@@ -127,53 +128,67 @@ function AppContent() {
 }
 
 export default function App() {
-  const apiKeys = SUPERWALL_CONFIG.apiKeys;
-  const [superwallApiKeys, setSuperwallApiKeys] = useState<{
-    ios: string;
-    android: string;
-  } | null>(apiKeys);
-  const [isLoadingSuperwall, setIsLoadingSuperwall] = useState(false);
-  const [superwallError, setSuperwallError] = useState<string | null>(null);
+  // PREMIUM DISABLED: Superwall configuration commented out
+  // const apiKeys = SUPERWALL_CONFIG.apiKeys;
+  // const [superwallApiKeys, setSuperwallApiKeys] = useState<{
+  //   ios: string;
+  //   android: string;
+  // } | null>(apiKeys);
+  // const [isLoadingSuperwall, setIsLoadingSuperwall] = useState(false);
+  // const [superwallError, setSuperwallError] = useState<string | null>(null);
 
   // Ensure we have API keys before proceeding
-  if (!superwallApiKeys || !superwallApiKeys.ios || !superwallApiKeys.android) {
-    const error = "Superwall API keys are missing or invalid";
-    throw new Error(error);
-  }
+  // if (!superwallApiKeys || !superwallApiKeys.ios || !superwallApiKeys.android) {
+  //   const error = "Superwall API keys are missing or invalid";
+  //   throw new Error(error);
+  // }
 
-  // Add error boundary for debugging
-  try {
-    return (
-      <SafeAreaProvider>
-        <SuperwallProvider
-          apiKeys={{
-            ios: superwallApiKeys.ios,
-            android: superwallApiKeys.android,
-          }}
-        >
-          <SuperwallLoaded>
-            <AppProvider>
-              <NotificationProvider>
-                <ErrorBoundary>
-                  <AppContent />
-                </ErrorBoundary>
-              </NotificationProvider>
-            </AppProvider>
-          </SuperwallLoaded>
-        </SuperwallProvider>
-      </SafeAreaProvider>
-    );
-  } catch (error) {
-    return (
-      <SafeAreaProvider>
-        <AppProvider>
-          <NotificationProvider>
-            <ErrorBoundary>
-              <AppContent />
-            </ErrorBoundary>
-          </NotificationProvider>
-        </AppProvider>
-      </SafeAreaProvider>
-    );
-  }
+  // PREMIUM DISABLED: Superwall provider removed, using simple provider structure
+  return (
+    <SafeAreaProvider>
+      <AppProvider>
+        <NotificationProvider>
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
+        </NotificationProvider>
+      </AppProvider>
+    </SafeAreaProvider>
+  );
+
+  // Original Superwall implementation commented out:
+  // try {
+  //   return (
+  //     <SafeAreaProvider>
+  //       <SuperwallProvider
+  //         apiKeys={{
+  //           ios: superwallApiKeys.ios,
+  //           android: superwallApiKeys.android,
+  //         }}
+  //       >
+  //         <SuperwallLoaded>
+  //           <AppProvider>
+  //             <NotificationProvider>
+  //               <ErrorBoundary>
+  //                 <AppContent />
+  //               </ErrorBoundary>
+  //             </NotificationProvider>
+  //           </AppProvider>
+  //         </SuperwallLoaded>
+  //       </SuperwallProvider>
+  //     </SafeAreaProvider>
+  //   );
+  // } catch (error) {
+  //   return (
+  //     <SafeAreaProvider>
+  //       <AppProvider>
+  //         <NotificationProvider>
+  //           <ErrorBoundary>
+  //             <AppContent />
+  //           </ErrorBoundary>
+  //         </NotificationProvider>
+  //       </AppProvider>
+  //     </SafeAreaProvider>
+  //   );
+  // }
 }
