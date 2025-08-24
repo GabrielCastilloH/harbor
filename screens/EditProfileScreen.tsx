@@ -84,21 +84,37 @@ export default function EditProfileScreen() {
 
       setLoading(true);
       try {
+        console.log(
+          "🔍 [EDIT PROFILE] Fetching user data for:",
+          currentUser.uid
+        );
         const response = await UserService.getUserById(currentUser.uid);
         const userData = response.user || response;
+        console.log("📊 [EDIT PROFILE] User data:", userData);
 
         // Get personal images (unblurred) for editing
+        console.log("🖼️ [EDIT PROFILE] Fetching personal images...");
         const personalImagesResponse = await getPersonalImages(currentUser.uid);
+        console.log(
+          "🖼️ [EDIT PROFILE] Personal images response:",
+          personalImagesResponse
+        );
         const personalImages = personalImagesResponse.map((img) => img.url);
+        console.log("🖼️ [EDIT PROFILE] Processed image URLs:", personalImages);
 
         const profileWithImages = {
           ...userData,
           images: personalImages,
         };
 
+        console.log(
+          "✅ [EDIT PROFILE] Final profile with images:",
+          profileWithImages
+        );
         setProfileData(profileWithImages);
         setProfile(profileWithImages);
       } catch (error: any) {
+        console.error("❌ [EDIT PROFILE] Error during fetch:", error);
         // If user not found, don't show error - they might be setting up their account
         if (
           error?.code === "not-found" ||
@@ -166,47 +182,102 @@ export default function EditProfileScreen() {
         return;
       }
 
+      console.log("💾 [EDIT PROFILE] Starting save with images:", images);
+      console.log(
+        "💾 [EDIT PROFILE] Current profileData.images:",
+        profileData.images
+      );
+
       // Check if there are any local image URIs that need to be uploaded
       const updatedImages = images || profileData.images;
       let hasChanges = false;
+      const processedImages = [];
 
       for (let i = 0; i < updatedImages.length; i++) {
         const img = updatedImages[i];
+        console.log(`💾 [EDIT PROFILE] Processing image ${i}:`, img);
+
         if (img && (img.startsWith("file:") || img.startsWith("data:"))) {
           try {
+            console.log(`💾 [EDIT PROFILE] Uploading local image ${i}...`);
             // Upload the image using the Cloud Function
             const uploadResult = await uploadImageViaCloudFunction(
               currentUser.uid,
               img
             );
+            console.log(
+              `💾 [EDIT PROFILE] Upload result for image ${i}:`,
+              uploadResult
+            );
+
             // Extract filename from the URL
             const urlParts = uploadResult.originalUrl.split("/");
-            updatedImages[i] = urlParts[urlParts.length - 1];
+            const filename = urlParts[urlParts.length - 1];
+            processedImages.push(filename);
             hasChanges = true;
+            console.log(`💾 [EDIT PROFILE] Extracted filename:`, filename);
           } catch (error) {
-            console.error("Error uploading image during update:", error);
+            console.error(
+              `💾 [EDIT PROFILE] Error uploading image ${i}:`,
+              error
+            );
+            // Keep the original image if upload fails
+            processedImages.push(img);
           }
+        } else if (img && img.includes("_original.jpg")) {
+          // This is already a filename, keep it as is
+          console.log(
+            `💾 [EDIT PROFILE] Image ${i} is already a filename:`,
+            img
+          );
+          processedImages.push(img);
+        } else if (img && (img.startsWith("http") || img.startsWith("https"))) {
+          // This is a URL, we need to extract the filename
+          console.log(
+            `💾 [EDIT PROFILE] Image ${i} is a URL, extracting filename:`,
+            img
+          );
+          const urlParts = img.split("/");
+          const filename = urlParts[urlParts.length - 1];
+          processedImages.push(filename);
+          hasChanges = true;
+        } else if (img && img.trim() !== "") {
+          // Keep the image as is (could be a filename or other format)
+          console.log(`💾 [EDIT PROFILE] Image ${i} kept as is:`, img);
+          processedImages.push(img);
+        } else {
+          // Skip empty images
+          console.log(`💾 [EDIT PROFILE] Skipping empty image ${i}`);
         }
       }
 
-      // If we processed any local images, update the profileData
+      console.log("💾 [EDIT PROFILE] Final processed images:", processedImages);
+
+      // If we processed any images, update the profileData
       if (hasChanges) {
         setProfileData((prev) => ({
           ...prev,
-          images: updatedImages,
+          images: processedImages,
         }));
       }
 
       // Create final data to send to server
       const finalProfileData = {
         ...profileData,
-        images: updatedImages,
+        images: processedImages,
       };
+
+      console.log(
+        "💾 [EDIT PROFILE] Final profile data to save:",
+        finalProfileData
+      );
 
       const response = await UserService.updateUser(
         currentUser.uid,
         finalProfileData
       );
+
+      console.log("💾 [EDIT PROFILE] Save response:", response);
 
       // Store the updated full user profile in context
       setProfile(response.user);

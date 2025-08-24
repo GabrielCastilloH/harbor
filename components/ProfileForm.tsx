@@ -190,10 +190,14 @@ export default function ProfileForm({
       return;
     }
 
+    console.log("📝 [PROFILE FORM] imagesWithKeys:", imagesWithKeys);
+    const imageUris = imagesWithKeys.map((img) => img.uri);
+    console.log("📝 [PROFILE FORM] Image URIs to save:", imageUris);
+
     // Update profileData.images before saving - save as string URLs
     const updatedProfile = {
       ...profileData,
-      images: imagesWithKeys.map((img) => img.uri),
+      images: imageUris,
     };
 
     onProfileChange(updatedProfile);
@@ -201,9 +205,9 @@ export default function ProfileForm({
     // Pass the updated profile to onSave so it has the latest images
     if (isAccountSetup) {
       // For account setup, we need to pass the images directly
-      onSave(imagesWithKeys.map((img) => img.uri));
+      onSave(imageUris);
     } else {
-      onSave(imagesWithKeys.map((img) => img.uri));
+      onSave(imageUris);
     }
   };
 
