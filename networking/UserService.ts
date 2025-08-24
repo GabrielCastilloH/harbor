@@ -88,7 +88,7 @@ export class UserService {
     // Premium functionality disabled - return success without calling backend
     console.log("Premium disabled: markPaywallAsSeen called but ignored");
     return { success: true };
-    
+
     // Original implementation commented out:
     // try {
     //   const markPaywallAsSeen = httpsCallable(
