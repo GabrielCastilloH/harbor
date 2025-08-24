@@ -1,12 +1,12 @@
 // Import Firebase config first to ensure Firebase is initialized
 import "../firebaseConfig";
-import { 
-  getMessaging, 
-  requestPermission, 
-  getToken, 
-  onTokenRefresh, 
+import {
+  getMessaging,
+  requestPermission,
+  getToken,
+  onTokenRefresh,
   hasPermission,
-  AuthorizationStatus 
+  AuthorizationStatus,
 } from "@react-native-firebase/messaging";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StreamChat } from "stream-chat";
@@ -44,12 +44,9 @@ export class StreamNotificationService {
         authStatus === AuthorizationStatus.PROVISIONAL;
 
       if (enabled) {
-        console.log("🔔 Notification permission granted:", authStatus);
         return true;
-      } else {
-        console.log("🔔 Notification permission denied:", authStatus);
-        return false;
       }
+      return false;
     } catch (error) {
       console.error("🔔 Error requesting notification permission:", error);
       return false;
@@ -81,15 +78,11 @@ export class StreamNotificationService {
       await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
 
       // Set up token refresh listener
-      this.unsubscribeTokenRefresh = onTokenRefresh(messaging,
+      this.unsubscribeTokenRefresh = onTokenRefresh(
+        messaging,
         async (newToken) => {
           await this.handleTokenRefresh(newToken, userId);
         }
-      );
-
-      console.log(
-        "🔔 Device registered with Stream Chat:",
-        token.substring(0, 20) + "..."
       );
     } catch (error) {
       console.error("🔔 Error registering device:", error);
@@ -121,8 +114,6 @@ export class StreamNotificationService {
         "HarborFirebasePush"
       );
       await AsyncStorage.setItem(PUSH_TOKEN_KEY, newToken);
-
-      console.log("🔔 Token refreshed and updated with Stream Chat");
     } catch (error) {
       console.error("🔔 Error handling token refresh:", error);
     }
@@ -145,8 +136,6 @@ export class StreamNotificationService {
         this.unsubscribeTokenRefresh();
         this.unsubscribeTokenRefresh = null;
       }
-
-      console.log("🔔 Device unregistered from Stream Chat");
     } catch (error) {
       console.error("🔔 Error unregistering device:", error);
     }

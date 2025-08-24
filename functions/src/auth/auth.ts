@@ -1,13 +1,15 @@
 import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { CallableRequest } from "firebase-functions/v2/https";
+import { emailVerificationFunctions } from "./emailVerification";
 
 const db = admin.firestore();
 
 /**
- * Verifies Google OAuth token and returns user information
+ * Signs in user with email/password and returns user data
+ * This is needed because we need to check if user exists in Firestore
  */
-export const verifyGoogleAuth = functions.https.onCall(
+export const signInWithEmail = functions.https.onCall(
   {
     region: "us-central1",
     memory: "256MiB",
@@ -19,77 +21,77 @@ export const verifyGoogleAuth = functions.https.onCall(
     ingressSettings: "ALLOW_ALL",
     invoker: "public",
   },
-  async (request: CallableRequest<{ token: string }>) => {
+  async (request: CallableRequest<{ email: string; password: string }>) => {
     try {
-      const { token } = request.data;
+      const { email, password } = request.data;
 
-      if (!token) {
+      if (!email || !password) {
         throw new functions.https.HttpsError(
           "invalid-argument",
-          "Token is required"
+          "Email and password are required"
         );
       }
 
-      // Verify token with Google API using fetch
-      const userInfoResponse = await fetch(
-        "https://www.googleapis.com/userinfo/v2/me",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (!userInfoResponse.ok) {
-        throw new Error(`Google API error: ${userInfoResponse.status}`);
-      }
-
-      const payload = await userInfoResponse.json();
-
-      if (!payload || !payload.email) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "Invalid user info"
-        );
-      }
-
-      // TODO: Uncomment this when going to production
-      // if (!payload.email.endsWith('@cornell.edu')) {
-      //   throw new functions.https.HttpsError(
-      //     "permission-denied",
-      //     "Only Cornell students can sign up"
-      //   );
-      // }
+      // Get user by email
+      const userRecord = await admin.auth().getUserByEmail(email);
 
       // Check if user exists in Firestore
-      const userDoc = await db.collection("users").doc(payload.email).get();
+      const userDoc = await db.collection("users").doc(userRecord.uid).get();
 
       if (userDoc.exists) {
         // User exists, return the full user info
-        return { user: userDoc.data() };
+        return {
+          user: userDoc.data(),
+          authInfo: {
+            uid: userRecord.uid,
+            email: userRecord.email,
+            emailVerified: userRecord.emailVerified,
+          },
+        };
       } else {
-        // User doesn't exist yet, return only the auth info
+        // User exists in Auth but not in Firestore
         return {
           authInfo: {
-            email: payload.email,
-            firstName: payload.given_name || "",
-            isNewUser: true,
+            uid: userRecord.uid,
+            email: userRecord.email,
+            emailVerified: userRecord.emailVerified,
           },
         };
       }
     } catch (error: any) {
-      console.error("Error verifying Google token:", error);
+      console.error("Error in signInWithEmail:", error);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
 
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to verify token"
-      );
+      if (error.code === "auth/user-not-found") {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "No account found with this email address"
+        );
+      }
+
+      if (error.code === "auth/wrong-password") {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "Incorrect password"
+        );
+      }
+
+      if (error.code === "auth/user-disabled") {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "This account has been disabled"
+        );
+      }
+
+      throw new functions.https.HttpsError("internal", "Failed to sign in");
     }
   }
 );
 
 export const authFunctions = {
-  verifyGoogleAuth,
+  signInWithEmail,
+  ...emailVerificationFunctions,
 };

@@ -13,16 +13,20 @@ export const PREMIUM_FEATURES: FeatureConfig = {
   canSeeWhoSwipedOnThem: true,
 };
 
+// PREMIUM DISABLED: Always return free features
 export const getFeatureConfig = (isPremium: boolean): FeatureConfig => {
-  return isPremium ? PREMIUM_FEATURES : FREE_FEATURES;
+  return FREE_FEATURES; // Always return free features
+  // Original: return isPremium ? PREMIUM_FEATURES : FREE_FEATURES;
 };
 
+// PREMIUM DISABLED: Always return free tier swipes
 export const getSwipesPerDay = (isPremium: boolean): number => {
-  return isPremium ? PREMIUM_FEATURES.swipesPerDay : FREE_FEATURES.swipesPerDay;
+  return FREE_FEATURES.swipesPerDay; // Always return free tier limit
+  // Original: return isPremium ? PREMIUM_FEATURES.swipesPerDay : FREE_FEATURES.swipesPerDay;
 };
 
+// PREMIUM DISABLED: Always return free tier setting
 export const canSeeWhoSwipedOnThem = (isPremium: boolean): boolean => {
-  return isPremium
-    ? PREMIUM_FEATURES.canSeeWhoSwipedOnThem
-    : FREE_FEATURES.canSeeWhoSwipedOnThem;
+  return FREE_FEATURES.canSeeWhoSwipedOnThem; // Always return free tier setting (false)
+  // Original: return isPremium ? PREMIUM_FEATURES.canSeeWhoSwipedOnThem : FREE_FEATURES.canSeeWhoSwipedOnThem;
 };

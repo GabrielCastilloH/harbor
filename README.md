@@ -11,6 +11,161 @@ TODO:
 - Add the ability to see profiles that swiped on you and swipe on them.
 - show difference between basic and premium plan on payment page
 
+## 🔐 Authentication & Email Verification Flow
+
+Harbor uses Firebase Auth with a **custom code-based email verification system** that replaces Firebase's default link-based verification. This system is specifically designed to work with university email systems that pre-fetch verification links.
+
+### Flow Logic
+
+The app has 4 distinct authentication states handled in `App.tsx`:
+
+1. **User signed in but email NOT verified** → `EmailVerificationScreen`
+2. **User verified but NO profile in database** → `AccountSetupScreen`
+3. **User verified AND has profile** → Main App (`TabNavigator`)
+4. **User not signed in** → Auth screens (`SignIn`/`CreateAccount`)
+
+### Email Verification System
+
+#### Overview
+
+Instead of using Firebase's built-in email verification links, Harbor implements a custom verification system using:
+
+- **6-digit verification codes** sent via email
+- **5-minute expiration** for security
+- **Mailgun integration** for reliable email delivery
+- **Google Secret Manager** for secure API key storage
+
+#### Complete Verification Flow
+
+1. **User Signs Up** (`CreateAccountScreen.tsx`)
+
+   ```typescript
+   // 1. Create user with Firebase Auth
+   const userCredential = await createUserWithEmailAndPassword(
+     auth,
+     email,
+     password
+   );
+
+   // 2. User automatically navigated to EmailVerificationScreen
+   // 3. No manual email sending - handled by EmailVerificationScreen
+   ```
+
+2. **Code Generation & Sending** (`EmailVerificationScreen.tsx`)
+
+   ```typescript
+   // Screen loads → automatically calls sendVerificationCode Firebase Function
+   useEffect(() => {
+     if (currentUser && !initialEmailSent) {
+       handleResendEmail(true); // Send initial verification code
+       setInitialEmailSent(true);
+     }
+   }, [currentUser, initialEmailSent]);
+   ```
+
+3. **Backend Code Processing** (`functions/src/auth/emailVerification.ts`)
+
+   ```typescript
+   // Generate 6-digit code
+   const code = Math.floor(100000 + Math.random() * 900000).toString();
+   const expiresAt = admin.firestore.Timestamp.now().toMillis() + 5 * 60 * 1000;
+
+   // Store in Firestore
+   await db.collection("verificationCodes").doc(userId).set({
+     code,
+     email,
+     expiresAt,
+     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+   });
+
+   // Send via Mailgun
+   const msg = {
+     from: `Harbor <noreply@tryharbor.app>`,
+     to: email,
+     subject: "Your Harbor Verification Code",
+     html: `<div>Your verification code is: <h2>${code}</h2></div>`,
+   };
+   await mg.messages.create(domain, msg);
+   ```
+
+4. **User Enters Code** (`EmailVerificationScreen.tsx`)
+
+   ```typescript
+   // Modern 6-box input UI
+   <VerificationCodeInput
+     value={verificationCode}
+     onChangeText={setVerificationCode}
+     maxLength={6}
+   />
+   ```
+
+5. **Code Verification** (`functions/src/auth/emailVerification.ts`)
+
+   ```typescript
+   // Verify code against Firestore
+   const doc = await db.collection("verificationCodes").doc(userId).get();
+   const storedData = doc.data();
+
+   if (storedData?.code === code && storedData?.expiresAt > now) {
+     // Mark email as verified using Firebase Admin SDK
+     await admin.auth().updateUser(userId, { emailVerified: true });
+     await doc.ref.delete(); // Clean up used code
+     return { success: true };
+   } else if (storedData?.expiresAt < now) {
+     // Code expired - delete and require new code
+     await doc.ref.delete();
+     throw new functions.https.HttpsError("unauthenticated", "Code expired");
+   } else {
+     // Incorrect code - keep code active for retry
+     throw new functions.https.HttpsError("unauthenticated", "Incorrect code");
+   }
+   ```
+
+6. **Access Granted**
+   - Once verified, app automatically navigates to `AccountSetupScreen`
+   - User can now access full app features
+
+#### Security Features
+
+- **6-digit codes** with 5-minute expiration
+- **One-time use** (deleted after verification)
+- **Server-side verification** (cannot be bypassed)
+- **Mailgun integration** with verified domain (`tryharbor.app`)
+- **Google Secret Manager** for secure API key storage
+- **Forgiving verification** (codes stay active for typos)
+
+#### Cooldown & Rate Limiting
+
+- **2-minute cooldown** enforced on both frontend and backend
+- **Server-side protection** against abuse (cannot be bypassed)
+- **Real-time countdown** showing remaining time
+- **Smart button states** (disabled during cooldown)
+- **Graceful error handling** for cooldown violations
+
+#### Resend Functionality
+
+- **Automatic code sending** when verification screen loads
+- **Manual resend** with cooldown protection
+- **Rate limiting** prevents abuse and reduces costs
+- **Automatic retry** with exponential backoff for failed sends
+
+### Key Design Principles
+
+- **Custom verification system**: Replaces Firebase's link-based verification
+- **University email compatibility**: Works with pre-fetching email systems
+- **Secure code generation**: Server-side generation and validation
+- **User-friendly UI**: Modern 6-box input with real-time feedback
+- **Automatic flow**: Seamless navigation between verification states
+- **Forgiving verification**: Codes stay active for typos, better UX
+- **Robust cooldown**: Frontend and backend protection against abuse
+- **Production-ready**: Proper error handling and logging
+
+### Cornell Email Validation
+
+- **Frontend validation**: Explicit rejection of emails containing `+` symbols
+- **Backend normalization**: Strip `+` aliases in Cloud Functions (when needed)
+- **Domain enforcement**: Only `@cornell.edu` emails accepted
+
 ## 📋 Validation Rules
 
 ### Profile Validation Requirements
@@ -37,14 +192,14 @@ All fields must be completed before profile creation:
 
 | Field                              | Min Length | Max Length | Description                    |
 | ---------------------------------- | ---------- | ---------- | ------------------------------ |
-| First Name                         | 2          | 50         | First name or initial/nickname |
-| About Me                           | 5          | 200        | Personal description           |
-| Q1: "This year, I really want to"  | 5          | 120        | Personal goal                  |
-| Q2: "Together we could"            | 5          | 120        | Shared activity                |
-| Q3: "Favorite book, movie or song" | 5          | 120        | Cultural preference            |
-| Q4: "I chose my major because"     | 5          | 120        | Academic motivation            |
-| Q5: "My favorite study spot is"    | 5          | 120        | Study preference               |
-| Q6: "Some of my hobbies are"       | 5          | 120        | Personal interests             |
+| First Name                         | 2          | 11         | First name or initial/nickname |
+| About Me                           | 5          | 180        | Personal description           |
+| Q1: "This year, I really want to"  | 5          | 100        | Personal goal                  |
+| Q2: "Together we could"            | 5          | 100        | Shared activity                |
+| Q3: "Favorite book, movie or song" | 5          | 100        | Cultural preference            |
+| Q4: "I chose my major because"     | 5          | 100        | Academic motivation            |
+| Q5: "My favorite study spot is"    | 5          | 100        | Study preference               |
+| Q6: "Some of my hobbies are"       | 5          | 100        | Personal interests             |
 
 #### Backend Enforcement
 

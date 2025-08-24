@@ -10,7 +10,6 @@ import ProfileForm from "../components/ProfileForm";
 import LoadingScreen from "../components/LoadingScreen";
 import { signOut } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { preloadChatCredentials } from "../util/chatPreloader";
 
 export default function AccountSetupScreen({
@@ -19,7 +18,7 @@ export default function AccountSetupScreen({
   const {
     setUserId,
     setProfile,
-    setIsAuthenticated,
+    setProfileExists,
     setStreamApiKey,
     setStreamUserToken,
   } = useAppContext();
@@ -65,14 +64,17 @@ export default function AccountSetupScreen({
 
   const handleLogout = async () => {
     try {
-      await GoogleSignin.signOut();
-      await signOut(auth);
+      // Run operations in parallel for better performance
+      await Promise.all([
+        signOut(auth),
+        AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]),
+      ]);
+
+      // Clear context state
       setUserId(null);
       setProfile(null);
-      setIsAuthenticated(false);
-      await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
     } catch (error) {
-      // Handle logout error silently
+      console.error("❌ [ACCOUNT SETUP] Error during logout:", error);
     }
   };
 
@@ -83,7 +85,7 @@ export default function AccountSetupScreen({
         if (currentUser) {
           setProfileData((prev) => ({
             ...prev,
-            firstName: currentUser.displayName?.split(" ")[0] || "",
+            firstName: currentUser.displayName || "",
             email: currentUser.email || "",
           }));
         }
@@ -243,6 +245,7 @@ export default function AccountSetupScreen({
         email: currentUser.email || "",
         images: imageFilenames,
       });
+      setProfileExists(true);
     } catch (error) {
       console.error("Error creating profile:", error);
       Alert.alert("Error", "Failed to create profile. Please try again.");
@@ -261,9 +264,9 @@ export default function AccountSetupScreen({
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: "white" }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ProfileForm
