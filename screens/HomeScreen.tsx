@@ -34,8 +34,10 @@ import {
   MatchService,
 } from "../networking";
 import { getBlurredImageUrl } from "../networking/ImageService";
-import { usePlacement } from "expo-superwall";
-import { usePremium } from "../hooks/usePremium";
+// PREMIUM DISABLED: Superwall imports commented out
+// import { usePlacement } from "expo-superwall";
+// PREMIUM DISABLED: Premium hook commented out
+// import { usePremium } from "../hooks/usePremium";
 import { SwipeLimitService } from "../networking/SwipeLimitService";
 import { RootStackParamList } from "../types/navigation";
 
@@ -57,7 +59,8 @@ export default function HomeScreen() {
   const [lastSwipedProfile, setLastSwipedProfile] = useState<string | null>(
     null
   );
-  const [hasShownPaywall, setHasShownPaywall] = useState(false);
+  // PREMIUM DISABLED: Paywall state commented out
+  // const [hasShownPaywall, setHasShownPaywall] = useState(false);
   const [swipeLimit, setSwipeLimit] = useState<{
     swipesToday: number;
     maxSwipesPerDay: number;
@@ -73,15 +76,18 @@ export default function HomeScreen() {
     swipeRight: () => void;
   }>(null);
 
-  // Superwall paywall placement
-  const { registerPlacement } = usePlacement({
-    onError: (err) => console.error("Placement Error:", err),
-    onPresent: (info) => {},
-    onDismiss: (info, result) => {},
-  });
+  // PREMIUM DISABLED: Superwall paywall placement commented out
+  // const { registerPlacement } = usePlacement({
+  //   onError: (err) => console.error("Placement Error:", err),
+  //   onPresent: (info) => {},
+  //   onDismiss: (info, result) => {},
+  // });
 
-  // Premium features
-  const { isPremium, swipesPerDay } = usePremium();
+  // PREMIUM DISABLED: Premium features commented out
+  // const { isPremium, swipesPerDay } = usePremium();
+  // Mock premium as false for now
+  const isPremium = false;
+  const swipesPerDay = 20; // Always use free tier limit
 
   // Remove card when returning from report screen
   useFocusEffect(
@@ -158,29 +164,29 @@ export default function HomeScreen() {
     fetchUserProfile();
   }, [userId, isAuthenticated, currentUser]);
 
-  // Show paywall for new users after profile is loaded
-  useEffect(() => {
-    if (userProfile && !userProfile.paywallSeen && !hasShownPaywall && userId) {
-      setHasShownPaywall(true);
+  // PREMIUM DISABLED: Paywall logic commented out
+  // useEffect(() => {
+  //   if (userProfile && !userProfile.paywallSeen && !hasShownPaywall && userId) {
+  //     setHasShownPaywall(true);
 
-      // Register and show the paywall
-      registerPlacement({
-        placement: "onboarding_paywall",
-        feature: async () => {
-          // This runs if no paywall is shown (user already has access)
+  //     // Register and show the paywall
+  //     registerPlacement({
+  //       placement: "onboarding_paywall",
+  //       feature: async () => {
+  //         // This runs if no paywall is shown (user already has access)
 
-          try {
-            await UserService.markPaywallAsSeen(userId);
-          } catch (error) {
-            console.error(
-              "❌ [HOMESCREEN] Error marking paywall as seen:",
-              error
-            );
-          }
-        },
-      });
-    }
-  }, [userProfile, hasShownPaywall, userId]);
+  //         try {
+  //           await UserService.markPaywallAsSeen(userId);
+  //         } catch (error) {
+  //           console.error(
+  //             "❌ [HOMESCREEN] Error marking paywall as seen:",
+  //             error
+  //           );
+  //         }
+  //       },
+  //     });
+  //   }
+  // }, [userProfile, hasShownPaywall, userId]);
 
   // Fetch swipe limits when user profile is loaded
   useEffect(() => {
@@ -284,28 +290,34 @@ export default function HomeScreen() {
       return;
     }
 
-    // Check swipe limit
+    // PREMIUM DISABLED: Swipe limit paywall commented out
     if (swipeLimit && !swipeLimit.canSwipe) {
-      // Show paywall for premium upgrade
-      try {
-        registerPlacement({
-          placement: "settings_premium",
-          feature: () => {
-            Alert.alert(
-              "Daily Limit Reached",
-              `You've used all ${
-                swipeLimit.maxSwipesPerDay
-              } swipes for today. Upgrade to Premium for ${
-                isPremium ? 40 : 40
-              } swipes per day!`
-            );
-          },
-        });
-      } catch (error) {
-        console.error("Error showing premium paywall:", error);
-      }
+      // Simply show alert without premium upgrade option
+      Alert.alert(
+        "Daily Limit Reached",
+        `You've used all ${swipeLimit.maxSwipesPerDay} swipes for today. Try again tomorrow!`
+      );
       return;
     }
+
+    // Original premium paywall logic commented out:
+    // try {
+    //   registerPlacement({
+    //     placement: "settings_premium",
+    //     feature: () => {
+    //       Alert.alert(
+    //         "Daily Limit Reached",
+    //         `You've used all ${
+    //           swipeLimit.maxSwipesPerDay
+    //         } swipes for today. Upgrade to Premium for ${
+    //           isPremium ? 40 : 40
+    //         } swipes per day!`
+    //       );
+    //     },
+    //   });
+    // } catch (error) {
+    //   console.error("Error showing premium paywall:", error);
+    // }
 
     try {
       setSwipeInProgress(true);
@@ -470,17 +482,22 @@ export default function HomeScreen() {
     });
   };
 
+  // PREMIUM DISABLED: Premium upgrade function commented out
   const handlePremiumUpgrade = async () => {
-    try {
-      registerPlacement({
-        placement: "settings_premium",
-        feature: () => {
-          // No alert - just close silently
-        },
-      });
-    } catch (error) {
-      console.error("Error showing premium paywall:", error);
-    }
+    // Premium functionality disabled - do nothing
+    console.log("Premium upgrade disabled");
+
+    // Original implementation commented out:
+    // try {
+    //   registerPlacement({
+    //     placement: "settings_premium",
+    //     feature: () => {
+    //       // No alert - just close silently
+    //     },
+    //   });
+    // } catch (error) {
+    //   console.error("Error showing premium paywall:", error);
+    // }
   };
 
   if (loadingProfile || loadingRecommendations) {
