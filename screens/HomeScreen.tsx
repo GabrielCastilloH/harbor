@@ -216,10 +216,82 @@ export default function HomeScreen() {
         return;
       }
       setLoadingRecommendations(true);
+
+      // TEMPORARY TEST DATA - For testing navigation arrows with MAX CHARACTER LIMITS
+      const testData: Profile[] = [
+        {
+          uid: "test-1",
+          email: "alex@test.com",
+          firstName: "AAAlexander", // 11 chars max
+          yearLevel: "Junior",
+          age: 21,
+          major: "Computer Science",
+          gender: "Male",
+          sexualOrientation: "Heterosexual",
+          images: [
+            "https://via.placeholder.com/300x400/FF6B6B/FFFFFF?text=Alex",
+          ],
+          aboutMe:
+            "I'm a passionate computer science student who loves diving deep into algorithms, building apps, and exploring tech possibilities. building apps, and exploring tech possibilities.", // 180 chars max
+          q1: "Learn advanced machine learning algorithms, master full-stack development, and launch my tech startup.", // 100 chars max
+          q2: "Build amazing apps together, explore new cities and go on weekend hiking adventures with friends.", // 100 chars max
+          q3: "The entire Harry Potter series by J.K. Rowling - it shaped my imagination and continues to inspire.", // 100 chars max
+          q4: "I've always been fascinated by how technology can solve complex problems and improve people's lives.", // 100 chars max
+          q5: "The third floor of the engineering library near the large windows - it's quiet and has great WiFi.", // 100 chars max
+          q6: "Rock climbing at the local gym, landscape photography, playing guitar, and volunteering at shelters.", // 100 chars max
+        },
+        {
+          uid: "test-2",
+          email: "sam@test.com",
+          firstName: "AAASamantha", // 11 chars max
+          yearLevel: "Senior",
+          age: 22,
+          major: "Psychology",
+          gender: "Female",
+          sexualOrientation: "Bisexual",
+          images: [
+            "https://via.placeholder.com/300x400/4ECDC4/FFFFFF?text=Sam",
+          ],
+          aboutMe:
+            "Psychology major with curiosity about human behavior and social dynamics. I'm passionate about mental health advocacy and research.", // 180 chars max
+          q1: "Complete my honors thesis on social psychology, get accepted into a PhD program, and maybe write a book.", // 100 chars max
+          q2: "Have deep philosophical conversations over coffee, take art therapy classes, and explore museums.", // 100 chars max
+          q3: "Becoming by Michelle Obama - it's incredibly inspiring and shows how resilience can change the world.", // 100 chars max
+          q4: "I want to help people understand themselves better and contribute to psychological research.", // 100 chars max
+          q5: "The psychology building's sunlit lounge with comfortable chairs and peaceful atmosphere.", // 100 chars max
+          q6: "Oil painting landscapes, practicing yoga, volunteering at shelters, and hosting art workshops.", // 100 chars max
+        },
+        {
+          uid: "test-3",
+          email: "jordan@test.com",
+          firstName: "AAAJordan R", // 11 chars max
+          yearLevel: "Sophomore",
+          age: 20,
+          major: "Environmental Science",
+          gender: "Non-Binary",
+          sexualOrientation: "Pansexual",
+          images: [
+            "https://via.placeholder.com/300x400/45B7D1/FFFFFF?text=Jordan",
+          ],
+          aboutMe:
+            "Environmental science student passionate about sustainability and climate action. I believe in community organizing and research.", // 180 chars max
+          q1: "Launch a campus-wide zero-waste initiative, organize climate action protests, and conduct research.", // 100 chars max
+          q2: "Go camping in national parks, start a community garden, and work on environmental policy research.", // 100 chars max
+          q3: "Silent Spring by Rachel Carson - it completely changed my perspective on environmental issues.", // 100 chars max
+          q4: "Our planet needs advocates and scientists who understand the urgency of climate change.", // 100 chars max
+          q5: "Outside under the oak tree by the pond, or indoors at the science library's quiet study pods.", // 100 chars max
+          q6: "Hiking mountain trails, organic gardening, environmental activism, and wildlife photography.", // 100 chars max
+        },
+      ];
+
       try {
         const response = await RecommendationService.getRecommendations(userId);
-        if (response && response.recommendations) {
-          // Fetch secure image URLs for each recommendation
+        if (
+          response &&
+          response.recommendations &&
+          response.recommendations.length > 0
+        ) {
+          // Use real data if available
           const recommendationsWithSecureImages = await Promise.all(
             response.recommendations.map(async (profile: Profile) => {
               try {
@@ -239,14 +311,19 @@ export default function HomeScreen() {
           if (recommendationsWithSecureImages.length > 0) {
             setCurrentProfile(recommendationsWithSecureImages[0]);
           }
+        } else {
+          // Use test data if no real recommendations
+          console.log("📝 Using test data for recommendations");
+          setRecommendations(testData);
+          setCurrentProfile(testData[0]);
         }
       } catch (error: any) {
         console.error("❌ [HOMESCREEN] Error fetching recommendations:", error);
 
-        // If user not found, don't show error - they might be setting up their account
-        if (error?.code === "not-found") {
-          // User not found, skipping recommendations fetch
-        }
+        // Use test data as fallback
+        console.log("📝 Using test data as fallback");
+        setRecommendations(testData);
+        setCurrentProfile(testData[0]);
       } finally {
         setLoadingRecommendations(false);
       }
