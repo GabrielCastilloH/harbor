@@ -11,18 +11,16 @@ import LoadingScreen from "../components/LoadingScreen";
 import { signOut } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { preloadChatCredentials } from "../util/chatPreloader";
-import { useNavigation } from "@react-navigation/native";
 
 export default function AccountSetupScreen({
   showProgressBar = true,
 }: { showProgressBar?: boolean } = {}) {
-  const navigation = useNavigation();
   const {
     setUserId,
     setProfile,
+
     setStreamApiKey,
     setStreamUserToken,
-    setProfileExists,
   } = useAppContext();
   const [profileData, setProfileData] = useState<Profile>({
     firstName: "",
@@ -246,15 +244,6 @@ export default function AccountSetupScreen({
         ...profileData,
         email: currentUser.email || "",
         images: imageFilenames,
-      });
-
-      // Update the profileExists state so the app knows a profile now exists
-      setProfileExists(true);
-
-      // Navigate to the main app after successful profile creation
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "MainTabs" as never }],
       });
     } catch (error) {
       console.error("Error creating profile:", error);

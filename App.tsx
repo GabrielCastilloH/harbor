@@ -19,8 +19,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
 import { SUPERWALL_CONFIG } from "./firebaseConfig";
 
-// Define a single root stack navigator for the entire app
-const RootStack = createNativeStackNavigator();
+// Define the authentication stack navigator
+const AuthStack = createNativeStackNavigator();
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component<
@@ -54,56 +54,97 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+// AuthNavigator remains the same, but it's only for unauthenticated users.
+function AuthNavigator() {
+  return (
+    <AuthStack.Navigator
+      screenOptions={{ headerShown: false }}
+      initialRouteName="SignIn"
+    >
+      <AuthStack.Screen name="SignIn" component={SignIn} />
+      <AuthStack.Screen name="CreateAccount" component={CreateAccountScreen} />
+    </AuthStack.Navigator>
+  );
+}
+
+// Main Navigator for authenticated users
+function MainNavigator() {
+  const AppStack = createNativeStackNavigator();
+  const { currentUser, isAuthenticated, profileExists } = useAppContext();
+
+  // Debug effect to track changes
+  React.useEffect(() => {
+    console.log("🧭 [MAIN NAVIGATOR] Values changed:", {
+      emailVerified: currentUser?.emailVerified,
+      profileExists,
+    });
+  }, [currentUser?.emailVerified, profileExists]);
+
+  console.log("🧭 [MAIN NAVIGATOR] Rendering with:", {
+    emailVerified: currentUser?.emailVerified,
+    profileExists,
+  });
+
+  if (!currentUser) {
+    console.log("🧭 [MAIN NAVIGATOR] No current user, returning null");
+    return null; // This should not happen if isAuthenticated is true
+  }
+
+  if (!currentUser.emailVerified) {
+    console.log(
+      "🧭 [MAIN NAVIGATOR] Email not verified, showing EmailVerificationScreen"
+    );
+    return (
+      <AppStack.Navigator screenOptions={{ headerShown: false }}>
+        <AppStack.Screen
+          name="EmailVerification"
+          component={EmailVerificationScreen}
+        />
+      </AppStack.Navigator>
+    );
+  }
+
+  if (!profileExists) {
+    console.log(
+      "🧭 [MAIN NAVIGATOR] No profile exists, showing AccountSetupScreen"
+    );
+    return (
+      <AppStack.Navigator screenOptions={{ headerShown: false }}>
+        <AppStack.Screen name="AccountSetup" component={AccountSetupScreen} />
+      </AppStack.Navigator>
+    );
+  }
+
+  // User is fully authenticated and has a profile
+  console.log("🧭 [MAIN NAVIGATOR] User has profile, showing TabNavigator");
+  return (
+    <AppStack.Navigator screenOptions={{ headerShown: false }}>
+      <AppStack.Screen name="Tab" component={TabNavigator} />
+    </AppStack.Navigator>
+  );
+}
+
 function AppContent() {
-  const { isInitialized, isAuthenticated, currentUser, profileExists } =
-    useAppContext();
+  const { isInitialized, isAuthenticated } = useAppContext();
+
+  console.log(
+    "🔍 [APP] Render - auth:",
+    isAuthenticated,
+    "init:",
+    isInitialized
+  );
 
   if (!isInitialized) {
     return <LoadingScreen loadingText="Signing you in..." />;
   }
 
-  // Determine the initial screen based on authentication and profile status
-  let initialRouteName = "SignIn";
-
-  if (isAuthenticated && currentUser) {
-    if (!currentUser.emailVerified) {
-      initialRouteName = "EmailVerification";
-    } else if (!profileExists) {
-      initialRouteName = "AccountSetup";
-    } else {
-      initialRouteName = "MainTabs";
-    }
-  }
-
+  // Single NavigationContainer for the entire app
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
-        <RootStack.Navigator
-          screenOptions={{ headerShown: false }}
-          initialRouteName={initialRouteName}
-        >
-          {/* Authentication screens */}
-          <RootStack.Screen name="SignIn" component={SignIn} />
-          <RootStack.Screen
-            name="CreateAccount"
-            component={CreateAccountScreen}
-          />
-
-          {/* Post-authentication setup screens */}
-          <RootStack.Screen
-            name="EmailVerification"
-            component={EmailVerificationScreen}
-          />
-          <RootStack.Screen
-            name="AccountSetup"
-            component={AccountSetupScreen}
-          />
-
-          {/* Main app screens */}
-          <RootStack.Screen name="MainTabs" component={TabNavigator} />
-        </RootStack.Navigator>
-        {isAuthenticated && <UnviewedMatchesHandler />}
         <StatusBar style="dark" />
+        {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
+        {isAuthenticated && <UnviewedMatchesHandler />}
       </NavigationContainer>
     </GestureHandlerRootView>
   );
