@@ -63,6 +63,10 @@ function AuthNavigator() {
     >
       <AuthStack.Screen name="SignIn" component={SignIn} />
       <AuthStack.Screen name="CreateAccount" component={CreateAccountScreen} />
+      <AuthStack.Screen
+        name="EmailVerification"
+        component={EmailVerificationScreen}
+      />
     </AuthStack.Navigator>
   );
 }

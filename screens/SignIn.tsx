@@ -12,6 +12,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation, CommonActions } from "@react-navigation/native";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 import LoadingScreen from "../components/LoadingScreen";
@@ -31,6 +32,7 @@ import {
 import { AuthService } from "../networking/AuthService";
 
 export default function SignIn({ navigation }: any) {
+  const nav = useNavigation();
   const {
     isAuthenticated,
     currentUser,
@@ -156,10 +158,20 @@ export default function SignIn({ navigation }: any) {
       // Check if email is verified
       if (!user.emailVerified) {
         // Email not verified - redirect to verification screen
-        navigation.navigate("EmailVerification", {
-          email: normalizedEmail,
-          fromSignIn: true,
-        });
+        (nav as any).dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [
+              {
+                name: "EmailVerification",
+                params: {
+                  email: normalizedEmail,
+                  fromSignIn: true,
+                },
+              },
+            ],
+          })
+        );
         return;
       }
 
@@ -252,7 +264,7 @@ export default function SignIn({ navigation }: any) {
   };
 
   const handleCreateAccount = () => {
-    navigation.navigate("CreateAccount");
+    (nav as any).navigate("CreateAccount");
   };
 
   if (isLoading) {
