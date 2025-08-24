@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
-import { CardViewProps } from '../types/App';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import Colors from "../constants/Colors";
+import { CardViewProps } from "../types/App";
 
 export default function PersonalView({ profile }: CardViewProps) {
   return (
@@ -44,15 +44,15 @@ const styles = StyleSheet.create({
     minHeight: 400,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 20, // Smaller to fit longer prompts
     flex: 1, // Allow text to wrap
-    flexWrap: 'wrap',
-    fontWeight: '600',
+    flexWrap: "wrap",
+    fontWeight: "600",
     color: Colors.primary500,
     marginLeft: 12,
   },
@@ -63,8 +63,8 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginHorizontal: -4,
   },
   tag: {
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 16,
     color: Colors.primary500,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   content: {
     flex: 1,
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   },
   sectionsContainer: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   section: {
     marginBottom: 0, // Remove existing margin

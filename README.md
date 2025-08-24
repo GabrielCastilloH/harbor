@@ -192,14 +192,14 @@ All fields must be completed before profile creation:
 
 | Field                              | Min Length | Max Length | Description                    |
 | ---------------------------------- | ---------- | ---------- | ------------------------------ |
-| First Name                         | 2          | 50         | First name or initial/nickname |
-| About Me                           | 5          | 200        | Personal description           |
-| Q1: "This year, I really want to"  | 5          | 120        | Personal goal                  |
-| Q2: "Together we could"            | 5          | 120        | Shared activity                |
-| Q3: "Favorite book, movie or song" | 5          | 120        | Cultural preference            |
-| Q4: "I chose my major because"     | 5          | 120        | Academic motivation            |
-| Q5: "My favorite study spot is"    | 5          | 120        | Study preference               |
-| Q6: "Some of my hobbies are"       | 5          | 120        | Personal interests             |
+| First Name                         | 2          | 11         | First name or initial/nickname |
+| About Me                           | 5          | 180        | Personal description           |
+| Q1: "This year, I really want to"  | 5          | 100        | Personal goal                  |
+| Q2: "Together we could"            | 5          | 100        | Shared activity                |
+| Q3: "Favorite book, movie or song" | 5          | 100        | Cultural preference            |
+| Q4: "I chose my major because"     | 5          | 100        | Academic motivation            |
+| Q5: "My favorite study spot is"    | 5          | 100        | Study preference               |
+| Q6: "Some of my hobbies are"       | 5          | 100        | Personal interests             |
 
 #### Backend Enforcement
 
