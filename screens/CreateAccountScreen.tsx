@@ -132,13 +132,11 @@ export default function CreateAccountScreen({ navigation }: any) {
         password
       );
 
-      console.log("✅ [CREATE ACCOUNT] User created successfully:", userCredential.user.uid);
-
       // Reset the navigation stack to prevent back button issues
       (nav as any).dispatch(
         CommonActions.reset({
           index: 0,
-          routes: [{ name: 'EmailVerification' }],
+          routes: [{ name: "EmailVerification" }],
         })
       );
     } catch (error: any) {

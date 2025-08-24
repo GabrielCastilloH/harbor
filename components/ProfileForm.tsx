@@ -190,9 +190,7 @@ export default function ProfileForm({
       return;
     }
 
-    console.log("📝 [PROFILE FORM] imagesWithKeys:", imagesWithKeys);
     const imageUris = imagesWithKeys.map((img) => img.uri);
-    console.log("📝 [PROFILE FORM] Image URIs to save:", imageUris);
 
     // Update profileData.images before saving - save as string URLs
     const updatedProfile = {
