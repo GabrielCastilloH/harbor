@@ -76,9 +76,8 @@ export default function HomeScreen() {
   // Superwall paywall placement
   const { registerPlacement } = usePlacement({
     onError: (err) => console.error("Placement Error:", err),
-    onPresent: (info) => console.log("Paywall Presented:", info),
-    onDismiss: (info, result) =>
-      console.log("Paywall Dismissed:", info, "Result:", result),
+    onPresent: (info) => {},
+    onDismiss: (info, result) => {},
   });
 
   // Premium features

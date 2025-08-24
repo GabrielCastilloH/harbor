@@ -66,8 +66,6 @@ export default function AccountSetupScreen({
 
   const handleLogout = async () => {
     try {
-      console.log("🔄 [ACCOUNT SETUP] Starting logout...");
-
       // Run operations in parallel for better performance
       await Promise.all([
         signOut(auth),
@@ -77,8 +75,6 @@ export default function AccountSetupScreen({
       // Clear context state
       setUserId(null);
       setProfile(null);
-
-      console.log("✅ [ACCOUNT SETUP] Logout completed");
     } catch (error) {
       console.error("❌ [ACCOUNT SETUP] Error during logout:", error);
     }

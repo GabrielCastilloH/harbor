@@ -11,20 +11,10 @@ const secretManager = new SecretManagerServiceClient();
 // Get Mailgun API key from Secret Manager
 async function getMailgunApiKey(): Promise<string> {
   const name = "projects/harbor-ch/secrets/MAILGUN_API_KEY/versions/latest";
-  console.log("🔑 [SECRET MANAGER] Attempting to access secret:", name);
-
   try {
-    console.log(
-      "🔑 [SECRET MANAGER] Calling secretManager.accessSecretVersion..."
-    );
     const [version] = await secretManager.accessSecretVersion({ name });
-    console.log("🔑 [SECRET MANAGER] Secret version retrieved:", version.name);
 
     const apiKey = version.payload?.data?.toString();
-    console.log(
-      "🔑 [SECRET MANAGER] API key extracted, length:",
-      apiKey?.length || 0
-    );
 
     if (!apiKey) {
       console.error("🔑 [SECRET MANAGER] API key is empty or null");
@@ -33,7 +23,6 @@ async function getMailgunApiKey(): Promise<string> {
       );
     }
 
-    console.log("🔑 [SECRET MANAGER] API key validation passed");
     return apiKey;
   } catch (error: any) {
     console.error(
@@ -101,9 +90,7 @@ export const sendVerificationCode = functions.https.onCall(
           const remainingTime = Math.ceil(
             (COOLDOWN_MS - (now - createdAt)) / 1000
           );
-          console.log(
-            `📧 [VERIFICATION] Cooldown active for user ${userId}, ${remainingTime}s remaining`
-          );
+
           throw new functions.https.HttpsError(
             "resource-exhausted",
             `Please wait ${COOLDOWN_MINUTES} minutes between verification code requests. ${Math.floor(
@@ -118,12 +105,6 @@ export const sendVerificationCode = functions.https.onCall(
       const expiresAt =
         admin.firestore.Timestamp.now().toMillis() + 5 * 60 * 1000; // 5 minutes
 
-      console.log("📧 [VERIFICATION] Generated code for user:", userId);
-      console.log(
-        "📧 [VERIFICATION] Code expires at:",
-        new Date(expiresAt).toISOString()
-      );
-
       // Store code in Firestore
       await db.collection("verificationCodes").doc(userId).set({
         code,
@@ -132,24 +113,14 @@ export const sendVerificationCode = functions.https.onCall(
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      console.log("📧 [VERIFICATION] Code stored in Firestore");
-
       // Get Mailgun API key
-      console.log("📧 [VERIFICATION] Getting Mailgun API key...");
       const apiKey = await getMailgunApiKey();
-      console.log(
-        "📧 [VERIFICATION] API key retrieved, length:",
-        apiKey.length
-      );
 
       const domain = "tryharbor.app"; // Use verified domain
-      console.log("📧 [VERIFICATION] Using domain:", domain);
 
       // Initialize Mailgun
-      console.log("📧 [VERIFICATION] Initializing Mailgun client...");
       const mailgun = new Mailgun(formData);
       const mg = mailgun.client({ username: "api", key: apiKey });
-      console.log("📧 [VERIFICATION] Mailgun client initialized successfully");
 
       // Send verification email
       const msg = {
@@ -169,21 +140,7 @@ export const sendVerificationCode = functions.https.onCall(
         `,
       };
 
-      console.log(
-        "📧 [VERIFICATION] Message object created, attempting to send..."
-      );
-      console.log("📧 [VERIFICATION] Message details:", {
-        from: msg.from,
-        to: msg.to,
-        subject: msg.subject,
-        textLength: msg.text.length,
-        htmlLength: msg.html.length,
-      });
-
       const result = await mg.messages.create(domain, msg);
-      console.log("📧 [VERIFICATION] Mailgun API response:", result);
-
-      console.log(`✅ [VERIFICATION] Verification code sent to ${email}`);
       return { success: true, expiresAt: expiresAt };
     } catch (error: any) {
       console.error(
