@@ -61,9 +61,6 @@ async function moderateImage(
 
     // TODO: Integrate with Google Cloud Vision API or similar for actual content moderation
     // For now, return true but log for future implementation
-    console.log(
-      "Image moderation: Basic checks passed, consider implementing AI-based moderation"
-    );
 
     return { isAppropriate: true };
   } catch (error) {

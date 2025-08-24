@@ -14,19 +14,21 @@ import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 import { useNotification } from "../context/NotificationContext";
-import { usePlacement, useUser } from "expo-superwall";
+// PREMIUM DISABLED: Superwall imports commented out
+// import { usePlacement, useUser } from "expo-superwall";
+// import { useUser } from "expo-superwall"; // PREMIUM DISABLED
 import SettingsButton from "../components/SettingsButton";
 import MainHeading from "../components/MainHeading";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
-  const { setIsAuthenticated, setUserId, userId } = useAppContext();
+  const { setUserId, userId } = useAppContext();
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const {
     isNotificationsEnabled,
     isLoading,
@@ -35,49 +37,60 @@ export default function SettingsScreen() {
   } = useNotification();
   const [darkMode, setDarkMode] = useState(false);
   const [locationServices, setLocationServices] = useState(true);
-  const { user } = useUser();
+  // PREMIUM DISABLED: useUser commented out
+  // const { user } = useUser();
 
-  // Superwall paywall placement
-  const { registerPlacement } = usePlacement({
-    onError: (err) => {
-      console.error("Premium Paywall Error:", err);
-      Alert.alert("Error", "Failed to load premium options. Please try again.");
-    },
-    onPresent: (info) => {
-      // Premium paywall presented
-    },
-    onDismiss: (info, result) => {
-      // Handle dismissal - user can continue using the app
-    },
-    onSkip: (reason) => {
-      // User was allowed through without paywall (e.g., already subscribed)
-    },
-  });
+  // PREMIUM DISABLED: Superwall paywall placement commented out
+  // const { registerPlacement } = usePlacement({
+  //   onError: (err) => {
+  //     console.error("Premium Paywall Error:", err);
+  //     Alert.alert("Error", "Failed to load premium options. Please try again.");
+  //   },
+  //   onPresent: (info) => {
+  //     // Premium paywall presented
+  //   },
+  //   onDismiss: (info, result) => {
+  //     // Handle dismissal - user can continue using the app
+  //   },
+  //   onSkip: (reason) => {
+  //     // User was allowed through without paywall (e.g., already subscribed)
+  //   },
+  // });
 
+  // PREMIUM DISABLED: Premium upgrade function commented out
   const handlePremiumUpgrade = async () => {
-    try {
-      await registerPlacement({
-        placement: "settings_premium", // This should match your Superwall dashboard placement
-        feature: () => {
-          // This runs if no paywall is shown (user already has access)
-          // Check if user actually has premium or if it's due to no products
-          if (user?.subscriptionStatus === "ACTIVE") {
-            Alert.alert("Premium", "You already have premium access!");
-          } else {
-            Alert.alert(
-              "Premium",
-              "Premium features are not yet available. Please check back later!"
-            );
-          }
-        },
-      });
-    } catch (error) {
-      console.error("Error showing premium paywall:", error);
-      Alert.alert("Error", "Failed to show premium options. Please try again.");
-    }
+    // Premium functionality disabled
+    Alert.alert(
+      "Feature Unavailable", 
+      "Premium features are currently unavailable."
+    );
+    
+    // Original implementation commented out:
+    // try {
+    //   await registerPlacement({
+    //     placement: "settings_premium", // This should match your Superwall dashboard placement
+    //     feature: () => {
+    //       // This runs if no paywall is shown (user already has access)
+    //       // Check if user actually has premium or if it's due to no products
+    //       if (user?.subscriptionStatus === "ACTIVE") {
+    //         Alert.alert("Premium", "You already have premium access!");
+    //       } else {
+    //         Alert.alert(
+    //           "Premium",
+    //           "Premium features are not yet available. Please check back later!"
+    //         );
+    //       }
+    //     },
+    //   });
+    // } catch (error) {
+    //   console.error("Error showing premium paywall:", error);
+    //   Alert.alert("Error", "Failed to show premium options. Please try again.");
+    // }
   };
 
   const handleSignOut = async () => {
+    if (isSigningOut) return; // Prevent multiple sign out attempts
+
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
       {
         text: "Cancel",
@@ -86,26 +99,28 @@ export default function SettingsScreen() {
       {
         text: "Sign Out",
         onPress: async () => {
+          setIsSigningOut(true);
           try {
-            // Sign out from Google Sign-In
-            await GoogleSignin.signOut();
-
-            // Sign out from Firebase Auth
-            await signOut(auth);
-
-            // Clear AsyncStorage
-            await AsyncStorage.multiRemove([
-              "@user",
-              "@authToken",
-              "@streamApiKey",
-              "@streamUserToken",
+            // Run operations in parallel for better performance
+            await Promise.all([
+              // Sign out from Firebase Auth
+              signOut(auth),
+              // Clear AsyncStorage
+              AsyncStorage.multiRemove([
+                "@user",
+                "@authToken",
+                "@streamApiKey",
+                "@streamUserToken",
+              ]),
             ]);
 
-            // Clear app context state
-            setIsAuthenticated(false);
-            setUserId(null); // Use null instead of empty string
+            // Clear app context state (this happens instantly)
+            setUserId(null);
           } catch (error) {
             console.error("❌ [SETTINGS] Error signing out:", error);
+            Alert.alert("Error", "Failed to sign out. Please try again.");
+          } finally {
+            setIsSigningOut(false);
           }
         },
       },
@@ -125,7 +140,9 @@ export default function SettingsScreen() {
     Linking.openURL("https://www.tryharbor.app/terms");
   };
 
-  const isPremium = user?.subscriptionStatus === "ACTIVE";
+  // PREMIUM DISABLED: Always set premium to false
+  const isPremium = false;
+  // Original: const isPremium = user?.subscriptionStatus === "ACTIVE";
 
   return (
     <>
@@ -168,11 +185,12 @@ export default function SettingsScreen() {
             onPress={handleViewProfile}
           />
 
-          <SettingsButton
+          {/* PREMIUM DISABLED: Premium button commented out */}
+          {/* <SettingsButton
             icon="star-outline"
             text={isPremium ? "Premium Active" : "Upgrade to Premium"}
             onPress={handlePremiumUpgrade}
-          />
+          /> */}
         </View>
 
         {/* Legal Section */}
@@ -199,6 +217,8 @@ export default function SettingsScreen() {
             text="Sign Out"
             onPress={handleSignOut}
             isDestructive={true}
+            isLoading={isSigningOut}
+            disabled={isSigningOut}
           />
         </View>
       </ScrollView>

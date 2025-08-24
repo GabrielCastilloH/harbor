@@ -1,22 +1,27 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import TabNavigator from "./navigation/TabNavigator";
 import SignIn from "./screens/SignIn";
+import CreateAccountScreen from "./screens/CreateAccountScreen";
+import EmailVerificationScreen from "./screens/EmailVerificationScreen";
+import AccountSetupScreen from "./screens/AccountSetupScreen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import { NotificationProvider } from "./context/NotificationContext";
-import AccountSetupScreen from "./screens/AccountSetupScreen";
 
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
 import LoadingScreen from "./components/LoadingScreen";
 import UnviewedMatchesHandler from "./components/UnviewedMatchesHandler";
-import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
-import { SUPERWALL_CONFIG } from "./firebaseConfig";
+// PREMIUM DISABLED: Superwall imports commented out
+// import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
+// import { SUPERWALL_CONFIG } from "./firebaseConfig";
+
+// Define the authentication stack navigator
+const AuthStack = createNativeStackNavigator();
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component<
@@ -50,120 +55,140 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// Configure Google Sign-In
-GoogleSignin.configure({
-  webClientId:
-    "838717009645-sd8ije9crjfkn8ged999d0lnj2n9msnf.apps.googleusercontent.com",
-  iosClientId:
-    "838717009645-961tv8m765fpj2dk96ecg2epv13igjdu.apps.googleusercontent.com",
-  offlineAccess: true,
-});
+// AuthNavigator remains the same, but it's only for unauthenticated users.
+function AuthNavigator() {
+  return (
+    <AuthStack.Navigator
+      screenOptions={{ headerShown: false }}
+      initialRouteName="SignIn"
+    >
+      <AuthStack.Screen name="SignIn" component={SignIn} />
+      <AuthStack.Screen name="CreateAccount" component={CreateAccountScreen} />
+      <AuthStack.Screen
+        name="EmailVerification"
+        component={EmailVerificationScreen}
+      />
+    </AuthStack.Navigator>
+  );
+}
+
+// Main Navigator for authenticated users
+function MainNavigator() {
+  const AppStack = createNativeStackNavigator();
+  const { currentUser, isAuthenticated, profileExists } = useAppContext();
+
+  if (!currentUser) {
+    return null; // This should not happen if isAuthenticated is true
+  }
+
+  if (!currentUser.emailVerified) {
+    return (
+      <AppStack.Navigator screenOptions={{ headerShown: false }}>
+        <AppStack.Screen
+          name="EmailVerification"
+          component={EmailVerificationScreen}
+        />
+      </AppStack.Navigator>
+    );
+  }
+
+  if (!profileExists) {
+    return (
+      <AppStack.Navigator screenOptions={{ headerShown: false }}>
+        <AppStack.Screen name="AccountSetup" component={AccountSetupScreen} />
+      </AppStack.Navigator>
+    );
+  }
+
+  // User is fully authenticated and has a profile
+  return (
+    <AppStack.Navigator screenOptions={{ headerShown: false }}>
+      <AppStack.Screen name="Tab" component={TabNavigator} />
+    </AppStack.Navigator>
+  );
+}
 
 function AppContent() {
-  const { isAuthenticated, userId, isInitialized, profile, isCheckingProfile } =
-    useAppContext();
+  const { isInitialized, isAuthenticated } = useAppContext();
 
-  // Show loading screen while Firebase Auth is determining the auth state
-  // OR while we're checking the user profile in Firestore
-  if (!isInitialized || isCheckingProfile) {
+  if (!isInitialized) {
     return <LoadingScreen loadingText="Signing you in..." />;
   }
 
-  // Security check: Only allow access to main app if user exists in Firestore
-  // If not signed in, show SignIn.
-  // Once authenticated:
-  //  - if userId exists (user has profile in Firestore), show TabNavigator
-  //  - if authenticated but no userId (no profile in Firestore), show AccountSetupScreen
-
-  // Don't render SignIn if user is already authenticated
-  if (isAuthenticated && userId && userId.trim() !== "") {
-    // Render main app
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer>
-          <StatusBar style="dark" />
-          <TabNavigator />
-          <UnviewedMatchesHandler />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
-
-  // Additional check: if user is authenticated but userId is not set yet, don't render SignIn
-  if (isAuthenticated && (!userId || userId.trim() === "")) {
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer>
-          <StatusBar style="dark" />
-          <AccountSetupScreen />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
+  // Single NavigationContainer for the entire app
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
         <StatusBar style="dark" />
-        {!isAuthenticated ? (
-          <SignIn />
-        ) : userId && userId.trim() !== "" ? (
-          <TabNavigator />
-        ) : (
-          <AccountSetupScreen />
-        )}
+        {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
+        {isAuthenticated && <UnviewedMatchesHandler />}
       </NavigationContainer>
     </GestureHandlerRootView>
   );
 }
 
 export default function App() {
-  const apiKeys = SUPERWALL_CONFIG.apiKeys;
-  const [superwallApiKeys, setSuperwallApiKeys] = useState<{
-    ios: string;
-    android: string;
-  } | null>(apiKeys);
-  const [isLoadingSuperwall, setIsLoadingSuperwall] = useState(false);
-  const [superwallError, setSuperwallError] = useState<string | null>(null);
+  // PREMIUM DISABLED: Superwall configuration commented out
+  // const apiKeys = SUPERWALL_CONFIG.apiKeys;
+  // const [superwallApiKeys, setSuperwallApiKeys] = useState<{
+  //   ios: string;
+  //   android: string;
+  // } | null>(apiKeys);
+  // const [isLoadingSuperwall, setIsLoadingSuperwall] = useState(false);
+  // const [superwallError, setSuperwallError] = useState<string | null>(null);
 
   // Ensure we have API keys before proceeding
-  if (!superwallApiKeys || !superwallApiKeys.ios || !superwallApiKeys.android) {
-    const error = "Superwall API keys are missing or invalid";
-    throw new Error(error);
-  }
+  // if (!superwallApiKeys || !superwallApiKeys.ios || !superwallApiKeys.android) {
+  //   const error = "Superwall API keys are missing or invalid";
+  //   throw new Error(error);
+  // }
 
-  // Add error boundary for debugging
-  try {
-    return (
-      <SafeAreaProvider>
-        <SuperwallProvider
-          apiKeys={{
-            ios: superwallApiKeys.ios,
-            android: superwallApiKeys.android,
-          }}
-        >
-          <SuperwallLoaded>
-            <AppProvider>
-              <NotificationProvider>
-                <ErrorBoundary>
-                  <AppContent />
-                </ErrorBoundary>
-              </NotificationProvider>
-            </AppProvider>
-          </SuperwallLoaded>
-        </SuperwallProvider>
-      </SafeAreaProvider>
-    );
-  } catch (error) {
-    return (
-      <SafeAreaProvider>
-        <AppProvider>
-          <NotificationProvider>
-            <ErrorBoundary>
-              <AppContent />
-            </ErrorBoundary>
-          </NotificationProvider>
-        </AppProvider>
-      </SafeAreaProvider>
-    );
-  }
+  // PREMIUM DISABLED: Superwall provider removed, using simple provider structure
+  return (
+    <SafeAreaProvider>
+      <AppProvider>
+        <NotificationProvider>
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
+        </NotificationProvider>
+      </AppProvider>
+    </SafeAreaProvider>
+  );
+
+  // Original Superwall implementation commented out:
+  // try {
+  //   return (
+  //     <SafeAreaProvider>
+  //       <SuperwallProvider
+  //         apiKeys={{
+  //           ios: superwallApiKeys.ios,
+  //           android: superwallApiKeys.android,
+  //         }}
+  //       >
+  //         <SuperwallLoaded>
+  //           <AppProvider>
+  //             <NotificationProvider>
+  //               <ErrorBoundary>
+  //                 <AppContent />
+  //               </ErrorBoundary>
+  //             </NotificationProvider>
+  //           </AppProvider>
+  //         </SuperwallLoaded>
+  //       </SuperwallProvider>
+  //     </SafeAreaProvider>
+  //   );
+  // } catch (error) {
+  //   return (
+  //     <SafeAreaProvider>
+  //       <AppProvider>
+  //         <NotificationProvider>
+  //           <ErrorBoundary>
+  //             <AppContent />
+  //           </ErrorBoundary>
+  //         </NotificationProvider>
+  //       </AppProvider>
+  //     </SafeAreaProvider>
+  //   );
+  // }
 }

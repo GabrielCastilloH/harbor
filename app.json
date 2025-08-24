@@ -19,14 +19,6 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "buildNumber": "1",
       "infoPlist": {
-        "CFBundleURLTypes": [
-          {
-            "CFBundleURLSchemes": [
-              "com.googleusercontent.apps.838717009645-961tv8m765fpj2dk96ecg2epv13igjdu",
-              "com.googleusercontent.apps.838717009645-sd8ije9crjfkn8ged999d0lnj2n9msnf"
-            ]
-          }
-        ],
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Harbor needs access to your camera to take profile photos.",
         "NSPhotoLibraryUsageDescription": "Harbor needs access to your photo library to select profile photos.",

@@ -10,7 +10,6 @@ interface AppContextType {
   thread: any;
   setThread: (thread: any) => void;
   isAuthenticated: boolean;
-  setIsAuthenticated: (isAuthenticated: boolean) => void;
   userId: string | null;
   setUserId: (userId: string | null) => void;
   profile: Profile | null;
@@ -21,7 +20,9 @@ interface AppContextType {
   streamUserToken: string | null;
   setStreamUserToken: (token: string | null) => void;
   isInitialized: boolean;
-  isCheckingProfile: boolean;
+  profileExists: boolean;
+  setProfileExists: (exists: boolean) => void;
+  refreshAuthState: (user: User) => void;
 }
 
 const defaultValue: AppContextType = {
@@ -30,7 +31,6 @@ const defaultValue: AppContextType = {
   thread: null,
   setThread: () => {},
   isAuthenticated: false,
-  setIsAuthenticated: () => {},
   userId: null,
   setUserId: () => {},
   profile: null,
@@ -41,7 +41,9 @@ const defaultValue: AppContextType = {
   streamUserToken: null,
   setStreamUserToken: () => {},
   isInitialized: false,
-  isCheckingProfile: false,
+  profileExists: false,
+  setProfileExists: () => {},
+  refreshAuthState: () => {},
 };
 
 export const AppContext = React.createContext<AppContextType>(defaultValue);
@@ -53,15 +55,103 @@ interface AppProviderProps {
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [channel, setChannel] = useState<any>(null);
   const [thread, setThread] = useState<any>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [streamApiKey, setStreamApiKey] = useState<string | null>(null);
   const [streamUserToken, setStreamUserToken] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isAuthDetermined, setIsAuthDetermined] = useState(false);
-  const [isCheckingProfile, setIsCheckingProfile] = useState(false);
+  const [profileExists, setProfileExists] = useState(false);
+
+  // A computed value that reflects the current authentication state
+  const isAuthenticated = !!currentUser;
+
+  // The core function to check user and profile status.
+  // This is now the single source of truth for handling auth state changes.
+  const checkAndSetAuthState = async (user: User | null) => {
+    if (!user) {
+      // User is signed out
+      setUserId(null);
+      setProfileExists(false);
+      setProfile(null);
+      setStreamApiKey(null);
+      setStreamUserToken(null);
+      try {
+        await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
+      } catch (error) {
+        console.error("❌ [APP CONTEXT] Error clearing stored data:", error);
+      }
+      return;
+    }
+
+    // User is signed in. Force a reload to check the latest status.
+    try {
+      await user.reload();
+    } catch (error) {
+      console.error("❌ [APP CONTEXT] Error reloading user:", error);
+    }
+
+    // Check email verification first
+    if (!user.emailVerified) {
+      setUserId(null);
+      setProfileExists(false);
+      setProfile(null);
+      return;
+    }
+
+    // Email is verified, now check for the profile
+    try {
+      const { UserService } = require("../networking");
+      const response = await UserService.getUserById(user.uid);
+
+      if (response && response.user) {
+        setUserId(user.uid);
+        setProfile(response.user);
+        setProfileExists(true); // This state update is now guaranteed to happen after the check
+        await loadStreamCredentials(); // Load credentials only if the profile exists
+      } else {
+        setUserId(user.uid);
+        setProfile(null);
+        setProfileExists(false); // No profile, so profileExists is false
+      }
+    } catch (error: any) {
+      if (
+        error?.code === "not-found" ||
+        error?.code === "functions/not-found"
+      ) {
+        setUserId(user.uid);
+        setProfile(null);
+        setProfileExists(false);
+      } else {
+        console.error("❌ [APP CONTEXT] Error checking profile:", error);
+        setUserId(user.uid);
+        setProfileExists(false);
+        setProfile(null);
+      }
+    }
+  };
+
+  const loadStreamCredentials = async () => {
+    try {
+      const [storedStreamApiKey, storedStreamUserToken] = await Promise.all([
+        AsyncStorage.getItem("@streamApiKey"),
+        AsyncStorage.getItem("@streamUserToken"),
+      ]);
+
+      if (storedStreamApiKey) setStreamApiKey(storedStreamApiKey);
+      if (storedStreamUserToken) setStreamUserToken(storedStreamUserToken);
+    } catch (error) {
+      console.error(
+        "❌ [APP CONTEXT] Error loading Stream credentials:",
+        error
+      );
+    }
+  };
+
+  // Function to manually refresh auth state (used by EmailVerificationScreen)
+  const refreshAuthState = async (user: User) => {
+    await checkAndSetAuthState(user);
+  };
 
   // Ensure userId is never an empty string - convert to null
   useEffect(() => {
@@ -73,95 +163,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // Listen to Firebase Auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      // Prevent multiple rapid state changes during initialization
-      if (isAuthDetermined && user?.uid === currentUser?.uid) {
-        return;
-      }
-
-      if (user) {
-        // User is signed in
-        setCurrentUser(user);
-        setIsAuthenticated(true);
-
-        // Always check Firestore when user changes to ensure we have the correct profile
-        // This fixes the issue where switching accounts doesn't properly check the new user's profile
-        setIsCheckingProfile(true);
-        try {
-          const { UserService } = require("../networking");
-          const response = await UserService.getUserById(user.uid);
-          if (response && response.user) {
-            setUserId(user.uid);
-            setProfile(response.user);
-          } else {
-            setUserId(null);
-            setProfile(null);
-          }
-        } catch (error: any) {
-          if (
-            error?.code === "functions/not-found" ||
-            error?.code === "not-found" ||
-            error?.message?.includes("not found")
-          ) {
-            setUserId(null);
-            setProfile(null);
-          } else {
-            console.error(
-              "❌ [APP CONTEXT] Unexpected error checking user profile:",
-              error
-            );
-            setUserId(null);
-            setProfile(null);
-          }
-        } finally {
-          setIsCheckingProfile(false);
-        }
-
-        // Load cached Stream credentials
-        try {
-          const [storedStreamApiKey, storedStreamUserToken] = await Promise.all(
-            [
-              AsyncStorage.getItem("@streamApiKey"),
-              AsyncStorage.getItem("@streamUserToken"),
-            ]
-          );
-
-          if (storedStreamApiKey) {
-            setStreamApiKey(storedStreamApiKey);
-          }
-          if (storedStreamUserToken) {
-            setStreamUserToken(storedStreamUserToken);
-          }
-        } catch (error) {}
-      } else {
-        // User is signed out
-        setCurrentUser(null);
-        setIsAuthenticated(false);
-        setUserId(null); // Ensure this is null, not empty string
-        setProfile(null);
-        setStreamApiKey(null);
-        setStreamUserToken(null);
-        setIsCheckingProfile(false);
-
-        // Clear stored data
-        try {
-          await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
-        } catch (error) {
-          console.error("Error clearing stored data:", error);
-        }
-      }
-
-      setIsAuthDetermined(true);
+      setCurrentUser(user);
+      await checkAndSetAuthState(user);
+      setIsInitialized(true);
     });
 
     return () => unsubscribe();
-  }, [isAuthDetermined, currentUser]);
-
-  // Set initialized to true when profile checking is complete
-  useEffect(() => {
-    if (isAuthDetermined && !isCheckingProfile) {
-      setIsInitialized(true);
-    }
-  }, [isAuthDetermined, isCheckingProfile]);
+  }, []); // The dependency array is empty to prevent re-running on state changes.
 
   return (
     <AppContext.Provider
@@ -171,7 +179,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         thread,
         setThread,
         isAuthenticated,
-        setIsAuthenticated,
         userId,
         setUserId,
         profile,
@@ -182,7 +189,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         streamUserToken,
         setStreamUserToken,
         isInitialized,
-        isCheckingProfile,
+        profileExists,
+        setProfileExists,
+        refreshAuthState,
       }}
     >
       {children}

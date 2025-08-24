@@ -95,10 +95,10 @@ export default function EditProfileScreen() {
           ...userData,
           images: personalImages,
         };
-
         setProfileData(profileWithImages);
         setProfile(profileWithImages);
       } catch (error: any) {
+        console.error("❌ [EDIT PROFILE] Error during fetch:", error);
         // If user not found, don't show error - they might be setting up their account
         if (
           error?.code === "not-found" ||
@@ -135,12 +135,12 @@ export default function EditProfileScreen() {
       return;
     }
     Alert.alert(
-      "Discard changes?",
-      "You have unsaved changes. Are you sure you want to discard them and leave the screen?",
+      "Save Your Changes",
+      "Please click Save before exiting, otherwise your changes won't be saved.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Discard",
+          text: "Exit Without Saving",
           style: "destructive",
           onPress: () => navigation.goBack(),
         },
@@ -169,39 +169,80 @@ export default function EditProfileScreen() {
       // Check if there are any local image URIs that need to be uploaded
       const updatedImages = images || profileData.images;
       let hasChanges = false;
+      const processedImages: string[] = [];
 
-      for (let i = 0; i < updatedImages.length; i++) {
-        const img = updatedImages[i];
-        if (img && (img.startsWith("file:") || img.startsWith("data:"))) {
+      for (const img of updatedImages) {
+        if (!img) continue; // Skip empty slots
+
+        if (img.startsWith("file:") || img.startsWith("data:")) {
+          // This is a new, local image that needs to be uploaded.
           try {
-            // Upload the image using the Cloud Function
             const uploadResult = await uploadImageViaCloudFunction(
               currentUser.uid,
               img
             );
-            // Extract filename from the URL
-            const urlParts = uploadResult.originalUrl.split("/");
-            updatedImages[i] = urlParts[urlParts.length - 1];
+            processedImages.push(uploadResult.filename);
             hasChanges = true;
           } catch (error) {
-            console.error("Error uploading image during update:", error);
+            console.error(
+              "❌ [EDIT PROFILE] Error uploading new image:",
+              error
+            );
+            // Keep the original image if upload fails
+            processedImages.push(img);
           }
+        } else if (img.includes("storage.googleapis.com")) {
+          // This is a temporary signed URL. We need to save the permanent filename.
+          // Find the index of the last '/' to isolate the filename.
+          const lastSlashIndex = img.lastIndexOf("/");
+          if (lastSlashIndex !== -1) {
+            // Get the part of the URL that contains the filename and query string.
+            const filenameWithQuery = img.substring(lastSlashIndex + 1);
+            // Find the index of '?' to get only the filename.
+            const questionMarkIndex = filenameWithQuery.indexOf("?");
+            const filename =
+              questionMarkIndex !== -1
+                ? filenameWithQuery.substring(0, questionMarkIndex)
+                : filenameWithQuery;
+
+            if (filename && filename.includes("_original.jpg")) {
+              processedImages.push(filename);
+              hasChanges = true;
+            } else {
+              console.error("Could not extract valid filename from URL:", img);
+            }
+          } else {
+            console.error("Could not find filename in URL:", img);
+          }
+        } else if (img.includes("_original.jpg")) {
+          // This is already a filename, keep it as is
+          processedImages.push(img);
+        } else if (img && img.trim() !== "") {
+          // Keep the image as is (could be a filename or other format)
+          processedImages.push(img);
+        } else {
+          // Skip empty images
         }
       }
 
-      // If we processed any local images, update the profileData
+      // If we processed any images, update the profileData
       if (hasChanges) {
         setProfileData((prev) => ({
           ...prev,
-          images: updatedImages,
+          images: processedImages,
         }));
       }
 
       // Create final data to send to server
       const finalProfileData = {
         ...profileData,
-        images: updatedImages,
+        images: processedImages,
       };
+
+      console.error(
+        "💾 [EDIT PROFILE] Saving filenames to Firestore:",
+        processedImages
+      );
 
       const response = await UserService.updateUser(
         currentUser.uid,
@@ -239,6 +280,7 @@ export default function EditProfileScreen() {
           profileData={profileData}
           onProfileChange={setProfileData}
           onSave={handleSave}
+          isLoading={loading}
         />
       </KeyboardAvoidingView>
     </View>

@@ -8,6 +8,8 @@ import {
   Animated,
   Dimensions,
   Pressable,
+  Alert,
+  ScrollView,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Colors from "../constants/Colors";
@@ -31,6 +33,8 @@ export default function DataPicker({
   type,
 }: DataPickerProps) {
   const [modalVisible, setModalVisible] = useState(false);
+  const [selectedValue, setSelectedValue] = useState(value || "");
+  const [useFallback, setUseFallback] = useState(false);
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 
   // Options based on type
@@ -42,6 +46,11 @@ export default function DataPicker({
       : type === "gender"
       ? genders
       : orientations;
+
+  // Update selectedValue when value prop changes
+  useEffect(() => {
+    setSelectedValue(value || "");
+  }, [value]);
 
   useEffect(() => {
     if (modalVisible) {
@@ -55,19 +64,70 @@ export default function DataPicker({
     }
   }, [modalVisible, slideAnim]);
 
+  // Cleanup animation on unmount
+  useEffect(() => {
+    return () => {
+      slideAnim.stopAnimation();
+    };
+  }, [slideAnim]);
+
+  const handleOpenModal = () => {
+    try {
+      // Validate that we have options before opening
+      if (!options || options.length === 0) {
+        Alert.alert("Error", "No options available for selection.");
+        return;
+      }
+      setModalVisible(true);
+    } catch (error) {
+      console.error("❌ [DATA PICKER] Error opening modal:", error);
+      Alert.alert("Error", "Failed to open picker. Please try again.");
+    }
+  };
+
+  const handleCloseModal = () => {
+    try {
+      setModalVisible(false);
+    } catch (error) {
+      console.error("❌ [DATA PICKER] Error closing modal:", error);
+    }
+  };
+
+  const handleValueChange = (itemValue: string) => {
+    try {
+      if (itemValue) {
+        setSelectedValue(itemValue);
+        onValueChange(itemValue);
+      }
+    } catch (error) {
+      console.error("❌ [DATA PICKER] Error changing value:", error);
+      Alert.alert("Error", "Failed to update selection. Please try again.");
+    }
+  };
+
+  const handleFallbackSelect = (option: string) => {
+    handleValueChange(option);
+    handleCloseModal();
+  };
+
+  const handlePickerError = () => {
+    setUseFallback(true);
+  };
+
   return (
     <>
       <TouchableOpacity
         style={[styles.pickerButton, style]}
-        onPress={() => setModalVisible(true)}
+        onPress={handleOpenModal}
+        activeOpacity={0.7}
       >
         <Text
           style={[
             styles.pickerText,
-            !value ? styles.placeholderText : styles.selectedText,
+            !selectedValue ? styles.placeholderText : styles.selectedText,
           ]}
         >
-          {value || placeholder}
+          {selectedValue || placeholder}
         </Text>
         <Text style={styles.arrow}>▼</Text>
       </TouchableOpacity>
@@ -76,13 +136,10 @@ export default function DataPicker({
         visible={modalVisible}
         transparent={true}
         animationType="none"
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={handleCloseModal}
       >
         <View style={styles.modalOverlay} pointerEvents="box-none">
-          <Pressable
-            style={styles.backdrop}
-            onPress={() => setModalVisible(false)}
-          />
+          <Pressable style={styles.backdrop} onPress={handleCloseModal} />
           <Animated.View
             style={[
               styles.modalContent,
@@ -92,42 +149,86 @@ export default function DataPicker({
             <View>
               <View style={styles.modalHeader}>
                 <TouchableOpacity
-                  onPress={() => setModalVisible(false)}
+                  onPress={handleCloseModal}
                   style={styles.cancelButton}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.cancelText}>Cancel</Text>
                 </TouchableOpacity>
                 <Text style={styles.modalTitle}>Select Option</Text>
                 <TouchableOpacity
-                  onPress={() => setModalVisible(false)}
+                  onPress={handleCloseModal}
                   style={styles.doneButton}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.doneText}>Done</Text>
                 </TouchableOpacity>
               </View>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={value}
-                  onValueChange={(itemValue) => {
-                    if (itemValue) {
-                      onValueChange(itemValue);
-                    }
-                  }}
-                  style={styles.picker}
-                  itemStyle={styles.pickerItem}
-                  mode="dropdown"
-                >
-                  <Picker.Item label="Select..." value="" enabled={false} />
-                  {options.map((option: string) => (
-                    <Picker.Item
-                      key={option}
-                      label={option}
-                      value={option}
-                      color={Colors.primary500}
-                    />
-                  ))}
-                </Picker>
-              </View>
+
+              {useFallback ? (
+                // Fallback picker using ScrollView
+                <ScrollView style={styles.fallbackContainer}>
+                  {options && options.length > 0 ? (
+                    options.map((option: string) => (
+                      <TouchableOpacity
+                        key={option}
+                        style={[
+                          styles.fallbackOption,
+                          selectedValue === option &&
+                            styles.fallbackOptionSelected,
+                        ]}
+                        onPress={() => handleFallbackSelect(option)}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.fallbackOptionText,
+                            selectedValue === option &&
+                              styles.fallbackOptionTextSelected,
+                          ]}
+                        >
+                          {option}
+                        </Text>
+                      </TouchableOpacity>
+                    ))
+                  ) : (
+                    <View style={styles.fallbackOption}>
+                      <Text style={styles.fallbackOptionText}>
+                        No options available
+                      </Text>
+                    </View>
+                  )}
+                </ScrollView>
+              ) : (
+                // Native Picker with error handling
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={selectedValue}
+                    onValueChange={handleValueChange}
+                    style={styles.picker}
+                    itemStyle={styles.pickerItem}
+                    mode="dropdown"
+                  >
+                    <Picker.Item label="Select..." value="" enabled={false} />
+                    {options && options.length > 0 ? (
+                      options.map((option: string) => (
+                        <Picker.Item
+                          key={option}
+                          label={option}
+                          value={option}
+                          color={Colors.primary500}
+                        />
+                      ))
+                    ) : (
+                      <Picker.Item
+                        label="No options available"
+                        value=""
+                        enabled={false}
+                      />
+                    )}
+                  </Picker>
+                </View>
+              )}
             </View>
           </Animated.View>
         </View>
@@ -221,5 +322,27 @@ const styles = StyleSheet.create({
   pickerItem: {
     fontSize: 16,
     color: "gray",
+  },
+  fallbackContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  fallbackOption: {
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.secondary200,
+  },
+  fallbackOptionSelected: {
+    backgroundColor: Colors.primary500,
+    borderRadius: 8,
+  },
+  fallbackOptionText: {
+    fontSize: 16,
+    color: "gray",
+  },
+  fallbackOptionTextSelected: {
+    color: Colors.secondary100,
+    fontWeight: "bold",
   },
 });
