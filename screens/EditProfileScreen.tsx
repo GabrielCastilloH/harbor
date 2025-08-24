@@ -169,7 +169,7 @@ export default function EditProfileScreen() {
       // Check if there are any local image URIs that need to be uploaded
       const updatedImages = images || profileData.images;
       let hasChanges = false;
-      const processedImages = [];
+      const processedImages: string[] = [];
 
       for (let i = 0; i < updatedImages.length; i++) {
         const img = updatedImages[i];
@@ -198,12 +198,24 @@ export default function EditProfileScreen() {
         } else if (img && img.includes("_original.jpg")) {
           // This is already a filename, keep it as is
           processedImages.push(img);
-        } else if (img && (img.startsWith("http") || img.startsWith("https"))) {
-          // This is a URL, we need to extract the filename
-          const urlParts = img.split("/");
-          const filename = urlParts[urlParts.length - 1];
-          processedImages.push(filename);
-          hasChanges = true;
+        } else if (img && img.includes("storage.googleapis.com")) {
+          // This is a signed URL from Google Storage, extract the filename
+          try {
+            const url = new URL(img);
+            const pathParts = url.pathname.split("/");
+            const filenameWithQuery = pathParts[pathParts.length - 1];
+            // Remove query parameters to get just the filename
+            const filename = filenameWithQuery.split("?")[0];
+            if (filename && filename.includes("_original.jpg")) {
+              processedImages.push(filename);
+              hasChanges = true;
+            } else {
+              // If we can't extract a valid filename, skip this image
+              console.error("Could not extract valid filename from URL:", img);
+            }
+          } catch (error) {
+            console.error("Error parsing URL:", img, error);
+          }
         } else if (img && img.trim() !== "") {
           // Keep the image as is (could be a filename or other format)
           processedImages.push(img);
@@ -225,6 +237,11 @@ export default function EditProfileScreen() {
         ...profileData,
         images: processedImages,
       };
+
+      console.error(
+        "💾 [EDIT PROFILE] Saving filenames to Firestore:",
+        processedImages
+      );
 
       const response = await UserService.updateUser(
         currentUser.uid,
