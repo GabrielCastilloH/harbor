@@ -135,12 +135,12 @@ export default function EditProfileScreen() {
       return;
     }
     Alert.alert(
-      "Discard changes?",
-      "You have unsaved changes. Are you sure you want to discard them and leave the screen?",
+      "Save Your Changes",
+      "Please click Save before exiting, otherwise your changes won't be saved.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Discard",
+          text: "Exit Without Saving",
           style: "destructive",
           onPress: () => navigation.goBack(),
         },
@@ -239,6 +239,7 @@ export default function EditProfileScreen() {
           profileData={profileData}
           onProfileChange={setProfileData}
           onSave={handleSave}
+          isLoading={loading}
         />
       </KeyboardAvoidingView>
     </View>
