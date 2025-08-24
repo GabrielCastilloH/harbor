@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Alert, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation, CommonActions } from "@react-navigation/native";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
 import { auth } from "../firebaseConfig";
@@ -15,10 +16,11 @@ import { preloadChatCredentials } from "../util/chatPreloader";
 export default function AccountSetupScreen({
   showProgressBar = true,
 }: { showProgressBar?: boolean } = {}) {
+  const navigation = useNavigation();
   const {
     setUserId,
     setProfile,
-
+    setProfileExists,
     setStreamApiKey,
     setStreamUserToken,
   } = useAppContext();
@@ -245,6 +247,15 @@ export default function AccountSetupScreen({
         email: currentUser.email || "",
         images: imageFilenames,
       });
+      setProfileExists(true);
+
+      // Navigate to the main app and reset the stack
+      (navigation as any).dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: "Tab" }],
+        })
+      );
     } catch (error) {
       console.error("Error creating profile:", error);
       Alert.alert("Error", "Failed to create profile. Please try again.");

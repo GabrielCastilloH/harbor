@@ -21,6 +21,7 @@ interface AppContextType {
   setStreamUserToken: (token: string | null) => void;
   isInitialized: boolean;
   profileExists: boolean;
+  setProfileExists: (exists: boolean) => void;
   refreshAuthState: (user: User) => void;
 }
 
@@ -41,6 +42,7 @@ const defaultValue: AppContextType = {
   setStreamUserToken: () => {},
   isInitialized: false,
   profileExists: false,
+  setProfileExists: () => {},
   refreshAuthState: () => {},
 };
 
@@ -188,6 +190,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setStreamUserToken,
         isInitialized,
         profileExists,
+        setProfileExists,
         refreshAuthState,
       }}
     >
