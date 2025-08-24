@@ -90,8 +90,6 @@ export default function SettingsScreen() {
         onPress: async () => {
           setIsSigningOut(true);
           try {
-            console.log("🔄 [SETTINGS] Starting sign out process...");
-
             // Run operations in parallel for better performance
             await Promise.all([
               // Sign out from Firebase Auth
@@ -107,8 +105,6 @@ export default function SettingsScreen() {
 
             // Clear app context state (this happens instantly)
             setUserId(null);
-
-            console.log("✅ [SETTINGS] Sign out completed successfully");
           } catch (error) {
             console.error("❌ [SETTINGS] Error signing out:", error);
             Alert.alert("Error", "Failed to sign out. Please try again.");

@@ -58,15 +58,7 @@ function AppContent() {
   const { isInitialized, isAuthenticated, currentUser, profileExists } =
     useAppContext();
 
-  console.log(
-    "🔍 [APP] Render - auth:",
-    isAuthenticated,
-    "init:",
-    isInitialized
-  );
-
   if (!isInitialized) {
-    console.log("⏳ [APP] Loading...");
     return <LoadingScreen loadingText="Signing you in..." />;
   }
 
@@ -75,19 +67,12 @@ function AppContent() {
 
   if (isAuthenticated && currentUser) {
     if (!currentUser.emailVerified) {
-      console.log(
-        "🧭 [APP] Email not verified, starting with EmailVerification"
-      );
       initialRouteName = "EmailVerification";
     } else if (!profileExists) {
-      console.log("🧭 [APP] No profile exists, starting with AccountSetup");
       initialRouteName = "AccountSetup";
     } else {
-      console.log("🧭 [APP] User fully set up, starting with MainTabs");
       initialRouteName = "MainTabs";
     }
-  } else {
-    console.log("🧭 [APP] User not authenticated, starting with SignIn");
   }
 
   return (
