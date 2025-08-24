@@ -111,7 +111,6 @@ export default function DataPicker({
   };
 
   const handlePickerError = () => {
-    console.log("🔄 [DATA PICKER] Switching to fallback picker");
     setUseFallback(true);
   };
 
@@ -209,7 +208,6 @@ export default function DataPicker({
                     style={styles.picker}
                     itemStyle={styles.pickerItem}
                     mode="dropdown"
-                    onError={handlePickerError}
                   >
                     <Picker.Item label="Select..." value="" enabled={false} />
                     {options && options.length > 0 ? (
