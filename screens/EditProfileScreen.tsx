@@ -171,51 +171,52 @@ export default function EditProfileScreen() {
       let hasChanges = false;
       const processedImages: string[] = [];
 
-      for (let i = 0; i < updatedImages.length; i++) {
-        const img = updatedImages[i];
+      for (const img of updatedImages) {
+        if (!img) continue; // Skip empty slots
 
-        if (img && (img.startsWith("file:") || img.startsWith("data:"))) {
+        if (img.startsWith("file:") || img.startsWith("data:")) {
+          // This is a new, local image that needs to be uploaded.
           try {
-            // Upload the image using the Cloud Function
             const uploadResult = await uploadImageViaCloudFunction(
               currentUser.uid,
               img
             );
-
-            // Extract filename from the URL
-            const urlParts = uploadResult.originalUrl.split("/");
-            const filename = urlParts[urlParts.length - 1];
-            processedImages.push(filename);
+            processedImages.push(uploadResult.filename);
             hasChanges = true;
           } catch (error) {
             console.error(
-              `💾 [EDIT PROFILE] Error uploading image ${i}:`,
+              "❌ [EDIT PROFILE] Error uploading new image:",
               error
             );
             // Keep the original image if upload fails
             processedImages.push(img);
           }
-        } else if (img && img.includes("_original.jpg")) {
-          // This is already a filename, keep it as is
-          processedImages.push(img);
-        } else if (img && img.includes("storage.googleapis.com")) {
-          // This is a signed URL from Google Storage, extract the filename
-          try {
-            const url = new URL(img);
-            const pathParts = url.pathname.split("/");
-            const filenameWithQuery = pathParts[pathParts.length - 1];
-            // Remove query parameters to get just the filename
-            const filename = filenameWithQuery.split("?")[0];
+        } else if (img.includes("storage.googleapis.com")) {
+          // This is a temporary signed URL. We need to save the permanent filename.
+          // Find the index of the last '/' to isolate the filename.
+          const lastSlashIndex = img.lastIndexOf("/");
+          if (lastSlashIndex !== -1) {
+            // Get the part of the URL that contains the filename and query string.
+            const filenameWithQuery = img.substring(lastSlashIndex + 1);
+            // Find the index of '?' to get only the filename.
+            const questionMarkIndex = filenameWithQuery.indexOf("?");
+            const filename =
+              questionMarkIndex !== -1
+                ? filenameWithQuery.substring(0, questionMarkIndex)
+                : filenameWithQuery;
+
             if (filename && filename.includes("_original.jpg")) {
               processedImages.push(filename);
               hasChanges = true;
             } else {
-              // If we can't extract a valid filename, skip this image
               console.error("Could not extract valid filename from URL:", img);
             }
-          } catch (error) {
-            console.error("Error parsing URL:", img, error);
+          } else {
+            console.error("Could not find filename in URL:", img);
           }
+        } else if (img.includes("_original.jpg")) {
+          // This is already a filename, keep it as is
+          processedImages.push(img);
         } else if (img && img.trim() !== "") {
           // Keep the image as is (could be a filename or other format)
           processedImages.push(img);
