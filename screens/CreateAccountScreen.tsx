@@ -13,6 +13,7 @@ import {
   TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation, CommonActions } from "@react-navigation/native";
 import Colors from "../constants/Colors";
 import LoadingScreen from "../components/LoadingScreen";
 import EmailInput from "../components/EmailInput";
@@ -22,6 +23,7 @@ import { auth } from "../firebaseConfig";
 import { AuthService } from "../networking/AuthService";
 
 export default function CreateAccountScreen({ navigation }: any) {
+  const nav = useNavigation();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -130,10 +132,15 @@ export default function CreateAccountScreen({ navigation }: any) {
         password
       );
 
+      console.log("✅ [CREATE ACCOUNT] User created successfully:", userCredential.user.uid);
 
-      // Don't sign out - let the user remain signed in with unverified email
-      // The App.tsx logic will handle navigation to EmailVerificationScreen
-      // EmailVerificationScreen will automatically send the verification code
+      // Reset the navigation stack to prevent back button issues
+      (nav as any).dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'EmailVerification' }],
+        })
+      );
     } catch (error: any) {
       console.error("❌ [CREATE ACCOUNT] Error:", error);
 
@@ -154,7 +161,7 @@ export default function CreateAccountScreen({ navigation }: any) {
   };
 
   const handleBackToSignIn = () => {
-    navigation.goBack();
+    (nav as any).goBack();
   };
 
   if (isLoading) {
