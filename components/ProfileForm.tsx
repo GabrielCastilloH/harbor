@@ -10,6 +10,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons, AntDesign } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
@@ -24,6 +25,7 @@ interface ProfileFormProps {
   isAccountSetup?: boolean;
   onSave: (images?: string[]) => void;
   onLogout?: () => void;
+  isLoading?: boolean;
 }
 
 // Utility to wrap URIs with keys
@@ -42,6 +44,7 @@ export default function ProfileForm({
   isAccountSetup = false,
   onSave,
   onLogout,
+  isLoading = false,
 }: ProfileFormProps) {
   // Local state for images with keys
   const [imagesWithKeys, setImagesWithKeys] = React.useState(() =>
@@ -444,8 +447,16 @@ export default function ProfileForm({
           </ScrollView>
         </View>
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSaveClick}>
-          <Text style={styles.saveButtonText}>Save</Text>
+        <TouchableOpacity
+          style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
+          onPress={handleSaveClick}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color={Colors.secondary100} />
+          ) : (
+            <Text style={styles.saveButtonText}>Save</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -571,6 +582,9 @@ const styles = StyleSheet.create({
     color: Colors.secondary100,
     fontSize: 18,
     fontWeight: "bold",
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
   },
   profileImagesTitle: {
     marginBottom: 8,
