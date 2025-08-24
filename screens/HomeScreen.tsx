@@ -482,10 +482,18 @@ export default function HomeScreen() {
     });
   };
 
-  // PREMIUM DISABLED: Premium upgrade function commented out
+  // PREMIUM DISABLED: Show coming soon message
   const handlePremiumUpgrade = async () => {
-    // Premium functionality disabled - do nothing
-    console.log("Premium upgrade disabled");
+    Alert.alert(
+      "Premium Features",
+      "Premium features are coming soon! Stay tuned for exciting new features.",
+      [
+        {
+          text: "OK",
+          style: "default",
+        },
+      ]
+    );
 
     // Original implementation commented out:
     // try {
