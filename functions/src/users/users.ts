@@ -157,9 +157,13 @@ export const createUser = functions.https.onCall(
       if (!userData.firstName?.trim()) {
         validationErrors.push("Your name, initial(s) or nickname is required");
       } else if (userData.firstName.trim().length < 1) {
-        validationErrors.push("Your name, initial(s) or nickname must be at least 1 character");
+        validationErrors.push(
+          "Your name, initial(s) or nickname must be at least 1 character"
+        );
       } else if (userData.firstName.trim().length > 11) {
-        validationErrors.push("Your name, initial(s) or nickname must be 11 characters or less");
+        validationErrors.push(
+          "Your name, initial(s) or nickname must be 11 characters or less"
+        );
       }
 
       if (!userData.age || userData.age < 18) {
@@ -554,11 +558,17 @@ export const updateUser = functions.https.onCall(
       // Validate first name if provided
       if (userData.firstName !== undefined) {
         if (!userData.firstName?.trim()) {
-          validationErrors.push("Your name, initial(s) or nickname is required");
+          validationErrors.push(
+            "Your name, initial(s) or nickname is required"
+          );
         } else if (userData.firstName.trim().length < 1) {
-          validationErrors.push("Your name, initial(s) or nickname must be at least 1 character");
+          validationErrors.push(
+            "Your name, initial(s) or nickname must be at least 1 character"
+          );
         } else if (userData.firstName.trim().length > 11) {
-          validationErrors.push("Your name, initial(s) or nickname must be 11 characters or less");
+          validationErrors.push(
+            "Your name, initial(s) or nickname must be 11 characters or less"
+          );
         }
       }
 
