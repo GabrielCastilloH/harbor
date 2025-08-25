@@ -290,6 +290,9 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
   };
 
   const handleBackToSignIn = () => {
+    console.log(
+      `🚨 [EmailVerification] Calling auth.signOut at ${new Date().toISOString()}`
+    );
     // This is correct, it will trigger the onAuthStateChanged listener to sign out the user
     auth.signOut();
   };

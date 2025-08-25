@@ -16,6 +16,9 @@ import { streamNotificationService } from "../util/streamNotifService";
 export default function AccountSetupScreen({
   showProgressBar = true,
 }: { showProgressBar?: boolean } = {}) {
+  console.log(
+    "🚨 THIS SHOULD NOT BE SHOWING - AccountSetupScreen is rendering!"
+  );
   const {
     setUserId,
     setProfile,
@@ -226,10 +229,7 @@ export default function AccountSetupScreen({
         // Save FCM token to user profile
         await streamNotificationService.saveUserToken(firebaseUid);
       } catch (error) {
-        console.error(
-          "AccountSetupScreen - Error saving FCM token:",
-          error
-        );
+        console.error("AccountSetupScreen - Error saving FCM token:", error);
         // Don't fail the entire operation if FCM token saving fails
       }
 

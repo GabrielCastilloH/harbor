@@ -1,4 +1,4 @@
-import React, { useState, ReactNode, useEffect } from "react";
+import React, { useState, ReactNode, useEffect, useRef } from "react";
 import { Profile } from "../types/App";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { auth } from "../firebaseConfig";
@@ -55,79 +55,159 @@ interface AppProviderProps {
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [channel, setChannel] = useState<any>(null);
   const [thread, setThread] = useState<any>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [streamApiKey, setStreamApiKey] = useState<string | null>(null);
   const [streamUserToken, setStreamUserToken] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [profileExists, setProfileExists] = useState(false);
 
-  // A computed value that reflects the current authentication state
-  const isAuthenticated = !!currentUser;
+  // 🏆 The Fix: Single atomic state object to prevent race conditions
+  const [appState, setAppState] = useState({
+    isAuthenticated: false,
+    userId: null as string | null,
+    profile: null as Profile | null,
+    currentUser: null as User | null,
+    profileExists: false,
+    isInitialized: false,
+  });
+
+  // 🏆 The Fix: Use a ref to prevent race conditions from duplicate listener calls
+  const isProcessingAuthRef = useRef(false);
+
+  // Computed values for cleaner usage
+  const isAuthenticated = !!appState.currentUser;
+  const { isInitialized, profileExists, userId, profile, currentUser } =
+    appState;
 
   // The core function to check user and profile status.
   // This is now the single source of truth for handling auth state changes.
   const checkAndSetAuthState = async (user: User | null) => {
-    if (!user) {
-      // User is signed out
-      setUserId(null);
-      setProfileExists(false);
-      setProfile(null);
-      setStreamApiKey(null);
-      setStreamUserToken(null);
-      try {
-        await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
-      } catch (error) {
-        console.error("❌ [APP CONTEXT] Error clearing stored data:", error);
+    // 🚦 Do not proceed if another process is already running
+    if (isProcessingAuthRef.current) {
+      console.log(
+        `LOG: IGNORING onAuthStateChanged event at ${new Date().toISOString()} because another one is in progress.`
+      );
+      return;
+    }
+
+    isProcessingAuthRef.current = true;
+    console.log(
+      `LOG: checkAndSetAuthState started at ${new Date().toISOString()}`
+    );
+
+    try {
+      if (!user) {
+        console.log(
+          `LOG: User is null, signing out at ${new Date().toISOString()}`
+        );
+        setStreamApiKey(null);
+        setStreamUserToken(null);
+        try {
+          await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
+        } catch (error) {
+          console.error("❌ [APP CONTEXT] Error clearing stored data:", error);
+        }
+
+        // 🏆 Atomic state update
+        setAppState({
+          ...appState,
+          isAuthenticated: false,
+          userId: null,
+          profile: null,
+          currentUser: null,
+          profileExists: false,
+          isInitialized: true,
+        });
+        console.log(`LOG: State after sign-out: isInitialized=true`);
+        return;
       }
-      return;
-    }
 
-    // User is signed in. Force a reload to check the latest status.
-    try {
+      console.log(
+        `LOG: Attempting to reload user and get ID token at ${new Date().toISOString()}`
+      );
       await user.reload();
-    } catch (error) {
-      console.error("❌ [APP CONTEXT] Error reloading user:", error);
-    }
+      const idToken = await user.getIdToken(true);
+      console.log(
+        `LOG: Successfully reloaded user and got ID token at ${new Date().toISOString()}. Token length: ${
+          idToken.length
+        }`
+      );
 
-    // Check email verification first
-    if (!user.emailVerified) {
-      setUserId(null);
-      setProfileExists(false);
-      setProfile(null);
-      return;
-    }
+      if (!user.emailVerified) {
+        console.log(`LOG: Email not verified at ${new Date().toISOString()}`);
+        setAppState({
+          ...appState,
+          isAuthenticated: true,
+          userId: null,
+          profile: null,
+          currentUser: user,
+          profileExists: false,
+          isInitialized: true,
+        });
+        return;
+      }
 
-    // Email is verified, now check for the profile
-    try {
       const { UserService } = require("../networking");
+      console.log(
+        `LOG: Attempting to get user profile from Firestore at ${new Date().toISOString()}...`
+      );
       const response = await UserService.getUserById(user.uid);
+      console.log(
+        `LOG: Firestore response received at ${new Date().toISOString()}:`,
+        response ? "found" : "not found"
+      );
 
       if (response && response.user) {
-        setUserId(user.uid);
-        setProfile(response.user);
-        setProfileExists(true); // This state update is now guaranteed to happen after the check
-        await loadStreamCredentials(); // Load credentials only if the profile exists
+        console.log(
+          `LOG: Profile exists at ${new Date().toISOString()}. profileExists is now true.`
+        );
+        console.log(
+          `LOG: Attempting to load Stream credentials at ${new Date().toISOString()}...`
+        );
+        await loadStreamCredentials();
+        console.log(
+          `LOG: Stream credentials loaded at ${new Date().toISOString()}.`
+        );
+
+        setAppState({
+          ...appState,
+          isAuthenticated: true,
+          userId: user.uid,
+          profile: response.user,
+          currentUser: user,
+          profileExists: true,
+          isInitialized: true,
+        });
       } else {
-        setUserId(user.uid);
-        setProfile(null);
-        setProfileExists(false); // No profile, so profileExists is false
+        console.log(
+          `LOG: Profile does NOT exist at ${new Date().toISOString()}. profileExists is now false.`
+        );
+        setAppState({
+          ...appState,
+          isAuthenticated: true,
+          userId: user.uid,
+          profile: null,
+          currentUser: user,
+          profileExists: false,
+          isInitialized: true,
+        });
       }
     } catch (error: any) {
-      if (
-        error?.code === "not-found" ||
-        error?.code === "functions/not-found"
-      ) {
-        setUserId(user.uid);
-        setProfile(null);
-        setProfileExists(false);
-      } else {
-        console.error("❌ [APP CONTEXT] Error checking profile:", error);
-        setUserId(user.uid);
-        setProfileExists(false);
-        setProfile(null);
-      }
+      console.log(
+        `ERROR: During profile check at ${new Date().toISOString()}, profileExists is now false.`
+      );
+      console.error(error);
+      setAppState({
+        ...appState,
+        isAuthenticated: true,
+        userId: user?.uid || null,
+        profile: null,
+        currentUser: user,
+        profileExists: false,
+        isInitialized: true,
+      });
+    } finally {
+      isProcessingAuthRef.current = false;
+      console.log(
+        `LOG: checkAndSetAuthState finished at ${new Date().toISOString()}`
+      );
     }
   };
 
@@ -156,16 +236,39 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // Ensure userId is never an empty string - convert to null
   useEffect(() => {
     if (userId === "") {
-      setUserId(null);
+      setAppState({
+        ...appState,
+        userId: null,
+      });
     }
   }, [userId]);
 
   // Listen to Firebase Auth state changes
   useEffect(() => {
+    // 🚨 NEW LOGGING HERE 🚨
+    console.log(
+      `LOG: onAuthStateChanged listener setup at ${new Date().toISOString()}`
+    );
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
+      console.log(
+        `--- onAuthStateChanged Fired at ${new Date().toISOString()} ---`
+      );
+      console.log("User object received:", user ? "true" : "false");
+      console.log(
+        `Current isInitialized: ${isInitialized}, isAuthenticated: ${isAuthenticated}, profileExists: ${profileExists}`
+      );
+
+      // 🏆 All state updates now handled atomically in checkAndSetAuthState
       await checkAndSetAuthState(user);
-      setIsInitialized(true);
+
+      console.log(
+        `--- onAuthStateChanged FINISHED at ${new Date().toISOString()} ---`
+      );
+      console.log(
+        `New isInitialized: ${isInitialized}, isAuthenticated: ${isAuthenticated}, profileExists: ${profileExists}`
+      );
+      console.log("-------------------------------------");
     });
 
     return () => unsubscribe();
@@ -180,9 +283,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setThread,
         isAuthenticated,
         userId,
-        setUserId,
+        setUserId: (userId: string | null) =>
+          setAppState({ ...appState, userId }),
         profile,
-        setProfile,
+        setProfile: (profile: Profile | null) =>
+          setAppState({ ...appState, profile }),
         currentUser,
         streamApiKey,
         setStreamApiKey,
@@ -190,7 +295,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setStreamUserToken,
         isInitialized,
         profileExists,
-        setProfileExists,
+        setProfileExists: (exists: boolean) =>
+          setAppState({ ...appState, profileExists: exists }),
         refreshAuthState,
       }}
     >

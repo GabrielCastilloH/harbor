@@ -77,11 +77,19 @@ function MainNavigator() {
   const AppStack = createNativeStackNavigator();
   const { currentUser, isAuthenticated, profileExists } = useAppContext();
 
+  console.log(
+    `[MainNavigator Render] currentUser: ${!!currentUser}, isAuthenticated: ${isAuthenticated}, profileExists: ${profileExists}`
+  );
+
   if (!currentUser) {
+    console.log("[MainNavigator] No currentUser, returning null");
     return null; // This should not happen if isAuthenticated is true
   }
 
   if (!currentUser.emailVerified) {
+    console.log(
+      "[MainNavigator] Email not verified, showing EmailVerificationScreen"
+    );
     return (
       <AppStack.Navigator screenOptions={{ headerShown: false }}>
         <AppStack.Screen
@@ -93,6 +101,9 @@ function MainNavigator() {
   }
 
   if (!profileExists) {
+    console.log(
+      "[MainNavigator] No profile exists, showing AccountSetupScreen"
+    );
     return (
       <AppStack.Navigator screenOptions={{ headerShown: false }}>
         <AppStack.Screen name="AccountSetup" component={AccountSetupScreen} />
@@ -101,6 +112,9 @@ function MainNavigator() {
   }
 
   // User is fully authenticated and has a profile
+  console.log(
+    "[MainNavigator] User fully authenticated with profile, showing TabNavigator"
+  );
   return (
     <AppStack.Navigator screenOptions={{ headerShown: false }}>
       <AppStack.Screen name="Tab" component={TabNavigator} />
@@ -110,6 +124,13 @@ function MainNavigator() {
 
 function AppContent() {
   const { isInitialized, isAuthenticated } = useAppContext();
+
+  // 🚨 NEW LOGGING HERE 🚨
+  useEffect(() => {
+    console.log(
+      `[AppContent] isInitialized: ${isInitialized}, isAuthenticated: ${isAuthenticated}`
+    );
+  }, [isInitialized, isAuthenticated]);
 
   if (!isInitialized) {
     return <LoadingScreen loadingText="Signing you in..." />;
