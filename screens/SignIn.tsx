@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -19,70 +19,24 @@ import LoadingScreen from "../components/LoadingScreen";
 import EmailInput from "../components/EmailInput";
 import PasswordInput from "../components/PasswordInput";
 import {
-  signOut,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  preloadChatCredentials,
-  clearChatCredentials,
-} from "../util/chatPreloader";
+import { preloadChatCredentials } from "../util/chatPreloader";
 import { AuthService } from "../networking/AuthService";
 import { streamNotificationService } from "../util/streamNotifService";
 
 export default function SignIn({ navigation }: any) {
   const nav = useNavigation();
-  const {
-    isAuthenticated,
-    currentUser,
-    userId,
-    setUserId,
-    setProfile,
-    setStreamApiKey,
-    setStreamUserToken,
-  } = useAppContext();
+  const { isAuthenticated, currentUser, userId } = useAppContext();
 
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
-
-  // Only clean up auth state if user is not already authenticated
-  useEffect(() => {
-    if (!isAuthenticated) {
-      const cleanupAuth = async () => {
-        try {
-          // Sign out from Firebase Auth
-          await signOut(auth);
-
-          // Clear app context state
-          setUserId(null);
-          setProfile(null);
-          setStreamApiKey(null);
-          setStreamUserToken(null);
-
-          // Clear stored data from AsyncStorage
-          await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
-
-          // Clear chat credentials
-          await clearChatCredentials();
-        } catch (error) {
-          console.error("❌ [SIGN IN] Error during cleanup:", error);
-        }
-      };
-
-      cleanupAuth();
-    }
-  }, [
-    isAuthenticated,
-    setUserId,
-    setProfile,
-    setStreamApiKey,
-    setStreamUserToken,
-  ]);
 
   // If user is already authenticated or has a current user, don't show SignIn screen
   if (isAuthenticated || currentUser) {
@@ -179,9 +133,7 @@ export default function SignIn({ navigation }: any) {
       // Email is verified - proceed with sign in
       try {
         // Pre-load chat credentials for existing users
-        const { apiKey, userToken } = await preloadChatCredentials(user.uid);
-        setStreamApiKey(apiKey);
-        setStreamUserToken(userToken);
+        await preloadChatCredentials(user.uid);
       } catch (error) {
         // Don't block sign-in if chat pre-loading fails
         console.error("Failed to pre-load chat credentials:", error);
@@ -194,8 +146,6 @@ export default function SignIn({ navigation }: any) {
         // Don't block sign-in if FCM token saving fails
         console.error("Failed to save FCM token:", error);
       }
-
-      setUserId(user.uid);
     } catch (error: any) {
       console.error("❌ [SIGN IN] Sign-in error:", error);
 
