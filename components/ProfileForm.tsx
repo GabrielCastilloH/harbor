@@ -94,7 +94,12 @@ export default function ProfileForm({
       minLength: number;
       name: string;
     }[] = [
-      { field: "firstName", maxLength: 50, minLength: 2, name: "first name" },
+      {
+        field: "firstName",
+        maxLength: 50,
+        minLength: 1,
+        name: "your name, initial(s) or nickname",
+      },
       { field: "aboutMe", maxLength: 200, minLength: 5, name: "about me" },
       {
         field: "q1",
@@ -240,13 +245,20 @@ export default function ProfileForm({
             </Text>
           </View>
 
-          <Text style={styles.firstLabel}>First Name (or Initial)</Text>
+          <Text style={styles.firstLabel}>
+            Your Name, Initial(s) or Nickname
+          </Text>
           <TextInput
             style={styles.input}
-            placeholder="First name (or initial/nickname privacy)"
+            placeholder="Your name, initial(s) or nickname"
             value={profileData.firstName}
             onChangeText={(text) => handleChange("firstName", text)}
           />
+          {isAccountSetup && (
+            <Text style={styles.noteText}>
+              This will be shown as your "name" to other users
+            </Text>
+          )}
 
           <Text style={styles.label}>Age</Text>
           <TextInput
@@ -621,5 +633,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 5,
+  },
+  noteText: {
+    fontSize: 12,
+    color: Colors.secondary500,
+    fontStyle: "italic",
+    marginTop: -10,
+    marginBottom: 15,
+    marginLeft: 5,
   },
 });
