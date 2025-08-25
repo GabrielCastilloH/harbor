@@ -207,7 +207,7 @@ export default function SignIn({ navigation }: any) {
               await sendPasswordResetEmail(auth, normalizedEmail);
               Alert.alert(
                 "Reset Link Sent",
-                "Check your email for a password reset link"
+                "Check your email for a password reset link. It may take a few minutes to arrive and will likely be in your spam folder."
               );
             } catch (error: any) {
               console.error("Password reset error:", error);
