@@ -16,9 +16,6 @@ import { streamNotificationService } from "../util/streamNotifService";
 export default function AccountSetupScreen({
   showProgressBar = true,
 }: { showProgressBar?: boolean } = {}) {
-  console.log(
-    "🚨 THIS SHOULD NOT BE SHOWING - AccountSetupScreen is rendering!"
-  );
   const {
     setUserId,
     setProfile,

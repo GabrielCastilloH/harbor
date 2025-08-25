@@ -81,28 +81,19 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const checkAndSetAuthState = async (user: User | null) => {
     // 🚦 Do not proceed if another process is already running
     if (isProcessingAuthRef.current) {
-      console.log(
-        `LOG: IGNORING onAuthStateChanged event at ${new Date().toISOString()} because another one is in progress.`
-      );
       return;
     }
 
     isProcessingAuthRef.current = true;
-    console.log(
-      `LOG: checkAndSetAuthState started at ${new Date().toISOString()}`
-    );
 
     try {
       if (!user) {
-        console.log(
-          `LOG: User is null, signing out at ${new Date().toISOString()}`
-        );
         setStreamApiKey(null);
         setStreamUserToken(null);
         try {
           await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
         } catch (error) {
-          console.error("❌ [APP CONTEXT] Error clearing stored data:", error);
+          // Silent fail for data clearing
         }
 
         // 🏆 Atomic state update
@@ -115,13 +106,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           profileExists: false,
           isInitialized: true,
         });
-        console.log(`LOG: State after sign-out: isInitialized=true`);
         return;
       }
-
-      console.log(
-        `LOG: Attempting to get ID token and user profile in parallel at ${new Date().toISOString()}`
-      );
 
       // 🚀 OPTIMIZATION: Use Promise.all to fetch data in parallel
       const { UserService } = require("../networking");
@@ -130,18 +116,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         UserService.getUserById(user.uid),
       ]);
 
-      console.log(
-        `LOG: Successfully got ID token and Firestore response at ${new Date().toISOString()}. Token length: ${
-          idToken.length
-        }`
-      );
-      console.log(
-        `LOG: Firestore response received at ${new Date().toISOString()}:`,
-        firestoreResponse ? "found" : "not found"
-      );
-
       if (!user.emailVerified) {
-        console.log(`LOG: Email not verified at ${new Date().toISOString()}`);
         setAppState({
           ...appState,
           isAuthenticated: true,
@@ -157,16 +132,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       const response = firestoreResponse; // Use the result from Promise.all
 
       if (response && response.user) {
-        console.log(
-          `LOG: Profile exists at ${new Date().toISOString()}. profileExists is now true.`
-        );
-        console.log(
-          `LOG: Attempting to load Stream credentials at ${new Date().toISOString()}...`
-        );
         await loadStreamCredentials();
-        console.log(
-          `LOG: Stream credentials loaded at ${new Date().toISOString()}.`
-        );
 
         setAppState({
           ...appState,
@@ -178,9 +144,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           isInitialized: true,
         });
       } else {
-        console.log(
-          `LOG: Profile does NOT exist at ${new Date().toISOString()}. profileExists is now false.`
-        );
         setAppState({
           ...appState,
           isAuthenticated: true,
@@ -192,10 +155,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         });
       }
     } catch (error: any) {
-      console.log(
-        `ERROR: During profile check at ${new Date().toISOString()}, profileExists is now false.`
-      );
-      console.error(error);
+      // Silent fail for auth state check
       setAppState({
         ...appState,
         isAuthenticated: true,
@@ -207,9 +167,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       });
     } finally {
       isProcessingAuthRef.current = false;
-      console.log(
-        `LOG: checkAndSetAuthState finished at ${new Date().toISOString()}`
-      );
     }
   };
 
@@ -223,10 +180,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       if (storedStreamApiKey) setStreamApiKey(storedStreamApiKey);
       if (storedStreamUserToken) setStreamUserToken(storedStreamUserToken);
     } catch (error) {
-      console.error(
-        "❌ [APP CONTEXT] Error loading Stream credentials:",
-        error
-      );
+      // Silent fail for Stream credentials loading
     }
   };
 
@@ -247,30 +201,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Listen to Firebase Auth state changes
   useEffect(() => {
-    // 🚨 NEW LOGGING HERE 🚨
-    console.log(
-      `LOG: onAuthStateChanged listener setup at ${new Date().toISOString()}`
-    );
-
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log(
-        `--- onAuthStateChanged Fired at ${new Date().toISOString()} ---`
-      );
-      console.log("User object received:", user ? "true" : "false");
-      console.log(
-        `Current isInitialized: ${isInitialized}, isAuthenticated: ${isAuthenticated}, profileExists: ${profileExists}`
-      );
-
       // 🏆 All state updates now handled atomically in checkAndSetAuthState
       await checkAndSetAuthState(user);
-
-      console.log(
-        `--- onAuthStateChanged FINISHED at ${new Date().toISOString()} ---`
-      );
-      console.log(
-        `New isInitialized: ${isInitialized}, isAuthenticated: ${isAuthenticated}, profileExists: ${profileExists}`
-      );
-      console.log("-------------------------------------");
     });
 
     return () => unsubscribe();

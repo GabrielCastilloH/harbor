@@ -86,7 +86,6 @@ export class UserService {
   // PREMIUM DISABLED: Paywall function commented out
   static async markPaywallAsSeen(userId: string) {
     // Premium functionality disabled - return success without calling backend
-    console.log("Premium disabled: markPaywallAsSeen called but ignored");
     return { success: true };
 
     // Original implementation commented out:
