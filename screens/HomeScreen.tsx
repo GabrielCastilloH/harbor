@@ -227,9 +227,6 @@ export default function HomeScreen() {
 
       // Check if user has active matches before fetching recommendations
       if (!userId) {
-        console.log(
-          "❌ [HOMESCREEN] No userId available, skipping match check"
-        );
         // Continue with recommendations fetch if no userId
       } else {
         try {
@@ -242,9 +239,6 @@ export default function HomeScreen() {
 
           if (hasActiveMatches) {
             // User is in a match, don't fetch recommendations
-            console.log(
-              "❌ [HOMESCREEN] User has active matches, skipping recommendations fetch"
-            );
             setRecommendations([]);
             setCurrentProfile(null);
             setLoadingRecommendations(false);

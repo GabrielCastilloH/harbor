@@ -276,7 +276,7 @@ export default function ChatNavigator() {
         if (areEnabled) {
           await streamNotificationService.initializeForUser(userId);
         } else {
-          console.log("🔔 Notifications not enabled, skipping initialization");
+          // Notifications not enabled, skip initialization
         }
       } catch (error) {
         console.error(
