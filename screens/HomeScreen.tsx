@@ -46,7 +46,7 @@ export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] =
-    useState<boolean>(false);
+    useState<boolean>(true);
   const [recommendationsFetched, setRecommendationsFetched] =
     useState<boolean>(false);
   const [loadingProfile, setLoadingProfile] = useState<boolean>(true);
@@ -68,7 +68,7 @@ export default function HomeScreen() {
     maxSwipesPerDay: number;
     canSwipe: boolean;
   } | null>(null);
-  const [loadingSwipeLimit, setLoadingSwipeLimit] = useState<boolean>(false);
+  const [loadingSwipeLimit, setLoadingSwipeLimit] = useState<boolean>(true);
   const [currentCardProfile, setCurrentCardProfile] = useState<Profile | null>(
     null
   );
