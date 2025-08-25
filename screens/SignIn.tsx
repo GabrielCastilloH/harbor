@@ -316,8 +316,8 @@ export default function SignIn({ navigation }: any) {
             style={styles.termsLink}
             onPress={() => {
               window.open
-                ? window.open("https://www.tryharbor.app/terms.html", "_blank")
-                : Linking.openURL("https://www.tryharbor.app/terms.html");
+                ? window.open("https://www.tryharbor.app/terms", "_blank")
+                : Linking.openURL("https://www.tryharbor.app/terms");
             }}
           >
             Terms of Service
@@ -327,11 +327,8 @@ export default function SignIn({ navigation }: any) {
             style={styles.termsLink}
             onPress={() => {
               window.open
-                ? window.open(
-                    "https://www.tryharbor.app/privacy.html",
-                    "_blank"
-                  )
-                : Linking.openURL("https://www.tryharbor.app/privacy.html");
+                ? window.open("https://www.tryharbor.app/privacy", "_blank")
+                : Linking.openURL("https://www.tryharbor.app/privacy");
             }}
           >
             Privacy Policy
