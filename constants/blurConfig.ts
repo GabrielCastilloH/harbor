@@ -3,11 +3,11 @@ export const BLUR_CONFIG = {
   SERVER_BLUR_PERCENT: 80,
 
   // Max blur on client-side (used for theatrical phase 1 + real blur in phase 2)
-  CLIENT_MAX_BLUR_RADIUS: 45,
+  CLIENT_MAX_BLUR_RADIUS: 40, // Changed from 45 to 40 as requested
 
   // Message thresholds
   MESSAGES_TO_CLEAR_BLUR: 30, // 100% → 0% fake unblur (really 100% → 80%)
-  MESSAGES_TO_CLEAR_ORIGINAL: 50, // 80% → 0% real unblur after consent
+  MESSAGES_TO_CLEAR_ORIGINAL: 40, // 80% → 0% real unblur after consent (changed from 50 to 40)
 };
 
 export function getClientBlurLevel({
@@ -32,12 +32,16 @@ export function getClientBlurLevel({
     return percentageToBlurRadius(blurPercent);
   } else {
     // Phase 2: Real reveal on _original.jpg
+    const phase2Messages = Math.max(
+      0,
+      messageCount - BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR
+    );
     const progress = Math.min(
-      messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL,
+      phase2Messages / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL,
       1
     );
     // 80% → 0%
-    const blurPercent = 80 * (1 - progress);
+    const blurPercent = BLUR_CONFIG.SERVER_BLUR_PERCENT * (1 - progress);
     return percentageToBlurRadius(blurPercent);
   }
 }
@@ -63,11 +67,15 @@ export function getEmulatedBlurPercent({
     return Math.round(remaining);
   }
   // Phase 2: emulate 80% -> 0% over MESSAGES_TO_CLEAR_ORIGINAL
+  const phase2Messages = Math.max(
+    0,
+    messageCount - BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR
+  );
   const progress = Math.min(
-    messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL,
+    phase2Messages / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL,
     1
   );
-  const remaining = 80 * (1 - progress);
+  const remaining = BLUR_CONFIG.SERVER_BLUR_PERCENT * (1 - progress);
   return Math.round(remaining);
 }
 
