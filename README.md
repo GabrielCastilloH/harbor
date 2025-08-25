@@ -181,7 +181,7 @@ Instead of using Firebase's built-in email verification links, Harbor implements
 
 All fields must be completed before profile creation:
 
-- **First Name**: 2-50 characters
+- **Your Name, Initial(s) or Nickname**: 1-50 characters
 - **Age**: 18+ years old
 - **Gender**: Must select from dropdown (Male, Female, Non-Binary)
 - **Sexual Orientation**: Must select from dropdown (Heterosexual, Homosexual, Bisexual, Pansexual)
@@ -192,7 +192,7 @@ All fields must be completed before profile creation:
 
 | Field                              | Min Length | Max Length | Description                    |
 | ---------------------------------- | ---------- | ---------- | ------------------------------ |
-| First Name                         | 2          | 11         | First name or initial/nickname |
+| Your Name, Initial(s) or Nickname | 1          | 50         | Your name, initial(s) or nickname |
 | About Me                           | 5          | 180        | Personal description           |
 | Q1: "This year, I really want to"  | 5          | 100        | Personal goal                  |
 | Q2: "Together we could"            | 5          | 100        | Shared activity                |

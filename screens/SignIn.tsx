@@ -264,7 +264,7 @@ export default function SignIn({ navigation }: any) {
   };
 
   const handleCreateAccount = () => {
-    (nav as any).navigate("CreateAccount");
+    (nav as any).navigate("CreateAccount", { email: email.trim() });
   };
 
   if (isLoading) {

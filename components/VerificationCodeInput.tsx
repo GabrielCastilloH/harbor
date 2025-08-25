@@ -5,7 +5,10 @@ import {
   TextInput,
   StyleSheet,
   Dimensions,
+  TouchableOpacity,
+  Alert,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import Colors from '../constants/Colors';
 
 interface VerificationCodeInputProps {
@@ -28,6 +31,34 @@ export default function VerificationCodeInput({
 
   const handlePress = () => {
     inputRef.current?.focus();
+  };
+
+  const handlePaste = async () => {
+    try {
+      const clipboardContent = await Clipboard.getStringAsync();
+      if (clipboardContent) {
+        // Extract only numbers from clipboard content
+        const numericContent = clipboardContent.replace(/[^0-9]/g, '');
+        
+        if (numericContent.length >= maxLength) {
+          // Take only the first maxLength digits
+          const codeToPaste = numericContent.slice(0, maxLength);
+          onChangeText(codeToPaste);
+          Alert.alert('Code Pasted', 'Verification code has been pasted successfully!');
+        } else if (numericContent.length > 0) {
+          // If we have some numbers but not enough, just paste what we have
+          onChangeText(numericContent);
+          Alert.alert('Partial Code Pasted', `Pasted ${numericContent.length} digits. Please enter the remaining ${maxLength - numericContent.length} digits.`);
+        } else {
+          Alert.alert('No Code Found', 'No verification code found in clipboard. Please copy the code from your email and try again.');
+        }
+      } else {
+        Alert.alert('No Code Found', 'No verification code found in clipboard. Please copy the code from your email and try again.');
+      }
+    } catch (error) {
+      console.error('Error pasting code:', error);
+      Alert.alert('Paste Error', 'Failed to paste code. Please enter it manually.');
+    }
   };
 
   const renderBoxes = () => {
@@ -79,6 +110,10 @@ export default function VerificationCodeInput({
       <View style={styles.boxesContainer} onTouchEnd={handlePress}>
         {renderBoxes()}
       </View>
+
+      <TouchableOpacity style={styles.pasteButton} onPress={handlePaste}>
+        <Text style={styles.pasteButtonText}>📋 Paste Code</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -131,5 +166,19 @@ const styles = StyleSheet.create({
   },
   boxTextFilled: {
     color: Colors.primary500,
+  },
+  pasteButton: {
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.primary100,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.primary500,
+  },
+  pasteButtonText: {
+    color: Colors.primary500,
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

@@ -120,7 +120,7 @@ export default function AccountSetupScreen({
         validationErrors.push("Please add at least 3 images");
       }
       if (!profileData.firstName?.trim()) {
-        validationErrors.push("Please enter your first name");
+        validationErrors.push("Please enter your name, initial(s) or nickname");
       }
       if (!profileData.age || profileData.age < 18) {
         validationErrors.push("Please enter a valid age (18+)");

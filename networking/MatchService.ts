@@ -25,7 +25,7 @@ export class MatchService {
         functions,
         "matchFunctions-getActiveMatches"
       );
-      const result = await getActiveMatches({ userId });
+      const result = await getActiveMatches({ id: userId });
       const data = result.data as any;
       return data;
     } catch (error) {
