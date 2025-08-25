@@ -190,16 +190,16 @@ All fields must be completed before profile creation:
 
 #### Text Field Limits
 
-| Field                              | Min Length | Max Length | Description                    |
-| ---------------------------------- | ---------- | ---------- | ------------------------------ |
-| Your Name, Initial(s) or Nickname | 1          | 50         | Your name, initial(s) or nickname |
-| About Me                           | 5          | 180        | Personal description           |
-| Q1: "This year, I really want to"  | 5          | 100        | Personal goal                  |
-| Q2: "Together we could"            | 5          | 100        | Shared activity                |
-| Q3: "Favorite book, movie or song" | 5          | 100        | Cultural preference            |
-| Q4: "I chose my major because"     | 5          | 100        | Academic motivation            |
-| Q5: "My favorite study spot is"    | 5          | 100        | Study preference               |
-| Q6: "Some of my hobbies are"       | 5          | 100        | Personal interests             |
+| Field                              | Min Length | Max Length | Description                       |
+| ---------------------------------- | ---------- | ---------- | --------------------------------- |
+| Your Name, Initial(s) or Nickname  | 1          | 50         | Your name, initial(s) or nickname |
+| About Me                           | 5          | 180        | Personal description              |
+| Q1: "This year, I really want to"  | 5          | 100        | Personal goal                     |
+| Q2: "Together we could"            | 5          | 100        | Shared activity                   |
+| Q3: "Favorite book, movie or song" | 5          | 100        | Cultural preference               |
+| Q4: "I chose my major because"     | 5          | 100        | Academic motivation               |
+| Q5: "My favorite study spot is"    | 5          | 100        | Study preference                  |
+| Q6: "Some of my hobbies are"       | 5          | 100        | Personal interests                |
 
 #### Backend Enforcement
 
@@ -207,49 +207,6 @@ All fields must be completed before profile creation:
 - **Backend validation**: Server-side enforcement to prevent bypass
 - **ACID compliance**: All validations enforced in transactions
 - **Error handling**: Graceful failure with clear error messages
-
-## 🎯 Recommendation Algorithm
-
-Harbor uses an intelligent matching system that ensures users only see profiles they're compatible with and interested in.
-
-### Filtering Logic
-
-The recommendation algorithm applies the following filters in order:
-
-1. **Exclude Current User**: Never show users their own profile
-2. **Exclude Previously Swiped**: Filter out users the current user has already swiped on (left or right)
-3. **Exclude Matched Users**: Filter out users who are currently in active matches
-4. **Sexual Orientation Compatibility**: Apply mutual compatibility based on gender and sexual orientation
-
-### Sexual Orientation Matching Rules
-
-#### Heterosexual Users
-- **Male**: Interested in Female
-- **Female**: Interested in Male  
-- **Non-Binary**: Interested in Non-Binary
-
-#### Homosexual Users
-- **Male**: Interested in Male
-- **Female**: Interested in Female
-- **Non-Binary**: Interested in Non-Binary
-
-#### Bisexual Users
-- **Male**: Interested in Male, Female, and Non-Binary
-- **Female**: Interested in Male, Female, and Non-Binary
-- **Non-Binary**: Interested in Male, Female, and Non-Binary
-
-#### Pansexual Users
-- **All Genders**: Interested in Male, Female, and Non-Binary
-
-### Mutual Compatibility
-
-For two users to be shown to each other, **both** must be interested in each other based on their respective sexual orientations and genders.
-
-### Match State Handling
-
-- **Active Matches**: Users in active matches are excluded from recommendations
-- **Frontend Check**: HomeScreen checks for active matches before fetching recommendations
-- **Backend Check**: Recommendation algorithm also filters out matched users for redundancy
 
 ## 🔔 Push Notifications
 
