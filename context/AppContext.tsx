@@ -120,14 +120,24 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       }
 
       console.log(
-        `LOG: Attempting to reload user and get ID token at ${new Date().toISOString()}`
+        `LOG: Attempting to get ID token and user profile in parallel at ${new Date().toISOString()}`
       );
-      await user.reload();
-      const idToken = await user.getIdToken(true);
+
+      // 🚀 OPTIMIZATION: Use Promise.all to fetch data in parallel
+      const { UserService } = require("../networking");
+      const [idToken, firestoreResponse] = await Promise.all([
+        user.getIdToken(true),
+        UserService.getUserById(user.uid),
+      ]);
+
       console.log(
-        `LOG: Successfully reloaded user and got ID token at ${new Date().toISOString()}. Token length: ${
+        `LOG: Successfully got ID token and Firestore response at ${new Date().toISOString()}. Token length: ${
           idToken.length
         }`
+      );
+      console.log(
+        `LOG: Firestore response received at ${new Date().toISOString()}:`,
+        firestoreResponse ? "found" : "not found"
       );
 
       if (!user.emailVerified) {
@@ -144,15 +154,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         return;
       }
 
-      const { UserService } = require("../networking");
-      console.log(
-        `LOG: Attempting to get user profile from Firestore at ${new Date().toISOString()}...`
-      );
-      const response = await UserService.getUserById(user.uid);
-      console.log(
-        `LOG: Firestore response received at ${new Date().toISOString()}:`,
-        response ? "found" : "not found"
-      );
+      const response = firestoreResponse; // Use the result from Promise.all
 
       if (response && response.user) {
         console.log(
