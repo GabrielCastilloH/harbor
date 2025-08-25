@@ -16,7 +16,9 @@ export type RootStackParamList = {
 
 export type AuthStackParamList = {
   SignIn: undefined;
-  CreateAccount: undefined;
+  CreateAccount: {
+    email?: string;
+  };
   EmailVerification: {
     email: string;
     fromSignIn?: boolean;

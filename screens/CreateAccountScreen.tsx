@@ -22,10 +22,10 @@ import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import { AuthService } from "../networking/AuthService";
 
-export default function CreateAccountScreen({ navigation }: any) {
+export default function CreateAccountScreen({ navigation, route }: any) {
   const nav = useNavigation();
   const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(route?.params?.email || "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [emailError, setEmailError] = useState("");
