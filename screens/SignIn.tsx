@@ -30,6 +30,7 @@ import {
   clearChatCredentials,
 } from "../util/chatPreloader";
 import { AuthService } from "../networking/AuthService";
+import { streamNotificationService } from "../util/streamNotifService";
 
 export default function SignIn({ navigation }: any) {
   const nav = useNavigation();
@@ -184,6 +185,14 @@ export default function SignIn({ navigation }: any) {
       } catch (error) {
         // Don't block sign-in if chat pre-loading fails
         console.error("Failed to pre-load chat credentials:", error);
+      }
+
+      // Save FCM token for existing users
+      try {
+        await streamNotificationService.saveUserToken(user.uid);
+      } catch (error) {
+        // Don't block sign-in if FCM token saving fails
+        console.error("Failed to save FCM token:", error);
       }
 
       setUserId(user.uid);
