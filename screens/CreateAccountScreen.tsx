@@ -245,10 +245,10 @@ export default function CreateAccountScreen({ navigation, route }: any) {
                   onPress={() => {
                     window.open
                       ? window.open(
-                          "https://www.tryharbor.app/terms.html",
+                          "https://www.tryharbor.app/terms",
                           "_blank"
                         )
-                      : Linking.openURL("https://www.tryharbor.app/terms.html");
+                      : Linking.openURL("https://www.tryharbor.app/terms");
                   }}
                 >
                   Terms of Service
@@ -259,11 +259,11 @@ export default function CreateAccountScreen({ navigation, route }: any) {
                   onPress={() => {
                     window.open
                       ? window.open(
-                          "https://www.tryharbor.app/privacy.html",
+                          "https://www.tryharbor.app/privacy",
                           "_blank"
                         )
                       : Linking.openURL(
-                          "https://www.tryharbor.app/privacy.html"
+                          "https://www.tryharbor.app/privacy"
                         );
                   }}
                 >
