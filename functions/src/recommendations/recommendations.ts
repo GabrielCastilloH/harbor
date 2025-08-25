@@ -66,9 +66,10 @@ function isUserInterestedIn(user1: any, user2: any): boolean {
 
     case "Bisexual":
       // Bisexual people are interested in their own gender and other genders
-      if (gender1 === "Male") return gender2 === "Male" || gender2 === "Female" || gender2 === "Non-Binary";
-      if (gender1 === "Female") return gender2 === "Male" || gender2 === "Female" || gender2 === "Non-Binary";
-      if (gender1 === "Non-Binary") return gender2 === "Male" || gender2 === "Female" || gender2 === "Non-Binary";
+      if (gender1 === "Male") return gender2 === "Male" || gender2 === "Female";
+      if (gender1 === "Female")
+        return gender2 === "Male" || gender2 === "Female";
+      if (gender1 === "Non-Binary") return gender2 === "Non-Binary";
       return false;
 
     case "Pansexual":
