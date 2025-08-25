@@ -77,9 +77,6 @@ export class StreamNotificationService {
     const fcmToken = await getToken(messaging);
 
     if (!fcmToken) {
-      console.warn(
-        "🔔 FCM token is not available, cannot register device with Stream."
-      );
       return;
     }
 
@@ -87,9 +84,6 @@ export class StreamNotificationService {
       // First, remove all existing devices for the user to ensure a clean state
       const devices = await this.client!.getDevices(userId);
       if (devices?.devices && devices.devices.length > 0) {
-        console.log(
-          `🔔 Removing ${devices.devices.length} existing devices for user ${userId}`
-        );
         for (const device of devices.devices) {
           await this.client!.removeDevice(device.id);
         }
@@ -113,8 +107,6 @@ export class StreamNotificationService {
           await this.handleTokenRefresh(newToken, userId);
         }
       );
-
-      console.log("🔔 Successfully registered device with Stream Chat.");
     } catch (error) {
       console.error("🔔 Error in setupDevice:", error);
       throw error;
@@ -131,8 +123,6 @@ export class StreamNotificationService {
     if (!this.client) return;
 
     try {
-      console.log("🔔 FCM token refreshed, updating Stream Chat and Firestore");
-
       // Update Firestore user profile with new token
       await this.updateUserFCMToken(userId, newToken);
 
@@ -149,8 +139,6 @@ export class StreamNotificationService {
         "HarborFirebasePush"
       );
       await AsyncStorage.setItem(PUSH_TOKEN_KEY, newToken);
-
-      console.log("🔔 Token refresh completed successfully");
     } catch (error) {
       console.error("🔔 Error handling token refresh:", error);
     }
@@ -173,8 +161,6 @@ export class StreamNotificationService {
         fcmToken: fcmToken,
         updatedAt: serverTimestamp(),
       });
-
-      console.log("🔔 FCM token updated in Firestore");
     } catch (error) {
       console.error("🔔 Error updating FCM token in Firestore:", error);
     }
@@ -235,12 +221,10 @@ export class StreamNotificationService {
       const token = await getToken(messaging);
 
       if (!token) {
-        console.warn("🔔 FCM token not available for user profile");
         return;
       }
 
       await this.updateUserFCMToken(userId, token);
-      console.log("🔔 FCM token saved to user profile successfully");
     } catch (error) {
       console.error("🔔 Failed to save FCM token to user profile:", error);
     }
@@ -251,15 +235,11 @@ export class StreamNotificationService {
    */
   async initializeForUser(userId: string): Promise<void> {
     try {
-      console.log("🔔 Initializing notifications for user:", userId);
-
       // First save token to user profile
       await this.saveUserToken(userId);
 
       // Then register with Stream Chat
       await this.registerDevice(userId);
-
-      console.log("🔔 Notification initialization completed");
     } catch (error) {
       console.error("🔔 Error initializing notifications:", error);
       throw error;
