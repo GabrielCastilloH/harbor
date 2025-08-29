@@ -210,37 +210,37 @@ All fields must be completed before profile creation:
 
 ## 🔔 Push Notifications
 
-Harbor implements a comprehensive push notification system using **Expo Notifications** for permission management and **Firebase Cloud Messaging (FCM)** for delivery. The system integrates with **Stream Chat** for messaging notifications and includes custom match notifications.
+Harbor implements push notifications using **React Native Firebase** for FCM token management and **Stream Chat** for message notifications. The system provides reliable push notifications for chat messages with proper device registration and token management.
 
 ### Current Implementation
 
 #### **Notification Flow**
 
-1. **Permission Request**: Triggered when users access the main app (TabNavigator/HomeScreen) after account creation
-2. **FCM Token Management**: Tokens are automatically fetched and stored in Firestore when users enter the app
+1. **Permission Request**: Triggered when users access the main app (TabNavigator) after account creation
+2. **FCM Token Management**: Tokens are automatically fetched using React Native Firebase and stored in Firestore
 3. **Stream Chat Integration**: Automatic message notifications through Stream Chat's Firebase integration
-4. **Match Notifications**: Custom notifications sent when users match (currently commented in backend)
+4. **Token Refresh**: Automatic token updates when users enter the app (HomeScreen)
 
 #### **Technical Architecture**
 
-- **Expo Notifications**: Used for permission requests and notification handling
-- **Firebase Cloud Messaging**: Backend notification delivery through Firestore user FCM tokens
-- **Stream Chat**: Handles chat message notifications and device registration
-- **Token Persistence**: FCM tokens stored in Firestore `users` collection and updated on app entry
+- **React Native Firebase**: Used for FCM token management and permission requests
+- **Stream Chat**: Handles message notifications and device registration with Firebase
+- **Token Persistence**: FCM tokens stored in Firestore `users` collection and updated automatically
+- **Background Notifications**: Proper background notification handling through React Native Firebase
 
 #### **Permission Management**
 
 - **Timing**: Permission requested after account setup when entering TabNavigator
 - **Graceful Fallbacks**: App functions normally if notifications are denied
-- **Device Detection**: Only requests permissions on physical devices
-- **Token Refresh**: Automatic token updates when users re-enter the app
+- **Device Registration**: Automatic Stream Chat device registration with FCM tokens
+- **Token Refresh**: Automatic token updates on app entry for existing users
 
 #### **Backend Integration**
 
 - **FCM Token Storage**: `users.fcmToken` field in Firestore
-- **Match Notifications**: Implemented but commented in `functions/src/swipes/swipes.ts`
-- **Stream Chat Setup**: Automatic device registration with Stream Chat
-- **Token Updates**: Backend receives fresh tokens on each app entry
+- **Stream Chat Setup**: Automatic device registration with Stream Chat using FCM tokens
+- **Token Updates**: Backend receives fresh tokens through Stream notification service
+- **Native Capabilities**: Full native notification support through React Native Firebase
 
 ## 🚀 Getting Started
 
@@ -270,7 +270,7 @@ Harbor implements a comprehensive push notification system using **Expo Notifica
 
    - Go to [Google Cloud Console](https://console.cloud.google.com)
    - Navigate to Secret Manager
-   - Create secrets for `STREAM_API_KEY` and `STREAM_API_SECRET`
+   - Create secrets for `STREAM_API_SECRET` (used by backend functions)
 
 4. **Configure Firebase Functions:**
 
@@ -306,10 +306,10 @@ Harbor implements a comprehensive push notification system using **Expo Notifica
    npm install
    ```
 
-2. **Configure Environment Variables:**
+2. **Configure Firebase:**
 
-   - Add your Firebase config to `firebaseConfig.ts`
-   - Set up Google Sign-In credentials
+   - Firebase configuration is already set up in `firebaseConfig.ts`
+   - No additional environment variables needed for notifications
 
 3. **Run the App:**
    ```bash
