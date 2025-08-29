@@ -46,6 +46,8 @@ export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] =
+    useState<boolean>(true);
+  const [recommendationsFetched, setRecommendationsFetched] =
     useState<boolean>(false);
   const [loadingProfile, setLoadingProfile] = useState<boolean>(true);
   const [isNoPressed, setIsNoPressed] = useState(false);
@@ -66,6 +68,7 @@ export default function HomeScreen() {
     maxSwipesPerDay: number;
     canSwipe: boolean;
   } | null>(null);
+  const [loadingSwipeLimit, setLoadingSwipeLimit] = useState<boolean>(true);
   const [currentCardProfile, setCurrentCardProfile] = useState<Profile | null>(
     null
   );
@@ -198,6 +201,7 @@ export default function HomeScreen() {
         return;
       }
 
+      setLoadingSwipeLimit(true);
       try {
         const limitData = await SwipeLimitService.getSwipeLimit(userId);
         setSwipeLimit({
@@ -207,6 +211,8 @@ export default function HomeScreen() {
         });
       } catch (error) {
         console.error("❌ [HOMESCREEN] Error fetching swipe limit:", error);
+      } finally {
+        setLoadingSwipeLimit(false);
       }
     };
 
@@ -221,7 +227,6 @@ export default function HomeScreen() {
 
       // Check if user has active matches before fetching recommendations
       if (!userId) {
-        console.log("❌ [HOMESCREEN] No userId available, skipping match check");
         // Continue with recommendations fetch if no userId
       } else {
         try {
@@ -234,16 +239,17 @@ export default function HomeScreen() {
 
           if (hasActiveMatches) {
             // User is in a match, don't fetch recommendations
-            console.log(
-              "❌ [HOMESCREEN] User has active matches, skipping recommendations fetch"
-            );
             setRecommendations([]);
             setCurrentProfile(null);
             setLoadingRecommendations(false);
+            setRecommendationsFetched(true);
             return;
           }
         } catch (error) {
-          console.error("❌ [HOMESCREEN] Error checking active matches:", error);
+          console.error(
+            "❌ [HOMESCREEN] Error checking active matches:",
+            error
+          );
           // Continue with recommendations fetch if we can't check matches
         }
       }
@@ -282,6 +288,7 @@ export default function HomeScreen() {
         }
       } finally {
         setLoadingRecommendations(false);
+        setRecommendationsFetched(true);
       }
     };
 
@@ -573,7 +580,13 @@ export default function HomeScreen() {
     // }
   };
 
-  if (loadingProfile || loadingRecommendations) {
+  // Show loading screen until all necessary data is loaded
+  const isLoading =
+    loadingProfile || loadingRecommendations || loadingSwipeLimit;
+  const hasRequiredData = userId && isAuthenticated && currentUser;
+  const hasCompletedInitialLoad = recommendationsFetched;
+
+  if (isLoading || !hasRequiredData || !hasCompletedInitialLoad) {
     return <LoadingScreen loadingText="Loading your Harbor" />;
   }
 

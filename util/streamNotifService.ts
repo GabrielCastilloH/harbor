@@ -62,20 +62,43 @@ export class StreamNotificationService {
     }
 
     try {
-      // Get current FCM token
-      const messaging = getMessaging();
-      const token = await getToken(messaging);
+      await this.setupDevice(userId);
+    } catch (error) {
+      console.error("🔔 Error registering device:", error);
+      throw error;
+    }
+  }
 
-      // Register device with Stream Chat using the new v2 format
-      await this.client.addDevice(
-        token,
+  /**
+   * Robust device setup with clean state management
+   */
+  private async setupDevice(userId: string): Promise<void> {
+    const messaging = getMessaging();
+    const fcmToken = await getToken(messaging);
+
+    if (!fcmToken) {
+      return;
+    }
+
+    try {
+      // First, remove all existing devices for the user to ensure a clean state
+      const devices = await this.client!.getDevices(userId);
+      if (devices?.devices && devices.devices.length > 0) {
+        for (const device of devices.devices) {
+          await this.client!.removeDevice(device.id);
+        }
+      }
+
+      // Then, add the fresh, valid token
+      await this.client!.addDevice(
+        fcmToken,
         "firebase",
         userId,
-        "HarborFirebasePush"
+        "HarborFirebasePush" // Ensure this matches the config name in Stream dashboard
       );
 
       // Store token locally
-      await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+      await AsyncStorage.setItem(PUSH_TOKEN_KEY, fcmToken);
 
       // Set up token refresh listener
       this.unsubscribeTokenRefresh = onTokenRefresh(
@@ -85,7 +108,7 @@ export class StreamNotificationService {
         }
       );
     } catch (error) {
-      console.error("🔔 Error registering device:", error);
+      console.error("🔔 Error in setupDevice:", error);
       throw error;
     }
   }
@@ -100,9 +123,11 @@ export class StreamNotificationService {
     if (!this.client) return;
 
     try {
-      const oldToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+      // Update Firestore user profile with new token
+      await this.updateUserFCMToken(userId, newToken);
 
       // Remove old device and add new one
+      const oldToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
       if (oldToken) {
         await this.client.removeDevice(oldToken);
       }
@@ -116,6 +141,28 @@ export class StreamNotificationService {
       await AsyncStorage.setItem(PUSH_TOKEN_KEY, newToken);
     } catch (error) {
       console.error("🔔 Error handling token refresh:", error);
+    }
+  }
+
+  /**
+   * Update user's FCM token in Firestore
+   */
+  private async updateUserFCMToken(
+    userId: string,
+    fcmToken: string
+  ): Promise<void> {
+    try {
+      const { doc, updateDoc, serverTimestamp } = await import(
+        "firebase/firestore"
+      );
+      const { db } = await import("../firebaseConfig");
+
+      await updateDoc(doc(db, "users", userId), {
+        fcmToken: fcmToken,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("🔔 Error updating FCM token in Firestore:", error);
     }
   }
 
@@ -162,6 +209,40 @@ export class StreamNotificationService {
     } catch (error) {
       console.error("🔔 Error checking notification status:", error);
       return false;
+    }
+  }
+
+  /**
+   * Save FCM token to user profile (call this during user setup/sign-in)
+   */
+  async saveUserToken(userId: string): Promise<void> {
+    try {
+      const messaging = getMessaging();
+      const token = await getToken(messaging);
+
+      if (!token) {
+        return;
+      }
+
+      await this.updateUserFCMToken(userId, token);
+    } catch (error) {
+      console.error("🔔 Failed to save FCM token to user profile:", error);
+    }
+  }
+
+  /**
+   * Initialize notifications for a user (complete setup)
+   */
+  async initializeForUser(userId: string): Promise<void> {
+    try {
+      // First save token to user profile
+      await this.saveUserToken(userId);
+
+      // Then register with Stream Chat
+      await this.registerDevice(userId);
+    } catch (error) {
+      console.error("🔔 Error initializing notifications:", error);
+      throw error;
     }
   }
 }
