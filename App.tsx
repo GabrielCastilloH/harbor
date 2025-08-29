@@ -118,8 +118,8 @@ function AppContent() {
   const { isInitialized, isAuthenticated, currentUser } = useAppContext();
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [notification, setNotification] = useState<any>(null);
-  const notificationListener = React.useRef<any>();
-  const responseListener = React.useRef<any>();
+  const notificationListener = React.useRef<any>(null);
+  const responseListener = React.useRef<any>(null);
 
   // Register for push notifications and save token
   useEffect(() => {
@@ -202,6 +202,8 @@ function AppContent() {
         shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
       };
     },
   });
