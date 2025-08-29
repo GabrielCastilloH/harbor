@@ -46,4 +46,8 @@ export const SUPERWALL_CONFIG = {
   },
 };
 
+// Expo project ID and Stream API key from environment (for push notifications)
+export const EXPO_PROJECT_ID = process.env.EXPO_PUBLIC_EXPO_PROJECT_ID || "";
+export const STREAM_API_KEY = process.env.EXPO_PUBLIC_STREAM_API_KEY || "";
+
 export default app;

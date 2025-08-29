@@ -1,4 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { EXPO_PROJECT_ID, STREAM_API_KEY } from "./firebaseConfig";
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";
+import { StreamChat } from "stream-chat";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -109,7 +115,96 @@ function MainNavigator() {
 }
 
 function AppContent() {
-  const { isInitialized, isAuthenticated } = useAppContext();
+  const { isInitialized, isAuthenticated, currentUser } = useAppContext();
+  const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
+  const [notification, setNotification] = useState<any>(null);
+  const notificationListener = React.useRef<any>();
+  const responseListener = React.useRef<any>();
+
+  // Register for push notifications and save token
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser) return;
+
+    const registerForPushNotificationsAsync = async () => {
+      let token;
+      if (Device.isDevice) {
+        const { status: existingStatus } =
+          await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        if (existingStatus !== "granted") {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+        if (finalStatus !== "granted") {
+          return;
+        }
+        // Use Expo project ID from secrets/config
+        token = (
+          await Notifications.getExpoPushTokenAsync({
+            projectId: EXPO_PROJECT_ID,
+          })
+        ).data;
+        setExpoPushToken(token);
+        // Save token to Firestore
+        try {
+          const db = getFirestore();
+          const auth = getAuth();
+          if (currentUser?.uid) {
+            await setDoc(
+              doc(db, "users", currentUser.uid),
+              { fcmToken: token },
+              { merge: true }
+            );
+          }
+        } catch (e) {
+          console.error("Error saving push token to Firestore", e);
+        }
+        // Register token with Stream Chat
+        try {
+          const streamClient = StreamChat.getInstance(STREAM_API_KEY);
+          await streamClient.addDevice(token, "firebase");
+        } catch (e) {
+          console.error("Error registering device with Stream Chat", e);
+        }
+      }
+    };
+    registerForPushNotificationsAsync();
+  }, [isAuthenticated, currentUser]);
+
+  // Notification handlers
+  useEffect(() => {
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
+        setNotification(notification);
+      });
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        // Handle notification tap (navigate, etc.)
+        const data = response.notification.request.content.data;
+        if (data?.type === "new_match") {
+          // TODO: Navigate to match modal or chat
+        } else if (data?.type === "message.new") {
+          // TODO: Navigate to chat screen
+        }
+      });
+    return () => {
+      Notifications.removeNotificationSubscription(
+        notificationListener.current
+      );
+      Notifications.removeNotificationSubscription(responseListener.current);
+    };
+  }, []);
+
+  // Set notification handler for foreground
+  Notifications.setNotificationHandler({
+    handleNotification: async (notification) => {
+      return {
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      };
+    },
+  });
 
   if (!isInitialized) {
     return <LoadingScreen loadingText="Signing you in..." />;
