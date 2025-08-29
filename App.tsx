@@ -148,7 +148,6 @@ function AppContent() {
         // Save token to Firestore
         try {
           const db = getFirestore();
-          const auth = getAuth();
           if (currentUser?.uid) {
             await setDoc(
               doc(db, "users", currentUser.uid),
@@ -188,10 +187,8 @@ function AppContent() {
         }
       });
     return () => {
-      Notifications.removeNotificationSubscription(
-        notificationListener.current
-      );
-      Notifications.removeNotificationSubscription(responseListener.current);
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
     };
   }, []);
 
