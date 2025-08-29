@@ -18,6 +18,9 @@
       "bundleIdentifier": "com.gabrielach.harbor",
       "googleServicesFile": "./GoogleService-Info.plist",
       "buildNumber": "1",
+      "entitlements": {
+        "aps-environment": "production"
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Harbor needs access to your camera to take profile photos.",
@@ -36,7 +39,10 @@
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.WAKE_LOCK"
       ],
       "package": "com.gabrielach.harbor",
       "googleServicesFile": "./google-services.json"
