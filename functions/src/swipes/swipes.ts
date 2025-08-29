@@ -253,55 +253,51 @@ export const createSwipe = functions.https.onCall(
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
-            // ========================================
-            // NOTIFICATION GROUNDWORK (COMMENTED OUT)
-            // ========================================
-            // TODO: When implementing push notifications, uncomment this section
-            //
-            // // Send push notification to the matched user
-            // try {
-            //   const matchedUserDoc = await db.collection("users").doc(swipedId).get();
-            //   const matchedUser = matchedUserDoc.data();
-            //
-            //   if (matchedUser?.fcmToken) {
-            //     // Send notification using Firebase Cloud Messaging
-            //     const message = {
-            //       token: matchedUser.fcmToken,
-            //       notification: {
-            //         title: "New Match! 💕",
-            //         body: `You matched with ${swiperUser?.firstName || "someone"}!`,
-            //       },
-            //       data: {
-            //         type: "new_match",
-            //         matchId: matchRef.id,
-            //         matchedUserId: swiperId,
-            //         click_action: "FLUTTER_NOTIFICATION_CLICK",
-            //       },
-            //       android: {
-            //         notification: {
-            //           channelId: "matches",
-            //           priority: "high",
-            //         },
-            //       },
-            //       apns: {
-            //         payload: {
-            //           aps: {
-            //             sound: "default",
-            //             badge: 1,
-            //           },
-            //         },
-            //       },
-            //     };
-            //
-            //     // Send using Firebase Admin SDK
-            //     await admin.messaging().send(message);
-            //     await logToNtfy(`[${requestId}] NOTIFICATION SENT: ${swipedId}`);
-            //   }
-            // } catch (notificationError) {
-            //   await logToNtfy(`[${requestId}] NOTIFICATION ERROR: ${notificationError}`);
-            //   // Don't fail the match creation if notification fails
-            // }
-            // ========================================
+            // Send push notification to the matched user
+            try {
+              const matchedUserDoc = await db.collection("users").doc(swipedId).get();
+              const matchedUser = matchedUserDoc.data();
+
+              if (matchedUser?.fcmToken) {
+                // Send notification using Firebase Cloud Messaging
+                const message = {
+                  token: matchedUser.fcmToken,
+                  notification: {
+                    title: "New Match! 💕",
+                    body: `You matched with ${swiperUser?.firstName || "someone"}!`,
+                  },
+                  data: {
+                    type: "new_match",
+                    matchId: matchRef.id,
+                    matchedUserId: swiperId,
+                    click_action: "FLUTTER_NOTIFICATION_CLICK",
+                  },
+                  android: {
+                    notification: {
+                      channelId: "matches",
+                      priority: "high" as const,
+                    },
+                  },
+                  apns: {
+                    payload: {
+                      aps: {
+                        sound: "default",
+                        badge: 1,
+                      },
+                    },
+                  },
+                };
+
+                // Send using Firebase Admin SDK
+                await admin.messaging().send(message);
+                await logToNtfy(`[${requestId}] NOTIFICATION SENT: ${swipedId}`);
+              } else {
+                await logToNtfy(`[${requestId}] NO FCM TOKEN FOR USER: ${swipedId}`);
+              }
+            } catch (notificationError) {
+              await logToNtfy(`[${requestId}] NOTIFICATION ERROR: ${notificationError}`);
+              // Don't fail the match creation if notification fails
+            }
 
             return {
               message: "Swipe recorded and match created",

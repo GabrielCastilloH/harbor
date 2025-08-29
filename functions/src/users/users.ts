@@ -157,9 +157,13 @@ export const createUser = functions.https.onCall(
       if (!userData.firstName?.trim()) {
         validationErrors.push("Your name, initial(s) or nickname is required");
       } else if (userData.firstName.trim().length < 1) {
-        validationErrors.push("Your name, initial(s) or nickname must be at least 1 character");
+        validationErrors.push(
+          "Your name, initial(s) or nickname must be at least 1 character"
+        );
       } else if (userData.firstName.trim().length > 11) {
-        validationErrors.push("Your name, initial(s) or nickname must be 11 characters or less");
+        validationErrors.push(
+          "Your name, initial(s) or nickname must be 11 characters or less"
+        );
       }
 
       if (!userData.age || userData.age < 18) {
@@ -554,11 +558,17 @@ export const updateUser = functions.https.onCall(
       // Validate first name if provided
       if (userData.firstName !== undefined) {
         if (!userData.firstName?.trim()) {
-          validationErrors.push("Your name, initial(s) or nickname is required");
+          validationErrors.push(
+            "Your name, initial(s) or nickname is required"
+          );
         } else if (userData.firstName.trim().length < 1) {
-          validationErrors.push("Your name, initial(s) or nickname must be at least 1 character");
+          validationErrors.push(
+            "Your name, initial(s) or nickname must be at least 1 character"
+          );
         } else if (userData.firstName.trim().length > 11) {
-          validationErrors.push("Your name, initial(s) or nickname must be 11 characters or less");
+          validationErrors.push(
+            "Your name, initial(s) or nickname must be 11 characters or less"
+          );
         }
       }
 
@@ -837,6 +847,176 @@ export const markPaywallAsSeen = functions.https.onCall(
   }
 );
 
+/**
+ * Deletes a user account and all associated data
+ */
+export const deleteUser = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "512MiB", // Increased memory for complex deletion operations
+    timeoutSeconds: 120, // Increased timeout for comprehensive cleanup
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: functions.https.CallableRequest) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const userId = request.auth.uid;
+
+      // Use transaction for atomic deletion operations
+      await db.runTransaction(async (transaction) => {
+        // 1. Get user data first to collect all related information
+        const userDoc = await transaction.get(db.collection("users").doc(userId));
+        if (!userDoc.exists) {
+          throw new functions.https.HttpsError("not-found", "User not found");
+        }
+
+        const userData = userDoc.data();
+        const currentMatches = userData?.currentMatches || [];
+
+        // 2. Delete user document
+        transaction.delete(db.collection("users").doc(userId));
+
+        // 3. Remove user from all their matches and deactivate them
+        for (const matchId of currentMatches) {
+          const matchDoc = await transaction.get(db.collection("matches").doc(matchId));
+          if (matchDoc.exists) {
+            const matchData = matchDoc.data();
+            if (matchData) {
+              // Deactivate the match
+              transaction.update(db.collection("matches").doc(matchId), {
+                isActive: false,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+
+              // Remove match from the other user's currentMatches array
+              const otherUserId = matchData.user1Id === userId ? matchData.user2Id : matchData.user1Id;
+              const otherUserDoc = await transaction.get(db.collection("users").doc(otherUserId));
+              if (otherUserDoc.exists) {
+                const otherUserData = otherUserDoc.data();
+                const updatedMatches = (otherUserData?.currentMatches || []).filter(
+                  (id: string) => id !== matchId
+                );
+                transaction.update(db.collection("users").doc(otherUserId), {
+                  currentMatches: updatedMatches,
+                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+              }
+            }
+          }
+        }
+
+        // 4. Delete all swipes by this user
+        const swipesQuery = db.collection("swipes").where("userId", "==", userId);
+        const swipesSnapshot = await swipesQuery.get();
+        swipesSnapshot.docs.forEach((doc) => {
+          transaction.delete(doc.ref);
+        });
+
+        // 5. Delete all swipes targeting this user
+        const swipesOnUserQuery = db.collection("swipes").where("targetUserId", "==", userId);
+        const swipesOnUserSnapshot = await swipesOnUserQuery.get();
+        swipesOnUserSnapshot.docs.forEach((doc) => {
+          transaction.delete(doc.ref);
+        });
+
+        // 6. Delete all reports by this user
+        const reportsByUserQuery = db.collection("reports").where("reporterId", "==", userId);
+        const reportsByUserSnapshot = await reportsByUserQuery.get();
+        reportsByUserSnapshot.docs.forEach((doc) => {
+          transaction.delete(doc.ref);
+        });
+
+        // 7. Delete all reports targeting this user
+        const reportsOnUserQuery = db.collection("reports").where("reportedUserId", "==", userId);
+        const reportsOnUserSnapshot = await reportsOnUserQuery.get();
+        reportsOnUserSnapshot.docs.forEach((doc) => {
+          transaction.delete(doc.ref);
+        });
+
+        // 8. Delete verification codes for this user
+        const verificationCodeDoc = await transaction.get(
+          db.collection("verificationCodes").doc(userId)
+        );
+        if (verificationCodeDoc.exists) {
+          transaction.delete(verificationCodeDoc.ref);
+        }
+      });
+
+      // 9. Delete Stream Chat user (outside transaction)
+      try {
+        const client = await getStreamClient();
+        await client.deleteUser(userId, {
+          mark_messages_deleted: true,
+          hard_delete: true,
+        });
+      } catch (streamError) {
+        console.error("Failed to delete Stream Chat user:", streamError);
+        // Don't fail the entire operation if Stream Chat deletion fails
+      }
+
+      // 10. Delete user images from Firebase Storage
+      try {
+        const bucket = admin.storage().bucket();
+        const userImagesPrefix = `users/${userId}/`;
+        
+        // List all files for this user
+        const [files] = await bucket.getFiles({ prefix: userImagesPrefix });
+        
+        // Delete all files
+        if (files.length > 0) {
+          await Promise.all(files.map(file => file.delete()));
+        }
+      } catch (storageError) {
+        console.error("Failed to delete user images from storage:", storageError);
+        // Don't fail the entire operation if storage deletion fails
+      }
+
+      // 11. Delete Firebase Auth user (this must be last)
+      try {
+        await admin.auth().deleteUser(userId);
+      } catch (authError) {
+        console.error("Failed to delete Firebase Auth user:", authError);
+        // This is critical - if this fails, the user account still exists
+        throw new functions.https.HttpsError(
+          "internal",
+          "Failed to delete user account. Please try again."
+        );
+      }
+
+      await logToNtfy(`USER DELETED: ${userId} - Account and all data permanently removed`);
+
+      return { success: true, message: "Account deleted successfully" };
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      await logToNtfy(
+        `USER DELETION ERROR: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to delete user account"
+      );
+    }
+  }
+);
+
 export const userFunctions = {
   createUser,
   getAllUsers,
@@ -844,4 +1024,5 @@ export const userFunctions = {
   updateUser,
   unmatchUser,
   markPaywallAsSeen,
+  deleteUser,
 };

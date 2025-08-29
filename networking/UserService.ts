@@ -86,7 +86,6 @@ export class UserService {
   // PREMIUM DISABLED: Paywall function commented out
   static async markPaywallAsSeen(userId: string) {
     // Premium functionality disabled - return success without calling backend
-    console.log("Premium disabled: markPaywallAsSeen called but ignored");
     return { success: true };
 
     // Original implementation commented out:
@@ -103,5 +102,26 @@ export class UserService {
     //   console.error("UserService - Error marking paywall as seen:", error);
     //   throw error;
     // }
+  }
+
+  /**
+   * Deletes the user's account and all associated data
+   */
+  static async deleteAccount(): Promise<{ success: boolean; message: string }> {
+    try {
+      const { httpsCallable } = await import("firebase/functions");
+      const { getFunctions } = await import("firebase/functions");
+      
+      const functions = getFunctions();
+      const deleteUserFunction = httpsCallable(functions, "userFunctions-deleteUser");
+      
+      const result = await deleteUserFunction();
+      return result.data as { success: boolean; message: string };
+    } catch (error: any) {
+      console.error("❌ [UserService] Error deleting account:", error);
+      throw new Error(
+        error.message || "Failed to delete account. Please try again."
+      );
+    }
   }
 }

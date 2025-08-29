@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 
 interface PasswordInputProps {
@@ -93,7 +94,11 @@ export default function PasswordInput({
           onPress={() => setShowPassword(!showPassword)}
           disabled={!editable}
         >
-          <Text style={styles.eyeButtonText}>{showPassword ? "🙈" : "👁️"}</Text>
+          <Ionicons
+            name={showPassword ? "eye-off-outline" : "eye-outline"}
+            size={20}
+            color={!editable ? Colors.secondary500 : Colors.primary500}
+          />
         </TouchableOpacity>
       </View>
 
@@ -145,9 +150,6 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     padding: 4,
-  },
-  eyeButtonText: {
-    fontSize: 20,
   },
   errorText: {
     color: Colors.red,

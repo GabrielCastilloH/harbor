@@ -252,6 +252,11 @@ export default function EditProfileScreen() {
       // Store the updated full user profile in context
       setProfile(response.user);
 
+      // 🏆 The Fix: Reset the initial profile state after a successful save.
+      // This prevents the "Exit Without Saving" message from appearing
+      // when the user tries to exit after saving.
+      initialProfileRef.current = finalProfileData;
+
       Alert.alert("Success", "Profile saved successfully!");
     } catch (error: any) {
       // Error handling

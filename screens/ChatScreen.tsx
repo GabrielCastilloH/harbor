@@ -35,6 +35,7 @@ export default function ChatScreen() {
   >(null);
   const [consentStatus, setConsentStatus] = useState<any>(null);
   const [isMatchActive, setIsMatchActive] = useState<boolean>(false);
+  const [hasMatchedUser, setHasMatchedUser] = useState<boolean>(false);
   // debug counters removed
   const lastHandledMessageIdRef = useRef<string | null>(null);
   const lastAppliedFreezeRef = useRef<boolean | null>(null);
@@ -146,7 +147,7 @@ export default function ChatScreen() {
     checkConsentState();
   }, [channel, userId, activeMatchId]);
 
-  // Fetch matched user name
+  // Fetch matched user name and enable profile button immediately
   useEffect(() => {
     const getMatchedUserName = async () => {
       if (!channel || !userId) {
@@ -161,6 +162,9 @@ export default function ChatScreen() {
 
       if (otherUserId) {
         setMatchedUserId(otherUserId);
+        // Enable profile button immediately when we have a matched user
+        setHasMatchedUser(true);
+
         try {
           const response = await UserService.getUserById(otherUserId);
 
@@ -173,6 +177,8 @@ export default function ChatScreen() {
           console.error("Error fetching matched user name:", error);
           setMatchedUserName("User");
         }
+      } else {
+        setHasMatchedUser(false);
       }
     };
 
@@ -263,7 +269,7 @@ export default function ChatScreen() {
         title={matchedUserName}
         onBack={() => navigation.goBack()}
         onTitlePress={
-          isMatchActive
+          hasMatchedUser
             ? () => {
                 if (matchedUserId) {
                   (navigation as any).navigate("ProfileScreen", {
@@ -277,14 +283,14 @@ export default function ChatScreen() {
         rightIcon={{
           name: "person",
           onPress: () => {
-            if (matchedUserId && isMatchActive) {
+            if (matchedUserId && hasMatchedUser) {
               (navigation as any).navigate("ProfileScreen", {
                 userId: matchedUserId,
                 matchId: null,
               });
             }
           },
-          disabled: !isMatchActive,
+          disabled: !hasMatchedUser,
         }}
       />
 
