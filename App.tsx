@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -110,44 +109,6 @@ function MainNavigator() {
 
 function AppContent() {
   const { isInitialized, isAuthenticated, currentUser } = useAppContext();
-  const [notification, setNotification] = useState<any>(null);
-  const notificationListener = React.useRef<any>(null);
-  const responseListener = React.useRef<any>(null);
-
-  // Notification handlers
-  useEffect(() => {
-    notificationListener.current =
-      Notifications.addNotificationReceivedListener((notification) => {
-        setNotification(notification);
-      });
-    responseListener.current =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        // Handle notification tap (navigate, etc.)
-        const data = response.notification.request.content.data;
-        if (data?.type === "new_match") {
-          // TODO: Navigate to match modal or chat
-        } else if (data?.type === "message.new") {
-          // TODO: Navigate to chat screen
-        }
-      });
-    return () => {
-      notificationListener.current?.remove();
-      responseListener.current?.remove();
-    };
-  }, []);
-
-  // Set notification handler for foreground
-  Notifications.setNotificationHandler({
-    handleNotification: async (notification) => {
-      return {
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      };
-    },
-  });
 
   if (!isInitialized) {
     return <LoadingScreen loadingText="Signing you in..." />;
