@@ -190,16 +190,16 @@ All fields must be completed before profile creation:
 
 #### Text Field Limits
 
-| Field                              | Min Length | Max Length | Description                    |
-| ---------------------------------- | ---------- | ---------- | ------------------------------ |
-| Your Name, Initial(s) or Nickname | 1          | 50         | Your name, initial(s) or nickname |
-| About Me                           | 5          | 180        | Personal description           |
-| Q1: "This year, I really want to"  | 5          | 100        | Personal goal                  |
-| Q2: "Together we could"            | 5          | 100        | Shared activity                |
-| Q3: "Favorite book, movie or song" | 5          | 100        | Cultural preference            |
-| Q4: "I chose my major because"     | 5          | 100        | Academic motivation            |
-| Q5: "My favorite study spot is"    | 5          | 100        | Study preference               |
-| Q6: "Some of my hobbies are"       | 5          | 100        | Personal interests             |
+| Field                              | Min Length | Max Length | Description                       |
+| ---------------------------------- | ---------- | ---------- | --------------------------------- |
+| Your Name, Initial(s) or Nickname  | 1          | 50         | Your name, initial(s) or nickname |
+| About Me                           | 5          | 180        | Personal description              |
+| Q1: "This year, I really want to"  | 5          | 100        | Personal goal                     |
+| Q2: "Together we could"            | 5          | 100        | Shared activity                   |
+| Q3: "Favorite book, movie or song" | 5          | 100        | Cultural preference               |
+| Q4: "I chose my major because"     | 5          | 100        | Academic motivation               |
+| Q5: "My favorite study spot is"    | 5          | 100        | Study preference                  |
+| Q6: "Some of my hobbies are"       | 5          | 100        | Personal interests                |
 
 #### Backend Enforcement
 

@@ -24,6 +24,7 @@ import { useNotification } from "../context/NotificationContext";
 // import { useUser } from "expo-superwall"; // PREMIUM DISABLED
 import SettingsButton from "../components/SettingsButton";
 import MainHeading from "../components/MainHeading";
+import DeleteAccountButton from "../components/DeleteAccountButton";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -220,6 +221,11 @@ export default function SettingsScreen() {
             isLoading={isSigningOut}
             disabled={isSigningOut}
           />
+        </View>
+
+        {/* Delete Account Section */}
+        <View style={styles.section}>
+          <DeleteAccountButton />
         </View>
       </ScrollView>
     </>
