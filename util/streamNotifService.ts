@@ -38,6 +38,18 @@ export class StreamNotificationService {
   async requestPermission(): Promise<boolean> {
     try {
       const messaging = getMessaging();
+
+      // First, register device for remote messages (required for iOS)
+      try {
+        await messaging.registerDeviceForRemoteMessages();
+      } catch (registrationError) {
+        console.error(
+          "🔔 Error registering device for remote messages:",
+          registrationError
+        );
+        // Continue with permission request even if registration fails
+      }
+
       const authStatus = await requestPermission(messaging);
       const enabled =
         authStatus === AuthorizationStatus.AUTHORIZED ||
@@ -74,6 +86,15 @@ export class StreamNotificationService {
    */
   private async setupDevice(userId: string): Promise<void> {
     const messaging = getMessaging();
+
+    try {
+      // Register device for remote messages (required for iOS)
+      await messaging.registerDeviceForRemoteMessages();
+    } catch (error) {
+      console.error("🔔 Error registering device for remote messages:", error);
+      throw error;
+    }
+
     const fcmToken = await getToken(messaging);
 
     if (!fcmToken) {
@@ -218,6 +239,18 @@ export class StreamNotificationService {
   async saveUserToken(userId: string): Promise<void> {
     try {
       const messaging = getMessaging();
+
+      try {
+        // Register device for remote messages (required for iOS)
+        await messaging.registerDeviceForRemoteMessages();
+      } catch (registrationError) {
+        console.error(
+          "🔔 Error registering device for remote messages:",
+          registrationError
+        );
+        throw registrationError;
+      }
+
       const token = await getToken(messaging);
 
       if (!token) {
