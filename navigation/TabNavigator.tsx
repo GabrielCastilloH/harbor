@@ -1,13 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "react-native";
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
-import { StreamChat } from "stream-chat";
-import { EXPO_PROJECT_ID, STREAM_API_KEY } from "../firebaseConfig";
 import { useAppContext } from "../context/AppContext";
+import { streamNotificationService } from "../util/streamNotifService";
 import HomeStack from "./HomeStack";
 import SettingsStack from "./SettingsStack";
 import ChatNavigator from "./ChatNavigator";
@@ -17,66 +13,30 @@ const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
   const { currentUser } = useAppContext();
-  const [hasRequestedPermissions, setHasRequestedPermissions] = useState(false);
 
-  // Request notification permissions and setup FCM token when TabNavigator loads
+  // Initialize Stream notifications when TabNavigator loads (after account setup)
   useEffect(() => {
-    if (!currentUser || hasRequestedPermissions) return;
+    if (!currentUser?.uid) return;
 
-    const requestNotificationPermissionsAndSetupToken = async () => {
+    const initializeStreamNotifications = async () => {
       try {
-        let token;
-        if (Device.isDevice) {
-          const { status: existingStatus } =
-            await Notifications.getPermissionsAsync();
-          let finalStatus = existingStatus;
-
-          if (existingStatus !== "granted") {
-            const { status } = await Notifications.requestPermissionsAsync();
-            finalStatus = status;
-          }
-
-          if (finalStatus !== "granted") {
-            console.log("Notification permission denied");
-            setHasRequestedPermissions(true);
-            return;
-          }
-
-          // Get Expo push token
-          token = (
-            await Notifications.getExpoPushTokenAsync({
-              projectId: EXPO_PROJECT_ID,
-            })
-          ).data;
-
-          // Save token to Firestore
-          if (currentUser?.uid) {
-            const db = getFirestore();
-            await setDoc(
-              doc(db, "users", currentUser.uid),
-              { fcmToken: token },
-              { merge: true }
-            );
-          }
-
-          // Register token with Stream Chat
-          try {
-            const streamClient = StreamChat.getInstance(STREAM_API_KEY);
-            await streamClient.addDevice(token, "firebase");
-          } catch (e) {
-            console.error("Error registering device with Stream Chat", e);
-          }
+        // Request permission and save FCM token for Stream notifications
+        const granted = await streamNotificationService.requestPermission();
+        if (granted) {
+          // Save FCM token to user profile (handled internally by Stream service)
+          await streamNotificationService.saveUserToken(currentUser.uid);
         }
-
-        setHasRequestedPermissions(true);
       } catch (error) {
-        console.error("Error setting up notifications:", error);
-        setHasRequestedPermissions(true);
+        console.error(
+          "TabNavigator - Error initializing Stream notifications:",
+          error
+        );
+        // Don't block the app if notification setup fails
       }
     };
 
-    requestNotificationPermissionsAndSetupToken();
-  }, [currentUser, hasRequestedPermissions]);
+    initializeStreamNotifications();
+  }, [currentUser]);
 
   return (
     <Tab.Navigator

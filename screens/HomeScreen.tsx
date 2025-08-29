@@ -13,16 +13,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
-import { StreamChat } from "stream-chat";
-import { EXPO_PROJECT_ID, STREAM_API_KEY } from "../firebaseConfig";
 import {
   useNavigation,
   NavigationProp,
   useFocusEffect,
 } from "@react-navigation/native";
+import { streamNotificationService } from "../util/streamNotifService";
 import Colors from "../constants/Colors";
 import AnimatedStack from "../components/AnimatedStack";
 import MatchModal from "./MatchModal";
@@ -146,52 +142,26 @@ export default function HomeScreen() {
     };
   }, [userId, isAuthenticated, currentUser]);
 
-  // Update FCM token when entering HomeScreen (for existing users)
+  // Refresh FCM token when entering HomeScreen (for existing users)
   useEffect(() => {
     if (!userId || !isAuthenticated || !currentUser) {
       return;
     }
 
-    const updateFCMToken = async () => {
+    const refreshStreamNotificationToken = async () => {
       try {
-        if (Device.isDevice) {
-          // Check if notifications are granted
-          const { status } = await Notifications.getPermissionsAsync();
-
-          if (status === "granted") {
-            // Get current Expo push token
-            const token = (
-              await Notifications.getExpoPushTokenAsync({
-                projectId: EXPO_PROJECT_ID,
-              })
-            ).data;
-
-            // Update token in Firestore
-            const db = getFirestore();
-            await setDoc(
-              doc(db, "users", currentUser.uid),
-              { fcmToken: token },
-              { merge: true }
-            );
-
-            // Update token with Stream Chat
-            try {
-              const streamClient = StreamChat.getInstance(STREAM_API_KEY);
-              await streamClient.addDevice(token, "firebase");
-            } catch (e) {
-              console.error(
-                "HomeScreen - Error updating Stream Chat device token:",
-                e
-              );
-            }
-          }
-        }
+        // Refresh FCM token for existing users (handles device changes, etc.)
+        await streamNotificationService.saveUserToken(currentUser.uid);
       } catch (error) {
-        console.error("HomeScreen - Error updating FCM token:", error);
+        console.error(
+          "HomeScreen - Error refreshing Stream notification token:",
+          error
+        );
+        // Don't block the app if token refresh fails
       }
     };
 
-    updateFCMToken();
+    refreshStreamNotificationToken();
   }, [userId, isAuthenticated, currentUser]);
 
   useEffect(() => {
