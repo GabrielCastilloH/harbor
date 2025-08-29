@@ -270,11 +270,13 @@ export default function ChatNavigator() {
         // Set the client in the notification service
         streamNotificationService.setClient(chatClient);
 
-        // Check if notifications are enabled and register device if needed
+        // Check if notifications are enabled and initialize if needed
         const areEnabled =
           await streamNotificationService.areNotificationsEnabled();
         if (areEnabled) {
-          await streamNotificationService.registerDevice(userId);
+          await streamNotificationService.initializeForUser(userId);
+        } else {
+          // Notifications not enabled, skip initialization
         }
       } catch (error) {
         console.error(
