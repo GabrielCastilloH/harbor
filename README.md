@@ -208,39 +208,208 @@ All fields must be completed before profile creation:
 - **ACID compliance**: All validations enforced in transactions
 - **Error handling**: Graceful failure with clear error messages
 
-## 🔔 Push Notifications
+## 🔔 Push Notifications Implementation
 
-Harbor implements push notifications using **React Native Firebase** for FCM token management and **Stream Chat** for message notifications. The system provides reliable push notifications for chat messages with proper device registration and token management.
+Harbor implements a comprehensive push notification system using **React Native Firebase** for FCM token management and **Stream Chat** for message delivery. The system provides production-ready notifications with proper device registration, token management, and automatic refresh capabilities.
 
-### Current Implementation
+### **📱 Complete Implementation Flow**
 
-#### **Notification Flow**
+#### **🎯 1. When Permission Request Happens**
 
-1. **Permission Request**: Triggered when users access the main app (TabNavigator) after account creation
-2. **FCM Token Management**: Tokens are automatically fetched using React Native Firebase and stored in Firestore
-3. **Stream Chat Integration**: Automatic message notifications through Stream Chat's Firebase integration
-4. **Token Refresh**: Automatic token updates when users enter the app (HomeScreen)
+**Location**: `TabNavigator.tsx` (after account setup completion)  
+**Timing**: When user first enters the main app after account creation  
+**Trigger**: `useEffect` when `currentUser` is available
 
-#### **Technical Architecture**
+```typescript
+// Triggered once when user reaches TabNavigator (home screen area)
+const initializeStreamNotifications = async () => {
+  const granted = await streamNotificationService.requestPermission();
+  if (granted) {
+    await streamNotificationService.saveUserToken(currentUser.uid);
+  }
+};
+```
 
-- **React Native Firebase**: Used for FCM token management and permission requests
-- **Stream Chat**: Handles message notifications and device registration with Firebase
-- **Token Persistence**: FCM tokens stored in Firestore `users` collection and updated automatically
-- **Background Notifications**: Proper background notification handling through React Native Firebase
+**Why This Timing**:
 
-#### **Permission Management**
+- ✅ User has completed account setup and email verification
+- ✅ User is committed to using the app
+- ✅ Natural point in user journey for permission request
 
-- **Timing**: Permission requested after account setup when entering TabNavigator
-- **Graceful Fallbacks**: App functions normally if notifications are denied
-- **Device Registration**: Automatic Stream Chat device registration with FCM tokens
-- **Token Refresh**: Automatic token updates on app entry for existing users
+#### **🔐 2. FCM Token Storage System**
 
-#### **Backend Integration**
+**Primary Storage**: `Firestore users collection`
 
-- **FCM Token Storage**: `users.fcmToken` field in Firestore
-- **Stream Chat Setup**: Automatic device registration with Stream Chat using FCM tokens
-- **Token Updates**: Backend receives fresh tokens through Stream notification service
-- **Native Capabilities**: Full native notification support through React Native Firebase
+```typescript
+// Stored in: /users/{userId}
+{
+  fcmToken: "device-specific-fcm-token",
+  updatedAt: serverTimestamp()
+}
+```
+
+**Local Cache**: `AsyncStorage`
+
+- **Key**: `"@stream_push_token"`
+- **Purpose**: Detect token changes and manage device cleanup
+
+#### **🔄 3. Token Update Triggers**
+
+**New Users (TabNavigator):**
+
+- Account creation → Email verification → Account setup → **TabNavigator loads** → Permission request → Token save
+
+**Existing Users (Multiple Locations):**
+
+1. **SignIn.tsx**: When existing user signs in
+
+   ```typescript
+   await streamNotificationService.saveUserToken(user.uid);
+   ```
+
+2. **HomeScreen.tsx**: Every time user enters home screen
+
+   ```typescript
+   await streamNotificationService.saveUserToken(currentUser.uid);
+   ```
+
+3. **AccountSetupScreen.tsx**: When new user completes profile setup
+
+   ```typescript
+   await streamNotificationService.saveUserToken(firebaseUid);
+   ```
+
+4. **Automatic Token Refresh**: When FCM token changes (handled by React Native Firebase)
+
+#### **🛠️ 4. Stream Chat Integration Process**
+
+**Step 1: Device Registration**
+
+```typescript
+// Register device for remote messages (iOS requirement)
+await messaging.registerDeviceForRemoteMessages();
+```
+
+**Step 2: Get FCM Token**
+
+```typescript
+const token = await getToken(messaging);
+```
+
+**Step 3: Clean Previous Devices**
+
+```typescript
+// Remove all existing devices for user (clean state)
+const devices = await client.getDevices(userId);
+for (const device of devices.devices) {
+  await client.removeDevice(device.id);
+}
+```
+
+**Step 4: Register with Stream Chat**
+
+```typescript
+await client.addDevice(
+  fcmToken,
+  "firebase",
+  userId,
+  "HarborFirebasePush" // Production config name
+);
+```
+
+**Step 5: Store Token Locally & in Firestore**
+
+```typescript
+// Local storage for token change detection
+await AsyncStorage.setItem("@stream_push_token", fcmToken);
+
+// Firestore storage for backend access
+await updateDoc(doc(db, "users", userId), {
+  fcmToken: fcmToken,
+  updatedAt: serverTimestamp(),
+});
+```
+
+#### **🔄 5. Token Refresh Handling**
+
+**Automatic Token Refresh**:
+
+- React Native Firebase monitors token changes
+- When token changes, old device is removed and new one is added
+- Both local storage and Firestore are updated
+
+**Manual Refresh Triggers**:
+
+- User signs in (covers device switches)
+- User enters HomeScreen (ensures current tokens)
+- User completes account setup
+
+#### **⚙️ 6. Production Configuration**
+
+**iOS Entitlements** (`app.json`):
+
+```json
+"ios": {
+  "entitlements": {
+    "aps-environment": "production"
+  }
+}
+```
+
+**Stream Chat Setup**:
+
+- Production APNs .p8 key uploaded to Stream dashboard
+- Environment set to "Production"
+- Push configuration name: "HarborFirebasePush"
+
+**Firebase Integration**:
+
+- Production APNs certificate uploaded to Firebase
+- React Native Firebase messaging configured
+- Automatic background notification handling
+
+#### **📊 7. Error Handling & Fallbacks**
+
+**Permission Denied**: App continues to function, notifications disabled
+**Token Fetch Failure**: Logged but doesn't block app functionality  
+**Stream Registration Failure**: Retried on next app entry
+**Network Issues**: Automatic retry on subsequent token refresh calls
+
+#### **🔍 8. Verification Points**
+
+**Check FCM Token Storage**:
+
+```bash
+# In Firestore Console: users/{userId} → fcmToken field should exist
+```
+
+**Check Stream Chat Registration**:
+
+```bash
+# In Stream Dashboard: Check device registrations for user
+```
+
+**Check iOS Entitlements**:
+
+```bash
+# app.json → ios.entitlements["aps-environment"] should be "production"
+```
+
+#### **🚀 9. Production Readiness**
+
+✅ **Production APNs Environment**: Configured via iOS entitlements  
+✅ **Token Management**: Comprehensive refresh and cleanup system  
+✅ **Stream Integration**: Proper device registration with production config  
+✅ **Error Handling**: Graceful fallbacks that don't break app functionality  
+✅ **Automatic Updates**: Token refresh on device changes and app entries
+
+### **🔧 Technical Architecture**
+
+- **React Native Firebase**: FCM token management and iOS device registration
+- **Stream Chat**: Message notification delivery and device management
+- **Firestore**: Persistent FCM token storage for backend access
+- **AsyncStorage**: Local token caching for change detection
+- **Production APNs**: Direct integration with Apple's production servers
 
 ## 🚀 Getting Started
 
