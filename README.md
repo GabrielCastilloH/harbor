@@ -210,27 +210,37 @@ All fields must be completed before profile creation:
 
 ## 🔔 Push Notifications
 
-Harbor uses **Stream Chat** for messaging and **React Native Firebase** specifically for push notifications. This hybrid approach allows us to use the Firebase JS SDK for all other Firebase services while leveraging React Native Firebase's native capabilities for reliable push notifications.
+Harbor implements a comprehensive push notification system using **Expo Notifications** for permission management and **Firebase Cloud Messaging (FCM)** for delivery. The system integrates with **Stream Chat** for messaging notifications and includes custom match notifications.
 
-### Notification Features
+### Current Implementation
 
-- **Stream Chat Integration**: Notifications are automatically sent when users receive new messages
-- **Settings Toggle**: Users can enable/disable notifications in the app settings
-- **Background Support**: Notifications work when the app is in the background or closed
-- **Permission Management**: Automatic permission requests with graceful fallbacks
+#### **Notification Flow**
 
-### Technical Implementation
+1. **Permission Request**: Triggered when users access the main app (TabNavigator/HomeScreen) after account creation
+2. **FCM Token Management**: Tokens are automatically fetched and stored in Firestore when users enter the app
+3. **Stream Chat Integration**: Automatic message notifications through Stream Chat's Firebase integration
+4. **Match Notifications**: Custom notifications sent when users match (currently commented in backend)
 
-- **React Native Firebase**: Used exclusively for push notifications (messaging module)
-- **Firebase JS SDK**: Used for all other Firebase services (Auth, Firestore, Functions, etc.)
-- **Stream Chat**: Handles message delivery and notification triggers
-- **Background Handler**: Processes notifications when app is not in foreground
+#### **Technical Architecture**
 
-### Setup Requirements
+- **Expo Notifications**: Used for permission requests and notification handling
+- **Firebase Cloud Messaging**: Backend notification delivery through Firestore user FCM tokens
+- **Stream Chat**: Handles chat message notifications and device registration
+- **Token Persistence**: FCM tokens stored in Firestore `users` collection and updated on app entry
 
-1. **Firebase Project**: Must have Cloud Messaging enabled
-2. **Stream Dashboard**: Firebase credentials must be uploaded to Stream Chat dashboard
-3. **Native Configuration**: React Native Firebase requires native project configuration
+#### **Permission Management**
+
+- **Timing**: Permission requested after account setup when entering TabNavigator
+- **Graceful Fallbacks**: App functions normally if notifications are denied
+- **Device Detection**: Only requests permissions on physical devices
+- **Token Refresh**: Automatic token updates when users re-enter the app
+
+#### **Backend Integration**
+
+- **FCM Token Storage**: `users.fcmToken` field in Firestore
+- **Match Notifications**: Implemented but commented in `functions/src/swipes/swipes.ts`
+- **Stream Chat Setup**: Automatic device registration with Stream Chat
+- **Token Updates**: Backend receives fresh tokens on each app entry
 
 ## 🚀 Getting Started
 

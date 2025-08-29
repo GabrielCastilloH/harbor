@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { EXPO_PROJECT_ID, STREAM_API_KEY } from "./firebaseConfig";
 import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
-import { StreamChat } from "stream-chat";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -21,7 +16,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
 import LoadingScreen from "./components/LoadingScreen";
 import UnviewedMatchesHandler from "./components/UnviewedMatchesHandler";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 // PREMIUM DISABLED: Superwall imports commented out
 // import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
 // import { SUPERWALL_CONFIG } from "./firebaseConfig";
@@ -116,59 +110,9 @@ function MainNavigator() {
 
 function AppContent() {
   const { isInitialized, isAuthenticated, currentUser } = useAppContext();
-  const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [notification, setNotification] = useState<any>(null);
   const notificationListener = React.useRef<any>(null);
   const responseListener = React.useRef<any>(null);
-
-  // Register for push notifications and save token
-  useEffect(() => {
-    if (!isAuthenticated || !currentUser) return;
-
-    const registerForPushNotificationsAsync = async () => {
-      let token;
-      if (Device.isDevice) {
-        const { status: existingStatus } =
-          await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
-        if (existingStatus !== "granted") {
-          const { status } = await Notifications.requestPermissionsAsync();
-          finalStatus = status;
-        }
-        if (finalStatus !== "granted") {
-          return;
-        }
-        // Use Expo project ID from secrets/config
-        token = (
-          await Notifications.getExpoPushTokenAsync({
-            projectId: EXPO_PROJECT_ID,
-          })
-        ).data;
-        setExpoPushToken(token);
-        // Save token to Firestore
-        try {
-          const db = getFirestore();
-          if (currentUser?.uid) {
-            await setDoc(
-              doc(db, "users", currentUser.uid),
-              { fcmToken: token },
-              { merge: true }
-            );
-          }
-        } catch (e) {
-          console.error("Error saving push token to Firestore", e);
-        }
-        // Register token with Stream Chat
-        try {
-          const streamClient = StreamChat.getInstance(STREAM_API_KEY);
-          await streamClient.addDevice(token, "firebase");
-        } catch (e) {
-          console.error("Error registering device with Stream Chat", e);
-        }
-      }
-    };
-    registerForPushNotificationsAsync();
-  }, [isAuthenticated, currentUser]);
 
   // Notification handlers
   useEffect(() => {
