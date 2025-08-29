@@ -110,12 +110,12 @@ export class StreamNotificationService {
         }
       }
 
-      // Then, add the fresh, valid token
+      // Then, add the fresh, valid token with production configuration
       await this.client!.addDevice(
         fcmToken,
         "firebase",
         userId,
-        "HarborFirebasePush" // Ensure this matches the config name in Stream dashboard
+        "HarborFirebasePush" // Production push configuration name in Stream dashboard
       );
 
       // Store token locally
