@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,9 +7,9 @@ import {
   Dimensions,
   TouchableOpacity,
   Alert,
-} from 'react-native';
-import * as Clipboard from 'expo-clipboard';
-import Colors from '../constants/Colors';
+} from "react-native";
+import * as Clipboard from "expo-clipboard";
+import Colors from "../constants/Colors";
 
 interface VerificationCodeInputProps {
   value: string;
@@ -17,7 +17,7 @@ interface VerificationCodeInputProps {
   maxLength?: number;
 }
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 const BOX_SIZE = Math.min(width * 0.12, 50); // Responsive box size
 const BOX_SPACING = 8;
 
@@ -38,35 +38,42 @@ export default function VerificationCodeInput({
       const clipboardContent = await Clipboard.getStringAsync();
       if (clipboardContent) {
         // Extract only numbers from clipboard content
-        const numericContent = clipboardContent.replace(/[^0-9]/g, '');
-        
+        const numericContent = clipboardContent.replace(/[^0-9]/g, "");
+
         if (numericContent.length >= maxLength) {
           // Take only the first maxLength digits
           const codeToPaste = numericContent.slice(0, maxLength);
           onChangeText(codeToPaste);
-          Alert.alert('Code Pasted', 'Verification code has been pasted successfully!');
         } else if (numericContent.length > 0) {
           // If we have some numbers but not enough, just paste what we have
           onChangeText(numericContent);
-          Alert.alert('Partial Code Pasted', `Pasted ${numericContent.length} digits. Please enter the remaining ${maxLength - numericContent.length} digits.`);
         } else {
-          Alert.alert('No Code Found', 'No verification code found in clipboard. Please copy the code from your email and try again.');
+          Alert.alert(
+            "No Code Found",
+            "No verification code found in clipboard. Please copy the code from your email and try again."
+          );
         }
       } else {
-        Alert.alert('No Code Found', 'No verification code found in clipboard. Please copy the code from your email and try again.');
+        Alert.alert(
+          "No Code Found",
+          "No verification code found in clipboard. Please copy the code from your email and try again."
+        );
       }
     } catch (error) {
-      console.error('Error pasting code:', error);
-      Alert.alert('Paste Error', 'Failed to paste code. Please enter it manually.');
+      console.error("Error pasting code:", error);
+      Alert.alert(
+        "Paste Error",
+        "Failed to paste code. Please enter it manually."
+      );
     }
   };
 
   const renderBoxes = () => {
     const boxes = [];
     for (let i = 0; i < maxLength; i++) {
-      const digit = value[i] || '';
+      const digit = value[i] || "";
       const isActive = i === value.length && isFocused;
-      
+
       boxes.push(
         <View
           key={i}
@@ -76,10 +83,12 @@ export default function VerificationCodeInput({
             isActive && styles.boxActive,
           ]}
         >
-          <Text style={[
-            styles.boxText,
-            digit ? styles.boxTextFilled : styles.boxTextEmpty,
-          ]}>
+          <Text
+            style={[
+              styles.boxText,
+              digit ? styles.boxTextFilled : styles.boxTextEmpty,
+            ]}
+          >
             {digit}
           </Text>
         </View>
@@ -96,7 +105,7 @@ export default function VerificationCodeInput({
         value={value}
         onChangeText={(text) => {
           // Only allow numbers and limit to maxLength
-          const numericText = text.replace(/[^0-9]/g, '').slice(0, maxLength);
+          const numericText = text.replace(/[^0-9]/g, "").slice(0, maxLength);
           onChangeText(numericText);
         }}
         keyboardType="number-pad"
@@ -106,7 +115,7 @@ export default function VerificationCodeInput({
         autoFocus={true}
         selectTextOnFocus={true}
       />
-      
+
       <View style={styles.boxesContainer} onTouchEnd={handlePress}>
         {renderBoxes()}
       </View>
@@ -120,27 +129,27 @@ export default function VerificationCodeInput({
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
+    alignItems: "center",
     marginVertical: 20,
   },
   hiddenInput: {
-    position: 'absolute',
+    position: "absolute",
     opacity: 0,
     width: 1,
     height: 1,
   },
   boxesContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
   box: {
     width: BOX_SIZE,
     height: BOX_SIZE,
     borderRadius: 12,
     borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginHorizontal: BOX_SPACING / 2,
   },
   boxEmpty: {
@@ -158,8 +167,8 @@ const styles = StyleSheet.create({
   },
   boxText: {
     fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
   },
   boxTextEmpty: {
     color: Colors.secondary500,
@@ -179,6 +188,6 @@ const styles = StyleSheet.create({
   pasteButtonText: {
     color: Colors.primary500,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });

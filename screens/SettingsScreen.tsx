@@ -62,10 +62,10 @@ export default function SettingsScreen() {
   const handlePremiumUpgrade = async () => {
     // Premium functionality disabled
     Alert.alert(
-      "Feature Unavailable", 
+      "Feature Unavailable",
       "Premium features are currently unavailable."
     );
-    
+
     // Original implementation commented out:
     // try {
     //   await registerPlacement({
@@ -217,7 +217,7 @@ export default function SettingsScreen() {
             icon="log-out-outline"
             text="Sign Out"
             onPress={handleSignOut}
-            isDestructive={true}
+            isDestructive={false}
             isLoading={isSigningOut}
             disabled={isSigningOut}
           />
