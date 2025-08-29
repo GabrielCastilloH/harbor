@@ -11,6 +11,7 @@ import LoadingScreen from "../components/LoadingScreen";
 import { signOut } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { preloadChatCredentials } from "../util/chatPreloader";
+import { streamNotificationService } from "../util/streamNotifService";
 
 export default function AccountSetupScreen({
   showProgressBar = true,
@@ -216,6 +217,17 @@ export default function AccountSetupScreen({
         );
         setLoading(false);
         return;
+      }
+
+      // Move to notification setup phase
+      updateProgress(0.9);
+
+      try {
+        // Save FCM token to user profile
+        await streamNotificationService.saveUserToken(firebaseUid);
+      } catch (error) {
+        console.error("AccountSetupScreen - Error saving FCM token:", error);
+        // Don't fail the entire operation if FCM token saving fails
       }
 
       // Move to chat setup phase
