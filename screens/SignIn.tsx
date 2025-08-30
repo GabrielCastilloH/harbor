@@ -103,9 +103,9 @@ export default function SignIn({ navigation }: any) {
     }
 
     setIsLoading(true);
+    const normalizedEmail = normalizeEmail(email.trim());
 
     try {
-      const normalizedEmail = normalizeEmail(email.trim());
       // Sign in with Firebase Auth directly
       const userCredential = await signInWithEmailAndPassword(
         auth,
@@ -176,6 +176,31 @@ export default function SignIn({ navigation }: any) {
       }
     } catch (error: any) {
       console.error("❌ [SIGN IN] Sign-in error:", error);
+
+      // Check for deleted account when user not found
+      if (
+        error.code === "auth/user-not-found" ||
+        error.code === "auth/invalid-credential"
+      ) {
+        try {
+          const deletedCheck = await UserService.checkDeletedAccount(
+            normalizedEmail
+          );
+          if (deletedCheck.isDeleted) {
+            // Show the deleted account screen
+            (nav as any).dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: "DeletedAccount" }],
+              })
+            );
+            return;
+          }
+        } catch (deletedCheckError) {
+          console.error("Error checking deleted account:", deletedCheckError);
+          // Continue with normal error handling if check fails
+        }
+      }
 
       let errorMessage = "Failed to sign in. Please try again.";
 
