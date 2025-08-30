@@ -7,7 +7,12 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { signOut } from "firebase/auth";
+import {
+  signOut,
+  deleteUser,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+} from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
@@ -60,18 +65,111 @@ export default function DeleteAccountButton({
                       // Clear image cache first
                       await ImageCache.clearAllCache();
 
-                      // Delete account via Cloud Function
+                      // Delete account data via Cloud Function (except Firebase Auth user)
                       await UserService.deleteAccount();
 
-                      // If successful, sign out and clear local data
-                      await Promise.all([
-                        signOut(auth),
-                        AsyncStorage.multiRemove([
-                          "@user",
-                          "@authToken",
-                          "@streamApiKey",
-                          "@streamUserToken",
-                        ]),
+                      // Delete Firebase Auth user (must be done client-side)
+                      const currentUser = auth.currentUser;
+                      if (currentUser) {
+                        try {
+                          await deleteUser(currentUser);
+                        } catch (authError: any) {
+                          // Handle requires-recent-login error
+                          if (authError.code === "auth/requires-recent-login") {
+                            Alert.alert(
+                              "Re-authentication Required",
+                              "For security reasons, please enter your password to confirm account deletion.",
+                              [
+                                {
+                                  text: "Cancel",
+                                  style: "cancel",
+                                  onPress: () => setIsDeleting(false),
+                                },
+                                {
+                                  text: "Continue",
+                                  onPress: () => {
+                                    // Prompt for password and re-authenticate
+                                    Alert.prompt(
+                                      "Enter Password",
+                                      "Please enter your password to confirm deletion:",
+                                      [
+                                        {
+                                          text: "Cancel",
+                                          style: "cancel",
+                                          onPress: () => setIsDeleting(false),
+                                        },
+                                        {
+                                          text: "Delete Account",
+                                          style: "destructive",
+                                          onPress: async (password) => {
+                                            if (!password) {
+                                              setIsDeleting(false);
+                                              return;
+                                            }
+
+                                            try {
+                                              // Re-authenticate and then delete
+                                              const credential =
+                                                EmailAuthProvider.credential(
+                                                  currentUser.email!,
+                                                  password
+                                                );
+                                              await reauthenticateWithCredential(
+                                                currentUser,
+                                                credential
+                                              );
+                                              await deleteUser(currentUser);
+
+                                              // Continue with success flow
+                                              await AsyncStorage.multiRemove([
+                                                "@user",
+                                                "@authToken",
+                                                "@streamApiKey",
+                                                "@streamUserToken",
+                                                "@current_push_token",
+                                              ]);
+                                              setUserId(null);
+
+                                              Alert.alert(
+                                                "Account Deleted",
+                                                "Your account has been permanently deleted. Thank you for using Harbor.",
+                                                [{ text: "OK" }]
+                                              );
+                                            } catch (reauthError) {
+                                              console.error(
+                                                "❌ [DELETE ACCOUNT] Re-auth error:",
+                                                reauthError
+                                              );
+                                              Alert.alert(
+                                                "Authentication Failed",
+                                                "Incorrect password. Account deletion cancelled."
+                                              );
+                                              setIsDeleting(false);
+                                            }
+                                          },
+                                        },
+                                      ],
+                                      "secure-text"
+                                    );
+                                  },
+                                },
+                              ]
+                            );
+                            return; // Exit early, don't continue with normal flow
+                          } else {
+                            // Other auth errors
+                            throw authError;
+                          }
+                        }
+                      }
+
+                      // Clear local data
+                      await AsyncStorage.multiRemove([
+                        "@user",
+                        "@authToken",
+                        "@streamApiKey",
+                        "@streamUserToken",
+                        "@current_push_token",
                       ]);
 
                       // Clear app context state
