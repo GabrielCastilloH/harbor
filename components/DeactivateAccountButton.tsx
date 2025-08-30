@@ -46,7 +46,7 @@ export default function DeactivateAccountButton({
               onStatusChange?.(false);
               Alert.alert(
                 "Account Deactivated",
-                "Your account has been deactivated. You can reactivate it anytime from settings."
+                "Your account has been deactivated. Please restart the app for changes to take effect."
               );
             } catch (error: any) {
               console.error("❌ [DEACTIVATE] Error:", error);
@@ -83,7 +83,7 @@ export default function DeactivateAccountButton({
               onStatusChange?.(true);
               Alert.alert(
                 "Account Reactivated",
-                "Welcome back! Your account is now active again."
+                "Welcome back! Please restart the app for changes to take effect."
               );
             } catch (error: any) {
               console.error("❌ [REACTIVATE] Error:", error);

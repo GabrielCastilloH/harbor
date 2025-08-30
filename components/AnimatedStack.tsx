@@ -187,9 +187,8 @@ export default React.forwardRef(function AnimatedStack(
         <View style={styles.noMoreCardsContainer}>
           <Text style={styles.noMoreCardsTitle}>Account Deactivated</Text>
           <Text style={styles.noMoreCardsText}>
-            Your account is currently deactivated. {"\n"}
-            You won't see new people or be shown to others. {"\n"}
-            Reactivate your account in Settings to start swiping again.
+            Your account is hidden from others. {"\n"}
+            Reactivate in Settings to start swiping again.
           </Text>
         </View>
       );

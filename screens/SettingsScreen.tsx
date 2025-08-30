@@ -53,12 +53,9 @@ export default function SettingsScreen() {
       setIsLoadingProfile(true);
       try {
         const profile = await UserService.getUserById(userId);
-        console.log("SettingsScreen - Fetched user profile:", profile);
 
         // Handle the nested structure returned by UserService
         const userData = profile.user || profile;
-        console.log("SettingsScreen - userData:", userData);
-        console.log("SettingsScreen - userData.isActive:", userData.isActive);
         setUserProfile(userData);
       } catch (error) {
         console.error("Error fetching user profile:", error);
@@ -71,15 +68,7 @@ export default function SettingsScreen() {
   }, [userId]);
 
   const handleAccountStatusChange = (isActive: boolean) => {
-    console.log(
-      "SettingsScreen - handleAccountStatusChange called with isActive:",
-      isActive
-    );
-    setUserProfile((prev: any) => {
-      const updated = { ...prev, isActive };
-      console.log("SettingsScreen - Updated profile:", updated);
-      return updated;
-    });
+    setUserProfile((prev: any) => ({ ...prev, isActive }));
   };
 
   // PREMIUM DISABLED: Superwall paywall placement commented out
@@ -262,14 +251,6 @@ export default function SettingsScreen() {
             onStatusChange={handleAccountStatusChange}
             isLoading={isLoadingProfile}
           />
-          {/* Debug the button state */}
-          {userProfile &&
-            console.log(
-              "SettingsScreen - Button props - userProfile.isActive:",
-              userProfile.isActive,
-              "isActive prop:",
-              userProfile?.isActive !== false
-            )}
 
           {/* Sign Out Button */}
           <SettingsButton
