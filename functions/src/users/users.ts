@@ -277,6 +277,16 @@ export const createUser = functions.https.onCall(
         validationErrors.push("Only Cornell email addresses are allowed");
       }
 
+      // Reject emails with + symbols or periods to prevent alias abuse
+      if (userData.email?.includes("+")) {
+        validationErrors.push("Email addresses with + symbols are not allowed");
+      }
+
+      const emailLocalPart = userData.email?.split("@")[0];
+      if (emailLocalPart?.includes(".")) {
+        validationErrors.push("Email addresses with periods are not allowed");
+      }
+
       // Validate profile content for inappropriate content
       const textFields = [
         userData.firstName,
@@ -876,7 +886,9 @@ export const deleteUser = functions.https.onCall(
       // Use transaction for atomic deletion operations
       await db.runTransaction(async (transaction) => {
         // 1. Get user data first to collect all related information
-        const userDoc = await transaction.get(db.collection("users").doc(userId));
+        const userDoc = await transaction.get(
+          db.collection("users").doc(userId)
+        );
         if (!userDoc.exists) {
           throw new functions.https.HttpsError("not-found", "User not found");
         }
@@ -889,7 +901,9 @@ export const deleteUser = functions.https.onCall(
 
         // 3. Remove user from all their matches and deactivate them
         for (const matchId of currentMatches) {
-          const matchDoc = await transaction.get(db.collection("matches").doc(matchId));
+          const matchDoc = await transaction.get(
+            db.collection("matches").doc(matchId)
+          );
           if (matchDoc.exists) {
             const matchData = matchDoc.data();
             if (matchData) {
@@ -900,13 +914,18 @@ export const deleteUser = functions.https.onCall(
               });
 
               // Remove match from the other user's currentMatches array
-              const otherUserId = matchData.user1Id === userId ? matchData.user2Id : matchData.user1Id;
-              const otherUserDoc = await transaction.get(db.collection("users").doc(otherUserId));
+              const otherUserId =
+                matchData.user1Id === userId
+                  ? matchData.user2Id
+                  : matchData.user1Id;
+              const otherUserDoc = await transaction.get(
+                db.collection("users").doc(otherUserId)
+              );
               if (otherUserDoc.exists) {
                 const otherUserData = otherUserDoc.data();
-                const updatedMatches = (otherUserData?.currentMatches || []).filter(
-                  (id: string) => id !== matchId
-                );
+                const updatedMatches = (
+                  otherUserData?.currentMatches || []
+                ).filter((id: string) => id !== matchId);
                 transaction.update(db.collection("users").doc(otherUserId), {
                   currentMatches: updatedMatches,
                   updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -917,28 +936,36 @@ export const deleteUser = functions.https.onCall(
         }
 
         // 4. Delete all swipes by this user
-        const swipesQuery = db.collection("swipes").where("userId", "==", userId);
+        const swipesQuery = db
+          .collection("swipes")
+          .where("userId", "==", userId);
         const swipesSnapshot = await swipesQuery.get();
         swipesSnapshot.docs.forEach((doc) => {
           transaction.delete(doc.ref);
         });
 
         // 5. Delete all swipes targeting this user
-        const swipesOnUserQuery = db.collection("swipes").where("targetUserId", "==", userId);
+        const swipesOnUserQuery = db
+          .collection("swipes")
+          .where("targetUserId", "==", userId);
         const swipesOnUserSnapshot = await swipesOnUserQuery.get();
         swipesOnUserSnapshot.docs.forEach((doc) => {
           transaction.delete(doc.ref);
         });
 
         // 6. Delete all reports by this user
-        const reportsByUserQuery = db.collection("reports").where("reporterId", "==", userId);
+        const reportsByUserQuery = db
+          .collection("reports")
+          .where("reporterId", "==", userId);
         const reportsByUserSnapshot = await reportsByUserQuery.get();
         reportsByUserSnapshot.docs.forEach((doc) => {
           transaction.delete(doc.ref);
         });
 
         // 7. Delete all reports targeting this user
-        const reportsOnUserQuery = db.collection("reports").where("reportedUserId", "==", userId);
+        const reportsOnUserQuery = db
+          .collection("reports")
+          .where("reportedUserId", "==", userId);
         const reportsOnUserSnapshot = await reportsOnUserQuery.get();
         reportsOnUserSnapshot.docs.forEach((doc) => {
           transaction.delete(doc.ref);
@@ -969,16 +996,19 @@ export const deleteUser = functions.https.onCall(
       try {
         const bucket = admin.storage().bucket();
         const userImagesPrefix = `users/${userId}/`;
-        
+
         // List all files for this user
         const [files] = await bucket.getFiles({ prefix: userImagesPrefix });
-        
+
         // Delete all files
         if (files.length > 0) {
-          await Promise.all(files.map(file => file.delete()));
+          await Promise.all(files.map((file) => file.delete()));
         }
       } catch (storageError) {
-        console.error("Failed to delete user images from storage:", storageError);
+        console.error(
+          "Failed to delete user images from storage:",
+          storageError
+        );
         // Don't fail the entire operation if storage deletion fails
       }
 
@@ -994,7 +1024,9 @@ export const deleteUser = functions.https.onCall(
         );
       }
 
-      await logToNtfy(`USER DELETED: ${userId} - Account and all data permanently removed`);
+      await logToNtfy(
+        `USER DELETED: ${userId} - Account and all data permanently removed`
+      );
 
       return { success: true, message: "Account deleted successfully" };
     } catch (error: any) {
