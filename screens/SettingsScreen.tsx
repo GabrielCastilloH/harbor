@@ -53,7 +53,13 @@ export default function SettingsScreen() {
       setIsLoadingProfile(true);
       try {
         const profile = await UserService.getUserById(userId);
-        setUserProfile(profile);
+        console.log("SettingsScreen - Fetched user profile:", profile);
+
+        // Handle the nested structure returned by UserService
+        const userData = profile.user || profile;
+        console.log("SettingsScreen - userData:", userData);
+        console.log("SettingsScreen - userData.isActive:", userData.isActive);
+        setUserProfile(userData);
       } catch (error) {
         console.error("Error fetching user profile:", error);
       } finally {
@@ -65,7 +71,15 @@ export default function SettingsScreen() {
   }, [userId]);
 
   const handleAccountStatusChange = (isActive: boolean) => {
-    setUserProfile((prev: any) => ({ ...prev, isActive }));
+    console.log(
+      "SettingsScreen - handleAccountStatusChange called with isActive:",
+      isActive
+    );
+    setUserProfile((prev: any) => {
+      const updated = { ...prev, isActive };
+      console.log("SettingsScreen - Updated profile:", updated);
+      return updated;
+    });
   };
 
   // PREMIUM DISABLED: Superwall paywall placement commented out
@@ -242,13 +256,20 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
 
-          {/* Deactivate/Reactivate Account Button */}
-          {!isLoadingProfile && userProfile && (
-            <DeactivateAccountButton
-              isActive={userProfile.isActive !== false} // Default to true if undefined
-              onStatusChange={handleAccountStatusChange}
-            />
-          )}
+          {/* Deactivate/Reactivate Account Button - Always shown */}
+          <DeactivateAccountButton
+            isActive={userProfile?.isActive !== false} // Default to true if undefined or null
+            onStatusChange={handleAccountStatusChange}
+            isLoading={isLoadingProfile}
+          />
+          {/* Debug the button state */}
+          {userProfile &&
+            console.log(
+              "SettingsScreen - Button props - userProfile.isActive:",
+              userProfile.isActive,
+              "isActive prop:",
+              userProfile?.isActive !== false
+            )}
 
           {/* Sign Out Button */}
           <SettingsButton
