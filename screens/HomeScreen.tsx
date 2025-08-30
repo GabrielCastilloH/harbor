@@ -58,6 +58,7 @@ export default function HomeScreen() {
   const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
+  const [isUserActive, setIsUserActive] = useState<boolean>(true);
   const [swipeInProgress, setSwipeInProgress] = useState(false);
   const [lastSwipedProfile, setLastSwipedProfile] = useState<string | null>(
     null
@@ -173,7 +174,10 @@ export default function HomeScreen() {
       try {
         const response = await UserService.getUserById(userId);
         if (response) {
-          setUserProfile(response.user || response);
+          const profile = response.user || response;
+          setUserProfile(profile);
+          // Set user active status (default to true if not specified)
+          setIsUserActive(profile.isActive !== false);
         }
       } catch (error: any) {
         // If user not found, don't show error - they might be setting up their account
@@ -649,9 +653,10 @@ export default function HomeScreen() {
             <AnimatedStack
               ref={stackRef}
               data={recommendations}
-              onSwipeRight={handleSwipeRight}
-              onSwipeLeft={handleSwipeLeft}
+              onSwipeRight={isUserActive ? handleSwipeRight : undefined}
+              onSwipeLeft={isUserActive ? handleSwipeLeft : undefined}
               onCurrentProfileChange={setCurrentCardProfile}
+              isUserActive={isUserActive}
             />
           </View>
           <View style={styles.buttonsContainer}>
@@ -661,12 +666,18 @@ export default function HomeScreen() {
                 styles.button,
                 styles.noButton,
                 isNoPressed && { backgroundColor: Colors.red },
+                !isUserActive && { opacity: 0.5 },
               ]}
               onPressIn={(event) => {
+                if (!isUserActive) return;
                 setIsNoPressed(true);
                 handleTouchStart(event);
               }}
-              onPressOut={(event) => handleTouchEnd(event, true)}
+              onPressOut={(event) => {
+                if (!isUserActive) return;
+                handleTouchEnd(event, true);
+              }}
+              disabled={!isUserActive}
             >
               <Image
                 source={require("../assets/images/shipwreck.png")}
@@ -683,12 +694,18 @@ export default function HomeScreen() {
                 styles.button,
                 styles.yesButton,
                 isYesPressed && { backgroundColor: Colors.green },
+                !isUserActive && { opacity: 0.5 },
               ]}
               onPressIn={(event) => {
+                if (!isUserActive) return;
                 setIsYesPressed(true);
                 handleTouchStart(event);
               }}
-              onPressOut={(event) => handleTouchEnd(event, false)}
+              onPressOut={(event) => {
+                if (!isUserActive) return;
+                handleTouchEnd(event, false);
+              }}
+              disabled={!isUserActive}
             >
               <View style={{ marginBottom: 3, marginLeft: 2 }}>
                 <FontAwesome6

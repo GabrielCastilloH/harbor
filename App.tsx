@@ -10,6 +10,7 @@ import SignIn from "./screens/SignIn";
 import CreateAccountScreen from "./screens/CreateAccountScreen";
 import EmailVerificationScreen from "./screens/EmailVerificationScreen";
 import AccountSetupScreen from "./screens/AccountSetupScreen";
+import DeletedAccountScreen from "./screens/DeletedAccountScreen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import { NotificationProvider } from "./context/NotificationContext";
@@ -70,6 +71,10 @@ function AuthNavigator() {
       <AuthStack.Screen
         name="EmailVerification"
         component={EmailVerificationScreen}
+      />
+      <AuthStack.Screen
+        name="DeletedAccount"
+        component={DeletedAccountScreen}
       />
     </AuthStack.Navigator>
   );

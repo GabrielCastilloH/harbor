@@ -1158,6 +1158,28 @@ export const deleteUser = functions.https.onCall(
       // Note: Firebase Auth user deletion will be handled on the client side
       // This prevents issues with deleting the currently authenticated user
 
+      // --- STEP 5: TRACK DELETED ACCOUNT FOR FUTURE REFERENCE ---
+      console.log("📝 DELETE USER: Step 5 - Recording deleted account");
+      try {
+        const deletedAccountRef = db.collection("deletedAccounts").doc(userId);
+        await deletedAccountRef.set({
+          email: userData?.email || "unknown",
+          deletedAt: admin.firestore.FieldValue.serverTimestamp(),
+          deletedBy: userId,
+          firstName: userData?.firstName || "Unknown",
+          lastName: userData?.lastName || "User",
+        });
+        console.log(
+          "✅ DELETE USER: Deleted account recorded for future reference"
+        );
+      } catch (trackingError) {
+        console.log(
+          "❌ DELETE USER: Error tracking deleted account:",
+          trackingError
+        );
+        // Don't fail the deletion if tracking fails
+      }
+
       console.log("🎉 DELETE USER: All steps completed successfully");
       await logToNtfy(
         `USER DELETED: ${userId} - Account and all data permanently removed`
@@ -1192,6 +1214,175 @@ export const deleteUser = functions.https.onCall(
   }
 );
 
+/**
+ * Deactivates a user account
+ */
+export const deactivateAccount = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: functions.https.CallableRequest) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const userId = request.auth.uid;
+      console.log(`🔄 DEACTIVATE: Processing deactivation for user ${userId}`);
+
+      const userRef = db.collection("users").doc(userId);
+      await userRef.update({
+        isActive: false,
+        deactivatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      console.log(`✅ DEACTIVATE: User ${userId} account deactivated`);
+      await logToNtfy(`USER DEACTIVATED: ${userId} - Account deactivated`);
+
+      return { success: true, message: "Account deactivated successfully" };
+    } catch (error: any) {
+      console.error("❌ DEACTIVATE: Error deactivating account:", error);
+      await logToNtfy(`DEACTIVATION ERROR: ${error.message}`);
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to deactivate account"
+      );
+    }
+  }
+);
+
+/**
+ * Reactivates a user account
+ */
+export const reactivateAccount = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: functions.https.CallableRequest) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const userId = request.auth.uid;
+      console.log(`🔄 REACTIVATE: Processing reactivation for user ${userId}`);
+
+      const userRef = db.collection("users").doc(userId);
+      await userRef.update({
+        isActive: true,
+        reactivatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      console.log(`✅ REACTIVATE: User ${userId} account reactivated`);
+      await logToNtfy(`USER REACTIVATED: ${userId} - Account reactivated`);
+
+      return { success: true, message: "Account reactivated successfully" };
+    } catch (error: any) {
+      console.error("❌ REACTIVATE: Error reactivating account:", error);
+      await logToNtfy(`REACTIVATION ERROR: ${error.message}`);
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to reactivate account"
+      );
+    }
+  }
+);
+
+/**
+ * Checks if an email belongs to a deleted account
+ */
+export const checkDeletedAccount = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: functions.https.CallableRequest<{ email: string }>) => {
+    try {
+      const { email } = request.data;
+
+      if (!email) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Email is required"
+        );
+      }
+
+      console.log(`🔍 CHECK DELETED: Checking email ${email}`);
+
+      const deletedAccountsQuery = db
+        .collection("deletedAccounts")
+        .where("email", "==", email.toLowerCase());
+      const deletedAccountsSnapshot = await deletedAccountsQuery.get();
+
+      const isDeleted = !deletedAccountsSnapshot.empty;
+      console.log(
+        `${isDeleted ? "❌" : "✅"} CHECK DELETED: Email ${email} ${
+          isDeleted ? "is" : "is not"
+        } deleted`
+      );
+
+      return {
+        isDeleted,
+        deletedAt: isDeleted
+          ? deletedAccountsSnapshot.docs[0].data().deletedAt
+          : null,
+      };
+    } catch (error: any) {
+      console.error("❌ CHECK DELETED: Error checking deleted account:", error);
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to check deleted account"
+      );
+    }
+  }
+);
+
 export const userFunctions = {
   createUser,
   getAllUsers,
@@ -1200,4 +1391,7 @@ export const userFunctions = {
   unmatchUser,
   markPaywallAsSeen,
   deleteUser,
+  deactivateAccount,
+  reactivateAccount,
+  checkDeletedAccount,
 };
