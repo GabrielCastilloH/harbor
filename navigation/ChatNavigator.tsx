@@ -15,8 +15,8 @@ import {
   Chat,
   DeepPartial,
   Theme,
-  useCreateChatClient,
 } from "stream-chat-react-native";
+import { StreamChat } from "stream-chat";
 import {
   streamNotificationService,
   PUSH_TOKEN_KEY,
@@ -216,8 +216,9 @@ export default function ChatNavigator() {
         const apiKey = await ChatFunctions.getStreamApiKey();
         setChatApiKey(apiKey);
         setStreamApiKey(apiKey); // Store in context for future use
+        console.log("🟢 API key fetched successfully.");
       } catch (error) {
-        console.error("ChatNavigator - Failed to fetch API key:", error);
+        console.error("🔴 ChatNavigator - Failed to fetch API key:", error);
         setError("Failed to fetch API key");
       }
     };
@@ -236,8 +237,9 @@ export default function ChatNavigator() {
         const token = await ChatFunctions.generateToken(userId);
         setChatUserToken(token);
         setStreamUserToken(token); // Store in context for future use
+        console.log("🟢 User token fetched successfully.");
       } catch (error) {
-        console.error("ChatNavigator - Failed to fetch chat token:", error);
+        console.error("🔴 ChatNavigator - Failed to fetch chat token:", error);
         setError("Failed to fetch chat token");
       }
     };
@@ -245,18 +247,29 @@ export default function ChatNavigator() {
     fetchToken();
   }, [chatUserToken, userId, setStreamUserToken]);
 
-  // 💡 This useEffect is critical. It must get the notification token
-  // and set it in state BEFORE the useCreateChatClient hook runs.
+  // 💡 CRITICAL: This useEffect must run and set the notificationToken state
+  // before the useCreateChatClient hook attempts to create the client.
   useEffect(() => {
     const getNotificationToken = async () => {
       try {
-        await streamNotificationService.requestPermission();
-        const token = await streamNotificationService.getCurrentToken();
-        if (token) {
-          setNotificationToken(token);
+        const permissionGranted =
+          await streamNotificationService.requestPermission();
+        if (permissionGranted) {
+          const token = await messaging().getToken();
+          if (token) {
+            setNotificationToken(token);
+            console.log("🟢 FCM Token received:", token);
+          } else {
+            console.warn("🟡 No FCM token available.");
+          }
+        } else {
+          console.warn("🟡 Notification permissions not granted.");
         }
       } catch (err) {
-        console.error("ChatNavigator - Failed to get notification token:", err);
+        console.error(
+          "🔴 ChatNavigator - Failed to get notification token:",
+          err
+        );
         setError("Failed to get notification token");
       }
     };
@@ -274,43 +287,78 @@ export default function ChatNavigator() {
     };
   }, [profile, userId]);
 
-  // 💡 Use the `useCreateChatClient` hook but only when all dependencies are ready
-  const chatClient = useCreateChatClient({
-    apiKey: chatApiKey && notificationToken ? chatApiKey : "",
-    userData:
-      user && notificationToken ? user : { id: "loading", name: "Loading" },
-    tokenOrProvider: chatUserToken && notificationToken ? chatUserToken : "",
-  });
+  // 💡 Manual client creation with full control over timing
+  const [chatClient, setChatClient] = useState<StreamChat | null>(null);
 
-  // 💡 Set local device when client is created but before it connects
   useEffect(() => {
-    if (chatClient && notificationToken) {
+    let isMounted = true;
+
+    const createClientWithDevice = async () => {
+      if (
+        !chatApiKey ||
+        !chatUserToken ||
+        !userId ||
+        !notificationToken ||
+        !user
+      ) {
+        return;
+      }
+
+      if (chatClient) {
+        return; // Already created
+      }
+
       try {
-        chatClient.setLocalDevice({
+        console.log("🟢 Creating Stream Chat client with device setup");
+
+        // Create client instance
+        const client = StreamChat.getInstance(chatApiKey);
+
+        // Set device BEFORE connecting (this is the critical part)
+        client.setLocalDevice({
           id: notificationToken,
           push_provider: "firebase",
           push_provider_name: "HarborFirebasePush",
         });
-        console.log("🔔 Local device set for Stream Chat");
-      } catch (error) {
-        console.error("🔔 Error setting local device:", error);
-      }
-    }
-  }, [chatClient, notificationToken]);
 
-  // 💡 NEW useEffect for token refresh listener
-  // This listener is only active when the client is connected
+        console.log("🟢 Local device set for Stream Chat");
+
+        // Connect user
+        await client.connectUser(user, chatUserToken);
+        console.log("🟢 Stream Chat client connected successfully");
+
+        if (isMounted) {
+          setChatClient(client);
+        }
+      } catch (error) {
+        console.error("🔴 Error creating chat client:", error);
+        if (isMounted) {
+          setError("Failed to create chat client");
+        }
+      }
+    };
+
+    createClientWithDevice();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [chatApiKey, chatUserToken, userId, notificationToken, user, chatClient]);
+
+  // 💡 NEW useEffect for token refresh listener.
+  // This runs after the client is successfully connected.
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
     if (chatClient && userId) {
+      console.log("🟢 Setting up token refresh listener.");
       unsubscribe = messaging().onTokenRefresh(async (newToken) => {
         try {
-          // Remove old device token if it exists
+          console.log("🟢 Token refresh detected. New token:", newToken);
           const oldToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
           if (oldToken && oldToken !== newToken) {
             await chatClient.removeDevice(oldToken);
+            console.log("🟢 Old device token removed.");
           }
-          // Add the new device token
           await chatClient.addDevice(
             newToken,
             "firebase",
@@ -318,9 +366,9 @@ export default function ChatNavigator() {
             "HarborFirebasePush"
           );
           await AsyncStorage.setItem(PUSH_TOKEN_KEY, newToken);
-          console.log("🔔 Token refreshed and updated with Stream Chat");
+          console.log("🟢 Token refreshed and updated with Stream Chat.");
         } catch (error) {
-          console.error("🔔 Error handling token refresh:", error);
+          console.error("🔴 Error handling token refresh:", error);
         }
       });
     }
@@ -328,6 +376,7 @@ export default function ChatNavigator() {
     return () => {
       if (unsubscribe) {
         unsubscribe();
+        console.log("🟢 Token refresh listener unsubscribed.");
       }
     };
   }, [chatClient, userId]);
@@ -342,12 +391,16 @@ export default function ChatNavigator() {
         let profileData = response?.user || response;
         if (profileData?.firstName) {
           setProfile(profileData);
+          console.log("🟢 User profile fetched successfully.");
         } else {
-          console.error("ChatNavigator - Invalid profile data:", response);
+          console.error("🔴 ChatNavigator - Invalid profile data:", response);
           setError("Invalid profile data format");
         }
       } catch (error) {
-        console.error("ChatNavigator - Failed to fetch user profile:", error);
+        console.error(
+          "🔴 ChatNavigator - Failed to fetch user profile:",
+          error
+        );
         setError("Failed to fetch user profile");
       } finally {
         setIsLoadingProfile(false);
@@ -374,12 +427,16 @@ export default function ChatNavigator() {
     !userId ||
     !notificationToken
   ) {
+    console.log("🟡 Loading... Waiting for all dependencies to be ready.");
     return <LoadingScreen loadingText="Connecting to chat..." />;
   }
 
   if (!chatClient) {
+    console.log("🟡 Loading... chatClient is not yet instantiated.");
     return <LoadingScreen loadingText="Loading chat client..." />;
   }
+
+  console.log("✅ All dependencies ready. Rendering Chat component.");
 
   return (
     <OverlayProvider value={{ style: theme }}>
