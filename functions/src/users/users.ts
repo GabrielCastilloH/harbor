@@ -277,6 +277,16 @@ export const createUser = functions.https.onCall(
         validationErrors.push("Only Cornell email addresses are allowed");
       }
 
+      // Reject emails with + symbols or periods to prevent alias abuse
+      if (userData.email?.includes("+")) {
+        validationErrors.push("Email addresses with + symbols are not allowed");
+      }
+
+      const emailLocalPart = userData.email?.split("@")[0];
+      if (emailLocalPart?.includes(".")) {
+        validationErrors.push("Email addresses with periods are not allowed");
+      }
+
       // Validate profile content for inappropriate content
       const textFields = [
         userData.firstName,
