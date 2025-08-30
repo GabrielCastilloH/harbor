@@ -29,7 +29,8 @@ export default function DeleteAccountButton({
   onPress,
   disabled = false,
 }: DeleteAccountButtonProps) {
-  const { setUserId } = useAppContext();
+  const { setUserId, setProfile, setStreamApiKey, setStreamUserToken } =
+    useAppContext();
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDeleteAccount = async () => {
@@ -128,7 +129,12 @@ export default function DeleteAccountButton({
                                                 "@streamUserToken",
                                                 "@current_push_token",
                                               ]);
+
+                                              // Clear all app context state
                                               setUserId(null);
+                                              setProfile(null);
+                                              setStreamApiKey(null);
+                                              setStreamUserToken(null);
 
                                               Alert.alert(
                                                 "Account Deleted",
@@ -172,8 +178,11 @@ export default function DeleteAccountButton({
                         "@current_push_token",
                       ]);
 
-                      // Clear app context state
+                      // Clear all app context state
                       setUserId(null);
+                      setProfile(null);
+                      setStreamApiKey(null);
+                      setStreamUserToken(null);
 
                       Alert.alert(
                         "Account Deleted",

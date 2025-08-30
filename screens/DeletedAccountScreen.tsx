@@ -6,22 +6,21 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Image,
-  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation, CommonActions } from "@react-navigation/native";
 import Colors from "../constants/Colors";
 
 export default function DeletedAccountScreen() {
-  const handleContactUs = () => {
-    const email = "gabocastillo321@gmail.com";
-    const subject = "Account Recovery Request";
-    const body =
-      "Hello, I would like to recover my deleted Harbor account. Please help me with the process.";
+  const navigation = useNavigation();
 
-    const mailto = `mailto:${email}?subject=${encodeURIComponent(
-      subject
-    )}&body=${encodeURIComponent(body)}`;
-    Linking.openURL(mailto);
+  const handleBackToSignIn = () => {
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: "SignIn" }],
+      })
+    );
   };
 
   return (
@@ -43,23 +42,17 @@ export default function DeletedAccountScreen() {
         {/* Sub message */}
         <Text style={styles.subMessage}>
           If you wish to use this email address again, please contact our
-          support team and we'll help you create a new account.
+          support team at gabocastillo321@gmail.com.
         </Text>
 
-        {/* Contact Button */}
+        {/* Back to Sign In Button */}
         <TouchableOpacity
-          style={styles.contactButton}
-          onPress={handleContactUs}
+          style={styles.backButton}
+          onPress={handleBackToSignIn}
         >
-          <Ionicons name="mail" size={20} color={Colors.secondary100} />
-          <Text style={styles.contactButtonText}>Contact Support</Text>
+          <Ionicons name="arrow-back" size={20} color={Colors.secondary100} />
+          <Text style={styles.backButtonText}>Back to Sign In</Text>
         </TouchableOpacity>
-
-        {/* Email Display */}
-        <View style={styles.emailContainer}>
-          <Text style={styles.emailLabel}>Support Email:</Text>
-          <Text style={styles.emailText}>gabocastillo321@gmail.com</Text>
-        </View>
 
         {/* Harbor Logo/Branding */}
         <View style={styles.brandingContainer}>
@@ -113,43 +106,25 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     paddingHorizontal: 10,
   },
-  contactButton: {
+  backButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: Colors.primary500,
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 25,
-    marginBottom: 30,
+    marginBottom: 40,
     elevation: 2,
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  contactButtonText: {
+  backButtonText: {
     color: Colors.secondary100,
     fontSize: 16,
     fontWeight: "600",
     marginLeft: 8,
-  },
-  emailContainer: {
-    backgroundColor: Colors.secondary100,
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 40,
-    alignItems: "center",
-  },
-  emailLabel: {
-    fontSize: 14,
-    color: Colors.secondary500,
-    marginBottom: 5,
-    fontWeight: "500",
-  },
-  emailText: {
-    fontSize: 16,
-    color: Colors.primary500,
-    fontWeight: "600",
   },
   brandingContainer: {
     alignItems: "center",
