@@ -52,7 +52,14 @@
     },
     "scheme": "com.gabrielach.harbor",
     "plugins": [
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "ios": {
+            "supports-remote-notifications": true
+          }
+        }
+      ],
       [
         "expo-image-picker",
         {
