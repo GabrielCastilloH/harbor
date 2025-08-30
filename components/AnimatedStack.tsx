@@ -25,6 +25,7 @@ type AnimatedStackProps = {
   onSwipeRight?: (profile: Profile) => void;
   onSwipeLeft?: (profile: Profile) => void;
   onCurrentProfileChange?: (profile: Profile | null) => void;
+  isUserActive?: boolean;
   ref?: React.RefObject<{
     swipeLeft: () => void;
     swipeRight: () => void;
@@ -37,6 +38,7 @@ export default React.forwardRef(function AnimatedStack(
     onSwipeRight,
     onSwipeLeft,
     onCurrentProfileChange,
+    isUserActive = true,
   }: AnimatedStackProps,
   ref
 ) {
@@ -180,6 +182,19 @@ export default React.forwardRef(function AnimatedStack(
   }, [currentIndex]);
 
   if (!currentProfile) {
+    if (!isUserActive) {
+      return (
+        <View style={styles.noMoreCardsContainer}>
+          <Text style={styles.noMoreCardsTitle}>Account Deactivated</Text>
+          <Text style={styles.noMoreCardsText}>
+            Your account is currently deactivated. {"\n"}
+            You won't see new people or be shown to others. {"\n"}
+            Reactivate your account in Settings to start swiping again.
+          </Text>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.noMoreCardsContainer}>
         <Text style={styles.noMoreCardsTitle}>No More Swipes</Text>

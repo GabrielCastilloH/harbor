@@ -26,6 +26,7 @@ import { auth } from "../firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { preloadChatCredentials } from "../util/chatPreloader";
 import { AuthService } from "../networking/AuthService";
+import { UserService } from "../networking/UserService";
 import { streamNotificationService } from "../util/streamNotifService";
 
 export default function SignIn({ navigation }: any) {
@@ -135,6 +136,26 @@ export default function SignIn({ navigation }: any) {
           })
         );
         return;
+      }
+
+      // Check if this email belongs to a deleted account
+      try {
+        const deletedCheck = await UserService.checkDeletedAccount(
+          normalizedEmail
+        );
+        if (deletedCheck.isDeleted) {
+          // Show the deleted account screen
+          (nav as any).dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: "DeletedAccount" }],
+            })
+          );
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking deleted account:", error);
+        // Continue with sign-in if check fails
       }
 
       // Email is verified - proceed with sign in
