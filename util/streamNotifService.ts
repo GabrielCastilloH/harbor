@@ -4,7 +4,7 @@ import messaging from "@react-native-firebase/messaging";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StreamChat } from "stream-chat";
 
-const PUSH_TOKEN_KEY = "@current_push_token";
+export const PUSH_TOKEN_KEY = "@current_push_token";
 
 export class StreamNotificationService {
   private static instance: StreamNotificationService;
@@ -26,14 +26,16 @@ export class StreamNotificationService {
   }
 
   /**
-   * Request notification permissions following Stream Chat V2 pattern
+   * Request notification permissions and register for remote messages
    */
   async requestPermission(): Promise<boolean> {
     try {
+      // Register device for remote messages first (essential for iOS)
+      await messaging().registerDeviceForRemoteMessages();
+      console.log("🔔 Device registered for remote messages.");
+
       const authStatus = await messaging().requestPermission();
-      const enabled =
-        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      const enabled = authStatus === 1 || authStatus === 2; // AUTHORIZED || PROVISIONAL
 
       if (enabled) {
         console.log("Authorization status:", authStatus);
@@ -142,12 +144,33 @@ export class StreamNotificationService {
     try {
       const authStatus = await messaging().hasPermission();
       return (
-        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-        authStatus === messaging.AuthorizationStatus.PROVISIONAL
+        authStatus === 1 || // AUTHORIZED
+        authStatus === 2 // PROVISIONAL
       );
     } catch (error) {
       console.error("🔔 Error checking notification status:", error);
       return false;
+    }
+  }
+
+  /**
+   * Save FCM token to user profile and AsyncStorage
+   */
+  async saveUserToken(userId: string): Promise<void> {
+    try {
+      const token = await messaging().getToken();
+      if (!token) {
+        console.warn("🔔 No FCM token available");
+        return;
+      }
+
+      // Store token locally for Stream Chat registration
+      await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+
+      console.log("🔔 FCM token saved for user:", userId);
+    } catch (error) {
+      console.error("🔔 Failed to save FCM token:", error);
+      throw error;
     }
   }
 
