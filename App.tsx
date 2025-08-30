@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { StatusBar } from "expo-status-bar";
-import { NavigationContainer } from "@react-navigation/native";
+import {
+  NavigationContainer,
+  NavigationContainerRef,
+} from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import TabNavigator from "./navigation/TabNavigator";
 import SignIn from "./screens/SignIn";
@@ -10,6 +13,7 @@ import AccountSetupScreen from "./screens/AccountSetupScreen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import { NotificationProvider } from "./context/NotificationContext";
+import NotificationHandler from "./components/NotificationHandler";
 
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
@@ -109,6 +113,7 @@ function MainNavigator() {
 
 function AppContent() {
   const { isInitialized, isAuthenticated, currentUser } = useAppContext();
+  const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
   if (!isInitialized) {
     return <LoadingScreen loadingText="Signing you in..." />;
@@ -117,10 +122,11 @@ function AppContent() {
   // Single NavigationContainer for the entire app
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <StatusBar style="dark" />
         {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
         {isAuthenticated && <UnviewedMatchesHandler />}
+        <NotificationHandler navigationRef={navigationRef} />
       </NavigationContainer>
     </GestureHandlerRootView>
   );
