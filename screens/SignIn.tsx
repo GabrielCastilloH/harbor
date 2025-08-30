@@ -34,6 +34,7 @@ export default function SignIn({ navigation }: any) {
   const { isAuthenticated, currentUser, userId } = useAppContext();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingDeleted, setIsCheckingDeleted] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
@@ -102,7 +103,7 @@ export default function SignIn({ navigation }: any) {
       return;
     }
 
-    setIsLoading(true);
+    setIsCheckingDeleted(false); // Reset checking state
     const normalizedEmail = normalizeEmail(email.trim());
 
     try {
@@ -113,6 +114,8 @@ export default function SignIn({ navigation }: any) {
         password
       );
 
+      // Only set loading to true AFTER successful authentication
+      setIsLoading(true);
       const user = userCredential.user;
 
       // Force token refresh to get accurate verification status
@@ -182,6 +185,7 @@ export default function SignIn({ navigation }: any) {
         error.code === "auth/user-not-found" ||
         error.code === "auth/invalid-credential"
       ) {
+        setIsCheckingDeleted(true);
         try {
           const deletedCheck = await UserService.checkDeletedAccount(
             normalizedEmail
@@ -199,6 +203,8 @@ export default function SignIn({ navigation }: any) {
         } catch (deletedCheckError) {
           console.error("Error checking deleted account:", deletedCheckError);
           // Continue with normal error handling if check fails
+        } finally {
+          setIsCheckingDeleted(false);
         }
       }
 
@@ -289,7 +295,7 @@ export default function SignIn({ navigation }: any) {
     (nav as any).navigate("CreateAccount", { email: email.trim() });
   };
 
-  if (isLoading) {
+  if (isLoading && !isCheckingDeleted) {
     return <LoadingScreen loadingText="Signing you in..." />;
   }
 
@@ -340,11 +346,20 @@ export default function SignIn({ navigation }: any) {
               />
 
               <TouchableOpacity
-                style={styles.signInButton}
+                style={[
+                  styles.signInButton,
+                  (isLoading || isCheckingDeleted) && styles.buttonDisabled,
+                ]}
                 onPress={handleSignIn}
-                disabled={isLoading}
+                disabled={isLoading || isCheckingDeleted}
               >
-                <Text style={styles.signInButtonText}>Sign In</Text>
+                <Text style={styles.signInButtonText}>
+                  {isCheckingDeleted
+                    ? "Checking account..."
+                    : isLoading
+                    ? "Signing in..."
+                    : "Sign In"}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -455,6 +470,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 18,
   },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
   forgotPasswordButton: {
     alignItems: "center",
     marginTop: 16,
@@ -497,10 +515,6 @@ const styles = StyleSheet.create({
     color: Colors.primary500,
     fontWeight: "600",
     fontSize: 16,
-  },
-
-  buttonDisabled: {
-    opacity: 0.6,
   },
   termsContainer: {
     alignItems: "center",
