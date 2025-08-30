@@ -50,7 +50,6 @@ export default function DeletedAccountScreen() {
           style={styles.backButton}
           onPress={handleBackToSignIn}
         >
-          <Ionicons name="arrow-back" size={20} color={Colors.secondary100} />
           <Text style={styles.backButtonText}>Back to Sign In</Text>
         </TouchableOpacity>
 
@@ -107,8 +106,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   backButton: {
-    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     backgroundColor: Colors.primary500,
     paddingHorizontal: 30,
     paddingVertical: 15,
@@ -124,7 +123,6 @@ const styles = StyleSheet.create({
     color: Colors.secondary100,
     fontSize: 16,
     fontWeight: "600",
-    marginLeft: 8,
   },
   brandingContainer: {
     alignItems: "center",
