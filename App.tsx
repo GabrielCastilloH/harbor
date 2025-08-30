@@ -113,7 +113,7 @@ function MainNavigator() {
 
 function AppContent() {
   const { isInitialized, isAuthenticated, currentUser } = useAppContext();
-  const navigationRef = useRef<NavigationContainerRef<any>>(null);
+  const navigationRef = useRef<NavigationContainerRef<any> | null>(null);
 
   if (!isInitialized) {
     return <LoadingScreen loadingText="Signing you in..." />;

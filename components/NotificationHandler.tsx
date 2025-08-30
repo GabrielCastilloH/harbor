@@ -5,7 +5,7 @@ import { NavigationContainerRef } from "@react-navigation/native";
 import { StreamChat } from "stream-chat";
 
 interface NotificationHandlerProps {
-  navigationRef: React.RefObject<NavigationContainerRef<any>>;
+  navigationRef: React.RefObject<NavigationContainerRef<any> | null>;
 }
 
 /**
