@@ -55,7 +55,7 @@ export default function DeletedAccountScreen() {
 
         {/* Harbor Logo/Branding */}
         <View style={styles.brandingContainer}>
-          <Text style={styles.brandingText}>Harbor Dating App</Text>
+          <Text style={styles.brandingText}>Harbor Relationship App</Text>
           <Text style={styles.brandingSubtext}>Find Your Perfect Match</Text>
         </View>
       </View>

@@ -24,4 +24,6 @@ export type AuthStackParamList = {
     fromSignIn?: boolean;
   };
   AccountSetup: undefined;
+  DeletedAccount: undefined;
+  BannedAccount: undefined;
 };
