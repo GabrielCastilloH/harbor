@@ -25,11 +25,15 @@ import { useNotification } from "../context/NotificationContext";
 import SettingsButton from "../components/SettingsButton";
 import MainHeading from "../components/MainHeading";
 import DeleteAccountButton from "../components/DeleteAccountButton";
+import DeactivateAccountButton from "../components/DeactivateAccountButton";
+import { UserService } from "../networking/UserService";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { setUserId, userId } = useAppContext();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const {
     isNotificationsEnabled,
     isLoading,
@@ -40,6 +44,29 @@ export default function SettingsScreen() {
   const [locationServices, setLocationServices] = useState(true);
   // PREMIUM DISABLED: useUser commented out
   // const { user } = useUser();
+
+  // Fetch user profile to get isActive status
+  React.useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!userId) return;
+
+      setIsLoadingProfile(true);
+      try {
+        const profile = await UserService.getUserById(userId);
+        setUserProfile(profile);
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [userId]);
+
+  const handleAccountStatusChange = (isActive: boolean) => {
+    setUserProfile((prev: any) => ({ ...prev, isActive }));
+  };
 
   // PREMIUM DISABLED: Superwall paywall placement commented out
   // const { registerPlacement } = usePlacement({
@@ -170,9 +197,9 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* Account Section */}
+        {/* Profile Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.sectionTitle}>Profile</Text>
 
           <SettingsButton
             icon="person-outline"
@@ -211,8 +238,19 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* Sign Out Section */}
+        {/* Account Section */}
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+
+          {/* Deactivate/Reactivate Account Button */}
+          {!isLoadingProfile && userProfile && (
+            <DeactivateAccountButton
+              isActive={userProfile.isActive !== false} // Default to true if undefined
+              onStatusChange={handleAccountStatusChange}
+            />
+          )}
+
+          {/* Sign Out Button */}
           <SettingsButton
             icon="log-out-outline"
             text="Sign Out"
@@ -239,7 +277,6 @@ const styles = StyleSheet.create({
   },
   section: {
     paddingHorizontal: 20,
-    paddingTop: 10,
     paddingBottom: 0,
     marginBottom: 14, // Middle ground spacing between sections
   },
