@@ -10,8 +10,6 @@ export class SwipeService {
     direction: "left" | "right"
   ) {
     try {
-      console.log(`📞 [SWIPE SERVICE] Calling createSwipe - swiperId: ${swiperId}, swipedId: ${swipedId}, direction: ${direction}`);
-      
       const createSwipe = httpsCallable(
         functions,
         "swipeFunctions-createSwipe"
@@ -19,14 +17,10 @@ export class SwipeService {
       const result = await createSwipe({ swiperId, swipedId, direction });
       const data = result.data as any;
       
-      console.log(`📥 [SWIPE SERVICE] Cloud Function response:`, data);
-      console.log(`🔍 [SWIPE SERVICE] Match detected: ${data.match}`);
-      console.log(`🆔 [SWIPE SERVICE] Match ID: ${data.matchId}`);
-      
       return data;
     } catch (error: any) {
-      console.error("❌ [SWIPE SERVICE] Error creating swipe:", error);
-      console.error("❌ [SWIPE SERVICE] Error details:", {
+      console.error("SwipeService - Error creating swipe:", error);
+      console.error("SwipeService - Error details:", {
         code: error.code,
         message: error.message,
         details: error.details,
