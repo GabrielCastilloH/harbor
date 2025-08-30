@@ -65,10 +65,17 @@ export default function SignIn({ navigation }: any) {
         setEmailError("Email addresses with + symbols are not allowed");
         isValid = false;
       } else {
-        const emailRegex = /^[^\s@]+@cornell\.edu$/i;
-        if (!emailRegex.test(email)) {
-          setEmailError("Please enter a valid Cornell email address");
+        // Reject emails with periods in the username to prevent duplicate accounts
+        const [localPart] = email.split("@");
+        if (localPart && localPart.includes(".")) {
+          setEmailError("Email addresses with periods are not allowed");
           isValid = false;
+        } else {
+          const emailRegex = /^[^\s@]+@cornell\.edu$/i;
+          if (!emailRegex.test(email)) {
+            setEmailError("Please enter a valid Cornell email address");
+            isValid = false;
+          }
         }
       }
     }
@@ -82,10 +89,10 @@ export default function SignIn({ navigation }: any) {
     return isValid;
   };
 
-  // Normalize email by removing + alias part
+  // Normalize email by removing + alias part and periods
   const normalizeEmail = (email: string): string => {
     const [localPart, domain] = email.split("@");
-    const normalizedLocalPart = localPart.split("+")[0]; // Remove everything after +
+    const normalizedLocalPart = localPart.split("+")[0].replace(/\./g, ""); // Remove everything after + and all periods
     return `${normalizedLocalPart}@${domain}`.toLowerCase();
   };
 
@@ -183,6 +190,16 @@ export default function SignIn({ navigation }: any) {
       return;
     }
 
+    // Reject emails with periods in the username to prevent duplicate accounts
+    const [localPart] = email.split("@");
+    if (localPart && localPart.includes(".")) {
+      Alert.alert(
+        "Forgot Password",
+        "Email addresses with periods are not allowed"
+      );
+      return;
+    }
+
     const emailRegex = /^[^\s@]+@cornell\.edu$/i;
     if (!emailRegex.test(email)) {
       Alert.alert(
@@ -207,7 +224,7 @@ export default function SignIn({ navigation }: any) {
               await sendPasswordResetEmail(auth, normalizedEmail);
               Alert.alert(
                 "Reset Link Sent",
-                "Check your email for a password reset link. It may take a few minutes to arrive and will likely be in your spam folder."
+                "Check your email for a password reset link. Please wait around 2 minutes for it to arrive and be sure to check your spam folder as it will likely end up there."
               );
             } catch (error: any) {
               console.error("Password reset error:", error);
