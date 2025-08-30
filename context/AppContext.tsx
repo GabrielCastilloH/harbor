@@ -3,6 +3,7 @@ import { Profile } from "../types/App";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { auth } from "../firebaseConfig";
 import { onAuthStateChanged, User } from "firebase/auth";
+import { UserService } from "../networking/UserService";
 
 interface AppContextType {
   channel: any;
@@ -23,6 +24,8 @@ interface AppContextType {
   profileExists: boolean;
   setProfileExists: (exists: boolean) => void;
   refreshAuthState: (user: User) => void;
+  isBanned: boolean;
+  setIsBanned: (banned: boolean) => void;
 }
 
 const defaultValue: AppContextType = {
@@ -44,6 +47,8 @@ const defaultValue: AppContextType = {
   profileExists: false,
   setProfileExists: () => {},
   refreshAuthState: () => {},
+  isBanned: false,
+  setIsBanned: () => {},
 };
 
 export const AppContext = React.createContext<AppContextType>(defaultValue);
@@ -67,6 +72,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     profileExists: false,
     isInitialized: false,
   });
+
+  // Banned state - separate from appState as it's checked independently
+  const [isBanned, setIsBanned] = useState(false);
 
   // 🏆 The Fix: Use a ref to prevent race conditions from duplicate listener calls
   const isProcessingAuthRef = useRef(false);
@@ -111,10 +119,28 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       // 🚀 OPTIMIZATION: Use Promise.all to fetch data in parallel
       const { UserService } = require("../networking");
-      const [idToken, firestoreResponse] = await Promise.all([
+      const [idToken, firestoreResponse, banStatus] = await Promise.all([
         user.getIdToken(true),
         UserService.getUserById(user.uid),
+        UserService.checkBannedStatus(user.uid),
       ]);
+
+      // Check if user is banned first
+      if (banStatus.isBanned) {
+        setIsBanned(true);
+        setAppState({
+          ...appState,
+          isAuthenticated: true,
+          userId: user.uid,
+          profile: null,
+          currentUser: user,
+          profileExists: false,
+          isInitialized: true,
+        });
+        return;
+      } else {
+        setIsBanned(false);
+      }
 
       if (!user.emailVerified) {
         setAppState({
@@ -233,6 +259,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setProfileExists: (exists: boolean) =>
           setAppState({ ...appState, profileExists: exists }),
         refreshAuthState,
+        isBanned,
+        setIsBanned,
       }}
     >
       {children}
