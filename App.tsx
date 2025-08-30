@@ -11,6 +11,7 @@ import CreateAccountScreen from "./screens/CreateAccountScreen";
 import EmailVerificationScreen from "./screens/EmailVerificationScreen";
 import AccountSetupScreen from "./screens/AccountSetupScreen";
 import DeletedAccountScreen from "./screens/DeletedAccountScreen";
+import BannedAccountScreen from "./screens/BannedAccountScreen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import { NotificationProvider } from "./context/NotificationContext";
@@ -76,6 +77,7 @@ function AuthNavigator() {
         name="DeletedAccount"
         component={DeletedAccountScreen}
       />
+      <AuthStack.Screen name="BannedAccount" component={BannedAccountScreen} />
     </AuthStack.Navigator>
   );
 }
@@ -117,11 +119,31 @@ function MainNavigator() {
 }
 
 function AppContent() {
-  const { isInitialized, isAuthenticated, currentUser } = useAppContext();
+  const { isInitialized, isAuthenticated, currentUser, isBanned } =
+    useAppContext();
   const navigationRef = useRef<NavigationContainerRef<any> | null>(null);
+  const BannedStack = createNativeStackNavigator();
 
   if (!isInitialized) {
     return <LoadingScreen loadingText="Signing you in..." />;
+  }
+
+  // Check if user is banned and authenticated
+  if (isAuthenticated && isBanned) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer ref={navigationRef}>
+          <StatusBar style="dark" />
+          <BannedStack.Navigator screenOptions={{ headerShown: false }}>
+            <BannedStack.Screen
+              name="BannedAccount"
+              component={BannedAccountScreen}
+            />
+          </BannedStack.Navigator>
+          <NotificationHandler navigationRef={navigationRef} />
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    );
   }
 
   // Single NavigationContainer for the entire app

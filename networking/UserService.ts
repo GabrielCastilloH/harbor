@@ -207,4 +207,41 @@ export class UserService {
       );
     }
   }
+
+  static async banUser(
+    userId: string,
+    reason?: string,
+    unbanDate?: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const banUserFunction = httpsCallable(functions, "userFunctions-banUser");
+      const result = await banUserFunction({ userId, reason, unbanDate });
+      return result.data as { success: boolean; message: string };
+    } catch (error: any) {
+      console.error("❌ [UserService] Error banning user:", error);
+      throw new Error(error.message || "Failed to ban user. Please try again.");
+    }
+  }
+
+  static async checkBannedStatus(
+    userId: string
+  ): Promise<{ isBanned: boolean; reason?: string; unbanDate?: string }> {
+    try {
+      const checkBannedStatusFunction = httpsCallable(
+        functions,
+        "userFunctions-checkBannedStatus"
+      );
+      const result = await checkBannedStatusFunction({ userId });
+      return result.data as {
+        isBanned: boolean;
+        reason?: string;
+        unbanDate?: string;
+      };
+    } catch (error: any) {
+      console.error("❌ [UserService] Error checking banned status:", error);
+      throw new Error(
+        error.message || "Failed to check banned status. Please try again."
+      );
+    }
+  }
 }

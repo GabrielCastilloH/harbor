@@ -1383,6 +1383,145 @@ export const checkDeletedAccount = functions.https.onCall(
   }
 );
 
+/**
+ * Ban a user account
+ */
+export const banUser = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (
+    request: functions.https.CallableRequest
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      logToNtfy("🚫 [BAN USER] Starting ban user process");
+
+      const {
+        userId,
+        reason = "Community guidelines violation",
+        unbanDate = null,
+      } = request.data;
+
+      if (!userId) {
+        logToNtfy("❌ [BAN USER] Missing userId");
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "User ID is required"
+        );
+      }
+
+      logToNtfy(`🚫 [BAN USER] Banning user: ${userId}`);
+
+      // Get user data to store email
+      const userDoc = await db.collection("users").doc(userId).get();
+      const userData = userDoc.data();
+
+      if (!userData) {
+        logToNtfy(`❌ [BAN USER] User not found: ${userId}`);
+        throw new functions.https.HttpsError("not-found", "User not found");
+      }
+
+      // Create ban record
+      const banData = {
+        bannedByEmail: userData.email,
+        reason,
+        unbanDate: unbanDate
+          ? admin.firestore.Timestamp.fromDate(new Date(unbanDate))
+          : null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      await db.collection("bannedAccounts").doc(userId).set(banData);
+
+      logToNtfy(`✅ [BAN USER] Successfully banned user: ${userId}`);
+
+      return {
+        success: true,
+        message: "User has been banned successfully",
+      };
+    } catch (error: any) {
+      logToNtfy(`❌ [BAN USER] Error: ${error.message}`);
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError("internal", "Failed to ban user");
+    }
+  }
+);
+
+/**
+ * Check if a user is banned
+ */
+export const checkBannedStatus = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (
+    request: functions.https.CallableRequest
+  ): Promise<{ isBanned: boolean; reason?: string; unbanDate?: string }> => {
+    try {
+      const { userId } = request.data;
+
+      if (!userId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "User ID is required"
+        );
+      }
+
+      const banDoc = await db.collection("bannedAccounts").doc(userId).get();
+
+      if (!banDoc.exists) {
+        return { isBanned: false };
+      }
+
+      const banData = banDoc.data();
+
+      // Check if ban has expired
+      if (banData?.unbanDate && banData.unbanDate.toDate() < new Date()) {
+        // Ban has expired, remove it
+        await db.collection("bannedAccounts").doc(userId).delete();
+        return { isBanned: false };
+      }
+
+      return {
+        isBanned: true,
+        reason: banData?.reason,
+        unbanDate: banData?.unbanDate?.toDate()?.toISOString(),
+      };
+    } catch (error: any) {
+      logToNtfy(`❌ [CHECK BANNED] Error: ${error.message}`);
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to check banned status"
+      );
+    }
+  }
+);
+
 export const userFunctions = {
   createUser,
   getAllUsers,
@@ -1394,4 +1533,6 @@ export const userFunctions = {
   deactivateAccount,
   reactivateAccount,
   checkDeletedAccount,
+  banUser,
+  checkBannedStatus,
 };

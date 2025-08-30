@@ -43,7 +43,7 @@ import { SwipeLimitService } from "../networking/SwipeLimitService";
 import { RootStackParamList } from "../types/navigation";
 
 export default function HomeScreen() {
-  const { userId, isAuthenticated, currentUser } = useAppContext();
+  const { userId, isAuthenticated, currentUser, isBanned } = useAppContext();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] =
@@ -377,6 +377,14 @@ export default function HomeScreen() {
     // Generate unique ID for this swipe attempt
     const swipeId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+    // Check if user is banned
+    if (isBanned) {
+      console.log(
+        `❌ [HOMESCREEN] [${swipeId}] User is banned - blocking swipe`
+      );
+      return;
+    }
+
     if (swipeInProgress || lastSwipedProfile === profile.uid) {
       return;
     }
@@ -497,6 +505,14 @@ export default function HomeScreen() {
   const handleSwipeLeft = async (profile: Profile) => {
     // Generate unique ID for this swipe attempt
     const swipeId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Check if user is banned
+    if (isBanned) {
+      console.log(
+        `❌ [HOMESCREEN] [${swipeId}] User is banned - blocking swipe`
+      );
+      return;
+    }
 
     // Prevent duplicate swipes while a swipe is in progress
     if (swipeInProgress || lastSwipedProfile === profile.uid) {
@@ -653,8 +669,12 @@ export default function HomeScreen() {
             <AnimatedStack
               ref={stackRef}
               data={recommendations}
-              onSwipeRight={isUserActive ? handleSwipeRight : undefined}
-              onSwipeLeft={isUserActive ? handleSwipeLeft : undefined}
+              onSwipeRight={
+                isUserActive && !isBanned ? handleSwipeRight : undefined
+              }
+              onSwipeLeft={
+                isUserActive && !isBanned ? handleSwipeLeft : undefined
+              }
               onCurrentProfileChange={setCurrentCardProfile}
               isUserActive={isUserActive}
             />
@@ -666,18 +686,18 @@ export default function HomeScreen() {
                 styles.button,
                 styles.noButton,
                 isNoPressed && { backgroundColor: Colors.red },
-                !isUserActive && { opacity: 0.5 },
+                (!isUserActive || isBanned) && { opacity: 0.5 },
               ]}
               onPressIn={(event) => {
-                if (!isUserActive) return;
+                if (!isUserActive || isBanned) return;
                 setIsNoPressed(true);
                 handleTouchStart(event);
               }}
               onPressOut={(event) => {
-                if (!isUserActive) return;
+                if (!isUserActive || isBanned) return;
                 handleTouchEnd(event, true);
               }}
-              disabled={!isUserActive}
+              disabled={!isUserActive || isBanned}
             >
               <Image
                 source={require("../assets/images/shipwreck.png")}
@@ -694,18 +714,18 @@ export default function HomeScreen() {
                 styles.button,
                 styles.yesButton,
                 isYesPressed && { backgroundColor: Colors.green },
-                !isUserActive && { opacity: 0.5 },
+                (!isUserActive || isBanned) && { opacity: 0.5 },
               ]}
               onPressIn={(event) => {
-                if (!isUserActive) return;
+                if (!isUserActive || isBanned) return;
                 setIsYesPressed(true);
                 handleTouchStart(event);
               }}
               onPressOut={(event) => {
-                if (!isUserActive) return;
+                if (!isUserActive || isBanned) return;
                 handleTouchEnd(event, false);
               }}
-              disabled={!isUserActive}
+              disabled={!isUserActive || isBanned}
             >
               <View style={{ marginBottom: 3, marginLeft: 2 }}>
                 <FontAwesome6
