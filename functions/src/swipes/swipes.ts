@@ -207,16 +207,9 @@ export const createSwipe = functions.https.onCall(
           .limit(1)
           .get();
 
-        await logToNtfy(
-          `[${requestId}] MATCH CHECK: Looking for mutual swipe from ${swipedId} to ${swiperId}`
-        );
-        await logToNtfy(
-          `[${requestId}] MUTUAL SWIPE RESULTS: Found ${mutualSwipe.docs.length} matching swipes`
-        );
-
         if (!mutualSwipe.empty) {
           await logToNtfy(
-            `[${requestId}] ⭐ MATCH MADE: ${request.data.swiperId} <-> ${request.data.swipedId}`
+            `[${requestId}] 🔔 MATCH MADE: ${request.data.swiperId} <-> ${request.data.swipedId} - Stream Chat notifications should be enabled`
           );
 
           // Use transaction for atomic match creation
@@ -262,7 +255,7 @@ export const createSwipe = functions.https.onCall(
 
             // Note: Push notifications for matches are now handled by Stream Chat
             // when users receive messages in their match channel
-            await logToNtfy(`[${requestId}] MATCH CREATED: ${matchRef.id}`);
+            await logToNtfy(`[${requestId}] 🔔 MATCH CREATED: ${matchRef.id} - Stream Chat should send notifications for new messages`);
 
             return {
               message: "Swipe recorded and match created",
@@ -272,18 +265,12 @@ export const createSwipe = functions.https.onCall(
             };
           });
 
-          await logToNtfy(`[${requestId}] 📬 MATCH RESPONSE READY: Returning to client`);
           return matchResult;
-        } else {
-          await logToNtfy(`[${requestId}] ❌ NO MUTUAL SWIPE FOUND - No match created`);
         }
       }
 
       // If no match, just create the swipe
-      await logToNtfy(`[${requestId}] 💫 Creating non-match swipe`);
       await db.collection("swipes").add(swipeData);
-
-      await logToNtfy(`[${requestId}] ✅ Non-match swipe created successfully`);
       return {
         message: "Swipe recorded",
         swipe: swipeData,

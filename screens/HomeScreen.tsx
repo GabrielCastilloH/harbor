@@ -105,18 +105,6 @@ export default function HomeScreen() {
     }, [shouldRemoveCurrentCard])
   );
 
-  // Debug logging for match modal state changes
-  useEffect(() => {
-    console.log(
-      `🔄 [MATCH DEBUG] Match modal state changed - showMatch: ${showMatch}`
-    );
-    if (showMatch) {
-      console.log(
-        `👥 [MATCH DEBUG] Match modal props - matchedProfile: ${matchedProfile?.firstName}, currentProfile: ${userProfile?.firstName}, matchId: ${currentMatchId}`
-      );
-    }
-  }, [showMatch, matchedProfile, userProfile, currentMatchId]);
-
   // Initialize socket connection
   useEffect(() => {
     if (!userId || !isAuthenticated || !currentUser) {
@@ -135,6 +123,9 @@ export default function HomeScreen() {
           userId1: userId,
           userId2: matchData.matchedProfile.uid,
         });
+        console.log(
+          "🔔 [NOTIFICATION] Match channel created, notifications enabled"
+        );
       } catch (chatError) {
         console.error(
           "HomeScreen - [SOCKET][CHAT] Error creating chat channel:",
@@ -165,6 +156,9 @@ export default function HomeScreen() {
       try {
         // Refresh FCM token for existing users (handles device changes, etc.)
         await streamNotificationService.saveUserToken(currentUser.uid);
+        console.log(
+          "🔔 [NOTIFICATION] Stream notification token refreshed for user"
+        );
       } catch (error) {
         console.error(
           "HomeScreen - Error refreshing Stream notification token:",
@@ -386,34 +380,16 @@ export default function HomeScreen() {
   };
 
   const handleSwipeRight = async (profile: Profile) => {
-    // Generate unique ID for this swipe attempt
-    const swipeId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    console.log(`🚀 [MATCH DEBUG] [${swipeId}] Starting right swipe`);
-    console.log(`🚀 [MATCH DEBUG] [${swipeId}] Current user: ${userId}`);
-    console.log(
-      `🚀 [MATCH DEBUG] [${swipeId}] Target user: ${profile.uid} (${profile.firstName})`
-    );
-
     // Check if user is banned
     if (isBanned) {
-      console.log(
-        `❌ [MATCH DEBUG] [${swipeId}] User is banned - blocking swipe`
-      );
       return;
     }
 
     if (swipeInProgress || lastSwipedProfile === profile.uid) {
-      console.log(
-        `❌ [MATCH DEBUG] [${swipeId}] Swipe blocked - inProgress: ${swipeInProgress}, lastSwiped: ${lastSwipedProfile}`
-      );
       return;
     }
 
     if (!userId || !profile.uid) {
-      console.log(
-        `❌ [MATCH DEBUG] [${swipeId}] Missing user IDs - userId: ${userId}, profileId: ${profile.uid}`
-      );
       return;
     }
 
@@ -450,27 +426,11 @@ export default function HomeScreen() {
       setSwipeInProgress(true);
       setLastSwipedProfile(profile.uid);
 
-      console.log(
-        `📤 [MATCH DEBUG] [${swipeId}] Calling SwipeService.createSwipe`
-      );
-
       // Step 1: Create the swipe
       const response = await SwipeService.createSwipe(
         userId,
         profile.uid,
         "right"
-      );
-
-      console.log(
-        `📥 [MATCH DEBUG] [${swipeId}] SwipeService response:`,
-        response
-      );
-      console.log(`🔍 [MATCH DEBUG] [${swipeId}] Is match: ${response.match}`);
-      console.log(
-        `🆔 [MATCH DEBUG] [${swipeId}] Match ID: ${response.matchId}`
-      );
-      console.log(
-        `📊 [MATCH DEBUG] [${swipeId}] Response type: ${typeof response}`
       );
 
       // Step 1.5: Increment swipe count
@@ -484,83 +444,44 @@ export default function HomeScreen() {
           canSwipe: updatedLimit.canSwipe,
         });
       } catch (error) {
-        console.error(
-          `❌ [HOMESCREEN] [${swipeId}] Error incrementing swipe count:`,
-          error
-        );
+        console.error(`❌ [HOMESCREEN] Error incrementing swipe count:`, error);
       }
 
       // Step 2: If it's a match, create chat channel and show modal
       if (response.match) {
-        console.log(
-          `🎉 [MATCH DEBUG] [${swipeId}] MATCH DETECTED! Setting up match modal`
-        );
-        console.log(
-          `👤 [MATCH DEBUG] [${swipeId}] Setting matchedProfile to:`,
-          profile.firstName
-        );
-        console.log(
-          `🆔 [MATCH DEBUG] [${swipeId}] Setting currentMatchId to:`,
-          response.matchId
-        );
-
         try {
-          console.log(`💬 [MATCH DEBUG] [${swipeId}] Creating chat channel`);
           const chatResponse = await ChatFunctions.createChannel({
             userId1: userId,
             userId2: profile.uid,
           });
           console.log(
-            `✅ [MATCH DEBUG] [${swipeId}] Chat channel created:`,
-            chatResponse
+            "🔔 [NOTIFICATION] Chat channel created for match, notifications should be enabled"
           );
         } catch (chatError) {
           console.error(
-            `❌ [MATCH DEBUG] [${swipeId}] Error creating chat channel:`,
+            "❌ [NOTIFICATION] Error creating chat channel:",
             chatError
           );
         }
-
-        console.log(
-          `🎯 [MATCH DEBUG] [${swipeId}] Setting match modal state - showMatch: true`
-        );
 
         // Always show the match modal if a match is made
         setMatchedProfile(profile);
         setCurrentMatchId(response.matchId || null);
         setShowMatch(true);
 
-        console.log(
-          `📱 [MATCH DEBUG] [${swipeId}] Match modal state set. Current showMatch state should be true`
-        );
-
         // Mark match as viewed
         if (response.matchId) {
           try {
-            console.log(
-              `👁️ [MATCH DEBUG] [${swipeId}] Marking match as viewed`
-            );
             await MatchService.markMatchAsViewed(response.matchId, userId);
-            console.log(`✅ [MATCH DEBUG] [${swipeId}] Match marked as viewed`);
           } catch (error) {
-            console.error(
-              `❌ [MATCH DEBUG] [${swipeId}] Error marking match as viewed:`,
-              error
-            );
+            console.error("Error marking match as viewed:", error);
           }
         }
 
         // Clear recommendations since user is now in a match
-        console.log(
-          `🧹 [MATCH DEBUG] [${swipeId}] Clearing recommendations and current profile`
-        );
         setRecommendations([]);
         setCurrentProfile(null);
       } else {
-        console.log(
-          `❌ [MATCH DEBUG] [${swipeId}] No match detected - updating to next profile`
-        );
-
         // Update current profile to the next one only if no match
         const currentIndex = recommendations.findIndex(
           (p) => p.uid === profile.uid
@@ -582,14 +503,8 @@ export default function HomeScreen() {
   };
 
   const handleSwipeLeft = async (profile: Profile) => {
-    // Generate unique ID for this swipe attempt
-    const swipeId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
     // Check if user is banned
     if (isBanned) {
-      console.log(
-        `❌ [HOMESCREEN] [${swipeId}] User is banned - blocking swipe`
-      );
       return;
     }
 
@@ -630,7 +545,7 @@ export default function HomeScreen() {
         });
       } catch (error) {
         console.error(
-          `❌ [HOMESCREEN] [${swipeId}] Error incrementing left swipe count:`,
+          `❌ [HOMESCREEN] Error incrementing left swipe count:`,
           error
         );
       }
@@ -645,10 +560,7 @@ export default function HomeScreen() {
         setCurrentProfile(null);
       }
     } catch (error) {
-      console.error(
-        `❌ [HOMESCREEN] [${swipeId}] Error creating left swipe:`,
-        error
-      );
+      console.error(`❌ [HOMESCREEN] Error creating left swipe:`, error);
     } finally {
       // Reset swipe flags after a short delay
       setTimeout(() => {

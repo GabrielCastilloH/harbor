@@ -20,7 +20,8 @@ export default function NotificationHandler({
     const unsubscribeOnNotificationOpen = messaging().onNotificationOpenedApp(
       (remoteMessage) => {
         console.log(
-          "🔔 Notification caused app to open from background state on iOS"
+          "🔔 [NOTIFICATION] App opened from background state on iOS:",
+          remoteMessage.data
         );
 
         // Navigate to relevant channel screen for Stream Chat messages
@@ -29,6 +30,7 @@ export default function NotificationHandler({
           remoteMessage.data?.channel_id
         ) {
           const channelId = remoteMessage.data.channel_id;
+          console.log("🔔 [NOTIFICATION] Navigating to chat:", channelId);
           navigationRef.current?.navigate("ChatsTab", {
             screen: "ChatScreen",
             params: { channelId },
