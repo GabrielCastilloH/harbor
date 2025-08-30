@@ -14,12 +14,14 @@ interface DeactivateAccountButtonProps {
   isActive: boolean;
   onStatusChange?: (isActive: boolean) => void;
   disabled?: boolean;
+  isLoading?: boolean;
 }
 
 export default function DeactivateAccountButton({
   isActive,
   onStatusChange,
   disabled = false,
+  isLoading = false,
 }: DeactivateAccountButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -101,23 +103,26 @@ export default function DeactivateAccountButton({
   const iconName = isActive ? "pause-circle-outline" : "play-circle-outline";
   const buttonText = isActive ? "Deactivate Account" : "Reactivate Account";
 
+  // Show loading state when fetching user data or processing
+  const isButtonDisabled = disabled || isProcessing || isLoading;
+
   return (
     <TouchableOpacity
-      style={[
-        styles.button,
-        disabled && styles.buttonDisabled,
-        isProcessing && styles.buttonDisabled,
-      ]}
+      style={[styles.button, isButtonDisabled && styles.buttonDisabled]}
       onPress={isActive ? handleDeactivate : handleReactivate}
-      disabled={disabled || isProcessing}
+      disabled={isButtonDisabled}
     >
-      {isProcessing ? (
+      {isLoading ? (
+        <ActivityIndicator size="small" color={Colors.primary500} />
+      ) : isProcessing ? (
         <ActivityIndicator size="small" color={Colors.primary500} />
       ) : (
         <Ionicons name={iconName} size={20} color={Colors.primary500} />
       )}
       <Text style={styles.buttonText}>
-        {isProcessing
+        {isLoading
+          ? "Loading..."
+          : isProcessing
           ? isActive
             ? "Deactivating..."
             : "Reactivating..."
@@ -140,7 +145,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 10,
     flex: 1,
-    fontWeight: "500",
+    fontWeight: "400",
     color: Colors.primary500,
   },
   buttonDisabled: {
