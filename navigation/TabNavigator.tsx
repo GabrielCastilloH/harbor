@@ -20,11 +20,11 @@ export default function TabNavigator() {
 
     const initializeStreamNotifications = async () => {
       try {
-        // Request permission and save FCM token for Stream notifications
+        // Request permission for Stream Chat notifications
         const granted = await streamNotificationService.requestPermission();
         if (granted) {
-          // Save FCM token to user profile (handled internally by Stream service)
-          await streamNotificationService.saveUserToken(currentUser.uid);
+          console.log("🔔 Notification permission granted in TabNavigator");
+          // Note: Device registration with Stream happens in ChatNavigator when client is ready
         }
       } catch (error) {
         console.error(
