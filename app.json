@@ -52,6 +52,7 @@
     },
     "scheme": "com.gabrielach.harbor",
     "plugins": [
+      "expo-notifications",
       [
         "expo-image-picker",
         {
