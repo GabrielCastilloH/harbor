@@ -101,7 +101,7 @@ export class StreamNotificationService {
         }
       );
 
-      console.log("🔔 Push token registered with Stream Chat");
+      console.log("🔔 [NOTIFICATION] Push token registered with Stream Chat - V2 notifications enabled");
     } catch (error) {
       console.error("🔔 Error registering push token:", error);
       throw error;
@@ -180,7 +180,7 @@ export class StreamNotificationService {
   async initializeForUser(userId: string): Promise<void> {
     try {
       await this.registerPushToken(userId);
-      console.log("🔔 Notifications initialized for user:", userId);
+      console.log("🔔 [NOTIFICATION] Stream Chat V2 notifications initialized for user:", userId);
     } catch (error) {
       console.error("🔔 Error initializing notifications:", error);
       throw error;
