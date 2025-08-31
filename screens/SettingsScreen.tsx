@@ -171,6 +171,10 @@ export default function SettingsScreen() {
     Linking.openURL("https://www.tryharbor.app/terms");
   };
 
+  const handleSupport = () => {
+    Linking.openURL("https://www.tryharbor.app/support");
+  };
+
   // PREMIUM DISABLED: Always set premium to false
   const isPremium = false;
   // Original: const isPremium = user?.subscriptionStatus === "ACTIVE";
@@ -224,23 +228,6 @@ export default function SettingsScreen() {
           /> */}
         </View>
 
-        {/* Legal Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Legal</Text>
-
-          <SettingsButton
-            icon="shield-outline"
-            text="Privacy Policy"
-            onPress={handlePrivacyPolicy}
-          />
-
-          <SettingsButton
-            icon="document-text-outline"
-            text="Terms & Conditions"
-            onPress={handleTermsAndConditions}
-          />
-        </View>
-
         {/* Account Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
@@ -260,6 +247,29 @@ export default function SettingsScreen() {
             isDestructive={false}
             isLoading={isSigningOut}
             disabled={isSigningOut}
+          />
+        </View>
+
+        {/* Help & Legal Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Help & Legal</Text>
+
+          <SettingsButton
+            icon="help-circle-outline"
+            text="Support"
+            onPress={handleSupport}
+          />
+
+          <SettingsButton
+            icon="shield-outline"
+            text="Privacy Policy"
+            onPress={handlePrivacyPolicy}
+          />
+
+          <SettingsButton
+            icon="document-text-outline"
+            text="Terms & Conditions"
+            onPress={handleTermsAndConditions}
           />
         </View>
 
