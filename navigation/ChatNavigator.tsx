@@ -28,7 +28,6 @@ import { useAppContext } from "../context/AppContext";
 import { RootStackParamList } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import MainHeading from "../components/MainHeading";
-import { NotificationDebugger } from "../util/notificationDebugger";
 
 type NavigationProps = NavigationProp<RootStackParamList>;
 
@@ -336,24 +335,19 @@ export default function ChatNavigator() {
             userId,
             "HarborFirebasePush"
           );
-          console.log(
-            "🔔 [NOTIFICATION] Device successfully registered with Stream Chat servers"
-          );
+          // console.log(
+          //   "🔔 [NOTIFICATION] Device successfully registered with Stream Chat servers"
+          // );
         } catch (deviceError) {
-          console.error(
-            "🔔 [NOTIFICATION] CRITICAL ERROR - Failed to register device with Stream:",
-            deviceError
-          );
+          // console.error(
+          //   "🔔 [NOTIFICATION] CRITICAL ERROR - Failed to register device with Stream:",
+          //   deviceError
+          // );
           // Don't throw here, let the app continue but log the critical error
         }
 
         if (isMounted) {
           setChatClient(client);
-
-          // Debug notification setup after client is ready
-          setTimeout(async () => {
-            await NotificationDebugger.debugStreamNotifications(client, userId);
-          }, 2000); // Wait 2 seconds for everything to settle
         }
       } catch (error) {
         console.error("🔴 Error creating chat client:", error);
