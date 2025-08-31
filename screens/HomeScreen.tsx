@@ -123,9 +123,6 @@ export default function HomeScreen() {
           userId1: userId,
           userId2: matchData.matchedProfile.uid,
         });
-        console.log(
-          "🔔 [NOTIFICATION] Match channel created, notifications enabled"
-        );
       } catch (chatError) {
         console.error(
           "HomeScreen - [SOCKET][CHAT] Error creating chat channel:",
@@ -156,9 +153,6 @@ export default function HomeScreen() {
       try {
         // Refresh FCM token for existing users (handles device changes, etc.)
         await streamNotificationService.saveUserToken(currentUser.uid);
-        console.log(
-          "🔔 [NOTIFICATION] Stream notification token refreshed for user"
-        );
       } catch (error) {
         console.error(
           "HomeScreen - Error refreshing Stream notification token:",
@@ -454,9 +448,6 @@ export default function HomeScreen() {
             userId1: userId,
             userId2: profile.uid,
           });
-          console.log(
-            "🔔 [NOTIFICATION] Chat channel created for match, notifications should be enabled"
-          );
         } catch (chatError) {
           console.error(
             "❌ [NOTIFICATION] Error creating chat channel:",

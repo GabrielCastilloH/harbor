@@ -23,7 +23,6 @@ export default function TabNavigator() {
         // Request permission for Stream Chat notifications
         const granted = await streamNotificationService.requestPermission();
         if (granted) {
-          console.log("🔔 Notification permission granted in TabNavigator");
           // Note: Device registration with Stream happens in ChatNavigator when client is ready
         }
       } catch (error) {

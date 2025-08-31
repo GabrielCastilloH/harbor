@@ -268,29 +268,24 @@ export default function ChatScreen() {
       <HeaderBack
         title={matchedUserName}
         onBack={() => navigation.goBack()}
-        onTitlePress={
-          hasMatchedUser
-            ? () => {
-                if (matchedUserId) {
-                  (navigation as any).navigate("ProfileScreen", {
-                    userId: matchedUserId,
-                    matchId: null,
-                  });
-                }
-              }
-            : undefined
-        }
+        onTitlePress={() => {
+          if (matchedUserId) {
+            (navigation as any).navigate("ProfileScreen", {
+              userId: matchedUserId,
+              matchId: null,
+            });
+          }
+        }}
         rightIcon={{
           name: "person",
           onPress: () => {
-            if (matchedUserId && hasMatchedUser) {
+            if (matchedUserId) {
               (navigation as any).navigate("ProfileScreen", {
                 userId: matchedUserId,
                 matchId: null,
               });
             }
           },
-          disabled: !hasMatchedUser,
         }}
       />
 

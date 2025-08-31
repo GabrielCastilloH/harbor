@@ -19,18 +19,13 @@ export default function NotificationHandler({
     // Handle notification opened app from background state (iOS)
     const unsubscribeOnNotificationOpen = messaging().onNotificationOpenedApp(
       (remoteMessage) => {
-        console.log(
-          "🔔 [NOTIFICATION] App opened from background state on iOS:",
-          remoteMessage.data
-        );
-
         // Navigate to relevant channel screen for Stream Chat messages
         if (
           remoteMessage.data?.type === "message.new" &&
           remoteMessage.data?.channel_id
         ) {
           const channelId = remoteMessage.data.channel_id;
-          console.log("🔔 [NOTIFICATION] Navigating to chat:", channelId);
+
           navigationRef.current?.navigate("ChatsTab", {
             screen: "ChatScreen",
             params: { channelId },
@@ -44,10 +39,6 @@ export default function NotificationHandler({
       .getInitialNotification()
       .then((remoteMessage) => {
         if (remoteMessage) {
-          console.log(
-            "🔔 Notification caused app to open from quit state on iOS"
-          );
-
           // Navigate to relevant channel screen for Stream Chat messages
           if (
             remoteMessage.data?.type === "message.new" &&
@@ -68,10 +59,6 @@ export default function NotificationHandler({
     // Handle notification opened app from quit state (Android)
     notifee.getInitialNotification().then((initialNotification) => {
       if (initialNotification) {
-        console.log(
-          "🔔 Notification caused app to open from quit state on Android"
-        );
-
         const channelId = initialNotification.notification.data?.channel_id;
         if (channelId) {
           // Delay navigation to ensure navigation is ready
@@ -95,10 +82,6 @@ export default function NotificationHandler({
     const unsubscribeBackgroundEvent = notifee.onBackgroundEvent(
       async ({ detail, type }) => {
         if (type === EventType.PRESS) {
-          console.log(
-            "🔔 User pressed notification while app was on background on Android"
-          );
-
           const channelId = detail.notification?.data?.channel_id;
           if (channelId) {
             navigationRef.current?.navigate("ChatsTab", {
@@ -119,10 +102,6 @@ export default function NotificationHandler({
     const unsubscribeForegroundEvent = notifee.onForegroundEvent(
       ({ detail, type }) => {
         if (type === EventType.PRESS) {
-          console.log(
-            "🔔 User pressed notification while app was in foreground"
-          );
-
           const channelId = detail.notification?.data?.channel_id;
           if (channelId) {
             navigationRef.current?.navigate("ChatsTab", {
@@ -141,8 +120,6 @@ export default function NotificationHandler({
     // Handle foreground messages for Stream Chat notifications
     const unsubscribeOnMessage = messaging().onMessage(
       async (remoteMessage) => {
-        console.log("🔔 Foreground message received:", remoteMessage);
-
         // Only handle Stream Chat message notifications
         if (
           remoteMessage.data?.type === "message.new" &&
