@@ -14,7 +14,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.gabrielach.harbor",
       "googleServicesFile": "./GoogleService-Info.plist",
       "buildNumber": "1",
@@ -28,8 +28,7 @@
         "NSMicrophoneUsageDescription": "Harbor needs access to your microphone for voice messages in chat.",
         "CFBundleDisplayName": "Harbor",
         "CFBundleName": "Harbor",
-        "CFBundleShortVersionString": "1.0.0",
-        "NSUserTrackingUsageDescription": "This app does not track users across other companies' apps or websites."
+        "CFBundleShortVersionString": "1.0.0"
       }
     },
     "android": {
