@@ -22,12 +22,15 @@
     "@react-navigation/native-stack": "^7.2.0",
     "@sendgrid/mail": "^8.1.5",
     "@stream-io/flat-list-mvcp": "^0.10.3",
+    "@telemetrydeck/sdk": "^2.0.4",
+    "@typedigital/telemetrydeck-react": "^0.5.0",
     "expo": "53.0.22",
     "expo-av": "~15.1.7",
     "expo-blur": "~14.1.5",
     "expo-build-properties": "~0.14.8",
     "expo-clipboard": "^7.1.5",
     "expo-constants": "~17.1.7",
+    "expo-crypto": "^14.1.5",
     "expo-dev-client": "~5.2.4",
     "expo-device": "~7.1.4",
     "expo-file-system": "~18.1.11",
@@ -50,7 +53,8 @@
     "react-native-screens": "~4.11.1",
     "react-native-svg": "15.11.2",
     "socket.io-client": "^4.8.1",
-    "stream-chat-react-native": "^8.3.3"
+    "stream-chat-react-native": "^8.3.3",
+    "text-encoding": "^0.7.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

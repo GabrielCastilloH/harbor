@@ -104,6 +104,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           // Silent fail for data clearing
         }
 
+        // Clear the user when they log out
+        // Note: TelemetryDeck user ID will be reset on next app restart
+
         // 🏆 Atomic state update
         setAppState({
           ...appState,
@@ -159,6 +162,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       if (response && response.user) {
         await loadStreamCredentials();
+
+        // 🏆 Note: TelemetryDeck user ID is set in App.tsx and will be updated on next app restart
+        // For now, we'll track user activity with the current anonymous user
 
         setAppState({
           ...appState,
