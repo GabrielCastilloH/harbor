@@ -76,6 +76,25 @@ export class StreamNotificationService {
         push_provider_name,
       });
 
+      // CRITICAL: Actually register the device with Stream after user is connected
+      try {
+        await this.client.addDevice(
+          token,
+          push_provider,
+          userId,
+          push_provider_name
+        );
+        console.log(
+          "🔔 [NOTIFICATION] Device successfully registered with Stream Chat server"
+        );
+      } catch (deviceError) {
+        console.error(
+          "🔔 [NOTIFICATION] Error registering device with Stream:",
+          deviceError
+        );
+        throw deviceError;
+      }
+
       await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
 
       const removeOldToken = async () => {
@@ -101,7 +120,9 @@ export class StreamNotificationService {
         }
       );
 
-      console.log("🔔 [NOTIFICATION] Push token registered with Stream Chat - V2 notifications enabled");
+      console.log(
+        "🔔 [NOTIFICATION] Push token registered with Stream Chat - V2 notifications enabled"
+      );
     } catch (error) {
       console.error("🔔 Error registering push token:", error);
       throw error;
@@ -180,7 +201,10 @@ export class StreamNotificationService {
   async initializeForUser(userId: string): Promise<void> {
     try {
       await this.registerPushToken(userId);
-      console.log("🔔 [NOTIFICATION] Stream Chat V2 notifications initialized for user:", userId);
+      console.log(
+        "🔔 [NOTIFICATION] Stream Chat V2 notifications initialized for user:",
+        userId
+      );
     } catch (error) {
       console.error("🔔 Error initializing notifications:", error);
       throw error;
