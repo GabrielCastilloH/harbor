@@ -424,6 +424,7 @@ const styles = StyleSheet.create({
   channelContent: {
     flex: 1,
     backgroundColor: "white",
+    paddingBottom: 35, // Manual keyboard spacing to avoid KeyboardAvoidingView conflicts with Stream Chat
   },
   disabledContainer: {
     padding: 16,
