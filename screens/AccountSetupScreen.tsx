@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Alert, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Profile } from "../types/App";
@@ -11,6 +11,7 @@ import LoadingScreen from "../components/LoadingScreen";
 import { signOut } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { preloadChatCredentials } from "../util/chatPreloader";
+import { streamNotificationService } from "../util/streamNotifService";
 
 export default function AccountSetupScreen({
   showProgressBar = true,
@@ -42,6 +43,9 @@ export default function AccountSetupScreen({
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0); // 0 to 1
   const [targetProgress, setTargetProgress] = useState(0); // Target progress for smooth animation
+
+  // Use a ref to track if the alert has been shown
+  const hasAlertBeenShown = useRef(false);
 
   // Animate progress smoothly
   useEffect(() => {
@@ -216,6 +220,26 @@ export default function AccountSetupScreen({
         );
         setLoading(false);
         return;
+      }
+
+      // Move to notification setup phase
+      updateProgress(0.9);
+
+      // STEP 3: Request notification permission and save token
+      try {
+        await streamNotificationService.requestAndSaveNotificationToken(
+          firebaseUid
+        );
+      } catch (error) {
+        console.error("AccountSetupScreen - Error saving FCM token:", error);
+        if (!hasAlertBeenShown.current) {
+          Alert.alert(
+            "Notifications Disabled",
+            "We need permission to send you notifications for new matches and messages. You can enable them later in your phone's settings.",
+            [{ text: "OK" }]
+          );
+          hasAlertBeenShown.current = true;
+        }
       }
 
       // Move to chat setup phase

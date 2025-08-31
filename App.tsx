@@ -21,7 +21,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
 import LoadingScreen from "./components/LoadingScreen";
 import UnviewedMatchesHandler from "./components/UnviewedMatchesHandler";
-import NotificationEnabler from "./components/NotificationEnabler";
 // PREMIUM DISABLED: Superwall imports commented out
 // import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
 // import { SUPERWALL_CONFIG } from "./firebaseConfig";
@@ -120,13 +119,8 @@ function MainNavigator() {
 }
 
 function AppContent() {
-  const {
-    isInitialized,
-    isAuthenticated,
-    currentUser,
-    isBanned,
-    profileExists,
-  } = useAppContext();
+  const { isInitialized, isAuthenticated, currentUser, isBanned } =
+    useAppContext();
   const navigationRef = useRef<NavigationContainerRef<any> | null>(null);
   const BannedStack = createNativeStackNavigator();
 
@@ -161,10 +155,6 @@ function AppContent() {
         {isAuthenticated && <UnviewedMatchesHandler />}
         <NotificationHandler navigationRef={navigationRef} />
       </NavigationContainer>
-      {/* 🏆 Render the new component after the main navigation stack */}
-      {isAuthenticated && currentUser?.emailVerified && profileExists && (
-        <NotificationEnabler />
-      )}
     </GestureHandlerRootView>
   );
 }

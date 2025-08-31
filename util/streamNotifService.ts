@@ -3,6 +3,8 @@ import "../firebaseConfig";
 import messaging from "@react-native-firebase/messaging";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StreamChat } from "stream-chat";
+import { Platform } from "react-native";
+import { useRef } from "react";
 
 export const PUSH_TOKEN_KEY = "@current_push_token";
 
@@ -180,6 +182,45 @@ export class StreamNotificationService {
       await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
     } catch (error) {
       console.error("🔔 Failed to save FCM token:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Request notification permission and save token atomically
+   */
+  async requestAndSaveNotificationToken(userId: string): Promise<boolean> {
+    try {
+      // Register device for remote messages first (essential for iOS)
+      if (Platform.OS === "ios") {
+        await messaging().registerDeviceForRemoteMessages();
+      }
+
+      // Request permission
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+      if (!enabled) {
+        console.error(
+          "🔔 Error requesting notification permission: Notification permission denied"
+        );
+        throw new Error("Notification permission denied");
+      }
+
+      // Get and save token
+      const token = await messaging().getToken();
+      if (token) {
+        await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+        console.log("✅ FCM token saved successfully.");
+        return true;
+      } else {
+        console.error("🔔 Error generating FCM token: Token is null or empty");
+        return false;
+      }
+    } catch (error) {
+      console.error("🔔 Error in requestAndSaveNotificationToken:", error);
       throw error;
     }
   }

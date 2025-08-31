@@ -242,31 +242,24 @@ export default function ChatNavigator() {
   }, [chatUserToken, userId, setStreamUserToken]);
 
   // 💡 CRITICAL: This useEffect must run and set the notificationToken state
-  // before the useCreateChatClient hook attempts to create the client.
+  // Get notification token from AsyncStorage (set during AccountSetupScreen)
   useEffect(() => {
-    const getNotificationToken = async () => {
+    const getStoredNotificationToken = async () => {
       try {
-        const permissionGranted =
-          await streamNotificationService.requestPermission();
-        if (permissionGranted) {
-          const token = await messaging().getToken();
-          if (token) {
-            setNotificationToken(token);
-          } else {
-            console.warn("🟡 No FCM token available.");
-          }
+        const token = await AsyncStorage.getItem("@current_push_token");
+        if (token) {
+          setNotificationToken(token);
         } else {
-          console.warn("🟡 Notification permissions not granted.");
+          console.warn("🟡 No stored FCM token available.");
         }
       } catch (err) {
         console.error(
-          "🔴 ChatNavigator - Failed to get notification token:",
+          "🔴 ChatNavigator - Failed to get stored notification token:",
           err
         );
-        setError("Failed to get notification token");
       }
     };
-    getNotificationToken();
+    getStoredNotificationToken();
   }, []);
 
   // Create a memoized user object
