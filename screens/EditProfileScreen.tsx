@@ -136,7 +136,7 @@ export default function EditProfileScreen() {
     }
     Alert.alert(
       "Save Your Changes",
-      "Please click Save before exiting, otherwise your changes won't be saved.",
+      "If you made any changes please click Save before exiting, otherwise your changes won't be saved.",
       [
         { text: "Cancel", style: "cancel" },
         {
