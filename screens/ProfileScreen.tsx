@@ -101,6 +101,12 @@ export default function ProfileScreen() {
         return;
       }
 
+      // Only fetch profile data if we have a valid match
+      if (!matchId && !matchLoading) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await UserService.getUserById(userId);
         if (response) {
@@ -147,7 +153,7 @@ export default function ProfileScreen() {
     };
 
     fetchProfile();
-  }, [userId]);
+  }, [userId, matchId, matchLoading]);
 
   // Fetch images with blur info - this ensures proper consent and blur levels
   useEffect(() => {
@@ -310,8 +316,23 @@ export default function ProfileScreen() {
     );
   };
 
-  // Show consistent loading screen for all loading states
-  if (!matchId || loading || !profile) {
+  // Show message when trying to view unmatched user's profile
+  if (!matchId && !matchLoading) {
+    return (
+      <View style={{ flex: 1 }}>
+        <HeaderBack title="Profile" onBack={() => navigation.goBack()} />
+        <View style={styles.unmatchedContainer}>
+          <Text style={styles.unmatchedText}>
+            You are not allowed to view profiles of people you are no longer
+            matched with.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Show loading screen for other loading states
+  if (loading || !profile) {
     return (
       <View style={{ flex: 1 }}>
         <HeaderBack
@@ -637,5 +658,18 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 8,
     backgroundColor: Colors.primary500,
+  },
+  unmatchedContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    backgroundColor: "#fff",
+  },
+  unmatchedText: {
+    fontSize: 16,
+    color: Colors.primary500,
+    textAlign: "center",
+    lineHeight: 24,
   },
 });

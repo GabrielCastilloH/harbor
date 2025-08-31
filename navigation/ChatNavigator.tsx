@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { TouchableOpacity, Text, View } from "react-native";
+import { TouchableOpacity, Text, View, AppState, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import messaging from "@react-native-firebase/messaging";
+import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import ChatList from "../screens/ChatList";
 import ChatScreen from "../screens/ChatScreen";
@@ -77,14 +78,9 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
           );
         }
       }}
-      disabled={isFrozen}
-      style={{ opacity: isFrozen ? 0.3 : 1, padding: 8 }}
+      style={{ padding: 8 }}
     >
-      <Ionicons
-        name="person"
-        size={24}
-        color={isFrozen ? Colors.secondary500 : Colors.primary500}
-      />
+      <Ionicons name="person" size={24} color={Colors.primary500} />
     </TouchableOpacity>
   );
 }
@@ -216,7 +212,6 @@ export default function ChatNavigator() {
         const apiKey = await ChatFunctions.getStreamApiKey();
         setChatApiKey(apiKey);
         setStreamApiKey(apiKey); // Store in context for future use
-        console.log("🟢 API key fetched successfully.");
       } catch (error) {
         console.error("🔴 ChatNavigator - Failed to fetch API key:", error);
         setError("Failed to fetch API key");
@@ -237,7 +232,6 @@ export default function ChatNavigator() {
         const token = await ChatFunctions.generateToken(userId);
         setChatUserToken(token);
         setStreamUserToken(token); // Store in context for future use
-        console.log("🟢 User token fetched successfully.");
       } catch (error) {
         console.error("🔴 ChatNavigator - Failed to fetch chat token:", error);
         setError("Failed to fetch chat token");
@@ -258,7 +252,6 @@ export default function ChatNavigator() {
           const token = await messaging().getToken();
           if (token) {
             setNotificationToken(token);
-            console.log("🟢 FCM Token received:", token);
           } else {
             console.warn("🟡 No FCM token available.");
           }
@@ -309,8 +302,6 @@ export default function ChatNavigator() {
       }
 
       try {
-        console.log("🟢 Creating Stream Chat client with device setup");
-
         // Create client instance
         const client = StreamChat.getInstance(chatApiKey);
 
@@ -321,11 +312,8 @@ export default function ChatNavigator() {
           push_provider_name: "HarborFirebasePush",
         });
 
-        console.log("🟢 Local device set for Stream Chat");
-
         // Connect user
         await client.connectUser(user, chatUserToken);
-        console.log("🟢 Stream Chat client connected successfully");
 
         // CRITICAL: Register device with Stream servers after connection
         try {
@@ -369,14 +357,11 @@ export default function ChatNavigator() {
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
     if (chatClient && userId) {
-      console.log("🟢 Setting up token refresh listener.");
       unsubscribe = messaging().onTokenRefresh(async (newToken) => {
         try {
-          console.log("🟢 Token refresh detected. New token:", newToken);
           const oldToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
           if (oldToken && oldToken !== newToken) {
             await chatClient.removeDevice(oldToken);
-            console.log("🟢 Old device token removed.");
           }
           await chatClient.addDevice(
             newToken,
@@ -385,7 +370,6 @@ export default function ChatNavigator() {
             "HarborFirebasePush"
           );
           await AsyncStorage.setItem(PUSH_TOKEN_KEY, newToken);
-          console.log("🟢 Token refreshed and updated with Stream Chat.");
         } catch (error) {
           console.error("🔴 Error handling token refresh:", error);
         }
@@ -395,10 +379,66 @@ export default function ChatNavigator() {
     return () => {
       if (unsubscribe) {
         unsubscribe();
-        console.log("🟢 Token refresh listener unsubscribed.");
       }
     };
   }, [chatClient, userId]);
+
+  // Badge count management for app icon
+  useEffect(() => {
+    if (!chatClient) {
+      return;
+    }
+
+    // Function to get unread count and update badge
+    const updateBadgeCount = async () => {
+      try {
+        const unreadCountResponse = await chatClient.getUnreadCount();
+        const totalUnreadCount = unreadCountResponse.total_unread_count;
+
+        // Set the app icon badge number
+        // CRITICAL: Add a platform check here - setBadge is iOS-only
+        if (Platform.OS === "ios") {
+          try {
+            // Use Expo Notifications which is more reliable
+            await Notifications.setBadgeCountAsync(totalUnreadCount);
+          } catch (badgeError) {}
+        } else {
+          // Android handles badge counts differently, typically via the launcher
+          // You would need a separate library or a different approach for Android
+        }
+      } catch (error) {
+        console.error("🔴 Failed to get unread count or set badge:", error);
+      }
+    };
+
+    // 1. Initial update when client connects
+    updateBadgeCount();
+
+    // 2. Listen for app state changes (app brought to foreground)
+    const appStateSubscription = AppState.addEventListener(
+      "change",
+      (nextAppState) => {
+        if (nextAppState === "active") {
+          // Re-fetch and update badge whenever app is active
+          updateBadgeCount();
+        }
+      }
+    );
+
+    // 3. Listen for real-time events from Stream Chat
+    // This is the most efficient way to keep the count updated in real-time
+    const unreadCountListener = chatClient.on("message.new", updateBadgeCount);
+
+    // Also listen for events that mark messages as read
+    const readListener = chatClient.on("message.read", updateBadgeCount);
+
+    return () => {
+      // Clean up listeners on component unmount
+      appStateSubscription.remove();
+      unreadCountListener.unsubscribe();
+      readListener.unsubscribe();
+    };
+  }, [chatClient]);
 
   // Fetch user profile data
   useEffect(() => {
@@ -410,7 +450,6 @@ export default function ChatNavigator() {
         let profileData = response?.user || response;
         if (profileData?.firstName) {
           setProfile(profileData);
-          console.log("🟢 User profile fetched successfully.");
         } else {
           console.error("🔴 ChatNavigator - Invalid profile data:", response);
           setError("Invalid profile data format");
@@ -446,16 +485,12 @@ export default function ChatNavigator() {
     !userId ||
     !notificationToken
   ) {
-    console.log("🟡 Loading... Waiting for all dependencies to be ready.");
     return <LoadingScreen loadingText="Connecting to chat..." />;
   }
 
   if (!chatClient) {
-    console.log("🟡 Loading... chatClient is not yet instantiated.");
     return <LoadingScreen loadingText="Loading chat client..." />;
   }
-
-  console.log("✅ All dependencies ready. Rendering Chat component.");
 
   return (
     <OverlayProvider value={{ style: theme }}>
