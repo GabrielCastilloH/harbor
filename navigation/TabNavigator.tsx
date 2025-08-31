@@ -1,9 +1,9 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "react-native";
 import { useAppContext } from "../context/AppContext";
-import { streamNotificationService } from "../util/streamNotifService";
+
 import HomeStack from "./HomeStack";
 import SettingsStack from "./SettingsStack";
 import ChatNavigator from "./ChatNavigator";
@@ -13,29 +13,6 @@ const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
   const { currentUser } = useAppContext();
-
-  // Initialize Stream notifications when TabNavigator loads (after account setup)
-  useEffect(() => {
-    if (!currentUser?.uid) return;
-
-    const initializeStreamNotifications = async () => {
-      try {
-        // Request permission for Stream Chat notifications
-        const granted = await streamNotificationService.requestPermission();
-        if (granted) {
-          // Note: Device registration with Stream happens in ChatNavigator when client is ready
-        }
-      } catch (error) {
-        console.error(
-          "TabNavigator - Error initializing Stream notifications:",
-          error
-        );
-        // Don't block the app if notification setup fails
-      }
-    };
-
-    initializeStreamNotifications();
-  }, [currentUser]);
 
   return (
     <Tab.Navigator
