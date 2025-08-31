@@ -167,6 +167,7 @@ export default function SignIn({ navigation }: any) {
         await preloadChatCredentials(user.uid);
       } catch (error) {
         // Don't block sign-in if chat pre-loading fails
+        // This could happen if the user profile doesn't exist yet
         console.error("Failed to pre-load chat credentials:", error);
       }
 

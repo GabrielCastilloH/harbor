@@ -222,10 +222,24 @@ export default function AccountSetupScreen({
         return;
       }
 
-      // Move to notification setup phase
+      // STEP 3: Load Stream Chat credentials (this MUST happen AFTER profile is created)
       updateProgress(0.9);
+      try {
+        const { apiKey, userToken } = await preloadChatCredentials(firebaseUid);
+        setStreamApiKey(apiKey);
+        setStreamUserToken(userToken);
+      } catch (error) {
+        console.error(
+          "AccountSetupScreen - Error pre-loading chat credentials:",
+          error
+        );
+        // The key fix: DO NOT RETURN HERE. Allow the process to continue.
+        // The chat UI will simply not have a user token and can't connect,
+        // but the app won't crash.
+      }
 
-      // STEP 3: Request notification permission and save token
+      // STEP 4: Request notification permission and save token (this is optional)
+      updateProgress(0.95);
       try {
         await streamNotificationService.requestAndSaveNotificationToken(
           firebaseUid
@@ -240,21 +254,6 @@ export default function AccountSetupScreen({
           );
           hasAlertBeenShown.current = true;
         }
-      }
-
-      // Move to chat setup phase
-      updateProgress(0.95);
-
-      try {
-        const { apiKey, userToken } = await preloadChatCredentials(firebaseUid);
-        setStreamApiKey(apiKey);
-        setStreamUserToken(userToken);
-      } catch (error) {
-        console.error(
-          "AccountSetupScreen - Error pre-loading chat credentials:",
-          error
-        );
-        // Don't fail the entire operation if chat credentials fail
       }
 
       // Complete the process
