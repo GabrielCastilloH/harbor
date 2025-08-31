@@ -228,28 +228,6 @@ export default function SettingsScreen() {
           /> */}
         </View>
 
-        {/* Account Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-
-          {/* Deactivate/Reactivate Account Button - Always shown */}
-          <DeactivateAccountButton
-            isActive={userProfile?.isActive !== false} // Default to true if undefined or null
-            onStatusChange={handleAccountStatusChange}
-            isLoading={isLoadingProfile}
-          />
-
-          {/* Sign Out Button */}
-          <SettingsButton
-            icon="log-out-outline"
-            text="Sign Out"
-            onPress={handleSignOut}
-            isDestructive={false}
-            isLoading={isSigningOut}
-            disabled={isSigningOut}
-          />
-        </View>
-
         {/* Help & Legal Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Help & Legal</Text>
@@ -270,6 +248,28 @@ export default function SettingsScreen() {
             icon="document-text-outline"
             text="Terms & Conditions"
             onPress={handleTermsAndConditions}
+          />
+        </View>
+
+        {/* Account Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+
+          {/* Deactivate/Reactivate Account Button - Always shown */}
+          <DeactivateAccountButton
+            isActive={userProfile?.isActive !== false} // Default to true if undefined or null
+            onStatusChange={handleAccountStatusChange}
+            isLoading={isLoadingProfile}
+          />
+
+          {/* Sign Out Button */}
+          <SettingsButton
+            icon="log-out-outline"
+            text="Sign Out"
+            onPress={handleSignOut}
+            isDestructive={false}
+            isLoading={isSigningOut}
+            disabled={isSigningOut}
           />
         </View>
 
