@@ -7,12 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  signOut,
-  deleteUser,
-  reauthenticateWithCredential,
-  EmailAuthProvider,
-} from "firebase/auth";
+import { signOut } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
@@ -38,7 +33,7 @@ export default function DeleteAccountButton({
 
     Alert.alert(
       "Delete Account",
-      "Are you sure you want to permanently delete your account? This action cannot be undone and will remove all your data, matches, and conversations.",
+      "Are you sure you want to delete your account? Your profile data will be removed, but your login will remain active.",
       [
         {
           text: "Cancel",
@@ -66,110 +61,10 @@ export default function DeleteAccountButton({
                       // Clear image cache first
                       await ImageCache.clearAllCache();
 
-                      // Delete account data via Cloud Function (except Firebase Auth user)
+                      // Only call the Cloud Function to delete account data
                       await UserService.deleteAccount();
 
-                      // Delete Firebase Auth user (must be done client-side)
-                      const currentUser = auth.currentUser;
-                      if (currentUser) {
-                        try {
-                          await deleteUser(currentUser);
-                        } catch (authError: any) {
-                          // Handle requires-recent-login error
-                          if (authError.code === "auth/requires-recent-login") {
-                            Alert.alert(
-                              "Re-authentication Required",
-                              "For security reasons, please enter your password to confirm account deletion.",
-                              [
-                                {
-                                  text: "Cancel",
-                                  style: "cancel",
-                                  onPress: () => setIsDeleting(false),
-                                },
-                                {
-                                  text: "Continue",
-                                  onPress: () => {
-                                    // Prompt for password and re-authenticate
-                                    Alert.prompt(
-                                      "Enter Password",
-                                      "Please enter your password to confirm deletion:",
-                                      [
-                                        {
-                                          text: "Cancel",
-                                          style: "cancel",
-                                          onPress: () => setIsDeleting(false),
-                                        },
-                                        {
-                                          text: "Delete Account",
-                                          style: "destructive",
-                                          onPress: async (password) => {
-                                            if (!password) {
-                                              setIsDeleting(false);
-                                              return;
-                                            }
-
-                                            try {
-                                              // Re-authenticate and then delete
-                                              const credential =
-                                                EmailAuthProvider.credential(
-                                                  currentUser.email!,
-                                                  password
-                                                );
-                                              await reauthenticateWithCredential(
-                                                currentUser,
-                                                credential
-                                              );
-                                              await deleteUser(currentUser);
-
-                                              // Continue with success flow
-                                              await AsyncStorage.multiRemove([
-                                                "@user",
-                                                "@authToken",
-                                                "@streamApiKey",
-                                                "@streamUserToken",
-                                                "@current_push_token",
-                                              ]);
-
-                                              // Clear all app context state
-                                              setUserId(null);
-                                              setProfile(null);
-                                              setStreamApiKey(null);
-                                              setStreamUserToken(null);
-
-                                              Alert.alert(
-                                                "Account Deleted",
-                                                "Your account has been permanently deleted. Thank you for using Harbor.",
-                                                [{ text: "OK" }]
-                                              );
-                                            } catch (reauthError) {
-                                              console.error(
-                                                "❌ [DELETE ACCOUNT] Re-auth error:",
-                                                reauthError
-                                              );
-                                              Alert.alert(
-                                                "Authentication Failed",
-                                                "Incorrect password. Account deletion cancelled."
-                                              );
-                                              setIsDeleting(false);
-                                            }
-                                          },
-                                        },
-                                      ],
-                                      "secure-text"
-                                    );
-                                  },
-                                },
-                              ]
-                            );
-                            return; // Exit early, don't continue with normal flow
-                          } else {
-                            // Other auth errors
-                            throw authError;
-                          }
-                        }
-                      }
-
-                      // Clear local data
+                      // Clear local data and sign out
                       await AsyncStorage.multiRemove([
                         "@user",
                         "@authToken",
@@ -184,17 +79,13 @@ export default function DeleteAccountButton({
                       setStreamApiKey(null);
                       setStreamUserToken(null);
 
+                      // Sign out the user from Firebase Auth
+                      await signOut(auth);
+
                       Alert.alert(
                         "Account Deleted",
-                        "Your account has been permanently deleted. Thank you for using Harbor.",
-                        [
-                          {
-                            text: "OK",
-                            onPress: () => {
-                              // The app will automatically redirect to sign-in screen
-                            },
-                          },
-                        ]
+                        "Your account data has been deleted. You have been logged out. Thank you for using Harbor.",
+                        [{ text: "OK" }]
                       );
                     } catch (error: any) {
                       console.error("❌ [DELETE ACCOUNT] Error:", error);
