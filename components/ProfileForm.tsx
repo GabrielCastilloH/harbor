@@ -100,40 +100,40 @@ export default function ProfileForm({
         minLength: 1,
         name: "your name, initial(s) or nickname",
       },
-      { field: "aboutMe", maxLength: 200, minLength: 5, name: "about me" },
+      { field: "aboutMe", maxLength: 180, minLength: 5, name: "about me" },
       {
         field: "q1",
-        maxLength: 120,
+        maxLength: 100,
         minLength: 5,
         name: "answer to 'This year, I really want to'",
       },
       {
         field: "q2",
-        maxLength: 120,
+        maxLength: 100,
         minLength: 5,
         name: "answer to 'Together we could'",
       },
       {
         field: "q3",
-        maxLength: 120,
+        maxLength: 100,
         minLength: 5,
         name: "answer to 'Favorite book, movie or song'",
       },
       {
         field: "q4",
-        maxLength: 120,
+        maxLength: 100,
         minLength: 5,
         name: "answer to 'I chose my major because'",
       },
       {
         field: "q5",
-        maxLength: 120,
+        maxLength: 100,
         minLength: 5,
         name: "answer to 'My favorite study spot is'",
       },
       {
         field: "q6",
-        maxLength: 120,
+        maxLength: 100,
         minLength: 5,
         name: "answer to 'Some of my hobbies are'",
       },
@@ -253,6 +253,7 @@ export default function ProfileForm({
             placeholder="Your name, initial(s) or nickname"
             value={profileData.firstName}
             onChangeText={(text) => handleChange("firstName", text)}
+            maxLength={50}
           />
           {isAccountSetup && (
             <Text style={styles.noteText}>
@@ -315,7 +316,7 @@ export default function ProfileForm({
           <View style={styles.labelContainer}>
             <Text style={styles.label}>About Me</Text>
             <Text style={styles.characterCount}>
-              {profileData.aboutMe?.length || 0}/200
+              {profileData.aboutMe?.length || 0}/180
             </Text>
           </View>
           <TextInput
@@ -325,12 +326,13 @@ export default function ProfileForm({
             onChangeText={(text) => handleChange("aboutMe", text)}
             multiline
             numberOfLines={3}
+            maxLength={180}
           />
 
           <View style={styles.labelContainer}>
             <Text style={styles.label}>This year, I really want to</Text>
             <Text style={styles.characterCount}>
-              {profileData.q1?.length || 0}/120
+              {profileData.q1?.length || 0}/100
             </Text>
           </View>
           <TextInput
@@ -340,12 +342,13 @@ export default function ProfileForm({
             onChangeText={(text) => handleChange("q1", text)}
             multiline
             numberOfLines={3}
+            maxLength={100}
           />
 
           <View style={styles.labelContainer}>
             <Text style={styles.label}>Together we could</Text>
             <Text style={styles.characterCount}>
-              {profileData.q2?.length || 0}/120
+              {profileData.q2?.length || 0}/100
             </Text>
           </View>
           <TextInput
@@ -355,12 +358,13 @@ export default function ProfileForm({
             onChangeText={(text) => handleChange("q2", text)}
             multiline
             numberOfLines={3}
+            maxLength={100}
           />
 
           <View style={styles.labelContainer}>
             <Text style={styles.label}>Favorite book, movie or song</Text>
             <Text style={styles.characterCount}>
-              {profileData.q3?.length || 0}/120
+              {profileData.q3?.length || 0}/100
             </Text>
           </View>
           <TextInput
@@ -370,12 +374,13 @@ export default function ProfileForm({
             onChangeText={(text) => handleChange("q3", text)}
             multiline
             numberOfLines={3}
+            maxLength={100}
           />
 
           <View style={styles.labelContainer}>
             <Text style={styles.label}>I chose my major because...</Text>
             <Text style={styles.characterCount}>
-              {profileData.q4?.length || 0}/120
+              {profileData.q4?.length || 0}/100
             </Text>
           </View>
           <TextInput
@@ -385,12 +390,13 @@ export default function ProfileForm({
             onChangeText={(text) => handleChange("q4", text)}
             multiline
             numberOfLines={3}
+            maxLength={100}
           />
 
           <View style={styles.labelContainer}>
             <Text style={styles.label}>My favorite study spot is</Text>
             <Text style={styles.characterCount}>
-              {profileData.q5?.length || 0}/120
+              {profileData.q5?.length || 0}/100
             </Text>
           </View>
           <TextInput
@@ -400,12 +406,13 @@ export default function ProfileForm({
             onChangeText={(text) => handleChange("q5", text)}
             multiline
             numberOfLines={3}
+            maxLength={100}
           />
 
           <View style={styles.labelContainer}>
             <Text style={styles.label}>Some of my hobbies are</Text>
             <Text style={styles.characterCount}>
-              {profileData.q6?.length || 0}/120
+              {profileData.q6?.length || 0}/100
             </Text>
           </View>
           <TextInput
@@ -415,6 +422,7 @@ export default function ProfileForm({
             onChangeText={(text) => handleChange("q6", text)}
             multiline
             numberOfLines={3}
+            maxLength={100}
           />
         </View>
 
