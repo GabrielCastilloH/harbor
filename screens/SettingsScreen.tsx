@@ -277,6 +277,13 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <DeleteAccountButton />
         </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Made with ❤️ by Gabriel Castillo and Zain Bilal!
+          </Text>
+        </View>
       </ScrollView>
     </>
   );
@@ -304,5 +311,16 @@ const styles = StyleSheet.create({
   },
   lastButton: {
     marginBottom: 0, // Remove extra space below last button
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    alignItems: "center",
+  },
+  footerText: {
+    fontSize: 14,
+    color: Colors.primary500,
+    textAlign: "center",
+    fontStyle: "italic",
   },
 });

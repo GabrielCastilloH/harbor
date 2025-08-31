@@ -233,16 +233,21 @@ export default function EditProfileScreen() {
         }));
       }
 
+      // Get the current images from the context profile to identify what needs to be deleted
+      const currentImages = contextProfile?.images || [];
+
       // Create final data to send to server
       const finalProfileData = {
         ...profileData,
         images: processedImages,
+        oldImages: currentImages, // Pass old images for cleanup
       };
 
       console.error(
         "💾 [EDIT PROFILE] Saving filenames to Firestore:",
         processedImages
       );
+      console.error("🗑️ [EDIT PROFILE] Old images for cleanup:", currentImages);
 
       const response = await UserService.updateUser(
         currentUser.uid,
@@ -255,7 +260,8 @@ export default function EditProfileScreen() {
       // 🏆 The Fix: Reset the initial profile state after a successful save.
       // This prevents the "Exit Without Saving" message from appearing
       // when the user tries to exit after saving.
-      initialProfileRef.current = finalProfileData;
+      // Use the response.user data (without oldImages) for the initial reference
+      initialProfileRef.current = response.user;
 
       Alert.alert("Success", "Profile saved successfully!");
     } catch (error: any) {
