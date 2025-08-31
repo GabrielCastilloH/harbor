@@ -19,17 +19,23 @@ import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 import { useNotification } from "../context/NotificationContext";
+import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
 // PREMIUM DISABLED: Superwall imports commented out
 // import { usePlacement, useUser } from "expo-superwall";
 // import { useUser } from "expo-superwall"; // PREMIUM DISABLED
 import SettingsButton from "../components/SettingsButton";
 import MainHeading from "../components/MainHeading";
 import DeleteAccountButton from "../components/DeleteAccountButton";
+import DeactivateAccountButton from "../components/DeactivateAccountButton";
+import { UserService } from "../networking/UserService";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { setUserId, userId } = useAppContext();
+  const { signal } = useTelemetryDeck();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const {
     isNotificationsEnabled,
     isLoading,
@@ -40,6 +46,38 @@ export default function SettingsScreen() {
   const [locationServices, setLocationServices] = useState(true);
   // PREMIUM DISABLED: useUser commented out
   // const { user } = useUser();
+
+  // Fetch user profile to get isActive status
+  React.useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!userId) return;
+
+      setIsLoadingProfile(true);
+      try {
+        const profile = await UserService.getUserById(userId);
+
+        // Handle the nested structure returned by UserService
+        const userData = profile.user || profile;
+        setUserProfile(userData);
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [userId]);
+
+  // Track page view for TelemetryDeck
+  React.useEffect(() => {
+    // Send a signal whenever this screen is viewed
+    signal("pageview", { screen: "Settings" });
+  }, [signal]);
+
+  const handleAccountStatusChange = (isActive: boolean) => {
+    setUserProfile((prev: any) => ({ ...prev, isActive }));
+  };
 
   // PREMIUM DISABLED: Superwall paywall placement commented out
   // const { registerPlacement } = usePlacement({
@@ -62,10 +100,10 @@ export default function SettingsScreen() {
   const handlePremiumUpgrade = async () => {
     // Premium functionality disabled
     Alert.alert(
-      "Feature Unavailable", 
+      "Feature Unavailable",
       "Premium features are currently unavailable."
     );
-    
+
     // Original implementation commented out:
     // try {
     //   await registerPlacement({
@@ -141,6 +179,10 @@ export default function SettingsScreen() {
     Linking.openURL("https://www.tryharbor.app/terms");
   };
 
+  const handleSupport = () => {
+    Linking.openURL("https://www.tryharbor.app/support");
+  };
+
   // PREMIUM DISABLED: Always set premium to false
   const isPremium = false;
   // Original: const isPremium = user?.subscriptionStatus === "ACTIVE";
@@ -170,9 +212,9 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* Account Section */}
+        {/* Profile Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.sectionTitle}>Profile</Text>
 
           <SettingsButton
             icon="person-outline"
@@ -194,9 +236,15 @@ export default function SettingsScreen() {
           /> */}
         </View>
 
-        {/* Legal Section */}
+        {/* Help & Legal Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Legal</Text>
+          <Text style={styles.sectionTitle}>Help & Legal</Text>
+
+          <SettingsButton
+            icon="help-circle-outline"
+            text="Support"
+            onPress={handleSupport}
+          />
 
           <SettingsButton
             icon="shield-outline"
@@ -211,13 +259,23 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* Sign Out Section */}
+        {/* Account Section */}
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+
+          {/* Deactivate/Reactivate Account Button - Always shown */}
+          <DeactivateAccountButton
+            isActive={userProfile?.isActive !== false} // Default to true if undefined or null
+            onStatusChange={handleAccountStatusChange}
+            isLoading={isLoadingProfile}
+          />
+
+          {/* Sign Out Button */}
           <SettingsButton
             icon="log-out-outline"
             text="Sign Out"
             onPress={handleSignOut}
-            isDestructive={true}
+            isDestructive={false}
             isLoading={isSigningOut}
             disabled={isSigningOut}
           />
@@ -226,6 +284,13 @@ export default function SettingsScreen() {
         {/* Delete Account Section */}
         <View style={styles.section}>
           <DeleteAccountButton />
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Made with ❤️ by Gabriel Castillo and Zain Bilal.
+          </Text>
         </View>
       </ScrollView>
     </>
@@ -239,7 +304,6 @@ const styles = StyleSheet.create({
   },
   section: {
     paddingHorizontal: 20,
-    paddingTop: 10,
     paddingBottom: 0,
     marginBottom: 14, // Middle ground spacing between sections
   },
@@ -255,5 +319,17 @@ const styles = StyleSheet.create({
   },
   lastButton: {
     marginBottom: 0, // Remove extra space below last button
+  },
+  footer: {
+    marginBottom: 20,
+    paddingVertical: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  footerText: {
+    fontSize: 14,
+    color: "#788a87",
+    textAlign: "center",
+    fontStyle: "italic",
   },
 });

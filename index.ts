@@ -1,29 +1,8 @@
 import { registerRootComponent } from "expo";
 // Import Firebase config first to ensure Firebase is initialized
 import "./firebaseConfig";
-import {
-  getMessaging,
-  onMessage,
-  setBackgroundMessageHandler,
-} from "@react-native-firebase/messaging";
 
 import App from "./App";
-
-// Handle background messages for Stream Chat notifications
-try {
-  const messaging = getMessaging();
-  setBackgroundMessageHandler(messaging, async (remoteMessage: any) => {
-    // Stream Chat v2 payload format
-    // The payload contains message_id and channel information
-    // Firebase will automatically display the notification
-    // We can optionally handle the data for custom logic
-    if (remoteMessage.data?.type === "message.new") {
-      // Handle new message notification
-    }
-  });
-} catch (error) {
-  console.error("❌ Error setting up Firebase messaging:", error);
-}
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
 // It also ensures that whether you load the app in Expo Go or in a native build,

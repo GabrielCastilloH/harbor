@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Alert, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Profile } from "../types/App";
@@ -43,6 +43,9 @@ export default function AccountSetupScreen({
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0); // 0 to 1
   const [targetProgress, setTargetProgress] = useState(0); // Target progress for smooth animation
+
+  // Use a ref to track if the alert has been shown
+  const hasAlertBeenShown = useRef(false);
 
   // Animate progress smoothly
   useEffect(() => {
@@ -219,20 +222,8 @@ export default function AccountSetupScreen({
         return;
       }
 
-      // Move to notification setup phase
+      // STEP 3: Load Stream Chat credentials (this MUST happen AFTER profile is created)
       updateProgress(0.9);
-
-      try {
-        // Save FCM token to user profile
-        await streamNotificationService.saveUserToken(firebaseUid);
-      } catch (error) {
-        console.error("AccountSetupScreen - Error saving FCM token:", error);
-        // Don't fail the entire operation if FCM token saving fails
-      }
-
-      // Move to chat setup phase
-      updateProgress(0.95);
-
       try {
         const { apiKey, userToken } = await preloadChatCredentials(firebaseUid);
         setStreamApiKey(apiKey);
@@ -242,7 +233,27 @@ export default function AccountSetupScreen({
           "AccountSetupScreen - Error pre-loading chat credentials:",
           error
         );
-        // Don't fail the entire operation if chat credentials fail
+        // The key fix: DO NOT RETURN HERE. Allow the process to continue.
+        // The chat UI will simply not have a user token and can't connect,
+        // but the app won't crash.
+      }
+
+      // STEP 4: Request notification permission and save token (this is optional)
+      updateProgress(0.95);
+      try {
+        await streamNotificationService.requestAndSaveNotificationToken(
+          firebaseUid
+        );
+      } catch (error) {
+        console.error("AccountSetupScreen - Error saving FCM token:", error);
+        if (!hasAlertBeenShown.current) {
+          Alert.alert(
+            "Notifications Disabled",
+            "We need permission to send you notifications for new matches and messages. You can enable them later in your phone's settings.",
+            [{ text: "OK" }]
+          );
+          hasAlertBeenShown.current = true;
+        }
       }
 
       // Complete the process

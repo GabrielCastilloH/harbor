@@ -111,16 +111,136 @@ export class UserService {
     try {
       const { httpsCallable } = await import("firebase/functions");
       const { getFunctions } = await import("firebase/functions");
-      
+
       const functions = getFunctions();
-      const deleteUserFunction = httpsCallable(functions, "userFunctions-deleteUser");
-      
+      const deleteUserFunction = httpsCallable(
+        functions,
+        "userFunctions-deleteUser"
+      );
+
       const result = await deleteUserFunction();
       return result.data as { success: boolean; message: string };
     } catch (error: any) {
       console.error("❌ [UserService] Error deleting account:", error);
       throw new Error(
         error.message || "Failed to delete account. Please try again."
+      );
+    }
+  }
+
+  /**
+   * Deactivates the user's account
+   */
+  static async deactivateAccount(): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    try {
+      const { httpsCallable } = await import("firebase/functions");
+      const { getFunctions } = await import("firebase/functions");
+
+      const functions = getFunctions();
+      const deactivateFunction = httpsCallable(
+        functions,
+        "userFunctions-deactivateAccount"
+      );
+
+      const result = await deactivateFunction();
+      return result.data as { success: boolean; message: string };
+    } catch (error: any) {
+      console.error("❌ [UserService] Error deactivating account:", error);
+      throw new Error(
+        error.message || "Failed to deactivate account. Please try again."
+      );
+    }
+  }
+
+  /**
+   * Reactivates the user's account
+   */
+  static async reactivateAccount(): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    try {
+      const { httpsCallable } = await import("firebase/functions");
+      const { getFunctions } = await import("firebase/functions");
+
+      const functions = getFunctions();
+      const reactivateFunction = httpsCallable(
+        functions,
+        "userFunctions-reactivateAccount"
+      );
+
+      const result = await reactivateFunction();
+      return result.data as { success: boolean; message: string };
+    } catch (error: any) {
+      console.error("❌ [UserService] Error reactivating account:", error);
+      throw new Error(
+        error.message || "Failed to reactivate account. Please try again."
+      );
+    }
+  }
+
+  /**
+   * Checks if an email belongs to a deleted account
+   */
+  static async checkDeletedAccount(
+    email: string
+  ): Promise<{ isDeleted: boolean; deletedAt?: any }> {
+    try {
+      const { httpsCallable } = await import("firebase/functions");
+      const { getFunctions } = await import("firebase/functions");
+
+      const functions = getFunctions();
+      const checkDeletedFunction = httpsCallable(
+        functions,
+        "userFunctions-checkDeletedAccount"
+      );
+
+      const result = await checkDeletedFunction({ email });
+      return result.data as { isDeleted: boolean; deletedAt?: any };
+    } catch (error: any) {
+      console.error("❌ [UserService] Error checking deleted account:", error);
+      throw new Error(
+        error.message || "Failed to check account status. Please try again."
+      );
+    }
+  }
+
+  static async banUser(
+    userId: string,
+    reason?: string,
+    unbanDate?: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const banUserFunction = httpsCallable(functions, "userFunctions-banUser");
+      const result = await banUserFunction({ userId, reason, unbanDate });
+      return result.data as { success: boolean; message: string };
+    } catch (error: any) {
+      console.error("❌ [UserService] Error banning user:", error);
+      throw new Error(error.message || "Failed to ban user. Please try again.");
+    }
+  }
+
+  static async checkBannedStatus(
+    userId: string
+  ): Promise<{ isBanned: boolean; reason?: string; unbanDate?: string }> {
+    try {
+      const checkBannedStatusFunction = httpsCallable(
+        functions,
+        "userFunctions-checkBannedStatus"
+      );
+      const result = await checkBannedStatusFunction({ userId });
+      return result.data as {
+        isBanned: boolean;
+        reason?: string;
+        unbanDate?: string;
+      };
+    } catch (error: any) {
+      console.error("❌ [UserService] Error checking banned status:", error);
+      throw new Error(
+        error.message || "Failed to check banned status. Please try again."
       );
     }
   }

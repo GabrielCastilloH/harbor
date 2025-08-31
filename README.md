@@ -1,15 +1,169 @@
 # 🌊 Harbor
 
-A unique dating app that focuses on meaningful connections through progressive photo reveal and limited daily interactions.
+**A unique dating app designed specifically for Cornell students that focuses on meaningful connections through progressive photo reveal and limited daily interactions.**
 
-TODO:
+Harbor creates intrigue and encourages genuine conversations by gradually revealing profile photos as users chat, fostering deeper connections beyond superficial first impressions.
 
-- ✅ Add push notifications to the app (and make the you've matched system notification silent)
+## ✨ Core Features
 
-## Future Enhancements:
+### 🎭 Progressive Photo Reveal System
 
-- Add the ability to see profiles that swiped on you and swipe on them.
-- show difference between basic and premium plan on payment page
+- **Two-phase blur system**: Photos start heavily blurred and gradually become clear as users chat
+- **Consent-based transitions**: Users must consent to continue chatting after 30 messages to see clearer photos
+- **Server-side blur processing**: Secure image processing with 80% server-side blur for privacy
+- **Seamless client animations**: Smooth blur transitions create engaging user experience
+
+### 💫 Smart Matching & Swiping
+
+- **Intelligent recommendations**: Algorithm considers sexual orientation, gender preferences, and mutual interest
+- **Daily swipe limits**: 20 swipes per day for free users (40 for premium, currently disabled)
+- **Instant match detection**: Real-time matching when two users swipe right on each other
+- **Swipe gesture controls**: Smooth card-based swiping with visual feedback
+
+### 💬 Real-time Chat System
+
+- **Stream Chat integration**: Production-ready chat with typing indicators, read receipts, and message history
+- **Progressive unlock system**: Chat becomes available after matching, photos unlock through conversation
+- **Consent modals**: Built-in consent flow ensures both users want to continue chatting
+- **Channel freezing**: Automatic chat freeze when users unmatch or report
+
+### 🔐 Security & Privacy
+
+- **Cornell email verification**: Custom 6-digit code system designed for university email systems
+- **Image moderation**: Automated content screening for inappropriate images
+- **Report system**: Comprehensive reporting with automatic unmatching and chat freezing
+- **Data protection**: Secure user data handling with Firebase security rules
+
+### 📱 Push Notifications
+
+- **FCM integration**: Production-ready push notifications for matches and messages
+- **Stream Chat delivery**: Notifications delivered through Stream Chat's reliable system
+- **Smart notification management**: Silent match notifications, configurable message alerts
+- **Cross-platform support**: Works on both iOS and Android devices
+
+## 🏗️ Technical Architecture
+
+### Frontend Stack
+
+- **React Native** (0.79.5) with Expo (53.0.22)
+- **TypeScript** for type safety
+- **React Navigation** for navigation management
+- **Stream Chat React Native** for real-time messaging
+- **React Native Firebase** for authentication and push notifications
+- **Expo Blur** for progressive image reveal effects
+- **React Native Reanimated** for smooth animations
+
+### Backend Services
+
+- **Firebase Authentication** with custom email verification
+- **Cloud Firestore** for real-time data storage
+- **Firebase Cloud Functions** (Node.js 22) for backend logic
+- **Firebase Storage** for image hosting and processing
+- **Stream Chat** for messaging infrastructure
+- **Google Secret Manager** for secure API key storage
+- **Mailgun** for reliable email delivery
+
+### Key Dependencies
+
+```json
+{
+  "stream-chat-react-native": "^8.3.3",
+  "@react-native-firebase/messaging": "^23.0.0",
+  "expo-blur": "~14.1.5",
+  "react-native-reanimated": "~3.17.4",
+  "firebase": "^12.0.0",
+  "react-navigation": "^7.x"
+}
+```
+
+## 📱 App Structure
+
+### Navigation Architecture
+
+```
+App.tsx (Main Navigator)
+├── AuthStack (Unauthenticated)
+│   ├── SignIn
+│   ├── CreateAccount
+│   └── EmailVerification
+├── AccountSetup (First-time users)
+└── TabNavigator (Main App)
+    ├── HomeTab (HomeStack)
+    │   ├── HomeScreen (Swiping)
+    │   └── ReportScreen
+    ├── ChatsTab (ChatNavigator)
+    │   ├── ChatList
+    │   ├── ChatScreen
+    │   ├── ProfileScreen
+    │   └── ReportScreen
+    └── SettingsTab (SettingsStack)
+        ├── SettingsScreen
+        ├── EditProfile
+        └── SelfProfile
+```
+
+### Core Screens
+
+- **HomeScreen**: Card-based swiping interface with recommendations
+- **ChatList**: List of active matches and conversations
+- **ChatScreen**: Real-time messaging with progressive photo reveal
+- **ProfileScreen**: View other users' profiles with blur effects
+- **AccountSetupScreen**: Onboarding flow for new users
+- **SettingsScreen**: App preferences and account management
+
+### Component Architecture
+
+- **AnimatedStack**: Gesture-based swiping with smooth animations
+- **ImageCarousel**: Profile photo viewer with blur transitions
+- **VerificationCodeInput**: Custom 6-digit code input for email verification
+- **MatchModal**: Celebration screen when users match
+- **SettingsButton**: Reusable settings interface component
+
+## 🔧 Firebase Cloud Functions
+
+### Authentication Functions (`authFunctions`)
+
+- **sendVerificationCode**: Sends 6-digit codes via Mailgun
+- **verifyVerificationCode**: Validates codes and marks emails as verified
+- **signInWithEmail**: Custom sign-in flow with Firestore user checking
+
+### Chat Functions (`chatFunctions`)
+
+- **getStreamApiKey**: Provides Stream Chat API key to frontend
+- **generateUserToken**: Creates Stream Chat tokens for authenticated users
+- **createChatChannel**: Sets up messaging channels between matched users
+
+### Image Functions (`imageFunctions`)
+
+- **uploadImage**: Processes and stores original + blurred image versions
+- **getImages**: Fetches user images with appropriate blur levels
+- **generateBlurred**: Creates blurred versions of uploaded images
+
+### Swipe Functions (`swipeFunctions`)
+
+- **createSwipe**: Records swipes and detects mutual matches
+- **getSwipeLimit**: Manages daily swipe limits (20 free, 40 premium)
+- **incrementSwipeCount**: Tracks daily swipe usage
+
+### Match Functions (`matchFunctions`)
+
+- **createMatch**: Creates match records between users
+- **getConsentStatus**: Manages consent flow for continued chatting
+- **markMatchAsViewed**: Tracks when users view new matches
+
+### Recommendation Functions (`recommendationsFunctions`)
+
+- **getRecommendations**: Provides personalized user recommendations based on preferences
+
+### Report Functions (`reportFunctions`)
+
+- **reportAndUnmatch**: Handles user reports with automatic unmatching and chat freezing
+
+### User Functions (`userFunctions`)
+
+- **createUserProfile**: Sets up new user profiles in Firestore
+- **updateUserProfile**: Manages profile updates
+- **deleteAccount**: Complete account deletion with data cleanup
 
 ## 🔐 Authentication & Email Verification Flow
 
@@ -91,7 +245,7 @@ Instead of using Firebase's built-in email verification links, Harbor implements
 4. **User Enters Code** (`EmailVerificationScreen.tsx`)
 
    ```typescript
-   // Modern 6-box input UI
+   // Modern 6-box input UI with paste functionality
    <VerificationCodeInput
      value={verificationCode}
      onChangeText={setVerificationCode}
@@ -142,40 +296,24 @@ Instead of using Firebase's built-in email verification links, Harbor implements
 - **Smart button states** (disabled during cooldown)
 - **Graceful error handling** for cooldown violations
 
-#### Resend Functionality
-
-- **Automatic code sending** when verification screen loads
-- **Manual resend** with cooldown protection
-- **Rate limiting** prevents abuse and reduces costs
-- **Automatic retry** with exponential backoff for failed sends
-
-### Key Design Principles
-
-- **Custom verification system**: Replaces Firebase's link-based verification
-- **University email compatibility**: Works with pre-fetching email systems
-- **Secure code generation**: Server-side generation and validation
-- **User-friendly UI**: Modern 6-box input with real-time feedback
-- **Automatic flow**: Seamless navigation between verification states
-- **Forgiving verification**: Codes stay active for typos, better UX
-- **Robust cooldown**: Frontend and backend protection against abuse
-- **Production-ready**: Proper error handling and logging
-
-### Cornell Email Validation
+#### Cornell Email Validation
 
 - **Frontend validation**: Explicit rejection of emails containing `+` symbols
 - **Backend normalization**: Strip `+` aliases in Cloud Functions (when needed)
 - **Domain enforcement**: Only `@cornell.edu` emails accepted
 
-## 📋 Validation Rules
+## 📋 Profile Validation & Requirements
 
-### Profile Validation Requirements
+### Profile Creation Requirements
 
 #### Images
 
 - **Minimum**: 3 images required
 - **Maximum**: 6 images allowed
 - **Format**: JPEG only
-- **Size**: Auto-resized to 800x800 max, quality 80%
+- **Processing**: Auto-resized to 800x800 max, quality 80%
+- **Moderation**: Automated content screening for inappropriate content
+- **Storage**: Both original and 80% blurred versions stored
 
 #### Required Fields
 
@@ -201,117 +339,33 @@ All fields must be completed before profile creation:
 | Q5: "My favorite study spot is"    | 5          | 100        | Study preference                  |
 | Q6: "Some of my hobbies are"       | 5          | 100        | Personal interests                |
 
-#### Backend Enforcement
+#### Data Types Definition
 
-- **Client-side validation**: Immediate feedback for user experience
-- **Backend validation**: Server-side enforcement to prevent bypass
-- **ACID compliance**: All validations enforced in transactions
-- **Error handling**: Graceful failure with clear error messages
-
-## 🔔 Push Notifications
-
-Harbor uses **Stream Chat** for messaging and **React Native Firebase** specifically for push notifications. This hybrid approach allows us to use the Firebase JS SDK for all other Firebase services while leveraging React Native Firebase's native capabilities for reliable push notifications.
-
-### Notification Features
-
-- **Stream Chat Integration**: Notifications are automatically sent when users receive new messages
-- **Settings Toggle**: Users can enable/disable notifications in the app settings
-- **Background Support**: Notifications work when the app is in the background or closed
-- **Permission Management**: Automatic permission requests with graceful fallbacks
-
-### Technical Implementation
-
-- **React Native Firebase**: Used exclusively for push notifications (messaging module)
-- **Firebase JS SDK**: Used for all other Firebase services (Auth, Firestore, Functions, etc.)
-- **Stream Chat**: Handles message delivery and notification triggers
-- **Background Handler**: Processes notifications when app is not in foreground
-
-### Setup Requirements
-
-1. **Firebase Project**: Must have Cloud Messaging enabled
-2. **Stream Dashboard**: Firebase credentials must be uploaded to Stream Chat dashboard
-3. **Native Configuration**: React Native Firebase requires native project configuration
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js (v18 or higher)
-- Firebase project with Cloud Messaging enabled
-- Google Cloud project (for Secret Manager)
-- Xcode for iOS development
-- npm or yarn package manager
-
-### Firebase Setup
-
-1. **Create Firebase Project:**
-
-   - Visit [Firebase Console](https://console.firebase.google.com)
-   - Create a new project
-   - Enable Firestore, Storage, Functions, and **Cloud Messaging**
-
-2. **Configure Cloud Messaging:**
-
-   - In Firebase Console, go to Project Settings > Cloud Messaging
-   - Upload your APNs authentication key for iOS
-   - Note your Server Key for Stream Chat configuration
-
-3. **Set up Google Secret Manager:**
-
-   - Go to [Google Cloud Console](https://console.cloud.google.com)
-   - Navigate to Secret Manager
-   - Create secrets for `STREAM_API_KEY` and `STREAM_API_SECRET`
-
-4. **Configure Firebase Functions:**
-
-   ```bash
-   npm install -g firebase-tools
-   firebase login
-   firebase init functions
-   ```
-
-5. **Configure Stream Chat Notifications:**
-
-   - Go to [Stream Chat Dashboard](https://dashboard.getstream.io)
-   - Navigate to your app's Chat Overview → Push Configuration
-   - Enable "Push Notifications" toggle
-   - Select "Firebase" as push provider
-   - Upload your Firebase service account credentials JSON file
-   - Configure notification types (new messages, edits, reactions)
-   - Set default push preferences for users
-
-6. **Deploy Functions:**
-   ```bash
-   cd functions
-   npm install
-   npm run build
-   firebase deploy --only functions
-   ```
-
-### Frontend Setup
-
-1. **Install Dependencies:**
-
-   ```bash
-   npm install
-   ```
-
-2. **Configure Environment Variables:**
-
-   - Add your Firebase config to `firebaseConfig.ts`
-   - Set up Google Sign-In credentials
-
-3. **Run the App:**
-   ```bash
-   npx expo run:ios
-   ```
-
-### Notification Testing
-
-- **Physical Device Required**: Push notifications don't work in simulators
-- **Background Testing**: Send messages while app is in background to test notifications
-- **Permission Testing**: Test notification permission flow in settings
-- **Token Refresh**: Verify tokens are properly refreshed when FCM tokens change
+```typescript
+export type Profile = {
+  uid?: string; // Firebase UID
+  email: string;
+  firstName: string;
+  yearLevel: string;
+  age: number;
+  major: string;
+  gender: string; // "Male", "Female", or "Non-Binary"
+  sexualOrientation: string; // "Heterosexual", "Homosexual", "Bisexual", or "Pansexual"
+  images: string[];
+  aboutMe: string;
+  q1: string; // "This year, I really want to:"
+  q2: string; // "Together we could:"
+  q3: string; // "Favorite book, movie or song:"
+  q4: string; // "I chose my major because..."
+  q5: string; // "My favorite study spot is:"
+  q6: string; // "Some of my hobbies are:"
+  currentMatches?: string[];
+  paywallSeen?: boolean;
+  fcmToken?: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+};
+```
 
 ## 🎭 Progressive Photo Reveal System
 
@@ -379,48 +433,315 @@ export function getClientBlurLevel({
 }
 ```
 
-### Consent State Implementation
+### Consent State Management
 
-#### How consent is stored (Firestore)
+#### Firestore Match Document Structure
 
-- Each match document contains explicit, per-user consent fields and message count:
-  - `user1Id`, `user2Id`
-  - `user1Consented: boolean`
-  - `user2Consented: boolean`
-  - `messageCount: number`
-  - Other metadata (timestamps, isActive, etc.)
+```typescript
+interface Match {
+  user1Id: string;
+  user2Id: string;
+  user1Consented: boolean;
+  user2Consented: boolean;
+  messageCount: number;
+  isActive: boolean;
+  matchDate: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  // Unviewed status tracking
+  user1Viewed: boolean;
+  user2Viewed: boolean;
+}
+```
 
-#### Server response shape
+#### Server Response Shape
 
-- The `matchFunctions-getConsentStatus` callable returns a structured, edge-case–aware payload:
-  - `user1Id`, `user2Id`
-  - `user1Consented`, `user2Consented`, `bothConsented`
-  - `messageCount`
-  - `shouldShowConsentScreen` (true when `messageCount >= threshold` and not both have consented)
-  - `shouldShowConsentForUser1`, `shouldShowConsentForUser2` (per-user modal visibility flags)
-  - `state` ("none_consented" | "one_consented" | "both_consented")
-  - `consent` block summarizing current state and threshold
+The `matchFunctions-getConsentStatus` callable returns:
 
-#### Client detection (ChatScreen)
+- `user1Id`, `user2Id`
+- `user1Consented`, `user2Consented`, `bothConsented`
+- `messageCount`
+- `shouldShowConsentScreen` (true when `messageCount >= threshold` and not both consented)
+- `shouldShowConsentForUser1`, `shouldShowConsentForUser2` (per-user modal visibility)
+- `state` ("none_consented" | "one_consented" | "both_consented")
 
-- The client resolves `matchId` authoritatively from the other channel member via backend and caches it.
-- On every new message and on mount:
-  - Increments `messageCount` via `chatFunctions-updateMessageCount`.
-  - Calls `getConsentStatus(matchId)` and applies:
-    - If channel is frozen: hide modal, freeze chat
-    - Else: show modal only for the current user if their `shouldShowConsentForUserX` is true
-    - When both users consent: hide modal and unfreeze chat
+#### Client Detection Flow
 
-#### Edge-case handling
+1. **Message Counting**: Every new message increments `messageCount` via `chatFunctions-updateMessageCount`
+2. **Consent Checking**: After each message, calls `getConsentStatus(matchId)`
+3. **Modal Display**: Shows consent modal only when user's `shouldShowConsentForUserX` is true
+4. **Channel Management**: Freezes chat until both users consent when threshold reached
 
-- If `messageCount` exceeds the threshold (due to duplicate updates or race conditions), the server still returns `shouldShowConsentScreen = true` until both have explicitly consented.
-  - This ensures we never skip the continue screen.
+## 🔔 Push Notifications System
 
-#### Assumptions
+Harbor implements a comprehensive push notification system using **React Native Firebase** for FCM token management and **Stream Chat** for message delivery.
 
-- Message threshold is currently `30` (kept in sync on server and client).
-- A match can be frozen due to unmatch; in that state, the consent modal is suppressed.
+### Implementation Flow
 
-## Known Security Problems (not MVP to Fix)
+#### 1. Permission Request Timing
 
-- When on the consent screen the channel is only client side forzen. This means on a jailbroken iPhone or Android device someone could send more messages on the channel if the like. However, on the actual app the modal will never be dismissed and it will always be client side frozen making it impossible for regular users to do this. Even if they do receive messages they will be hard to see through the modal and there's not much point to this hack lol.
+**Location**: `TabNavigator.tsx` (after account setup completion)  
+**Timing**: When user first enters the main app after account creation
+
+```typescript
+const initializeStreamNotifications = async () => {
+  const granted = await streamNotificationService.requestPermission();
+  if (granted) {
+    await streamNotificationService.saveUserToken(currentUser.uid);
+  }
+};
+```
+
+#### 2. FCM Token Storage System
+
+**Primary Storage**: Firestore `users` collection
+
+```typescript
+// Stored in: /users/{userId}
+{
+  fcmToken: "device-specific-fcm-token",
+  updatedAt: serverTimestamp()
+}
+```
+
+**Local Cache**: AsyncStorage key `"@stream_push_token"` for change detection
+
+#### 3. Token Update Triggers
+
+**New Users**: Account creation → Email verification → Account setup → TabNavigator → Permission request → Token save
+
+**Existing Users**: Multiple refresh points:
+
+- `SignIn.tsx`: When existing user signs in
+- `HomeScreen.tsx`: Every time user enters home screen
+- `AccountSetupScreen.tsx`: When new user completes profile setup
+- Automatic refresh when FCM token changes
+
+#### 4. Stream Chat Integration
+
+1. **Device Registration**: Register device for remote messages (iOS requirement)
+2. **Get FCM Token**: Fetch current device token
+3. **Clean Previous Devices**: Remove existing devices for clean state
+4. **Register with Stream**: Add device with production config "HarborFirebasePush"
+5. **Store Tokens**: Save in both AsyncStorage and Firestore
+
+#### 5. Production Configuration
+
+**iOS Entitlements** (`app.json`):
+
+```json
+"ios": {
+  "entitlements": {
+    "aps-environment": "production"
+  }
+}
+```
+
+**Stream Chat Setup**:
+
+- Production APNs .p8 key uploaded to Stream dashboard
+- Environment set to "Production"
+- Push configuration name: "HarborFirebasePush"
+
+## 💎 Premium Features (Currently Disabled)
+
+### Current Status
+
+All premium features are currently **disabled** throughout the codebase. The app functions as a free-tier only application.
+
+### Premium Feature Framework
+
+- **Superwall integration**: Complete premium paywall system implemented but commented out
+- **Swipe limits**: Free tier (20/day) vs Premium tier (40/day) - currently locked to free
+- **Feature flags**: Comprehensive feature configuration system in place
+
+### Disabled Premium Features
+
+```typescript
+// All premium features return false/free tier values
+export const usePremium = () => {
+  const isPremium = false; // Always false
+  return {
+    isPremium,
+    features: getFeatureConfig(isPremium), // Always returns FREE_FEATURES
+    swipesPerDay: getSwipesPerDay(isPremium), // Always returns 20
+    canSeeWhoSwipedOnThem: canSeeWhoSwipedOnThem(isPremium), // Always returns false
+  };
+};
+```
+
+### Premium Infrastructure Ready
+
+- **Payment processing**: Superwall SDK integrated but inactive
+- **Feature gates**: Complete gating system throughout the app
+- **Backend support**: Cloud Functions ready for premium user management
+- **UI components**: Premium upgrade prompts implemented but show "coming soon" messages
+
+## 🛡️ Security & Moderation
+
+### Image Moderation
+
+- **Automated screening**: Content moderation for inappropriate images
+- **Upload validation**: Server-side checks before storage
+- **Rejection handling**: Clear error messages for failed moderation
+
+### User Reporting System
+
+- **Comprehensive reporting**: Multiple report categories with explanations
+- **Automatic actions**: Immediate unmatching and chat freezing
+- **Data collection**: Detailed report tracking for moderation review
+
+### Data Security
+
+- **Firebase Security Rules**: Comprehensive Firestore and Storage rules
+- **Authentication checks**: All Cloud Functions require proper authentication
+- **Data validation**: Server-side validation for all user inputs
+- **Privacy protection**: Sensitive data filtering in recommendations
+
+### Content Safety
+
+- **Image processing**: Automatic blur generation for privacy
+- **Chat monitoring**: Ability to freeze channels for violations
+- **Account management**: Complete account deletion with data cleanup
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or higher)
+- iOS Development: Xcode and iOS Simulator
+- Firebase project with all services enabled
+- Stream Chat account with production configuration
+
+### Firebase Setup
+
+1. **Create Firebase Project**
+
+   - Enable Authentication, Firestore, Storage, Functions, and Cloud Messaging
+   - Upload APNs authentication key for iOS push notifications
+
+2. **Configure Google Secret Manager**
+
+   - Create secrets for `STREAM_API_KEY` and `STREAM_API_SECRET`
+   - Set up Mailgun API credentials for email verification
+
+3. **Deploy Cloud Functions**
+   ```bash
+   cd functions
+   npm install
+   npm run build
+   firebase deploy --only functions
+   ```
+
+### Stream Chat Setup
+
+1. Create Stream Chat application
+2. Configure push notifications with Firebase integration
+3. Upload production APNs certificate
+4. Set up notification preferences and templates
+
+### Frontend Setup
+
+1. **Install Dependencies**
+
+   ```bash
+   npm install
+   ```
+
+2. **Configure Firebase**
+
+   - Place `GoogleService-Info.plist` in iOS directory
+   - Place `google-services.json` in Android directory
+   - Firebase configuration is set up in `firebaseConfig.ts`
+
+3. **Run the App**
+   ```bash
+   npx expo run:ios  # For iOS
+   npx expo run:android  # For Android
+   ```
+
+### Development Notes
+
+- **Physical Device Required**: Push notifications don't work in simulators
+- **Production Certificates**: Ensure APNs certificates are uploaded to both Firebase and Stream
+- **Environment Setup**: All API keys managed through Google Secret Manager
+- **Testing**: Use real devices for full notification testing
+
+## 📈 Future Enhancements
+
+### Planned Features
+
+- **Premium subscription system**: Reactivate Superwall integration for paid features
+- **Enhanced matching**: Ability to see profiles that swiped on you
+- **Advanced filters**: Additional matching criteria and preferences
+- **Social features**: Group activities and events for Cornell students
+
+### Technical Improvements
+
+- **Performance optimization**: Image caching and loading improvements
+- **Analytics integration**: User behavior tracking and app usage metrics
+- **A/B testing**: Feature flag system for experimental features
+- **Accessibility**: Enhanced accessibility features for all users
+
+## 🔧 Development Commands
+
+### Frontend Commands
+
+```bash
+npm start          # Start Expo development server
+npx expo run:ios   # Run on iOS device/simulator
+npm run android    # Run on Android device/emulator
+```
+
+### Backend Commands
+
+```bash
+cd functions
+npm run build      # Compile TypeScript
+npm run deploy     # Deploy to Firebase
+npm run logs       # View function logs
+```
+
+### Deployment Process
+
+```bash
+# Always build before deploying (from project root)
+cd functions
+npm run build
+npm run deploy --only
+
+# Full deployment
+firebase deploy
+```
+
+## 📚 Project Structure
+
+```
+harbor/
+├── App.tsx                 # Main app entry point
+├── components/             # Reusable UI components
+├── constants/             # App configuration and features
+├── context/               # React Context providers
+├── functions/             # Firebase Cloud Functions
+│   └── src/
+│       ├── auth/          # Authentication functions
+│       ├── chat/          # Stream Chat integration
+│       ├── images/        # Image processing
+│       ├── matches/       # Match management
+│       ├── recommendations/ # User recommendations
+│       ├── reports/       # Reporting system
+│       ├── swipes/        # Swipe handling
+│       └── users/         # User management
+├── hooks/                 # Custom React hooks
+├── navigation/            # Navigation configuration
+├── networking/            # API service classes
+├── screens/               # Screen components
+├── types/                 # TypeScript type definitions
+└── util/                  # Utility functions
+```
+
+---
+
+**Built with ❤️ for the Cornell community**
+
+_Harbor - Where meaningful connections begin_

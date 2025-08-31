@@ -18,9 +18,11 @@ import HeaderBack from "../components/HeaderBack";
 import LoadingScreen from "../components/LoadingScreen";
 import { useNavigation } from "@react-navigation/native";
 import { UserService } from "../networking";
+import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
+  const { signal } = useTelemetryDeck();
   const navigation = useNavigation();
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [isChatFrozen, setIsChatFrozen] = useState(false);
@@ -101,6 +103,12 @@ export default function ChatScreen() {
   useEffect(() => {
     resolveMatchId();
   }, [resolveMatchId]);
+
+  // Track page view for TelemetryDeck
+  useEffect(() => {
+    // Send a signal whenever this screen is viewed
+    signal("pageview", { screen: "Chat" });
+  }, [signal]);
 
   // (Removed) Immediate modal on frozen channel per user request
 
@@ -268,29 +276,24 @@ export default function ChatScreen() {
       <HeaderBack
         title={matchedUserName}
         onBack={() => navigation.goBack()}
-        onTitlePress={
-          hasMatchedUser
-            ? () => {
-                if (matchedUserId) {
-                  (navigation as any).navigate("ProfileScreen", {
-                    userId: matchedUserId,
-                    matchId: null,
-                  });
-                }
-              }
-            : undefined
-        }
+        onTitlePress={() => {
+          if (matchedUserId) {
+            (navigation as any).navigate("ProfileScreen", {
+              userId: matchedUserId,
+              matchId: null,
+            });
+          }
+        }}
         rightIcon={{
           name: "person",
           onPress: () => {
-            if (matchedUserId && hasMatchedUser) {
+            if (matchedUserId) {
               (navigation as any).navigate("ProfileScreen", {
                 userId: matchedUserId,
                 matchId: null,
               });
             }
           },
-          disabled: !hasMatchedUser,
         }}
       />
 
@@ -429,6 +432,7 @@ const styles = StyleSheet.create({
   channelContent: {
     flex: 1,
     backgroundColor: "white",
+    paddingBottom: 35, // Manual keyboard spacing to avoid KeyboardAvoidingView conflicts with Stream Chat
   },
   disabledContainer: {
     padding: 16,

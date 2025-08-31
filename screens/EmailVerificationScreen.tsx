@@ -199,8 +199,6 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
     try {
       await AuthService.verifyVerificationCode(verificationCode);
 
-      Alert.alert("Success", "Your email is now verified!");
-
       // Force reload user to get updated emailVerified status
       await currentUser?.reload();
       const updatedUser = auth.currentUser;

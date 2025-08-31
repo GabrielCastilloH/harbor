@@ -132,6 +132,16 @@ export const getRecommendations = functions.https.onCall(
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
+      const currentUserData = userDoc.data();
+
+      // Check if current user is deactivated
+      if (currentUserData?.isActive === false) {
+        console.log(
+          `User ${userId} is deactivated, returning empty recommendations`
+        );
+        return { recommendations: [] };
+      }
+
       // Get all other users (excluding sensitive data)
       const allUsersSnapshot = await db.collection("users").get();
       const allUsers = allUsersSnapshot.docs.map((doc) => {
@@ -144,8 +154,10 @@ export const getRecommendations = functions.https.onCall(
         };
       });
 
-      // Filter out the current user and users they've already swiped on
-      const otherUsers = allUsers.filter((user) => user.uid !== userId);
+      // Filter out the current user, deactivated users, and users they've already swiped on
+      const otherUsers = allUsers.filter(
+        (user) => user.uid !== userId && (user as any).isActive !== false // Exclude deactivated users
+      );
 
       // Get swipes by the current user
       const swipesSnapshot = await db
@@ -188,7 +200,6 @@ export const getRecommendations = functions.https.onCall(
       }
 
       // Apply intelligent matching based on sexual orientation and gender preferences
-      const currentUserData = userDoc.data();
       const filteredRecommendations = trulyAvailableUsers.filter((user) => {
         return isCompatible(currentUserData, user);
       });

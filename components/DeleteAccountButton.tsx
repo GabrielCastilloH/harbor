@@ -24,7 +24,8 @@ export default function DeleteAccountButton({
   onPress,
   disabled = false,
 }: DeleteAccountButtonProps) {
-  const { setUserId } = useAppContext();
+  const { setUserId, setProfile, setStreamApiKey, setStreamUserToken } =
+    useAppContext();
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDeleteAccount = async () => {
@@ -32,7 +33,7 @@ export default function DeleteAccountButton({
 
     Alert.alert(
       "Delete Account",
-      "Are you sure you want to permanently delete your account? This action cannot be undone and will remove all your data, matches, and conversations.",
+      "Are you sure you want to delete your account? Your profile data will be removed, but your login will remain active.",
       [
         {
           text: "Cancel",
@@ -60,34 +61,31 @@ export default function DeleteAccountButton({
                       // Clear image cache first
                       await ImageCache.clearAllCache();
 
-                      // Delete account via Cloud Function
+                      // Only call the Cloud Function to delete account data
                       await UserService.deleteAccount();
 
-                      // If successful, sign out and clear local data
-                      await Promise.all([
-                        signOut(auth),
-                        AsyncStorage.multiRemove([
-                          "@user",
-                          "@authToken",
-                          "@streamApiKey",
-                          "@streamUserToken",
-                        ]),
+                      // Clear local data and sign out
+                      await AsyncStorage.multiRemove([
+                        "@user",
+                        "@authToken",
+                        "@streamApiKey",
+                        "@streamUserToken",
+                        "@current_push_token",
                       ]);
 
-                      // Clear app context state
+                      // Clear all app context state
                       setUserId(null);
+                      setProfile(null);
+                      setStreamApiKey(null);
+                      setStreamUserToken(null);
+
+                      // Sign out the user from Firebase Auth
+                      await signOut(auth);
 
                       Alert.alert(
                         "Account Deleted",
-                        "Your account has been permanently deleted. Thank you for using Harbor.",
-                        [
-                          {
-                            text: "OK",
-                            onPress: () => {
-                              // The app will automatically redirect to sign-in screen
-                            },
-                          },
-                        ]
+                        "Your account data has been deleted. You have been logged out. Thank you for using Harbor.",
+                        [{ text: "OK" }]
                       );
                     } catch (error: any) {
                       console.error("❌ [DELETE ACCOUNT] Error:", error);
@@ -111,7 +109,7 @@ export default function DeleteAccountButton({
   return (
     <TouchableOpacity
       style={[
-        styles.deleteButton,
+        styles.button,
         disabled && styles.buttonDisabled,
         isDeleting && styles.buttonDisabled,
       ]}
@@ -119,40 +117,31 @@ export default function DeleteAccountButton({
       disabled={disabled || isDeleting}
     >
       {isDeleting ? (
-        <ActivityIndicator color={Colors.secondary100} size="small" />
+        <ActivityIndicator size="small" color="#FF3B30" />
       ) : (
-        <>
-          <Ionicons
-            name="trash-outline"
-            size={20}
-            color={Colors.secondary100}
-            style={styles.icon}
-          />
-          <Text style={styles.deleteButtonText}>Delete Account</Text>
-        </>
+        <Ionicons name="trash-outline" size={20} color="#FF3B30" />
       )}
+      <Text style={styles.buttonText}>
+        {isDeleting ? "Deleting account..." : "Delete Account"}
+      </Text>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  deleteButton: {
-    backgroundColor: Colors.strongRed, // Red color for destructive action
-    paddingVertical: 16,
-    paddingHorizontal: 30,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
+  button: {
     flexDirection: "row",
-    marginTop: 8,
+    alignItems: "center",
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: Colors.secondary200,
   },
-  deleteButtonText: {
-    color: Colors.secondary100,
-    fontWeight: "600",
+  buttonText: {
     fontSize: 16,
-  },
-  icon: {
-    marginRight: 8,
+    marginLeft: 10,
+    flex: 1,
+    color: "#FF3B30",
   },
   buttonDisabled: {
     opacity: 0.6,
