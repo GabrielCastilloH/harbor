@@ -281,7 +281,7 @@ export default function SettingsScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Made with ❤️ by Gabriel Castillo and Zain Bilal!
+            Made with ❤️ by Gabriel Castillo and Zain Bilal.
           </Text>
         </View>
       </ScrollView>
@@ -313,13 +313,14 @@ const styles = StyleSheet.create({
     marginBottom: 0, // Remove extra space below last button
   },
   footer: {
-    paddingHorizontal: 20,
+    marginBottom: 20,
     paddingVertical: 20,
     alignItems: "center",
+    justifyContent: "center",
   },
   footerText: {
     fontSize: 14,
-    color: Colors.primary500,
+    color: "#788a87",
     textAlign: "center",
     fontStyle: "italic",
   },
