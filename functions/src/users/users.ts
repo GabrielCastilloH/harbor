@@ -114,6 +114,7 @@ interface UpdateUserData {
   gender?: string;
   sexualOrientation?: string;
   images?: string[];
+  oldImages?: string[]; // Add oldImages for cleanup
   aboutMe?: string;
   q1?: string;
   q2?: string;
@@ -525,7 +526,7 @@ export const getUserById = functions.https.onCall(
 );
 
 /**
- * Updates user profile
+ * Updates user profile with transactional image cleanup
  */
 export const updateUser = functions.https.onCall(
   {
@@ -709,27 +710,82 @@ export const updateUser = functions.https.onCall(
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-      await db.collection("users").doc(id).update(updateData);
+      // Remove oldImages from updateData since it's not a user field
+      delete (updateData as any).oldImages;
 
-      // Update Stream Chat user if firstName is being updated
-      if (userData.firstName !== undefined) {
-        try {
-          const client = await getStreamClient();
-          await client.upsertUser({
-            id: id,
-            name: userData.firstName.trim(),
-            role: "user",
-          });
-        } catch (streamError) {
-          console.error("Failed to update Stream Chat user name:", streamError);
-          // Don't fail the entire operation if Stream Chat update fails
+      const userRef = db.collection("users").doc(id);
+      const bucket = admin.storage().bucket();
+
+      try {
+        await db.runTransaction(async (transaction) => {
+          // Step 1: Read the user document inside the transaction
+          const userDoc = await transaction.get(userRef);
+          if (!userDoc.exists) {
+            throw new functions.https.HttpsError(
+              "not-found",
+              "User not found."
+            );
+          }
+
+          const existingImages: string[] = userDoc.data()?.images || [];
+          const newImages: string[] = userData.images || [];
+          const oldImages: string[] = userData.oldImages || [];
+
+          // Step 2: Determine which images to delete
+          // Use oldImages if provided, otherwise compare existing vs new
+          const imagesToDelete =
+            oldImages.length > 0
+              ? oldImages
+              : existingImages.filter((image) => !newImages.includes(image));
+
+          // Step 3: Delete old images from Firebase Storage
+          if (imagesToDelete.length > 0) {
+            const deletePromises = imagesToDelete.map((fileName) => {
+              const fileRef = bucket.file(`images/${id}/${fileName}`);
+              return fileRef.delete().catch((err) => {
+                // Log the error but don't re-throw to allow other deletions to proceed
+                console.error(`Failed to delete file: ${fileName}`, err);
+              });
+            });
+            await Promise.all(deletePromises);
+            console.log(
+              `Deleted ${imagesToDelete.length} old images for user ${id}`
+            );
+          }
+
+          // Step 4: Update the user document in Firestore
+          transaction.update(userRef, updateData);
+        });
+
+        // Update Stream Chat user if firstName is being updated
+        if (userData.firstName !== undefined) {
+          try {
+            const client = await getStreamClient();
+            await client.upsertUser({
+              id: id,
+              name: userData.firstName.trim(),
+              role: "user",
+            });
+          } catch (streamError) {
+            console.error(
+              "Failed to update Stream Chat user name:",
+              streamError
+            );
+            // Don't fail the entire operation if Stream Chat update fails
+          }
         }
-      }
 
-      return {
-        message: "User updated successfully",
-        user: { id, ...updateData },
-      };
+        return {
+          message: "User updated successfully",
+          user: { id, ...updateData },
+        };
+      } catch (error: any) {
+        console.error("Error updating user:", error);
+        throw new functions.https.HttpsError(
+          "internal",
+          "Failed to update user"
+        );
+      }
     } catch (error: any) {
       console.error("Error updating user:", error);
       throw new functions.https.HttpsError("internal", "Failed to update user");
