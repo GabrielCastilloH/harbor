@@ -14,10 +14,13 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.gabrielach.harbor",
       "googleServicesFile": "./GoogleService-Info.plist",
       "buildNumber": "1",
+      "entitlements": {
+        "aps-environment": "production"
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Harbor needs access to your camera to take profile photos.",
@@ -25,8 +28,7 @@
         "NSMicrophoneUsageDescription": "Harbor needs access to your microphone for voice messages in chat.",
         "CFBundleDisplayName": "Harbor",
         "CFBundleName": "Harbor",
-        "CFBundleShortVersionString": "1.0.0",
-        "NSUserTrackingUsageDescription": "This app does not track users across other companies' apps or websites."
+        "CFBundleShortVersionString": "1.0.0"
       }
     },
     "android": {
@@ -36,7 +38,10 @@
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.WAKE_LOCK"
       ],
       "package": "com.gabrielach.harbor",
       "googleServicesFile": "./google-services.json"
@@ -46,6 +51,14 @@
     },
     "scheme": "com.gabrielach.harbor",
     "plugins": [
+      [
+        "expo-notifications",
+        {
+          "ios": {
+            "supports-remote-notifications": true
+          }
+        }
+      ],
       [
         "expo-image-picker",
         {

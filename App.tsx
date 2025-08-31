@@ -1,21 +1,29 @@
-import React, { useState, useEffect } from "react";
+import "./globals.js";
+import React, { useState, useEffect, useRef } from "react";
 import { StatusBar } from "expo-status-bar";
-import { NavigationContainer } from "@react-navigation/native";
+import {
+  NavigationContainer,
+  NavigationContainerRef,
+} from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import TabNavigator from "./navigation/TabNavigator";
 import SignIn from "./screens/SignIn";
 import CreateAccountScreen from "./screens/CreateAccountScreen";
 import EmailVerificationScreen from "./screens/EmailVerificationScreen";
 import AccountSetupScreen from "./screens/AccountSetupScreen";
+import DeletedAccountScreen from "./screens/DeletedAccountScreen";
+import BannedAccountScreen from "./screens/BannedAccountScreen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import { NotificationProvider } from "./context/NotificationContext";
+import NotificationHandler from "./components/NotificationHandler";
+import TelemetryDeck from "@telemetrydeck/sdk";
+import { TelemetryDeckProvider } from "@typedigital/telemetrydeck-react";
 
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
 import LoadingScreen from "./components/LoadingScreen";
 import UnviewedMatchesHandler from "./components/UnviewedMatchesHandler";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 // PREMIUM DISABLED: Superwall imports commented out
 // import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
 // import { SUPERWALL_CONFIG } from "./firebaseConfig";
@@ -68,6 +76,11 @@ function AuthNavigator() {
         name="EmailVerification"
         component={EmailVerificationScreen}
       />
+      <AuthStack.Screen
+        name="DeletedAccount"
+        component={DeletedAccountScreen}
+      />
+      <AuthStack.Screen name="BannedAccount" component={BannedAccountScreen} />
     </AuthStack.Navigator>
   );
 }
@@ -109,25 +122,54 @@ function MainNavigator() {
 }
 
 function AppContent() {
-  const { isInitialized, isAuthenticated } = useAppContext();
+  const { isInitialized, isAuthenticated, currentUser, isBanned } =
+    useAppContext();
+  const navigationRef = useRef<NavigationContainerRef<any> | null>(null);
+  const BannedStack = createNativeStackNavigator();
 
   if (!isInitialized) {
     return <LoadingScreen loadingText="Signing you in..." />;
   }
 
+  // Check if user is banned and authenticated
+  if (isAuthenticated && isBanned) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer ref={navigationRef}>
+          <StatusBar style="dark" />
+          <BannedStack.Navigator screenOptions={{ headerShown: false }}>
+            <BannedStack.Screen
+              name="BannedAccount"
+              component={BannedAccountScreen}
+            />
+          </BannedStack.Navigator>
+          <NotificationHandler navigationRef={navigationRef} />
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    );
+  }
+
   // Single NavigationContainer for the entire app
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <StatusBar style="dark" />
         {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
         {isAuthenticated && <UnviewedMatchesHandler />}
+        <NotificationHandler navigationRef={navigationRef} />
       </NavigationContainer>
     </GestureHandlerRootView>
   );
 }
 
 export default function App() {
+  // Initialize the TelemetryDeck client using the core SDK
+  const td = new TelemetryDeck({
+    appID: process.env.EXPO_PUBLIC_TELEMETRYDECK_APP_ID,
+    clientUser: "anonymous",
+    target: "https://nom.telemetrydeck.com", // Specify the target URL for React Native
+  });
+
   // PREMIUM DISABLED: Superwall configuration commented out
   // const apiKeys = SUPERWALL_CONFIG.apiKeys;
   // const [superwallApiKeys, setSuperwallApiKeys] = useState<{
@@ -146,13 +188,15 @@ export default function App() {
   // PREMIUM DISABLED: Superwall provider removed, using simple provider structure
   return (
     <SafeAreaProvider>
-      <AppProvider>
-        <NotificationProvider>
-          <ErrorBoundary>
-            <AppContent />
-          </ErrorBoundary>
-        </NotificationProvider>
-      </AppProvider>
+      <TelemetryDeckProvider telemetryDeck={td}>
+        <AppProvider>
+          <NotificationProvider>
+            <ErrorBoundary>
+              <AppContent />
+            </ErrorBoundary>
+          </NotificationProvider>
+        </AppProvider>
+      </TelemetryDeckProvider>
     </SafeAreaProvider>
   );
 

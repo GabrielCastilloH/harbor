@@ -26,6 +26,7 @@ import { auth } from "../firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { preloadChatCredentials } from "../util/chatPreloader";
 import { AuthService } from "../networking/AuthService";
+import { UserService } from "../networking/UserService";
 import { streamNotificationService } from "../util/streamNotifService";
 
 export default function SignIn({ navigation }: any) {
@@ -33,6 +34,7 @@ export default function SignIn({ navigation }: any) {
   const { isAuthenticated, currentUser, userId } = useAppContext();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingDeleted, setIsCheckingDeleted] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
@@ -65,10 +67,17 @@ export default function SignIn({ navigation }: any) {
         setEmailError("Email addresses with + symbols are not allowed");
         isValid = false;
       } else {
-        const emailRegex = /^[^\s@]+@cornell\.edu$/i;
-        if (!emailRegex.test(email)) {
-          setEmailError("Please enter a valid Cornell email address");
+        // Reject emails with periods in the username to prevent duplicate accounts
+        const [localPart] = email.split("@");
+        if (localPart && localPart.includes(".")) {
+          setEmailError("Email addresses with periods are not allowed");
           isValid = false;
+        } else {
+          const emailRegex = /^[^\s@]+@cornell\.edu$/i;
+          if (!emailRegex.test(email)) {
+            setEmailError("Please enter a valid Cornell email address");
+            isValid = false;
+          }
         }
       }
     }
@@ -82,10 +91,10 @@ export default function SignIn({ navigation }: any) {
     return isValid;
   };
 
-  // Normalize email by removing + alias part
+  // Normalize email by removing + alias part and periods
   const normalizeEmail = (email: string): string => {
     const [localPart, domain] = email.split("@");
-    const normalizedLocalPart = localPart.split("+")[0]; // Remove everything after +
+    const normalizedLocalPart = localPart.split("+")[0].replace(/\./g, ""); // Remove everything after + and all periods
     return `${normalizedLocalPart}@${domain}`.toLowerCase();
   };
 
@@ -94,10 +103,10 @@ export default function SignIn({ navigation }: any) {
       return;
     }
 
-    setIsLoading(true);
+    setIsCheckingDeleted(false); // Reset checking state
+    const normalizedEmail = normalizeEmail(email.trim());
 
     try {
-      const normalizedEmail = normalizeEmail(email.trim());
       // Sign in with Firebase Auth directly
       const userCredential = await signInWithEmailAndPassword(
         auth,
@@ -105,6 +114,8 @@ export default function SignIn({ navigation }: any) {
         password
       );
 
+      // Only set loading to true AFTER successful authentication
+      setIsLoading(true);
       const user = userCredential.user;
 
       // Force token refresh to get accurate verification status
@@ -130,12 +141,33 @@ export default function SignIn({ navigation }: any) {
         return;
       }
 
+      // Check if this email belongs to a deleted account
+      try {
+        const deletedCheck = await UserService.checkDeletedAccount(
+          normalizedEmail
+        );
+        if (deletedCheck.isDeleted) {
+          // Show the deleted account screen
+          (nav as any).dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: "DeletedAccount" }],
+            })
+          );
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking deleted account:", error);
+        // Continue with sign-in if check fails
+      }
+
       // Email is verified - proceed with sign in
       try {
         // Pre-load chat credentials for existing users
         await preloadChatCredentials(user.uid);
       } catch (error) {
         // Don't block sign-in if chat pre-loading fails
+        // This could happen if the user profile doesn't exist yet
         console.error("Failed to pre-load chat credentials:", error);
       }
 
@@ -149,7 +181,36 @@ export default function SignIn({ navigation }: any) {
     } catch (error: any) {
       console.error("❌ [SIGN IN] Sign-in error:", error);
 
+      // Check for deleted account when user not found
+      if (
+        error.code === "auth/user-not-found" ||
+        error.code === "auth/invalid-credential"
+      ) {
+        setIsCheckingDeleted(true);
+        try {
+          const deletedCheck = await UserService.checkDeletedAccount(
+            normalizedEmail
+          );
+          if (deletedCheck.isDeleted) {
+            // Show the deleted account screen
+            (nav as any).dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: "DeletedAccount" }],
+              })
+            );
+            return;
+          }
+        } catch (deletedCheckError) {
+          console.error("Error checking deleted account:", deletedCheckError);
+          // Continue with normal error handling if check fails
+        } finally {
+          setIsCheckingDeleted(false);
+        }
+      }
+
       let errorMessage = "Failed to sign in. Please try again.";
+      let errorTitle = "Sign In Error";
 
       if (error.code === "auth/user-not-found") {
         errorMessage = "No account found with this email address";
@@ -158,11 +219,12 @@ export default function SignIn({ navigation }: any) {
       } else if (error.code === "auth/invalid-email") {
         errorMessage = "Please enter a valid Cornell email address";
       } else if (error.code === "auth/invalid-credential") {
+        errorTitle = "Invalid Email or Password";
         errorMessage =
-          "We couldn't find an account with this email. Please create an account.";
+          "Please try again, create a new account, or click 'Forgot Password' to reset your password.";
       }
 
-      Alert.alert("Sign In Error", errorMessage);
+      Alert.alert(errorTitle, errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -179,6 +241,16 @@ export default function SignIn({ navigation }: any) {
       Alert.alert(
         "Forgot Password",
         "Email addresses with + symbols are not allowed"
+      );
+      return;
+    }
+
+    // Reject emails with periods in the username to prevent duplicate accounts
+    const [localPart] = email.split("@");
+    if (localPart && localPart.includes(".")) {
+      Alert.alert(
+        "Forgot Password",
+        "Email addresses with periods are not allowed"
       );
       return;
     }
@@ -207,7 +279,7 @@ export default function SignIn({ navigation }: any) {
               await sendPasswordResetEmail(auth, normalizedEmail);
               Alert.alert(
                 "Reset Link Sent",
-                "Check your email for a password reset link. It may take a few minutes to arrive and will likely be in your spam folder."
+                "Check your email for a password reset link. Please wait around 2 minutes for it to arrive and be sure to check your spam folder as it will likely end up there."
               );
             } catch (error: any) {
               console.error("Password reset error:", error);
@@ -226,7 +298,7 @@ export default function SignIn({ navigation }: any) {
     (nav as any).navigate("CreateAccount", { email: email.trim() });
   };
 
-  if (isLoading) {
+  if (isLoading && !isCheckingDeleted) {
     return <LoadingScreen loadingText="Signing you in..." />;
   }
 
@@ -277,11 +349,20 @@ export default function SignIn({ navigation }: any) {
               />
 
               <TouchableOpacity
-                style={styles.signInButton}
+                style={[
+                  styles.signInButton,
+                  (isLoading || isCheckingDeleted) && styles.buttonDisabled,
+                ]}
                 onPress={handleSignIn}
-                disabled={isLoading}
+                disabled={isLoading || isCheckingDeleted}
               >
-                <Text style={styles.signInButtonText}>Sign In</Text>
+                <Text style={styles.signInButtonText}>
+                  {isCheckingDeleted
+                    ? "Checking account..."
+                    : isLoading
+                    ? "Signing in..."
+                    : "Sign In"}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -392,6 +473,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 18,
   },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
   forgotPasswordButton: {
     alignItems: "center",
     marginTop: 16,
@@ -434,10 +518,6 @@ const styles = StyleSheet.create({
     color: Colors.primary500,
     fontWeight: "600",
     fontSize: 16,
-  },
-
-  buttonDisabled: {
-    opacity: 0.6,
   },
   termsContainer: {
     alignItems: "center",
