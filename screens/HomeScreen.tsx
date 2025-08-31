@@ -18,6 +18,7 @@ import {
   NavigationProp,
   useFocusEffect,
 } from "@react-navigation/native";
+import { streamNotificationService } from "../util/streamNotifService";
 import Colors from "../constants/Colors";
 import AnimatedStack from "../components/AnimatedStack";
 import MatchModal from "./MatchModal";
@@ -34,6 +35,7 @@ import {
   MatchService,
 } from "../networking";
 import { getBlurredImageUrl } from "../networking/ImageService";
+import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
 // PREMIUM DISABLED: Superwall imports commented out
 // import { usePlacement } from "expo-superwall";
 // PREMIUM DISABLED: Premium hook commented out
@@ -42,7 +44,8 @@ import { SwipeLimitService } from "../networking/SwipeLimitService";
 import { RootStackParamList } from "../types/navigation";
 
 export default function HomeScreen() {
-  const { userId, isAuthenticated, currentUser } = useAppContext();
+  const { userId, isAuthenticated, currentUser, isBanned } = useAppContext();
+  const { signal } = useTelemetryDeck();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] =
@@ -57,6 +60,7 @@ export default function HomeScreen() {
   const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
+  const [isUserActive, setIsUserActive] = useState<boolean>(true);
   const [swipeInProgress, setSwipeInProgress] = useState(false);
   const [lastSwipedProfile, setLastSwipedProfile] = useState<string | null>(
     null
@@ -103,6 +107,12 @@ export default function HomeScreen() {
     }, [shouldRemoveCurrentCard])
   );
 
+  // Track page view for TelemetryDeck
+  useEffect(() => {
+    // Send a signal whenever this screen is viewed
+    signal("pageview", { screen: "Home" });
+  }, [signal]);
+
   // Initialize socket connection
   useEffect(() => {
     if (!userId || !isAuthenticated || !currentUser) {
@@ -141,6 +151,28 @@ export default function HomeScreen() {
     };
   }, [userId, isAuthenticated, currentUser]);
 
+  // Refresh FCM token when entering HomeScreen (for existing users)
+  useEffect(() => {
+    if (!userId || !isAuthenticated || !currentUser) {
+      return;
+    }
+
+    const refreshStreamNotificationToken = async () => {
+      try {
+        // Refresh FCM token for existing users (handles device changes, etc.)
+        await streamNotificationService.saveUserToken(currentUser.uid);
+      } catch (error) {
+        console.error(
+          "HomeScreen - Error refreshing Stream notification token:",
+          error
+        );
+        // Don't block the app if token refresh fails
+      }
+    };
+
+    refreshStreamNotificationToken();
+  }, [userId, isAuthenticated, currentUser]);
+
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!userId || !isAuthenticated || !currentUser) {
@@ -150,7 +182,10 @@ export default function HomeScreen() {
       try {
         const response = await UserService.getUserById(userId);
         if (response) {
-          setUserProfile(response.user || response);
+          const profile = response.user || response;
+          setUserProfile(profile);
+          // Set user active status (default to true if not specified)
+          setIsUserActive(profile.isActive !== false);
         }
       } catch (error: any) {
         // If user not found, don't show error - they might be setting up their account
@@ -347,8 +382,10 @@ export default function HomeScreen() {
   };
 
   const handleSwipeRight = async (profile: Profile) => {
-    // Generate unique ID for this swipe attempt
-    const swipeId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Check if user is banned
+    if (isBanned) {
+      return;
+    }
 
     if (swipeInProgress || lastSwipedProfile === profile.uid) {
       return;
@@ -409,10 +446,7 @@ export default function HomeScreen() {
           canSwipe: updatedLimit.canSwipe,
         });
       } catch (error) {
-        console.error(
-          `❌ [HOMESCREEN] [${swipeId}] Error incrementing swipe count:`,
-          error
-        );
+        console.error(`❌ [HOMESCREEN] Error incrementing swipe count:`, error);
       }
 
       // Step 2: If it's a match, create chat channel and show modal
@@ -424,7 +458,7 @@ export default function HomeScreen() {
           });
         } catch (chatError) {
           console.error(
-            `❌ [HOMESCREEN] [${swipeId}] Error creating chat channel:`,
+            "❌ [NOTIFICATION] Error creating chat channel:",
             chatError
           );
         }
@@ -468,8 +502,10 @@ export default function HomeScreen() {
   };
 
   const handleSwipeLeft = async (profile: Profile) => {
-    // Generate unique ID for this swipe attempt
-    const swipeId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Check if user is banned
+    if (isBanned) {
+      return;
+    }
 
     // Prevent duplicate swipes while a swipe is in progress
     if (swipeInProgress || lastSwipedProfile === profile.uid) {
@@ -508,7 +544,7 @@ export default function HomeScreen() {
         });
       } catch (error) {
         console.error(
-          `❌ [HOMESCREEN] [${swipeId}] Error incrementing left swipe count:`,
+          `❌ [HOMESCREEN] Error incrementing left swipe count:`,
           error
         );
       }
@@ -523,10 +559,7 @@ export default function HomeScreen() {
         setCurrentProfile(null);
       }
     } catch (error) {
-      console.error(
-        `❌ [HOMESCREEN] [${swipeId}] Error creating left swipe:`,
-        error
-      );
+      console.error(`❌ [HOMESCREEN] Error creating left swipe:`, error);
     } finally {
       // Reset swipe flags after a short delay
       setTimeout(() => {
@@ -626,9 +659,14 @@ export default function HomeScreen() {
             <AnimatedStack
               ref={stackRef}
               data={recommendations}
-              onSwipeRight={handleSwipeRight}
-              onSwipeLeft={handleSwipeLeft}
+              onSwipeRight={
+                isUserActive && !isBanned ? handleSwipeRight : undefined
+              }
+              onSwipeLeft={
+                isUserActive && !isBanned ? handleSwipeLeft : undefined
+              }
               onCurrentProfileChange={setCurrentCardProfile}
+              isUserActive={isUserActive}
             />
           </View>
           <View style={styles.buttonsContainer}>
@@ -638,12 +676,18 @@ export default function HomeScreen() {
                 styles.button,
                 styles.noButton,
                 isNoPressed && { backgroundColor: Colors.red },
+                (!isUserActive || isBanned) && { opacity: 0.5 },
               ]}
               onPressIn={(event) => {
+                if (!isUserActive || isBanned) return;
                 setIsNoPressed(true);
                 handleTouchStart(event);
               }}
-              onPressOut={(event) => handleTouchEnd(event, true)}
+              onPressOut={(event) => {
+                if (!isUserActive || isBanned) return;
+                handleTouchEnd(event, true);
+              }}
+              disabled={!isUserActive || isBanned}
             >
               <Image
                 source={require("../assets/images/shipwreck.png")}
@@ -660,12 +704,18 @@ export default function HomeScreen() {
                 styles.button,
                 styles.yesButton,
                 isYesPressed && { backgroundColor: Colors.green },
+                (!isUserActive || isBanned) && { opacity: 0.5 },
               ]}
               onPressIn={(event) => {
+                if (!isUserActive || isBanned) return;
                 setIsYesPressed(true);
                 handleTouchStart(event);
               }}
-              onPressOut={(event) => handleTouchEnd(event, false)}
+              onPressOut={(event) => {
+                if (!isUserActive || isBanned) return;
+                handleTouchEnd(event, false);
+              }}
+              disabled={!isUserActive || isBanned}
             >
               <View style={{ marginBottom: 3, marginLeft: 2 }}>
                 <FontAwesome6

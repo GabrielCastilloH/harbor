@@ -42,14 +42,19 @@ export default function EmailInput({
     if (email.includes("+")) {
       return false;
     }
+    // Reject emails with periods in the username to prevent duplicate accounts
+    const [localPart] = email.split("@");
+    if (localPart && localPart.includes(".")) {
+      return false;
+    }
     const emailRegex = /^[^\s@]+@cornell\.edu$/i;
     return emailRegex.test(email);
   };
 
-  // Normalize email by removing + alias part
+  // Normalize email by removing + alias part and periods
   const normalizeEmail = (email: string): string => {
     const [localPart, domain] = email.split("@");
-    const normalizedLocalPart = localPart.split("+")[0]; // Remove everything after +
+    const normalizedLocalPart = localPart.split("+")[0].replace(/\./g, ""); // Remove everything after + and all periods
     return `${normalizedLocalPart}@${domain}`.toLowerCase();
   };
 
@@ -89,12 +94,18 @@ export default function EmailInput({
           {error ||
             (value && value.includes("+")
               ? "Email addresses with + symbols are not allowed"
+              : value && value.split("@")[0]?.includes(".")
+              ? "Email addresses with periods are not allowed"
               : "Please enter a valid Cornell email address")}
         </Text>
       )}
-      {value && isValidEmail && !error && !value.includes("+") && (
-        <Text style={styles.successText}>✓ Valid Cornell email</Text>
-      )}
+      {value &&
+        isValidEmail &&
+        !error &&
+        !value.includes("+") &&
+        !value.split("@")[0]?.includes(".") && (
+          <Text style={styles.successText}>✓ Valid Cornell email</Text>
+        )}
     </View>
   );
 }

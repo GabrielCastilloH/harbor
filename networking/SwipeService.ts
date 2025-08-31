@@ -16,6 +16,7 @@ export class SwipeService {
       );
       const result = await createSwipe({ swiperId, swipedId, direction });
       const data = result.data as any;
+      
       return data;
     } catch (error: any) {
       console.error("SwipeService - Error creating swipe:", error);
