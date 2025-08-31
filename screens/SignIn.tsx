@@ -209,6 +209,7 @@ export default function SignIn({ navigation }: any) {
       }
 
       let errorMessage = "Failed to sign in. Please try again.";
+      let errorTitle = "Sign In Error";
 
       if (error.code === "auth/user-not-found") {
         errorMessage = "No account found with this email address";
@@ -217,11 +218,12 @@ export default function SignIn({ navigation }: any) {
       } else if (error.code === "auth/invalid-email") {
         errorMessage = "Please enter a valid Cornell email address";
       } else if (error.code === "auth/invalid-credential") {
+        errorTitle = "Invalid Email or Password";
         errorMessage =
-          "Invalid email or password. Please try again, create a new account, or click 'Forgot Password' to reset your password.";
+          "Please try again, create a new account, or click 'Forgot Password' to reset your password.";
       }
 
-      Alert.alert("Sign In Error", errorMessage);
+      Alert.alert(errorTitle, errorMessage);
     } finally {
       setIsLoading(false);
     }
