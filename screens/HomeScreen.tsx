@@ -94,7 +94,7 @@ export default function HomeScreen() {
   // const { isPremium, swipesPerDay } = usePremium();
   // Mock premium as false for now
   const isPremium = false;
-  const swipesPerDay = 20; // Always use free tier limit
+  const swipesPerDay = 5; // Always use 5 swipes per day
 
   // Remove card when returning from report screen
   useFocusEffect(

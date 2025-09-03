@@ -70,7 +70,7 @@ export const getSwipeLimit = functions.https.onCall(
         const newSwipeLimit = {
           userId,
           swipesToday: 0,
-          maxSwipesPerDay: 20, // Default to free tier
+          maxSwipesPerDay: 5, // Default to 5 swipes per day
           canSwipe: true,
           resetDate: today,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -82,7 +82,7 @@ export const getSwipeLimit = functions.https.onCall(
         return {
           userId,
           swipesToday: 0,
-          maxSwipesPerDay: 20,
+          maxSwipesPerDay: 5,
           canSwipe: true,
           resetDate: today,
         };
@@ -298,7 +298,7 @@ export const updateSwipeLimit = functions.https.onCall(
         );
       }
 
-      const maxSwipesPerDay = isPremium ? 40 : 20;
+      const maxSwipesPerDay = 5; // Always use 5 swipes per day
 
       // Update or create swipe limit document
       await db.collection("swipeLimits").doc(userId).set(

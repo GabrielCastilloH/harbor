@@ -16,7 +16,7 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 ### 💫 Smart Matching & Swiping
 
 - **Intelligent recommendations**: Algorithm considers sexual orientation, gender preferences, and mutual interest
-- **Daily swipe limits**: 20 swipes per day for free users (40 for premium, currently disabled)
+- **Daily swipe limits**: 5 swipes per day for all users
 - **Instant match detection**: Real-time matching when two users swipe right on each other
 - **Swipe gesture controls**: Smooth card-based swiping with visual feedback
 
@@ -552,7 +552,7 @@ All premium features are currently **disabled** throughout the codebase. The app
 ### Premium Feature Framework
 
 - **Superwall integration**: Complete premium paywall system implemented but commented out
-- **Swipe limits**: Free tier (20/day) vs Premium tier (40/day) - currently locked to free
+- **Swipe limits**: 5 swipes per day for all users
 - **Feature flags**: Comprehensive feature configuration system in place
 
 ### Disabled Premium Features
@@ -564,7 +564,7 @@ export const usePremium = () => {
   return {
     isPremium,
     features: getFeatureConfig(isPremium), // Always returns FREE_FEATURES
-    swipesPerDay: getSwipesPerDay(isPremium), // Always returns 20
+    swipesPerDay: getSwipesPerDay(isPremium), // Always returns 5
     canSeeWhoSwipedOnThem: canSeeWhoSwipedOnThem(isPremium), // Always returns false
   };
 };
