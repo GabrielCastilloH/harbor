@@ -64,7 +64,7 @@ export default function BannedAccountScreen() {
         {/* Sub message */}
         <Text style={styles.subMessage}>
           If you believe this is an error or would like to appeal this decision,
-          please contact our support team at gabocastillo321@gmail.com.
+          please contact our support team at tryharborapp@gmail.com.
         </Text>
 
         {/* Back to Sign In Button */}
