@@ -4,13 +4,13 @@ export interface FeatureConfig {
 }
 
 export const FREE_FEATURES: FeatureConfig = {
-  swipesPerDay: 20,
+  swipesPerDay: 5,
   canSeeWhoSwipedOnThem: false,
 };
 
 export const PREMIUM_FEATURES: FeatureConfig = {
-  swipesPerDay: 40,
-  canSeeWhoSwipedOnThem: true,
+  swipesPerDay: 5, // Same as free tier
+  canSeeWhoSwipedOnThem: false, // Same as free tier
 };
 
 // PREMIUM DISABLED: Always return free features
