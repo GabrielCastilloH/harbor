@@ -42,7 +42,7 @@ export default function DeletedAccountScreen() {
         {/* Sub message */}
         <Text style={styles.subMessage}>
           If you wish to use this email address again, please contact our
-          support team at gabocastillo321@gmail.com.
+          support team at tryharborapp@gmail.com.
         </Text>
 
         {/* Back to Sign In Button */}
