@@ -35,7 +35,6 @@ import {
   MatchService,
 } from "../networking";
 import { getBlurredImageUrl } from "../networking/ImageService";
-import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
 // PREMIUM DISABLED: Superwall imports commented out
 // import { usePlacement } from "expo-superwall";
 // PREMIUM DISABLED: Premium hook commented out
@@ -45,7 +44,7 @@ import { RootStackParamList } from "../types/navigation";
 
 export default function HomeScreen() {
   const { userId, isAuthenticated, currentUser, isBanned } = useAppContext();
-  const { signal } = useTelemetryDeck();
+  // const { signal } = useTelemetryDeck();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] =
@@ -110,8 +109,8 @@ export default function HomeScreen() {
   // Track page view for TelemetryDeck
   useEffect(() => {
     // Send a signal whenever this screen is viewed
-    signal("pageview", { screen: "Home" });
-  }, [signal]);
+    // signal("pageview", { screen: "Home" });
+  }, []);
 
   // Initialize socket connection
   useEffect(() => {

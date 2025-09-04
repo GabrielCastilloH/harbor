@@ -38,7 +38,8 @@ import LoadingScreen from "../components/LoadingScreen";
 import ImageCarousel from "../components/ImageCarousel";
 import { auth } from "../firebaseConfig";
 import HeaderBack from "../components/HeaderBack";
-import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
+// import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
+import { usePremium } from "../hooks/usePremium";
 
 type ProfileScreenParams = {
   ProfileScreen: {
@@ -70,7 +71,7 @@ export default function ProfileScreen() {
   const route = useRoute<RouteProp<ProfileScreenParams, "ProfileScreen">>();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { userId: currentUserId } = useAppContext();
-  const { signal } = useTelemetryDeck();
+  // const { signal } = useTelemetryDeck();
   const navigationRef = useRef<NavigationProp<RootStackParamList>>(navigation);
 
   // Update ref when navigation changes
@@ -81,8 +82,8 @@ export default function ProfileScreen() {
   // Track page view for TelemetryDeck
   useEffect(() => {
     // Send a signal whenever this screen is viewed
-    signal("pageview", { screen: "Profile" });
-  }, [signal]);
+    // signal("pageview", { screen: "Profile" });
+  }, []);
   const userId = route.params?.userId;
   const matchIdParam = route.params?.matchId;
   const [matchId, setMatchId] = useState<string | null>(matchIdParam ?? null);
