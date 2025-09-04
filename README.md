@@ -87,6 +87,8 @@ App.tsx (Main Navigator)
 │   ├── CreateAccount
 │   └── EmailVerification
 ├── AccountSetup (First-time users)
+├── BannedAccountScreen (Banned users)
+├── DeletedAccountScreen (Deleted users)
 └── TabNavigator (Main App)
     ├── HomeTab (HomeStack)
     │   ├── HomeScreen (Swiping)
@@ -110,6 +112,8 @@ App.tsx (Main Navigator)
 - **ProfileScreen**: View other users' profiles with blur effects
 - **AccountSetupScreen**: Onboarding flow for new users
 - **SettingsScreen**: App preferences and account management
+- **BannedAccountScreen**: Screen shown to banned users
+- **DeletedAccountScreen**: Screen shown to deleted users
 
 ### Component Architecture
 
@@ -171,12 +175,14 @@ Harbor uses Firebase Auth with a **custom code-based email verification system**
 
 ### Flow Logic
 
-The app has 4 distinct authentication states handled in `App.tsx`:
+The app has 6 distinct authentication states handled in `App.tsx`:
 
 1. **User signed in but email NOT verified** → `EmailVerificationScreen`
 2. **User verified but NO profile in database** → `AccountSetupScreen`
 3. **User verified AND has profile** → Main App (`TabNavigator`)
 4. **User not signed in** → Auth screens (`SignIn`/`CreateAccount`)
+5. **User account deleted** → `DeletedAccountScreen`
+6. **User account banned** → `BannedAccountScreen`
 
 ### Email Verification System
 
@@ -235,7 +241,6 @@ Instead of using Firebase's built-in email verification links, Harbor implements
    // Send via Mailgun
    const msg = {
      from: `Harbor <noreply@tryharbor.app>`,
-     to: email,
      subject: "Your Harbor Verification Code",
      html: `<div>Your verification code is: <h2>${code}</h2></div>`,
    };
@@ -301,6 +306,89 @@ Instead of using Firebase's built-in email verification links, Harbor implements
 - **Frontend validation**: Explicit rejection of emails containing `+` symbols
 - **Backend normalization**: Strip `+` aliases in Cloud Functions (when needed)
 - **Domain enforcement**: Only `@cornell.edu` emails accepted
+
+## 🚫 Account Management & Banning System
+
+Harbor implements a comprehensive account management system that handles both account deletion and account banning. This system ensures that users who violate community guidelines or have their accounts compromised cannot access the platform.
+
+### Account Deletion System
+
+#### Database Structure
+
+- **Collection**: `deletedAccounts`
+- **Document ID**: `userId` (Firebase Auth UID)
+- **Fields**:
+  - `email` (string): User's email at time of deletion
+  - `deletedAt` (timestamp): When account was deleted
+  - `reason` (string): Internal note about deletion reason
+
+#### User Flow
+
+1. **Deletion Request**: User requests account deletion in settings
+2. **Data Cleanup**: All user data is removed from Firestore collections
+3. **Account Marking**: User document is moved to `deletedAccounts` collection
+4. **Access Restriction**: User is redirected to `DeletedAccountScreen`
+5. **No Return**: Deleted accounts cannot be restored
+
+### Account Banning System
+
+#### Database Structure
+
+You'll need to create a new Firestore collection to manage banned accounts:
+
+- **Collection Name**: `bannedAccounts`
+- **Document ID**: `userId` (Use the user's Firebase Authentication UID)
+- **Required Fields**:
+  - `bannedByEmail` (string): User's email address at time of ban
+  - `unbanDate` (timestamp): When the ban expires (set to far future for permanent bans)
+  - `reason` (string): Internal note about why user was banned
+  - `createdAt` (timestamp): When the ban was created
+
+#### Manual Ban Process
+
+To ban a user, you'll need to manually create a document in the `bannedAccounts` collection:
+
+1. **Access Firebase Console**: Go to your Firebase project's Firestore Database
+2. **Create Collection**: If `bannedAccounts` doesn't exist, create it
+3. **Add Document**: Create a new document with the user's UID as the document ID
+4. **Fill Fields**:
+   - `bannedByEmail`: User's email address
+   - `unbanDate`: Set to a far future date (e.g., 2099-12-31) for permanent bans
+   - `reason`: Brief note about the violation (e.g., "Inappropriate behavior reported")
+   - `createdAt`: Current timestamp
+
+#### User Flow for Banned Accounts
+
+1. **Ban Detection**: App checks `bannedAccounts` collection during authentication
+2. **Access Restriction**: Banned users are immediately redirected to `BannedAccountScreen`
+3. **No App Access**: Banned users cannot access any app features
+4. **Contact Information**: Screen displays contact email for appeals: `gabocastillo321@gmail.com`
+
+#### Implementation Details
+
+The ban check is integrated into the main authentication flow in `AppContext`:
+
+- **State Management**: New `isBanned` state variable tracks ban status
+- **Database Check**: After user authentication, check if UID exists in `bannedAccounts`
+- **Routing Logic**: If banned, redirect to `BannedAccountScreen` instead of main app
+- **Comprehensive Blocking**: All app functionality is disabled for banned users
+
+#### Security Considerations
+
+- **Client-Side Checks**: All interactive elements are disabled for banned users
+- **Server-Side Rules**: Firestore security rules should check ban status before allowing access
+- **No Circumvention**: Banned users cannot bypass restrictions through app manipulation
+- **Appeal Process**: Clear contact information provided for legitimate appeals
+
+### Account Status Priority
+
+The app checks account status in this order:
+
+1. **Email Verification**: Must verify email before proceeding
+2. **Account Deletion**: Deleted accounts cannot be restored
+3. **Account Banning**: Banned accounts are completely restricted
+4. **Profile Setup**: New users must complete profile creation
+5. **Full Access**: Verified users with complete profiles can access all features
 
 ## 📋 Profile Validation & Requirements
 
@@ -591,6 +679,13 @@ export const usePremium = () => {
 - **Automatic actions**: Immediate unmatching and chat freezing
 - **Data collection**: Detailed report tracking for moderation review
 
+### Account Management
+
+- **Account deletion**: Complete removal with data cleanup and access restriction
+- **Account banning**: Comprehensive banning system for policy violations
+- **Status tracking**: Real-time monitoring of account states
+- **Appeal process**: Clear contact information for legitimate appeals
+
 ### Data Security
 
 - **Firebase Security Rules**: Comprehensive Firestore and Storage rules
@@ -603,6 +698,7 @@ export const usePremium = () => {
 - **Image processing**: Automatic blur generation for privacy
 - **Chat monitoring**: Ability to freeze channels for violations
 - **Account management**: Complete account deletion with data cleanup
+- **Ban enforcement**: Comprehensive blocking of banned users
 
 ## 🚀 Getting Started
 
