@@ -18,11 +18,12 @@ import HeaderBack from "../components/HeaderBack";
 import LoadingScreen from "../components/LoadingScreen";
 import { useNavigation } from "@react-navigation/native";
 import { UserService } from "../networking";
-import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
+// import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
+import { usePremium } from "../hooks/usePremium";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
-  const { signal } = useTelemetryDeck();
+  // const { signal } = useTelemetryDeck();
   const navigation = useNavigation();
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [isChatFrozen, setIsChatFrozen] = useState(false);
@@ -107,8 +108,8 @@ export default function ChatScreen() {
   // Track page view for TelemetryDeck
   useEffect(() => {
     // Send a signal whenever this screen is viewed
-    signal("pageview", { screen: "Chat" });
-  }, [signal]);
+    // signal("pageview", { screen: "Chat" });
+  }, []);
 
   // (Removed) Immediate modal on frozen channel per user request
 

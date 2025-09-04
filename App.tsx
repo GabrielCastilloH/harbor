@@ -17,8 +17,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import NotificationHandler from "./components/NotificationHandler";
-import TelemetryDeck from "@telemetrydeck/sdk";
-import { TelemetryDeckProvider } from "@typedigital/telemetrydeck-react";
+// import TelemetryDeck from "@telemetrydeck/sdk";
+// import { TelemetryDeckProvider } from "@typedigital/telemetrydeck-react";
 
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
@@ -164,11 +164,11 @@ function AppContent() {
 
 export default function App() {
   // Initialize the TelemetryDeck client using the core SDK
-  const td = new TelemetryDeck({
-    appID: process.env.EXPO_PUBLIC_TELEMETRYDECK_APP_ID,
-    clientUser: "anonymous",
-    target: "https://nom.telemetrydeck.com", // Specify the target URL for React Native
-  });
+  // const td = new TelemetryDeck({
+  //   appID: process.env.EXPO_PUBLIC_TELEMETRYDECK_APP_ID,
+  //   clientUser: "anonymous",
+  //   target: "https://nom.telemetrydeck.com", // Specify the target URL for React Native
+  // });
 
   // PREMIUM DISABLED: Superwall configuration commented out
   // const apiKeys = SUPERWALL_CONFIG.apiKeys;
@@ -188,7 +188,7 @@ export default function App() {
   // PREMIUM DISABLED: Superwall provider removed, using simple provider structure
   return (
     <SafeAreaProvider>
-      <TelemetryDeckProvider telemetryDeck={td}>
+      {/* <TelemetryDeckProvider telemetryDeck={td}> */}
         <AppProvider>
           <NotificationProvider>
             <ErrorBoundary>
@@ -196,7 +196,7 @@ export default function App() {
             </ErrorBoundary>
           </NotificationProvider>
         </AppProvider>
-      </TelemetryDeckProvider>
+      {/* </TelemetryDeckProvider> */}
     </SafeAreaProvider>
   );
 
