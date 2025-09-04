@@ -19,7 +19,7 @@ import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 import { useNotification } from "../context/NotificationContext";
-import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
+// import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
 // PREMIUM DISABLED: Superwall imports commented out
 // import { usePlacement, useUser } from "expo-superwall";
 // import { useUser } from "expo-superwall"; // PREMIUM DISABLED
@@ -32,7 +32,7 @@ import { UserService } from "../networking/UserService";
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { setUserId, userId } = useAppContext();
-  const { signal } = useTelemetryDeck();
+  // const { signal } = useTelemetryDeck();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
@@ -72,8 +72,8 @@ export default function SettingsScreen() {
   // Track page view for TelemetryDeck
   React.useEffect(() => {
     // Send a signal whenever this screen is viewed
-    signal("pageview", { screen: "Settings" });
-  }, [signal]);
+    // signal("pageview", { screen: "Settings" });
+  }, []);
 
   const handleAccountStatusChange = (isActive: boolean) => {
     setUserProfile((prev: any) => ({ ...prev, isActive }));
