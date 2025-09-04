@@ -189,13 +189,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       {/* <TelemetryDeckProvider telemetryDeck={td}> */}
-        <AppProvider>
-          <NotificationProvider>
-            <ErrorBoundary>
-              <AppContent />
-            </ErrorBoundary>
-          </NotificationProvider>
-        </AppProvider>
+      <AppProvider>
+        <NotificationProvider>
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
+        </NotificationProvider>
+      </AppProvider>
       {/* </TelemetryDeckProvider> */}
     </SafeAreaProvider>
   );
