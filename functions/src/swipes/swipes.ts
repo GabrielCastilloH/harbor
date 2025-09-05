@@ -1,22 +1,10 @@
 import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { CallableRequest } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 
 const db = admin.firestore();
 const DAILY_SWIPES = 100;
-
-// Minimal ntfy logger for debugging
-// @ts-ignore
-async function logToNtfy(msg: string) {
-  try {
-    await fetch("https://ntfy.sh/harbor-debug-randomr", {
-      method: "POST",
-      body: msg,
-    });
-  } catch (error) {
-    // Don't throw
-  }
-}
 
 /**
  * Records a swipe and checks for matches
@@ -40,18 +28,9 @@ export const createSwipe = functions.https.onCall(
       direction: "left" | "right";
     }>
   ) => {
-    // Generate unique request ID
-    const requestId = `${Date.now()}-${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-
     try {
-      await logToNtfy(
-        `[${requestId}] SWIPE START: ${JSON.stringify(request.data)}`
-      );
       // Force new deployment
       if (!request.auth) {
-        await logToNtfy(`[${requestId}] ERROR: User not authenticated`);
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -61,7 +40,6 @@ export const createSwipe = functions.https.onCall(
       const { swiperId, swipedId, direction } = request.data;
 
       if (!swiperId || !swipedId || !direction) {
-        await logToNtfy(`[${requestId}] ERROR: Missing required parameters`);
         throw new functions.https.HttpsError(
           "invalid-argument",
           "Swiper ID, swiped ID, and direction are required"
@@ -73,9 +51,6 @@ export const createSwipe = functions.https.onCall(
       const swipedUserDoc = await db.collection("users").doc(swipedId).get();
 
       if (!swiperUserDoc.exists) {
-        await logToNtfy(
-          `[${requestId}] ERROR: Swiper user not found: ${request.data.swiperId}`
-        );
         throw new functions.https.HttpsError(
           "not-found",
           "Swiper user not found"
@@ -83,9 +58,6 @@ export const createSwipe = functions.https.onCall(
       }
 
       if (!swipedUserDoc.exists) {
-        await logToNtfy(
-          `[${requestId}] ERROR: Swiped user not found: ${request.data.swipedId}`
-        );
         throw new functions.https.HttpsError(
           "not-found",
           "Swiped user not found"
@@ -105,9 +77,6 @@ export const createSwipe = functions.https.onCall(
         .get();
 
       if (!unmatchedCheck.empty) {
-        await logToNtfy(
-          `[${requestId}] INFO: Users have unmatched before: ${request.data.swiperId} and ${request.data.swipedId}`
-        );
         return {
           message: "Users have unmatched before, cannot match again",
           swipe: null,
@@ -178,9 +147,6 @@ export const createSwipe = functions.https.onCall(
         .get();
 
       if (!existingSwipe.empty) {
-        await logToNtfy(
-          `[${requestId}] INFO: Swipe already exists: ${request.data.swiperId} -> ${request.data.swipedId} (${request.data.direction})`
-        );
         return {
           message: "Swipe already exists",
           swipe: existingSwipe.docs[0].data(),
@@ -208,10 +174,6 @@ export const createSwipe = functions.https.onCall(
           .get();
 
         if (!mutualSwipe.empty) {
-          await logToNtfy(
-            `[${requestId}] 🔔 MATCH MADE: ${request.data.swiperId} <-> ${request.data.swipedId} - Stream Chat notifications should be enabled`
-          );
-
           // Use transaction for atomic match creation
           const matchResult = await db.runTransaction(async (transaction) => {
             // Create the swipe first
@@ -238,11 +200,12 @@ export const createSwipe = functions.https.onCall(
             const matchRef = db.collection("matches").doc();
             transaction.set(matchRef, matchData);
 
-            // Update both users' currentMatches arrays atomically
+            // Update both users' currentMatches arrays atomically and increment daily swipe count
             transaction.update(db.collection("users").doc(swiperId), {
               currentMatches: admin.firestore.FieldValue.arrayUnion(
                 matchRef.id
               ),
+              dailySwipeCount: admin.firestore.FieldValue.increment(1),
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
@@ -252,10 +215,6 @@ export const createSwipe = functions.https.onCall(
               ),
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
-
-            // Note: Push notifications for matches are now handled by Stream Chat
-            // when users receive messages in their match channel
-            await logToNtfy(`[${requestId}] 🔔 MATCH CREATED: ${matchRef.id} - Stream Chat should send notifications for new messages`);
 
             return {
               message: "Swipe recorded and match created",
@@ -271,13 +230,22 @@ export const createSwipe = functions.https.onCall(
 
       // If no match, just create the swipe
       await db.collection("swipes").add(swipeData);
+
+      // Increment daily swipe count for the swiper
+      await db
+        .collection("users")
+        .doc(swiperId)
+        .update({
+          dailySwipeCount: admin.firestore.FieldValue.increment(1),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
       return {
         message: "Swipe recorded",
         swipe: swipeData,
         match: false,
       };
     } catch (error: any) {
-      await logToNtfy(`[${requestId}] ERROR: ${error?.message || error}`);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
@@ -420,6 +388,121 @@ import {
   updateSwipeLimit,
 } from "./swipeLimits";
 
+/**
+ * Sends a push notification via Expo
+ */
+async function sendPushNotification(
+  expoPushToken: string,
+  title: string,
+  body: string
+) {
+  const message = {
+    to: expoPushToken,
+    title,
+    body,
+    sound: "default",
+  };
+
+  try {
+    const response = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Accept-encoding": "gzip, deflate",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log("Push notification sent successfully:", result);
+    return result;
+  } catch (error) {
+    console.error("Failed to send push notification:", error);
+    throw error;
+  }
+}
+
+/**
+ * Scheduled function to reset daily swipes and send notifications
+ * Runs daily at midnight UTC
+ */
+export const resetDailySwipes = onSchedule("0 0 * * *", async (event) => {
+  try {
+    // Get all users
+    const usersSnapshot = await db.collection("users").get();
+    const users = usersSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    let resetCount = 0;
+    let notificationCount = 0;
+
+    // Process users in batches to avoid timeout
+    const batchSize = 10;
+    for (let i = 0; i < users.length; i += batchSize) {
+      const batch = users.slice(i, i + batchSize);
+
+      await Promise.all(
+        batch.map(async (user) => {
+          try {
+            const userRef = db.collection("users").doc(user.id);
+            const userData = user as any;
+
+            // Check if user has used a significant portion of their swipes (>90%)
+            const dailySwipeCount = userData.dailySwipeCount || 0;
+            const shouldNotify =
+              dailySwipeCount >= DAILY_SWIPES * 0.9 && userData.expoPushToken;
+
+            // Reset the daily swipe count and update timestamp
+            await userRef.update({
+              dailySwipeCount: 0,
+              lastSwipeReset: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
+            resetCount++;
+
+            // Send notification if user qualifies
+            if (shouldNotify) {
+              try {
+                await sendPushNotification(
+                  userData.expoPushToken,
+                  "Swipes Refilled! ✨",
+                  `Your ${DAILY_SWIPES} daily swipes have been reset. Happy swiping!`
+                );
+                notificationCount++;
+              } catch (notificationError) {
+                console.error(
+                  `Failed to send notification to user ${user.id}:`,
+                  notificationError
+                );
+              }
+            }
+          } catch (error) {
+            console.error(`Error processing user ${user.id}:`, error);
+          }
+        })
+      );
+    }
+
+    console.log("Daily swipe reset completed:", {
+      success: true,
+      usersProcessed: users.length,
+      usersReset: resetCount,
+      notificationsSent: notificationCount,
+    });
+  } catch (error) {
+    console.error("Error in resetDailySwipes:", error);
+    throw error;
+  }
+});
+
 export const swipeFunctions = {
   createSwipe,
   countRecentSwipes,
@@ -427,4 +510,5 @@ export const swipeFunctions = {
   getSwipeLimit,
   incrementSwipeCount,
   updateSwipeLimit,
+  resetDailySwipes,
 };
