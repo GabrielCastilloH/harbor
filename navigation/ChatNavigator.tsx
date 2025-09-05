@@ -173,16 +173,6 @@ export default function ChatNavigator() {
     setStreamUserToken,
   } = useAppContext();
 
-  // 💡 Add this line here to see the initial state
-  console.log(
-    "1. [INITIAL RENDER] userId:",
-    userId,
-    "streamApiKey:",
-    streamApiKey,
-    "streamUserToken:",
-    streamUserToken
-  );
-
   const [profile, setProfile] = useState<any>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -222,8 +212,6 @@ export default function ChatNavigator() {
         const apiKey = await ChatFunctions.getStreamApiKey();
         setChatApiKey(apiKey);
         setStreamApiKey(apiKey); // Store in context for future use
-        // 💡 Add this log here
-        console.log("2. [API KEY FETCHED] chatApiKey:", apiKey);
       } catch (error) {
         console.error("🔴 ChatNavigator - Failed to fetch API key:", error);
         setError("Failed to fetch API key");
@@ -244,8 +232,6 @@ export default function ChatNavigator() {
         const token = await ChatFunctions.generateToken(userId);
         setChatUserToken(token);
         setStreamUserToken(token); // Store in context for future use
-        // 💡 Add this log here
-        console.log("3. [USER TOKEN FETCHED] chatUserToken:", token);
       } catch (error) {
         console.error("🔴 ChatNavigator - Failed to fetch chat token:", error);
         setError("Failed to fetch chat token");
@@ -303,9 +289,6 @@ export default function ChatNavigator() {
       // 💡 Add this line for an extra check to prevent multiple client creation
       if (clientInstance || chatClient) {
         // Client already exists or is being created
-        console.log(
-          "🛡️ [PROTECTION] Client already exists or being created, skipping initialization"
-        );
         return;
       }
 
@@ -328,9 +311,6 @@ export default function ChatNavigator() {
               userId,
               "HarborFirebasePush"
             );
-            console.log(
-              "🔔 [NOTIFICATION] Device successfully registered with Stream Chat servers"
-            );
           } catch (deviceError) {
             console.error(
               "🔔 [NOTIFICATION] Failed to register device with Stream:",
@@ -342,7 +322,6 @@ export default function ChatNavigator() {
       }
 
       try {
-        console.log("🚀 [CLIENT INIT] Starting client initialization...");
         // 1. Create client instance
         clientInstance = StreamChat.getInstance(chatApiKey);
 
@@ -371,8 +350,6 @@ export default function ChatNavigator() {
 
         if (isMounted) {
           setChatClient(clientInstance);
-          // 💡 Add this log here
-          console.log("5. [CLIENT CONNECTED] chatClient state has been set.");
         }
       } catch (error) {
         console.error("🔴 Error creating chat client:", error);
@@ -381,18 +358,6 @@ export default function ChatNavigator() {
         }
       }
     };
-
-    // 💡 Add this log here to see what values are present
-    console.log(
-      "4. [INITIALIZE CLIENT CHECK] chatApiKey:",
-      chatApiKey,
-      "chatUserToken:",
-      chatUserToken,
-      "userId:",
-      userId,
-      "user:",
-      user
-    );
 
     initializeClient();
 
@@ -417,10 +382,6 @@ export default function ChatNavigator() {
       // the full Firebase modular migration in a future update.
       unsubscribe = messaging().onTokenRefresh(async (newToken) => {
         try {
-          console.log(
-            "🔔 [TOKEN REFRESH] New FCM token received, updating Stream registration"
-          );
-
           // Get the old token for cleanup
           const oldToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
 
@@ -428,7 +389,6 @@ export default function ChatNavigator() {
           if (oldToken && oldToken !== newToken) {
             try {
               await chatClient.removeDevice(oldToken);
-              console.log("🔔 [TOKEN REFRESH] Old device removed successfully");
             } catch (removeError) {
               console.warn(
                 "🔔 [TOKEN REFRESH] Failed to remove old device (may not exist):",
@@ -456,9 +416,6 @@ export default function ChatNavigator() {
 
             // Update stored token only after successful registration
             await AsyncStorage.setItem(PUSH_TOKEN_KEY, newToken);
-            console.log(
-              "🔔 [TOKEN REFRESH] Token refresh completed successfully"
-            );
           } catch (deviceError) {
             console.error(
               "🔔 [TOKEN REFRESH] Failed to register new device, keeping old token:",
@@ -549,7 +506,6 @@ export default function ChatNavigator() {
         let profileData = response?.user || response;
         if (profileData?.firstName) {
           setProfile(profileData);
-          console.log("7. [PROFILE LOADED] profile:", profileData.firstName);
         } else {
           console.error("🔴 ChatNavigator - Invalid profile data:", response);
           setError("Invalid profile data format");
@@ -593,24 +549,6 @@ export default function ChatNavigator() {
     !user ||
     !chatClient
   ) {
-    // 💡 Add this log to see which variable is causing the loading screen to show
-    console.log(
-      "6. [RENDER CHECK] Loading screen is showing because:",
-      "isLoadingProfile:",
-      isLoadingProfile,
-      "profile:",
-      !!profile,
-      "chatApiKey:",
-      !!chatApiKey,
-      "chatUserToken:",
-      !!chatUserToken,
-      "userId:",
-      !!userId,
-      "user:",
-      !!user,
-      "chatClient:",
-      !!chatClient
-    );
     return <LoadingScreen loadingText="Connecting to chat..." />;
   }
 
