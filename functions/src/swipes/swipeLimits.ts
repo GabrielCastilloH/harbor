@@ -4,18 +4,6 @@ import { CallableRequest } from "firebase-functions/v2/https";
 
 const db = admin.firestore();
 
-// @ts-ignore
-async function logToNtfy(msg: string) {
-  try {
-    await fetch("https://ntfy.sh/harbor-debug-randomr", {
-      method: "POST",
-      body: msg,
-    });
-  } catch (error) {
-    // Don't throw
-  }
-}
-
 /**
  * Gets the current swipe limit data for a user
  */
@@ -127,7 +115,6 @@ export const getSwipeLimit = functions.https.onCall(
       };
     } catch (error: any) {
       console.error("Error getting swipe limit:", error);
-      await logToNtfy(`❌ SWIPE LIMIT ERROR: ${error.message}`);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -243,7 +230,6 @@ export const incrementSwipeCount = functions.https.onCall(
       };
     } catch (error: any) {
       console.error("Error incrementing swipe count:", error);
-      await logToNtfy(`❌ SWIPE COUNT ERROR: ${error.message}`);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -316,7 +302,6 @@ export const updateSwipeLimit = functions.https.onCall(
       };
     } catch (error: any) {
       console.error("Error updating swipe limit:", error);
-      await logToNtfy(`❌ UPDATE SWIPE LIMIT ERROR: ${error.message}`);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
