@@ -476,17 +476,6 @@ export const updateMessageCount = functions.https.onCall(
   }
 );
 
-// Add this at the top if not present
-// @ts-ignore
-async function logToNtfy(msg: string) {
-  try {
-    await fetch("https://ntfy.sh/harbor-debug-randomr", {
-      method: "POST",
-      body: msg,
-    });
-  } catch (error) {}
-}
-
 export const chatFunctions = {
   generateUserToken,
   generateToken,
