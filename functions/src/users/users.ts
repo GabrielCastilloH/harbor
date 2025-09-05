@@ -748,9 +748,6 @@ export const updateUser = functions.https.onCall(
               });
             });
             await Promise.all(deletePromises);
-            console.log(
-              `Deleted ${imagesToDelete.length} old images for user ${id}`
-            );
           }
 
           // Step 4: Update the user document in Firestore
@@ -930,10 +927,7 @@ export const deleteUser = functions.https.onCall(
   },
   async (request: functions.https.CallableRequest) => {
     try {
-      console.log("🚀 DELETE USER: Starting deletion process");
-
       if (!request.auth) {
-        console.log("❌ DELETE USER: No authentication provided");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -941,26 +935,19 @@ export const deleteUser = functions.https.onCall(
       }
 
       const userId = request.auth.uid;
-      console.log(`🔍 DELETE USER: Processing deletion for user ${userId}`);
 
       // --- STEP 1: READ ALL DATA FIRST, OUTSIDE THE TRANSACTION ---
       // This is crucial for avoiding transaction errors
-      console.log("📖 DELETE USER: Step 1 - Reading user data");
       const userRef = db.collection("users").doc(userId);
       const userDoc = await userRef.get();
       if (!userDoc.exists) {
-        console.log(`❌ DELETE USER: User ${userId} not found in Firestore`);
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
       const userData = userDoc.data();
       const currentMatches = userData?.currentMatches || [];
-      console.log(
-        `✅ DELETE USER: Found user with ${currentMatches.length} matches`
-      );
 
       // Read all match data upfront to avoid reads inside transaction
-      console.log("📖 DELETE USER: Reading match data");
       const matchDataMap = new Map();
       const otherUserDataMap = new Map();
 
@@ -970,7 +957,6 @@ export const deleteUser = functions.https.onCall(
           if (matchDoc.exists) {
             const matchData = matchDoc.data();
             matchDataMap.set(matchId, matchData);
-            console.log(`✅ DELETE USER: Read match ${matchId}`);
 
             // Also read the other user's data upfront
             if (!matchData) continue;
@@ -986,46 +972,25 @@ export const deleteUser = functions.https.onCall(
                   .get();
                 if (otherUserDoc.exists) {
                   otherUserDataMap.set(otherUserId, otherUserDoc.data());
-                  console.log(`✅ DELETE USER: Read other user ${otherUserId}`);
                 } else {
-                  console.log(
-                    `⚠️ DELETE USER: Other user ${otherUserId} not found`
-                  );
                 }
-              } catch (error) {
-                console.log(
-                  `❌ DELETE USER: Error reading other user ${otherUserId}:`,
-                  error
-                );
-              }
+              } catch (error) {}
             }
           } else {
-            console.log(`⚠️ DELETE USER: Match ${matchId} not found`);
           }
-        } catch (error) {
-          console.log(`❌ DELETE USER: Error reading match ${matchId}:`, error);
-        }
+        } catch (error) {}
       }
-      console.log(
-        `✅ DELETE USER: Read ${matchDataMap.size} match documents and ${otherUserDataMap.size} other users`
-      );
 
       // --- STEP 2: USE TRANSACTION FOR ATOMIC UPDATES ---
       // Transaction only handles user doc deletion and related user updates
-      console.log("🔄 DELETE USER: Step 2 - Starting transaction");
       await db.runTransaction(async (transaction) => {
-        console.log("🗑️ DELETE USER: Deleting user document");
         // Delete user document
         transaction.delete(userRef);
 
         // Update matches and other users' currentMatches arrays
-        console.log(
-          `🔄 DELETE USER: Processing ${currentMatches.length} matches in transaction`
-        );
         for (const matchId of currentMatches) {
           const matchData = matchDataMap.get(matchId);
           if (matchData) {
-            console.log(`🔄 DELETE USER: Processing match ${matchId}`);
             const matchRef = db.collection("matches").doc(matchId);
 
             // Deactivate the match
@@ -1033,7 +998,6 @@ export const deleteUser = functions.https.onCall(
               isActive: false,
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
-            console.log(`✅ DELETE USER: Deactivated match ${matchId}`);
 
             // Remove match from the other user's currentMatches array
             const otherUserId =
@@ -1041,9 +1005,6 @@ export const deleteUser = functions.https.onCall(
                 ? matchData.user2Id
                 : matchData.user1Id;
 
-            console.log(
-              `🔄 DELETE USER: Updating other user ${otherUserId} for match ${matchId}`
-            );
             const otherUserRef = db.collection("users").doc(otherUserId);
             const otherUserData = otherUserDataMap.get(otherUserId);
 
@@ -1056,86 +1017,60 @@ export const deleteUser = functions.https.onCall(
                 currentMatches: updatedMatches,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               });
-              console.log(
-                `✅ DELETE USER: Updated user ${otherUserId} matches`
-              );
             } else {
-              console.log(
-                `⚠️ DELETE USER: Other user ${otherUserId} data not found`
-              );
             }
           } else {
-            console.log(`⚠️ DELETE USER: No match data found for ${matchId}`);
           }
         }
       });
-      console.log("✅ DELETE USER: Transaction completed successfully");
 
       // --- STEP 3: PERFORM BULK DELETIONS OUTSIDE TRANSACTION ---
       // Delete all related documents in batches
-      console.log("🗑️ DELETE USER: Step 3 - Starting batch deletions");
       const batch = db.batch();
       let batchCount = 0;
 
       try {
         // Delete swipes by this user
-        console.log("🔍 DELETE USER: Querying swipes by user");
         const swipesByUserQuery = db
           .collection("swipes")
           .where("userId", "==", userId);
         const swipesByUserSnapshot = await swipesByUserQuery.get();
-        console.log(
-          `📊 DELETE USER: Found ${swipesByUserSnapshot.docs.length} swipes by user`
-        );
         swipesByUserSnapshot.docs.forEach((doc) => {
           batch.delete(doc.ref);
           batchCount++;
         });
 
         // Delete swipes targeting this user
-        console.log("🔍 DELETE USER: Querying swipes targeting user");
         const swipesOnUserQuery = db
           .collection("swipes")
           .where("targetUserId", "==", userId);
         const swipesOnUserSnapshot = await swipesOnUserQuery.get();
-        console.log(
-          `📊 DELETE USER: Found ${swipesOnUserSnapshot.docs.length} swipes targeting user`
-        );
         swipesOnUserSnapshot.docs.forEach((doc) => {
           batch.delete(doc.ref);
           batchCount++;
         });
 
         // Delete reports by this user
-        console.log("🔍 DELETE USER: Querying reports by user");
         const reportsByUserQuery = db
           .collection("reports")
           .where("reporterId", "==", userId);
         const reportsByUserSnapshot = await reportsByUserQuery.get();
-        console.log(
-          `📊 DELETE USER: Found ${reportsByUserSnapshot.docs.length} reports by user`
-        );
         reportsByUserSnapshot.docs.forEach((doc) => {
           batch.delete(doc.ref);
           batchCount++;
         });
 
         // Delete reports targeting this user
-        console.log("🔍 DELETE USER: Querying reports targeting user");
         const reportsOnUserQuery = db
           .collection("reports")
           .where("reportedUserId", "==", userId);
         const reportsOnUserSnapshot = await reportsOnUserQuery.get();
-        console.log(
-          `📊 DELETE USER: Found ${reportsOnUserSnapshot.docs.length} reports targeting user`
-        );
         reportsOnUserSnapshot.docs.forEach((doc) => {
           batch.delete(doc.ref);
           batchCount++;
         });
 
         // Delete verification codes for this user
-        console.log("🔍 DELETE USER: Checking verification codes");
         const verificationCodeRef = db
           .collection("verificationCodes")
           .doc(userId);
@@ -1143,42 +1078,26 @@ export const deleteUser = functions.https.onCall(
         if (verificationCodeDoc.exists) {
           batch.delete(verificationCodeRef);
           batchCount++;
-          console.log("✅ DELETE USER: Added verification code to batch");
         } else {
-          console.log("ℹ️ DELETE USER: No verification code found");
         }
 
         // Commit all batch deletions
-        console.log(
-          `🔄 DELETE USER: Committing batch with ${batchCount} operations`
-        );
         await batch.commit();
-        console.log("✅ DELETE USER: Batch deletions completed successfully");
       } catch (batchError) {
-        console.log("❌ DELETE USER: Error in batch operations:", batchError);
         throw batchError;
       }
 
       // --- STEP 4: CLEAN UP EXTERNAL SERVICES IN PARALLEL ---
-      console.log("🧹 DELETE USER: Step 4 - Cleaning external services");
       await Promise.all([
         // Delete Stream Chat user
         (async () => {
           try {
-            console.log("🗣️ DELETE USER: Deleting Stream Chat user");
             const client = await getStreamClient();
             await client.deleteUser(userId, {
               mark_messages_deleted: true,
               hard_delete: true,
             });
-            console.log(
-              "✅ DELETE USER: Stream Chat user deleted successfully"
-            );
           } catch (streamError) {
-            console.log(
-              "❌ DELETE USER: Failed to delete Stream Chat user:",
-              streamError
-            );
             // Don't fail the entire operation if Stream Chat deletion fails
           }
         })(),
@@ -1186,26 +1105,14 @@ export const deleteUser = functions.https.onCall(
         // Delete user images from Firebase Storage
         (async () => {
           try {
-            console.log("🖼️ DELETE USER: Deleting user images from storage");
             const bucket = admin.storage().bucket();
             const userImagesPrefix = `users/${userId}/`;
             const [files] = await bucket.getFiles({ prefix: userImagesPrefix });
-            console.log(
-              `📊 DELETE USER: Found ${files.length} files to delete`
-            );
             if (files.length > 0) {
               await Promise.all(files.map((file) => file.delete()));
-              console.log(
-                "✅ DELETE USER: All user images deleted successfully"
-              );
             } else {
-              console.log("ℹ️ DELETE USER: No images found to delete");
             }
           } catch (storageError) {
-            console.log(
-              "❌ DELETE USER: Failed to delete user images from storage:",
-              storageError
-            );
             // Don't fail the entire operation if storage deletion fails
           }
         })(),
@@ -1215,7 +1122,6 @@ export const deleteUser = functions.https.onCall(
       // This prevents issues with deleting the currently authenticated user
 
       // --- STEP 5: TRACK DELETED ACCOUNT FOR FUTURE REFERENCE ---
-      console.log("📝 DELETE USER: Step 5 - Recording deleted account");
       try {
         const deletedAccountRef = db.collection("deletedAccounts").doc(userId);
         await deletedAccountRef.set({
@@ -1225,27 +1131,16 @@ export const deleteUser = functions.https.onCall(
           firstName: userData?.firstName || "Unknown",
           lastName: userData?.lastName || "User",
         });
-        console.log(
-          "✅ DELETE USER: Deleted account recorded for future reference"
-        );
       } catch (trackingError) {
-        console.log(
-          "❌ DELETE USER: Error tracking deleted account:",
-          trackingError
-        );
         // Don't fail the deletion if tracking fails
       }
 
-      console.log("🎉 DELETE USER: All steps completed successfully");
       await logToNtfy(
         `USER DELETED: ${userId} - Account and all data permanently removed`
       );
 
-      console.log("✅ DELETE USER: Returning success response");
       return { success: true, message: "Account deleted successfully" };
     } catch (error: any) {
-      console.log("❌ DELETE USER: Function failed with error:", error);
-      console.log("❌ DELETE USER: Error stack:", error.stack);
       await logToNtfy(
         `USER DELETION ERROR: ${
           error instanceof Error ? error.message : String(error)
@@ -1253,15 +1148,9 @@ export const deleteUser = functions.https.onCall(
       );
 
       if (error instanceof functions.https.HttpsError) {
-        console.log(
-          "❌ DELETE USER: Throwing HttpsError:",
-          error.code,
-          error.message
-        );
         throw error;
       }
 
-      console.log("❌ DELETE USER: Throwing generic internal error");
       throw new functions.https.HttpsError(
         "internal",
         "Failed to delete user account"
@@ -1295,7 +1184,6 @@ export const deactivateAccount = functions.https.onCall(
       }
 
       const userId = request.auth.uid;
-      console.log(`🔄 DEACTIVATE: Processing deactivation for user ${userId}`);
 
       const userRef = db.collection("users").doc(userId);
       await userRef.update({
@@ -1304,7 +1192,6 @@ export const deactivateAccount = functions.https.onCall(
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      console.log(`✅ DEACTIVATE: User ${userId} account deactivated`);
       await logToNtfy(`USER DEACTIVATED: ${userId} - Account deactivated`);
 
       return { success: true, message: "Account deactivated successfully" };
@@ -1349,7 +1236,6 @@ export const reactivateAccount = functions.https.onCall(
       }
 
       const userId = request.auth.uid;
-      console.log(`🔄 REACTIVATE: Processing reactivation for user ${userId}`);
 
       const userRef = db.collection("users").doc(userId);
       await userRef.update({
@@ -1358,7 +1244,6 @@ export const reactivateAccount = functions.https.onCall(
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      console.log(`✅ REACTIVATE: User ${userId} account reactivated`);
       await logToNtfy(`USER REACTIVATED: ${userId} - Account reactivated`);
 
       return { success: true, message: "Account reactivated successfully" };
@@ -1404,19 +1289,12 @@ export const checkDeletedAccount = functions.https.onCall(
         );
       }
 
-      console.log(`🔍 CHECK DELETED: Checking email ${email}`);
-
       const deletedAccountsQuery = db
         .collection("deletedAccounts")
         .where("email", "==", email.toLowerCase());
       const deletedAccountsSnapshot = await deletedAccountsQuery.get();
 
       const isDeleted = !deletedAccountsSnapshot.empty;
-      console.log(
-        `${isDeleted ? "❌" : "✅"} CHECK DELETED: Email ${email} ${
-          isDeleted ? "is" : "is not"
-        } deleted`
-      );
 
       return {
         isDeleted,
