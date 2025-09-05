@@ -429,9 +429,9 @@ async function sendPushNotification(
 
 /**
  * Scheduled function to reset daily swipes and send notifications
- * Runs daily at midnight UTC
+ * Runs daily at 8 AM UTC
  */
-export const resetDailySwipes = onSchedule("0 0 * * *", async (event) => {
+export const resetDailySwipes = onSchedule("0 8 * * *", async (event) => {
   try {
     // Get all users
     const usersSnapshot = await db.collection("users").get();
