@@ -4,7 +4,7 @@ import { CallableRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 
 const db = admin.firestore();
-const DAILY_SWIPES = 100;
+const DAILY_SWIPES = 5;
 
 /**
  * Records a swipe and checks for matches
@@ -473,8 +473,8 @@ export const resetDailySwipes = onSchedule("0 0 * * *", async (event) => {
               try {
                 await sendPushNotification(
                   userData.expoPushToken,
-                  "Swipes Refilled! ✨",
-                  `Your ${DAILY_SWIPES} daily swipes have been reset. Happy swiping!`
+                  "Swipes Reset! ✨",
+                  `Your ${DAILY_SWIPES} daily swipes have been reset!`
                 );
                 notificationCount++;
               } catch (notificationError) {
