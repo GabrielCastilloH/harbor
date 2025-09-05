@@ -707,60 +707,73 @@ export const updateConsent = functions.https.onCall(
         );
       }
 
-      // Get the match document
-      const matchDoc = await db.collection("matches").doc(matchId).get();
-      if (!matchDoc.exists) {
-        throw new functions.https.HttpsError("not-found", "Match not found");
-      }
+      const matchRef = db.collection("matches").doc(matchId);
+      let bothConsented = false;
+      let shouldSendMessage = false;
+      let user1Id = "";
+      let user2Id = "";
 
-      const matchData = matchDoc.data();
-      if (!matchData) {
-        throw new functions.https.HttpsError(
-          "not-found",
-          "Match data not found"
-        );
-      }
-      const user1Id = matchData.user1Id;
-      const user2Id = matchData.user2Id;
+      await db.runTransaction(async (transaction) => {
+        const matchDoc = await transaction.get(matchRef);
 
-      // Verify the user is part of this match
-      if (userId !== user1Id && userId !== user2Id) {
-        throw new functions.https.HttpsError(
-          "permission-denied",
-          "User not part of this match"
-        );
-      }
+        if (!matchDoc.exists) {
+          throw new functions.https.HttpsError("not-found", "Match not found");
+        }
 
-      // Update the appropriate consent field
-      const updateData: any = {};
-      if (userId === user1Id) {
-        updateData.user1Consented = consented;
-      } else {
-        updateData.user2Consented = consented;
-      }
+        const matchData = matchDoc.data();
+        if (!matchData) {
+          throw new functions.https.HttpsError(
+            "not-found",
+            "Match data not found"
+          );
+        }
 
-      await db
-        .collection("matches")
-        .doc(matchId)
-        .update({
-          ...updateData,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        user1Id = matchData.user1Id;
+        user2Id = matchData.user2Id;
 
-      // Check if both users have consented
-      const updatedMatchDoc = await db.collection("matches").doc(matchId).get();
-      const updatedMatchData = updatedMatchDoc.data();
-      if (!updatedMatchData) {
-        throw new functions.https.HttpsError(
-          "not-found",
-          "Updated match data not found"
-        );
-      }
-      const bothConsented =
-        updatedMatchData.user1Consented && updatedMatchData.user2Consented;
+        // Verify the user is part of this match
+        if (userId !== user1Id && userId !== user2Id) {
+          throw new functions.https.HttpsError(
+            "permission-denied",
+            "User not part of this match"
+          );
+        }
 
-      // If this action caused both users to consent, send a one-time system message
-      if (bothConsented && !updatedMatchData.consentMessageSent) {
+        // Update the appropriate consent field
+        const updateData: any = {};
+        if (userId === user1Id) {
+          updateData.user1Consented = consented;
+        } else {
+          updateData.user2Consented = consented;
+        }
+        updateData.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+
+        // Check the new state *before* writing
+        bothConsented =
+          (userId === user1Id
+            ? consented
+            : Boolean(matchData.user1Consented)) &&
+          (userId === user2Id ? consented : Boolean(matchData.user2Consented));
+
+        const consentMessageSent = Boolean(matchData.consentMessageSent);
+
+        // Update the match document within the transaction
+        transaction.update(matchRef, updateData);
+
+        // If both have now consented and the message hasn't been sent yet,
+        // update the flag inside the transaction to prevent the race condition.
+        if (bothConsented && !consentMessageSent) {
+          transaction.update(matchRef, {
+            consentMessageSent: true,
+          });
+          shouldSendMessage = true;
+        }
+      });
+
+      // After the transaction commits, send the message only if the flag was updated
+      // It's crucial this part is outside the transaction to avoid network issues
+      // with external APIs (like Stream Chat) causing the transaction to fail.
+      if (shouldSendMessage) {
         try {
           const { StreamChat } = await import("stream-chat");
           const { SecretManagerServiceClient } = await import(
@@ -787,37 +800,17 @@ export const updateConsent = functions.https.onCall(
             // Channel ID is deterministic: sorted user IDs joined by '-'
             const channelId = [user1Id, user2Id].sort().join("-");
             const channel = serverClient.channel("messaging", channelId);
-            try {
-              await channel.sendMessage({
-                text: "Both of you have decided to continue getting to know one another! 💕",
-                user_id: "system",
-              });
-            } catch (sendErr) {
-              // Log but do not fail the consent flow
-              console.error(
-                "updateConsent: failed to send system message:",
-                sendErr
-              );
-            }
-            // Mark message as sent to avoid duplicates
-            try {
-              await db.collection("matches").doc(matchId).update({
-                consentMessageSent: true,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-              });
-            } catch (flagErr) {
-              console.error(
-                "updateConsent: failed to flag message sent:",
-                flagErr
-              );
-            }
+            await channel.sendMessage({
+              text: "Both of you have decided to continue getting to know one another! 💕",
+              user_id: "system",
+            });
           }
         } catch (streamErr) {
-          // Non-fatal; consent update should still succeed
           console.error(
-            "updateConsent: error preparing Stream client:",
+            "updateConsent: failed to send system message:",
             streamErr
           );
+          // Non-fatal, the consent status is still correctly updated in Firestore.
         }
       }
 
