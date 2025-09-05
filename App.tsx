@@ -37,7 +37,8 @@ import { Platform } from "react-native";
 // Configure notification behavior
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: false,
     shouldSetBadge: false,
   }),
@@ -46,25 +47,24 @@ Notifications.setNotificationHandler({
 // Expo Notifications Setup Component
 function ExpoNotificationSetup() {
   const [expoPushToken, setExpoPushToken] = useState<string>("");
-  const notificationListener = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
+  const notificationListener = useRef<Notifications.Subscription | null>(null);
+  const responseListener = useRef<Notifications.Subscription | null>(null);
 
   useEffect(() => {
     registerForPushNotificationsAsync().then((token) => {
       if (token) {
         setExpoPushToken(token);
-        console.log("📱 Expo Push Token:", token);
       }
     });
 
     notificationListener.current =
       Notifications.addNotificationReceivedListener((notification) => {
-        console.log("📨 Notification received:", notification);
+        // Handle notification received
       });
 
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log("👆 Notification response:", response);
+        // Handle notification response
       });
 
     return () => {
@@ -111,7 +111,23 @@ async function registerForPushNotificationsAsync() {
         projectId: Constants.expoConfig?.extra?.eas?.projectId,
       })
     ).data;
-    console.log("📱 Expo Push Token:", token);
+
+    // Save the token to Firestore user document
+    try {
+      const { getAuth } = await import("firebase/auth");
+      const { doc, updateDoc } = await import("firebase/firestore");
+      const { db } = await import("./firebaseConfig");
+
+      const auth = getAuth();
+      if (auth.currentUser) {
+        await updateDoc(doc(db, "users", auth.currentUser.uid), {
+          expoPushToken: token,
+          updatedAt: new Date(),
+        });
+      }
+    } catch (error) {
+      // Failed to save Expo push token to Firestore
+    }
   } else {
     alert("Must use physical device for Push Notifications");
   }
@@ -137,7 +153,6 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("App crashed:", error, errorInfo);
     // Log to your error reporting service here
   }
 
