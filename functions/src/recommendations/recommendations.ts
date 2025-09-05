@@ -136,9 +136,6 @@ export const getRecommendations = functions.https.onCall(
 
       // Check if current user is deactivated
       if (currentUserData?.isActive === false) {
-        console.log(
-          `User ${userId} is deactivated, returning empty recommendations`
-        );
         return { recommendations: [] };
       }
 

@@ -213,7 +213,6 @@ export class StreamNotificationService {
       const token = await messaging().getToken();
       if (token) {
         await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
-        console.log("✅ FCM token saved successfully.");
         return true;
       } else {
         console.error("🔔 Error generating FCM token: Token is null or empty");
