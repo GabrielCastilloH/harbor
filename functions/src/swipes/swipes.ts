@@ -389,6 +389,57 @@ import {
 } from "./swipeLimits";
 
 /**
+ * Saves the Expo push token to the user's Firestore document
+ */
+export const savePushToken = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ token: string }>) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+      const userId = request.auth.uid;
+      const { token } = request.data;
+
+      if (!token) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Push token is required"
+        );
+      }
+
+      await db.collection("users").doc(userId).update({
+        expoPushToken: token,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return { success: true };
+    } catch (error: any) {
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to save push token"
+      );
+    }
+  }
+);
+
+/**
  * Sends a push notification via Expo
  */
 async function sendPushNotification(
@@ -457,7 +508,7 @@ export const resetDailySwipes = onSchedule("0 8 * * *", async (event) => {
             // Check if user has used a significant portion of their swipes (>90%)
             const dailySwipeCount = userData.dailySwipeCount || 0;
             const shouldNotify =
-              dailySwipeCount >= DAILY_SWIPES * 0.9 && userData.expoPushToken;
+              dailySwipeCount >= DAILY_SWIPES * 0.8 && userData.expoPushToken;
 
             // Reset the daily swipe count and update timestamp
             await userRef.update({
@@ -511,4 +562,5 @@ export const swipeFunctions = {
   incrementSwipeCount,
   updateSwipeLimit,
   resetDailySwipes,
+  savePushToken,
 };

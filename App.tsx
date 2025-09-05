@@ -112,18 +112,22 @@ async function registerForPushNotificationsAsync() {
       })
     ).data;
 
-    // Save the token to Firestore user document
+    // Save the token to Firestore user document via Firebase function
     try {
+      const { getFunctions, httpsCallable } = await import(
+        "firebase/functions"
+      );
       const { getAuth } = await import("firebase/auth");
-      const { doc, updateDoc } = await import("firebase/firestore");
-      const { db } = await import("./firebaseConfig");
+      const app = await import("./firebaseConfig");
 
       const auth = getAuth();
       if (auth.currentUser) {
-        await updateDoc(doc(db, "users", auth.currentUser.uid), {
-          expoPushToken: token,
-          updatedAt: new Date(),
-        });
+        const functions = getFunctions(app.default, "us-central1");
+        const savePushToken = httpsCallable(
+          functions,
+          "swipeFunctions-savePushToken"
+        );
+        await savePushToken({ token });
       }
     } catch (error) {
       // Failed to save Expo push token to Firestore

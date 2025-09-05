@@ -1,28 +1,14 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
 import app from "../firebaseConfig";
-// import { logToNtfy } from "../util/debugUtils";
 
 const functions = getFunctions(app, "us-central1");
 
 export class UserService {
   static async createUser(userData: any) {
-    // await logToNtfy(
-    //   `UserService - createUser called with userData: ${JSON.stringify(userData)}`
-    // );
-    // await logToNtfy(
-    //   `UserService - userData type: ${typeof userData}`
-    // );
-    // await logToNtfy(
-    //   `UserService - userData keys: ${Object.keys(userData || {}).join(", ")}`
-    // );
-
     try {
       const createUser = httpsCallable(functions, "userFunctions-createUser");
       const result = await createUser(userData);
       const data = result.data as any;
-      // await logToNtfy(
-      //   `UserService - createUser success: ${JSON.stringify(data)}`
-      // );
 
       return data;
     } catch (error) {

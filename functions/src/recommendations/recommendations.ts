@@ -2,19 +2,6 @@ import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { CallableRequest } from "firebase-functions/v2/https";
 
-// Keep the logToNtfy function available for future use
-// @ts-ignore
-async function logToNtfy(msg: string) {
-  try {
-    await fetch("https://ntfy.sh/harbor-debug-randomr", {
-      method: "POST",
-      body: `[${new Date().toISOString()}] ${msg}`,
-    });
-  } catch (error) {
-    console.error("Failed to log to ntfy:", error);
-  }
-}
-
 const db = admin.firestore();
 
 /**
