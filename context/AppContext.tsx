@@ -25,7 +25,6 @@ interface AppContextType {
   setProfileExists: (exists: boolean) => void;
   refreshAuthState: (user: User) => void;
   isBanned: boolean;
-  setIsBanned: (banned: boolean) => void;
 }
 
 const defaultValue: AppContextType = {
@@ -48,7 +47,6 @@ const defaultValue: AppContextType = {
   setProfileExists: () => {},
   refreshAuthState: () => {},
   isBanned: false,
-  setIsBanned: () => {},
 };
 
 export const AppContext = React.createContext<AppContextType>(defaultValue);
@@ -71,18 +69,22 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     currentUser: null as User | null,
     profileExists: false,
     isInitialized: false,
+    isBanned: false, // 💡 Unified state management
   });
-
-  // Banned state - separate from appState as it's checked independently
-  const [isBanned, setIsBanned] = useState(false);
 
   // 🏆 The Fix: Use a ref to prevent race conditions from duplicate listener calls
   const isProcessingAuthRef = useRef(false);
 
   // Computed values for cleaner usage
   const isAuthenticated = !!appState.currentUser;
-  const { isInitialized, profileExists, userId, profile, currentUser } =
-    appState;
+  const {
+    isInitialized,
+    profileExists,
+    userId,
+    profile,
+    currentUser,
+    isBanned,
+  } = appState;
 
   // The core function to check user and profile status.
   // This is now the single source of truth for handling auth state changes.
@@ -116,6 +118,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           currentUser: null,
           profileExists: false,
           isInitialized: true,
+          isBanned: false, // 💡 Reset ban status on logout
         });
         return;
       }
@@ -130,7 +133,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       // Check if user is banned first
       if (banStatus.isBanned) {
-        setIsBanned(true);
         setAppState({
           ...appState,
           isAuthenticated: true,
@@ -139,10 +141,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           currentUser: user,
           profileExists: false,
           isInitialized: true,
+          isBanned: true, // 💡 Atomic state update
         });
         return;
-      } else {
-        setIsBanned(false);
       }
 
       if (!user.emailVerified) {
@@ -154,6 +155,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           currentUser: user,
           profileExists: false,
           isInitialized: true,
+          isBanned: false, // 💡 User not banned, just unverified
         });
         return;
       }
@@ -174,6 +176,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           currentUser: user,
           profileExists: true,
           isInitialized: true,
+          isBanned: false, // 💡 User has profile, not banned
         });
       } else {
         setAppState({
@@ -184,6 +187,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           currentUser: user,
           profileExists: false,
           isInitialized: true,
+          isBanned: false, // 💡 User exists but no profile, not banned
         });
       }
     } catch (error: any) {
@@ -196,6 +200,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         currentUser: user,
         profileExists: false,
         isInitialized: true,
+        isBanned: false, // 💡 Default to not banned on error
       });
     } finally {
       isProcessingAuthRef.current = false;
@@ -266,7 +271,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           setAppState({ ...appState, profileExists: exists }),
         refreshAuthState,
         isBanned,
-        setIsBanned,
       }}
     >
       {children}

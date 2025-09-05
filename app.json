@@ -29,7 +29,8 @@
         "CFBundleDisplayName": "Harbor",
         "CFBundleName": "Harbor",
         "CFBundleShortVersionString": "1.0.0"
-      }
+      },
+      "appleTeamId": "V45GUPHT93"
     },
     "android": {
       "adaptiveIcon": {
