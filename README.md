@@ -302,7 +302,8 @@ Instead of using Firebase's built-in email verification links, Harbor implements
    ```typescript
    // Generate 6-digit code
    const code = Math.floor(100000 + Math.random() * 900000).toString();
-   const expiresAt = admin.firestore.Timestamp.now().toMillis() + 10 * 60 * 1000;
+   const expiresAt =
+     admin.firestore.Timestamp.now().toMillis() + 10 * 60 * 1000;
 
    // Store in Firestore
    await db.collection("verificationCodes").doc(userId).set({
