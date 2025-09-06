@@ -495,12 +495,9 @@ All fields must be completed before profile creation:
 | ---------------------------------- | ---------- | ---------- | --------------------------------- |
 | Your Name, Initial(s) or Nickname  | 1          | 50         | Your name, initial(s) or nickname |
 | About Me                           | 5          | 180        | Personal description              |
-| Q1: "This year, I really want to"  | 5          | 100        | Personal goal                     |
-| Q2: "Together we could"            | 5          | 100        | Shared activity                   |
-| Q3: "Favorite book, movie or song" | 5          | 100        | Cultural preference               |
-| Q4: "I chose my major because"     | 5          | 100        | Academic motivation               |
-| Q5: "My favorite study spot is"    | 5          | 100        | Study preference                  |
-| Q6: "Some of my hobbies are"       | 5          | 100        | Personal interests                |
+| Q1: "Together we could"            | 5          | 100        | Shared activity                   |
+| Q2: "Favorite book, movie or song" | 5          | 100        | Cultural preference               |
+| Q3: "Some of my hobbies are"       | 5          | 100        | Personal interests                |
 
 #### Data Types Definition
 
@@ -516,12 +513,9 @@ export type Profile = {
   sexualOrientation: string; // "Heterosexual", "Homosexual", "Bisexual", or "Pansexual"
   images: string[];
   aboutMe: string;
-  q1: string; // "This year, I really want to:"
-  q2: string; // "Together we could:"
-  q3: string; // "Favorite book, movie or song:"
-  q4: string; // "I chose my major because..."
-  q5: string; // "My favorite study spot is:"
-  q6: string; // "Some of my hobbies are:"
+  q1: string; // "Together we could:"
+  q2: string; // "Favorite book, movie or song:"
+  q3: string; // "Some of my hobbies are:"
   currentMatches?: string[];
   paywallSeen?: boolean;
   fcmToken?: string;

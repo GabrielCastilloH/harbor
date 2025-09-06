@@ -10,7 +10,6 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import BasicInfoView from "./BasicInfoView";
-import AcademicView from "./AcademicView";
 import PersonalView from "./PersonalView";
 import PageIndicator from "./PageIndicator";
 import { getImageSource } from "../util/imageUtils";
@@ -54,8 +53,6 @@ export default function Card({
       <View style={styles.contentContainer}>
         {currentView === 0 ? (
           <BasicInfoView profile={profile} />
-        ) : currentView === 1 ? (
-          <AcademicView profile={profile} />
         ) : (
           <PersonalView profile={profile} />
         )}
@@ -72,7 +69,7 @@ export default function Card({
           )}
 
           {/* Right arrow - show if we can go forward - always position on right */}
-          {currentView < 2 && (
+          {currentView < 1 && (
             <View style={styles.rightArrowContainer}>
               <Ionicons
                 name="arrow-forward"
