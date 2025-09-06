@@ -137,15 +137,6 @@ export default function HomeScreen() {
           try {
             // To get the matched user's profile, fetch their data
             const profile = await UserService.getUserById(matchedUserId);
-            console.log("🔍 [MATCH] Fetched profile for matched user:", {
-              matchedUserId,
-              profile,
-              hasProfile: !!profile,
-              profileKeys: profile ? Object.keys(profile) : null,
-              userProfile: userProfile,
-              hasUserProfile: !!userProfile,
-            });
-
             if (profile && userProfile) {
               setMatchedProfile(profile);
               setCurrentMatchId(change.doc.id);
@@ -154,18 +145,9 @@ export default function HomeScreen() {
               // Clear recommendations since user is now in a match
               setRecommendations([]);
               setCurrentProfile(null);
-            } else {
-              console.log("❌ [MATCH] Missing profile data:", {
-                matchedProfile: !!profile,
-                userProfile: !!userProfile,
-                matchedUserId,
-              });
             }
           } catch (error) {
-            console.error(
-              "❌ [MATCH] Error fetching matched user profile:",
-              error
-            );
+            console.error("Error fetching matched user profile:", error);
           }
         }
       });
@@ -481,10 +463,6 @@ export default function HomeScreen() {
           // Clear recommendations since user is now in a match
           setRecommendations([]);
           setCurrentProfile(null);
-        } else {
-          console.log(
-            "❌ [SWIPE MATCH] Cannot show match modal - userProfile is null"
-          );
         }
       } else {
         // Update current profile to the next one only if no match
