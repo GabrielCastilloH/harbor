@@ -38,6 +38,7 @@ export default function AccountSetupScreen({
     q4: "",
     q5: "",
     q6: "",
+    availability: -1,
     email: "",
   });
   const [loading, setLoading] = useState(false);
