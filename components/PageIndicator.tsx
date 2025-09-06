@@ -7,10 +7,16 @@ export interface PageIndicatorProps {
 }
 
 export default function PageIndicator({ currentView }: PageIndicatorProps) {
+  const totalViews = 2; // We now have 2 views: BasicInfo and PersonalView
+
   return (
     <View style={styles.pageIndicator}>
-      <View style={[styles.dot, currentView === 0 && styles.activeDot]} />
-      <View style={[styles.dot, currentView === 1 && styles.activeDot]} />
+      {Array.from({ length: totalViews }, (_, idx) => (
+        <View
+          key={idx}
+          style={[styles.dot, idx === currentView && styles.activeDot]}
+        />
+      ))}
     </View>
   );
 }
@@ -18,18 +24,18 @@ export default function PageIndicator({ currentView }: PageIndicatorProps) {
 const styles = StyleSheet.create({
   pageIndicator: {
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "space-between",
     paddingTop: 16,
     paddingHorizontal: 15,
-    gap: 8,
   },
   dot: {
-    width: "30%",
+    flex: 1,
     height: 4,
-    borderRadius: 4,
-    backgroundColor: `${Colors.primary500}10`,
+    borderRadius: 2,
+    backgroundColor: "rgba(220, 240, 245, 0.8)",
+    marginHorizontal: 2,
   },
   activeDot: {
-    backgroundColor: `${Colors.primary500}99`,
+    backgroundColor: Colors.primary500,
   },
 });
