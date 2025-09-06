@@ -39,7 +39,6 @@ import { getBlurredImageUrl } from "../networking/ImageService";
 // import { usePlacement } from "expo-superwall";
 // PREMIUM DISABLED: Premium hook commented out
 // import { usePremium } from "../hooks/usePremium";
-import { SwipeLimitService } from "../networking/SwipeLimitService";
 import { RootStackParamList } from "../types/navigation";
 
 export default function HomeScreen() {
@@ -237,7 +236,7 @@ export default function HomeScreen() {
 
       setLoadingSwipeLimit(true);
       try {
-        const limitData = await SwipeLimitService.getSwipeLimit(userId);
+        const limitData = await SwipeService.countRecentSwipes(userId);
         setSwipeLimit({
           swipesToday: limitData.swipesToday,
           maxSwipesPerDay: limitData.maxSwipesPerDay,
@@ -427,28 +426,23 @@ export default function HomeScreen() {
       setSwipeInProgress(true);
       setLastSwipedProfile(profile.uid);
 
-      // Step 1: Create the swipe
-      const response = await SwipeService.createSwipe(
+      // Step 1: Create the swipe and increment swipe count
+      const response = await SwipeService.createSwipeAndIncrement(
         userId,
         profile.uid,
         "right"
       );
 
-      // Step 1.5: Increment swipe count
-      try {
-        const updatedLimit = await SwipeLimitService.incrementSwipeCount(
-          userId
-        );
+      // Step 2: Update swipe limit state
+      if (response && response.updatedLimit) {
         setSwipeLimit({
-          swipesToday: updatedLimit.swipesToday,
-          maxSwipesPerDay: updatedLimit.maxSwipesPerDay,
-          canSwipe: updatedLimit.canSwipe,
+          swipesToday: response.updatedLimit.swipesToday,
+          maxSwipesPerDay: response.updatedLimit.maxSwipesPerDay,
+          canSwipe: response.updatedLimit.canSwipe,
         });
-      } catch (error) {
-        console.error(`❌ [HOMESCREEN] Error incrementing swipe count:`, error);
       }
 
-      // Step 2: If it's a match, create chat channel and show modal
+      // Step 3: If it's a match, create chat channel and show modal
       if (response.match) {
         try {
           const chatResponse = await ChatFunctions.createChannel({
@@ -524,28 +518,20 @@ export default function HomeScreen() {
       setSwipeInProgress(true);
       setLastSwipedProfile(profile.uid);
 
-      // Step 1: Create the swipe
-      const response = await SwipeService.createSwipe(
+      // Step 1: Create the swipe and increment swipe count
+      const response = await SwipeService.createSwipeAndIncrement(
         userId,
         profile.uid,
         "left"
       );
 
-      // Step 1.5: Increment swipe count
-      try {
-        const updatedLimit = await SwipeLimitService.incrementSwipeCount(
-          userId
-        );
+      // Step 2: Update swipe limit state
+      if (response && response.updatedLimit) {
         setSwipeLimit({
-          swipesToday: updatedLimit.swipesToday,
-          maxSwipesPerDay: updatedLimit.maxSwipesPerDay,
-          canSwipe: updatedLimit.canSwipe,
+          swipesToday: response.updatedLimit.swipesToday,
+          maxSwipesPerDay: response.updatedLimit.maxSwipesPerDay,
+          canSwipe: response.updatedLimit.canSwipe,
         });
-      } catch (error) {
-        console.error(
-          `❌ [HOMESCREEN] Error incrementing left swipe count:`,
-          error
-        );
       }
 
       // Update current profile to the next one
