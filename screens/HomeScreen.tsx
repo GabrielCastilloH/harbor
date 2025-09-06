@@ -426,21 +426,20 @@ export default function HomeScreen() {
       setSwipeInProgress(true);
       setLastSwipedProfile(profile.uid);
 
-      // Step 1: Create the swipe and increment swipe count
-      const response = await SwipeService.createSwipeAndIncrement(
+      // Step 1: Create the swipe
+      const response = await SwipeService.createSwipe(
         userId,
         profile.uid,
         "right"
       );
 
       // Step 2: Update swipe limit state
-      if (response && response.updatedLimit) {
-        setSwipeLimit({
-          swipesToday: response.updatedLimit.swipesToday,
-          maxSwipesPerDay: response.updatedLimit.maxSwipesPerDay,
-          canSwipe: response.updatedLimit.canSwipe,
-        });
-      }
+      const limitData = await SwipeService.countRecentSwipes(userId);
+      setSwipeLimit({
+        swipesToday: limitData.swipesToday,
+        maxSwipesPerDay: limitData.maxSwipesPerDay,
+        canSwipe: limitData.canSwipe,
+      });
 
       // Step 3: If it's a match, create chat channel and show modal
       if (response.match) {
@@ -518,21 +517,20 @@ export default function HomeScreen() {
       setSwipeInProgress(true);
       setLastSwipedProfile(profile.uid);
 
-      // Step 1: Create the swipe and increment swipe count
-      const response = await SwipeService.createSwipeAndIncrement(
+      // Step 1: Create the swipe
+      const response = await SwipeService.createSwipe(
         userId,
         profile.uid,
         "left"
       );
 
       // Step 2: Update swipe limit state
-      if (response && response.updatedLimit) {
-        setSwipeLimit({
-          swipesToday: response.updatedLimit.swipesToday,
-          maxSwipesPerDay: response.updatedLimit.maxSwipesPerDay,
-          canSwipe: response.updatedLimit.canSwipe,
-        });
-      }
+      const limitData = await SwipeService.countRecentSwipes(userId);
+      setSwipeLimit({
+        swipesToday: limitData.swipesToday,
+        maxSwipesPerDay: limitData.maxSwipesPerDay,
+        canSwipe: limitData.canSwipe,
+      });
 
       // Update current profile to the next one
       const currentIndex = recommendations.findIndex(
