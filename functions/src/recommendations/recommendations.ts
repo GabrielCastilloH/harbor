@@ -87,9 +87,10 @@ function isUserInterestedIn(user1: any, user2: any): boolean {
 }
 
 /**
- * Gets user recommendations for swiping, prioritizing users who have swiped on you
+ * Gets user recommendations for swiping, prioritizing users who have swiped on you.
  * The final list is a 4:2 ratio of general users to users who swiped on you,
- * with a random ordering.
+ * with a random ordering. It also uses an "availability" value to match users
+ * with similar availabilities if the value is not -1.
  */
 export const getRecommendations = functions.https.onCall(
   {
@@ -131,30 +132,20 @@ export const getRecommendations = functions.https.onCall(
         return { recommendations: [] };
       }
 
-      // 1. Get all users and filter out the current user and deactivated users
-      const allUsersSnapshot = await db.collection("users").get();
-      const allUsers = allUsersSnapshot.docs
-        .map((doc) => {
-          const userData = doc.data();
-          const { images, email, ...userDataWithoutSensitiveInfo } = userData;
-          return { uid: doc.id, ...userDataWithoutSensitiveInfo };
-        })
-        .filter(
-          (user) => user.uid !== userId && (user as any).isActive !== false
+      const userAvailability = currentUserData?.availability ?? -1;
+      const useAvailabilityMatching = userAvailability !== -1;
+
+      // Helper function to filter users
+      const filterUser = (u: any) => {
+        return (
+          u.uid !== userId &&
+          !swipedUserIds.has(u.uid) &&
+          !matchedUserIds.has(u.uid) &&
+          isCompatible(currentUserData, u)
         );
+      };
 
-      // 2. Get users who have swiped right on the current user
-      const inboundSwipesSnapshot = await db
-        .collection("swipes")
-        .where("swipedId", "==", userId)
-        .where("direction", "==", "right")
-        .get();
-
-      const usersWhoSwipedOnYou = inboundSwipesSnapshot.docs
-        .map((doc) => allUsers.find((user) => user.uid === doc.data().swiperId))
-        .filter(Boolean) as any[];
-
-      // 3. Get users the current user has already swiped on
+      // Step 1: Preload swipes and matches to filter out irrelevant users early
       const mySwipesSnapshot = await db
         .collection("swipes")
         .where("swiperId", "==", userId)
@@ -163,7 +154,6 @@ export const getRecommendations = functions.https.onCall(
         mySwipesSnapshot.docs.map((doc) => doc.data().swipedId)
       );
 
-      // 4. Get users who are in an active match
       const activeMatchesSnapshot = await db
         .collection("matches")
         .where("isActive", "==", true)
@@ -175,74 +165,82 @@ export const getRecommendations = functions.https.onCall(
         matchedUserIds.add(matchData.user2Id);
       });
 
-      // 5. Create two pools of compatible, available users
-      const whoSwipedOnYou = usersWhoSwipedOnYou.filter(
-        (user) =>
-          !swipedUserIds.has(user.uid) &&
-          !matchedUserIds.has(user.uid) &&
-          isCompatible(currentUserData, user)
+      // Step 2: Get users who swiped on you (highest priority)
+      const inboundSwipesSnapshot = await db
+        .collection("swipes")
+        .where("swipedId", "==", userId)
+        .where("direction", "==", "right")
+        .get();
+
+      const whoSwipedOnYouIds = inboundSwipesSnapshot.docs.map(
+        (doc) => doc.data().swiperId
       );
 
-      const generalRecommendations = allUsers.filter(
-        (user) =>
-          !swipedUserIds.has(user.uid) &&
-          !matchedUserIds.has(user.uid) &&
-          !whoSwipedOnYou.some((p) => p.uid === user.uid) &&
-          isCompatible(currentUserData, user)
-      );
+      // Fetch users who swiped on you directly using document IDs
+      let swipedUsers: any[] = [];
+      if (whoSwipedOnYouIds.length > 0) {
+        // Limit to 10 for performance (Firestore 'in' queries are limited to 10 items)
+        const limitedIds = whoSwipedOnYouIds.slice(0, 10);
+        const swipedUsersSnapshot = await db
+          .collection("users")
+          .where(admin.firestore.FieldPath.documentId(), "in", limitedIds)
+          .get();
 
-      // 6. Shuffle both pools to ensure random selection
-      shuffleArray(whoSwipedOnYou);
-      shuffleArray(generalRecommendations);
-
-      // 7. Combine the pools with the specified 4:2 ratio and random order
-      const finalRecommendations: any[] = [];
-      const totalGeneral = generalRecommendations.length;
-      const totalSwipedOnYou = whoSwipedOnYou.length;
-
-      let generalIndex = 0;
-      let swipedOnYouIndex = 0;
-
-      while (
-        generalIndex < totalGeneral ||
-        swipedOnYouIndex < totalSwipedOnYou
-      ) {
-        // Determine the number of cards to pull from each pool in this batch
-        const generalCardsToPull = Math.min(4, totalGeneral - generalIndex);
-        const swipedOnYouCardsToPull = Math.min(
-          2,
-          totalSwipedOnYou - swipedOnYouIndex
-        );
-
-        // Create a temporary batch of cards
-        const tempBatch = [];
-        for (let i = 0; i < generalCardsToPull; i++) {
-          tempBatch.push({
-            type: "general",
-            user: generalRecommendations[generalIndex + i],
-          });
-        }
-        for (let i = 0; i < swipedOnYouCardsToPull; i++) {
-          tempBatch.push({
-            type: "swipedOnYou",
-            user: whoSwipedOnYou[swipedOnYouIndex + i],
-          });
-        }
-
-        // Shuffle the temporary batch to randomize the order
-        shuffleArray(tempBatch);
-
-        // Add the shuffled batch to the final recommendations
-        for (const card of tempBatch) {
-          finalRecommendations.push(card.user);
-        }
-
-        // Move indices forward
-        generalIndex += generalCardsToPull;
-        swipedOnYouIndex += swipedOnYouCardsToPull;
+        swipedUsers = swipedUsersSnapshot.docs
+          .map((doc) => {
+            const userData = doc.data();
+            const { images, email, ...userDataWithoutSensitiveInfo } = userData;
+            return { uid: doc.id, ...userDataWithoutSensitiveInfo };
+          })
+          .filter(filterUser);
       }
 
-      return { recommendations: finalRecommendations };
+      // Step 3: Fetch availability-based users (medium priority)
+      let availabilityUsers: any[] = [];
+      if (useAvailabilityMatching) {
+        const availabilityValue = userAvailability % 1;
+        const lowerBound = availabilityValue - 0.15;
+        const upperBound = availabilityValue + 0.15;
+
+        const availabilitySnapshot = await db
+          .collection("users")
+          .where("availability", ">=", lowerBound)
+          .where("availability", "<=", upperBound)
+          .limit(50)
+          .get();
+
+        availabilityUsers = availabilitySnapshot.docs
+          .map((doc) => {
+            const userData = doc.data();
+            const { images, email, ...userDataWithoutSensitiveInfo } = userData;
+            return { uid: doc.id, ...userDataWithoutSensitiveInfo };
+          })
+          .filter(filterUser);
+      }
+
+      // Step 4: Fetch general users as fallback (lowest priority)
+      const generalSnapshot = await db.collection("users").limit(50).get();
+
+      const generalUsers = generalSnapshot.docs
+        .map((doc) => {
+          const userData = doc.data();
+          const { images, email, ...userDataWithoutSensitiveInfo } = userData;
+          return { uid: doc.id, ...userDataWithoutSensitiveInfo };
+        })
+        .filter(filterUser);
+
+      // Step 5: Merge results in priority order
+      shuffleArray(swipedUsers);
+      shuffleArray(availabilityUsers);
+      shuffleArray(generalUsers);
+
+      const recommendations = [
+        ...swipedUsers,
+        ...availabilityUsers,
+        ...generalUsers,
+      ];
+
+      return { recommendations };
     } catch (error: any) {
       if (error instanceof functions.https.HttpsError) {
         throw error;
