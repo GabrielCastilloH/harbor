@@ -11,24 +11,22 @@ export default function PersonalView({ profile }: CardViewProps) {
         <View style={styles.sectionsContainer}>
           <View style={[styles.section, { flex: 1 }]}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="star" size={28} color={Colors.primary500} />
-              <Text style={styles.sectionTitle}>
-                This year, I really want to
-              </Text>
+              <Ionicons name="people" size={28} color={Colors.primary500} />
+              <Text style={styles.sectionTitle}>Together we could</Text>
             </View>
             <Text style={styles.aboutText}>{profile.q1}</Text>
           </View>
           <View style={[styles.section, { flex: 1 }]}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="heart" size={28} color={Colors.primary500} />
-              <Text style={styles.sectionTitle}>Some of my hobbies are</Text>
+              <Ionicons name="film" size={28} color={Colors.primary500} />
+              <Text style={styles.sectionTitle}>Favorite book/movie/song</Text>
             </View>
-            <Text style={styles.aboutText}>{profile.q6}</Text>
+            <Text style={styles.aboutText}>{profile.q2}</Text>
           </View>
           <View style={[styles.section, { flex: 1 }]}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="film" size={28} color={Colors.primary500} />
-              <Text style={styles.sectionTitle}>Favorite book/movie/song</Text>
+              <Ionicons name="heart" size={28} color={Colors.primary500} />
+              <Text style={styles.sectionTitle}>Some of my hobbies are</Text>
             </View>
             <Text style={styles.aboutText}>{profile.q3}</Text>
           </View>

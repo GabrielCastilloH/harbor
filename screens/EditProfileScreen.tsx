@@ -35,9 +35,7 @@ const emptyProfile: Profile = {
   q1: "",
   q2: "",
   q3: "",
-  q4: "",
-  q5: "",
-  q6: "",
+  availability: -1,
 };
 
 function isProfileDirty(current: Profile, initial: Profile): boolean {
