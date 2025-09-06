@@ -1,7 +1,6 @@
 import { auth, db } from "../firebaseConfig";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { UserService } from "../networking/UserService";
-// import { logToNtfy } from "./debugUtils";
 
 /**
  * Check if user exists in your database
@@ -28,17 +27,11 @@ export const createUserProfile = async (userData: {
   email: string;
   [key: string]: any;
 }) => {
-  // await logToNtfy(`createUserProfile - Starting to create user profile`);
-  // await logToNtfy(
-  //   `createUserProfile - User data: ${JSON.stringify(userData)}`
-  // );
-
   const currentUser = auth.currentUser;
 
   if (!currentUser) {
     throw new Error("No authenticated user found");
   }
-  // await logToNtfy(`createUserProfile - About to call UserService.createUser`);
 
   try {
     const result = await UserService.createUser(userData);

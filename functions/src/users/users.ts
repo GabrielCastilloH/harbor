@@ -6,19 +6,6 @@ import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 const db = admin.firestore();
 const secretManager = new SecretManagerServiceClient();
 
-// Keep the logToNtfy function available for future use
-// @ts-ignore
-async function logToNtfy(msg: string) {
-  try {
-    await fetch("https://ntfy.sh/harbor-debug-randomr", {
-      method: "POST",
-      body: `[${new Date().toISOString()}] ${msg}`,
-    });
-  } catch (error) {
-    console.error("Failed to log to ntfy:", error);
-  }
-}
-
 async function getStreamClient(): Promise<StreamChat> {
   try {
     // Get Stream API credentials from Secret Manager
@@ -48,26 +35,8 @@ async function getStreamClient(): Promise<StreamChat> {
  * Creates a user in Stream Chat
  */
 async function createStreamUser(userId: string, firstName: string) {
-  // await logToNtfy(
-  //   `createStreamUser - Starting to create Stream user for userId: ${userId}`
-  // );
-  // await logToNtfy(
-  //   `createStreamUser - First name for Stream Chat: ${firstName}`
-  // );
-
   try {
     const client = await getStreamClient();
-    // await logToNtfy("createStreamUser - Stream client obtained successfully");
-
-    // await logToNtfy(
-    //   `createStreamUser - About to call client.upsertUser with userId: ${userId}`
-    // );
-    // await logToNtfy(
-    //   `createStreamUser - About to call client.upsertUser with name: ${firstName}`
-    // );
-    // await logToNtfy(
-    //   `createStreamUser - About to call client.upsertUser with role: user`
-    // );
 
     const response = await client.upsertUser({
       id: userId,
@@ -75,15 +44,8 @@ async function createStreamUser(userId: string, firstName: string) {
       role: "user",
     });
 
-    // await logToNtfy(
-    //   `createStreamUser - Stream user created successfully: ${JSON.stringify(response)}`
-    // );
-
     return response;
   } catch (error) {
-    // await logToNtfy(
-    //   `createStreamUser - Error creating Stream user: ${error}`
-    // );
     throw error;
   }
 }
@@ -406,12 +368,6 @@ export const createUser = functions.https.onCall(
       return result;
     } catch (error: any) {
       console.error("Error in createUser:", error);
-      await logToNtfy(
-        `USER CREATION ERROR: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
@@ -1135,18 +1091,8 @@ export const deleteUser = functions.https.onCall(
         // Don't fail the deletion if tracking fails
       }
 
-      await logToNtfy(
-        `USER DELETED: ${userId} - Account and all data permanently removed`
-      );
-
       return { success: true, message: "Account deleted successfully" };
     } catch (error: any) {
-      await logToNtfy(
-        `USER DELETION ERROR: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
@@ -1192,12 +1138,9 @@ export const deactivateAccount = functions.https.onCall(
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      await logToNtfy(`USER DEACTIVATED: ${userId} - Account deactivated`);
-
       return { success: true, message: "Account deactivated successfully" };
     } catch (error: any) {
       console.error("❌ DEACTIVATE: Error deactivating account:", error);
-      await logToNtfy(`DEACTIVATION ERROR: ${error.message}`);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -1244,12 +1187,9 @@ export const reactivateAccount = functions.https.onCall(
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      await logToNtfy(`USER REACTIVATED: ${userId} - Account reactivated`);
-
       return { success: true, message: "Account reactivated successfully" };
     } catch (error: any) {
       console.error("❌ REACTIVATE: Error reactivating account:", error);
-      await logToNtfy(`REACTIVATION ERROR: ${error.message}`);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -1336,8 +1276,6 @@ export const banUser = functions.https.onCall(
     request: functions.https.CallableRequest
   ): Promise<{ success: boolean; message: string }> => {
     try {
-      logToNtfy("🚫 [BAN USER] Starting ban user process");
-
       const {
         userId,
         reason = "Community guidelines violation",
@@ -1345,21 +1283,17 @@ export const banUser = functions.https.onCall(
       } = request.data;
 
       if (!userId) {
-        logToNtfy("❌ [BAN USER] Missing userId");
         throw new functions.https.HttpsError(
           "invalid-argument",
           "User ID is required"
         );
       }
 
-      logToNtfy(`🚫 [BAN USER] Banning user: ${userId}`);
-
       // Get user data to store email
       const userDoc = await db.collection("users").doc(userId).get();
       const userData = userDoc.data();
 
       if (!userData) {
-        logToNtfy(`❌ [BAN USER] User not found: ${userId}`);
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
@@ -1375,15 +1309,11 @@ export const banUser = functions.https.onCall(
 
       await db.collection("bannedAccounts").doc(userId).set(banData);
 
-      logToNtfy(`✅ [BAN USER] Successfully banned user: ${userId}`);
-
       return {
         success: true,
         message: "User has been banned successfully",
       };
     } catch (error: any) {
-      logToNtfy(`❌ [BAN USER] Error: ${error.message}`);
-
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
@@ -1442,8 +1372,6 @@ export const checkBannedStatus = functions.https.onCall(
         unbanDate: banData?.unbanDate?.toDate()?.toISOString(),
       };
     } catch (error: any) {
-      logToNtfy(`❌ [CHECK BANNED] Error: ${error.message}`);
-
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }

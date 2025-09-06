@@ -4,18 +4,6 @@ import { CallableRequest } from "firebase-functions/v2/https";
 
 const db = admin.firestore();
 
-// @ts-ignore
-async function logToNtfy(msg: string) {
-  try {
-    await fetch("https://ntfy.sh/harbor-debug-randomr", {
-      method: "POST",
-      body: msg,
-    });
-  } catch (error) {
-    // Don't throw
-  }
-}
-
 /**
  * Creates a report for a user
  */
@@ -120,20 +108,12 @@ export const createReport = functions.https.onCall(
 
       const reportRef = await db.collection("reports").add(reportData);
 
-      // Log the report for monitoring
-      await logToNtfy(
-        `🚩 NEW REPORT: ${reporterEmail} reported ${
-          finalReportedUserEmail || reportedUserId
-        } for ${reason}`
-      );
-
       return {
         message: "Report created successfully",
         reportId: reportRef.id,
       };
     } catch (error: any) {
       console.error("Error creating report:", error);
-      await logToNtfy(`❌ REPORT ERROR: ${error.message}`);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -455,13 +435,6 @@ export const reportAndUnmatch = functions.https.onCall(
         // Don't fail the operation if Stream Chat operations fail
       }
 
-      // Log the report for monitoring
-      await logToNtfy(
-        `🚩 REPORT & UNMATCH: ${reporterEmail} reported and unmatched from ${
-          finalReportedUserEmail || reportedUserId
-        } for ${reason}`
-      );
-
       return {
         message: "Report submitted and users unmatched successfully",
         reportId: reportRef.id,
@@ -469,7 +442,6 @@ export const reportAndUnmatch = functions.https.onCall(
       };
     } catch (error: any) {
       console.error("Error in reportAndUnmatch:", error);
-      await logToNtfy(`❌ REPORT & UNMATCH ERROR: ${error.message}`);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
