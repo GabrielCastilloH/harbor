@@ -16,7 +16,6 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import BasicInfoView from "../components/BasicInfoView";
-import AcademicView from "../components/AcademicView";
 import PersonalView from "../components/PersonalView";
 import { getImageSource } from "../util/imageUtils";
 import { useNavigation } from "@react-navigation/native";
@@ -149,7 +148,6 @@ export default function SelfProfileScreen() {
         {/* Profile Content */}
         <View style={styles.contentContainer}>
           <BasicInfoView profile={profile} />
-          <AcademicView profile={profile} />
           <PersonalView profile={profile} />
         </View>
       </ScrollView>
