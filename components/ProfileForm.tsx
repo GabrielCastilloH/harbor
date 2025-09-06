@@ -105,34 +105,16 @@ export default function ProfileForm({
         field: "q1",
         maxLength: 100,
         minLength: 5,
-        name: "answer to 'This year, I really want to'",
+        name: "answer to 'Together we could'",
       },
       {
         field: "q2",
         maxLength: 100,
         minLength: 5,
-        name: "answer to 'Together we could'",
-      },
-      {
-        field: "q3",
-        maxLength: 100,
-        minLength: 5,
         name: "answer to 'Favorite book, movie or song'",
       },
       {
-        field: "q4",
-        maxLength: 100,
-        minLength: 5,
-        name: "answer to 'I chose my major because'",
-      },
-      {
-        field: "q5",
-        maxLength: 100,
-        minLength: 5,
-        name: "answer to 'My favorite study spot is'",
-      },
-      {
-        field: "q6",
+        field: "q3",
         maxLength: 100,
         minLength: 5,
         name: "answer to 'Some of my hobbies are'",
@@ -330,14 +312,14 @@ export default function ProfileForm({
           />
 
           <View style={styles.labelContainer}>
-            <Text style={styles.label}>This year, I really want to</Text>
+            <Text style={styles.label}>Together we could</Text>
             <Text style={styles.characterCount}>
               {profileData.q1?.length || 0}/100
             </Text>
           </View>
           <TextInput
             style={[styles.input, styles.multilineInput]}
-            placeholder="This year, I want to..."
+            placeholder="We could..."
             value={profileData.q1}
             onChangeText={(text) => handleChange("q1", text)}
             multiline
@@ -346,14 +328,14 @@ export default function ProfileForm({
           />
 
           <View style={styles.labelContainer}>
-            <Text style={styles.label}>Together we could</Text>
+            <Text style={styles.label}>Favorite book, movie or song</Text>
             <Text style={styles.characterCount}>
               {profileData.q2?.length || 0}/100
             </Text>
           </View>
           <TextInput
             style={[styles.input, styles.multilineInput]}
-            placeholder="We could..."
+            placeholder="My favorite book/movie/song is..."
             value={profileData.q2}
             onChangeText={(text) => handleChange("q2", text)}
             multiline
@@ -362,64 +344,16 @@ export default function ProfileForm({
           />
 
           <View style={styles.labelContainer}>
-            <Text style={styles.label}>Favorite book, movie or song</Text>
+            <Text style={styles.label}>Some of my hobbies are</Text>
             <Text style={styles.characterCount}>
               {profileData.q3?.length || 0}/100
             </Text>
           </View>
           <TextInput
             style={[styles.input, styles.multilineInput]}
-            placeholder="My favorite book/movie/song is..."
+            placeholder="In my free time, I like to..."
             value={profileData.q3}
             onChangeText={(text) => handleChange("q3", text)}
-            multiline
-            numberOfLines={3}
-            maxLength={100}
-          />
-
-          <View style={styles.labelContainer}>
-            <Text style={styles.label}>I chose my major because...</Text>
-            <Text style={styles.characterCount}>
-              {profileData.q4?.length || 0}/100
-            </Text>
-          </View>
-          <TextInput
-            style={[styles.input, styles.multilineInput]}
-            placeholder="I chose my major because..."
-            value={profileData.q4}
-            onChangeText={(text) => handleChange("q4", text)}
-            multiline
-            numberOfLines={3}
-            maxLength={100}
-          />
-
-          <View style={styles.labelContainer}>
-            <Text style={styles.label}>My favorite study spot is</Text>
-            <Text style={styles.characterCount}>
-              {profileData.q5?.length || 0}/100
-            </Text>
-          </View>
-          <TextInput
-            style={[styles.input, styles.multilineInput]}
-            placeholder="My favorite study spot is..."
-            value={profileData.q5}
-            onChangeText={(text) => handleChange("q5", text)}
-            multiline
-            numberOfLines={3}
-            maxLength={100}
-          />
-
-          <View style={styles.labelContainer}>
-            <Text style={styles.label}>Some of my hobbies are</Text>
-            <Text style={styles.characterCount}>
-              {profileData.q6?.length || 0}/100
-            </Text>
-          </View>
-          <TextInput
-            style={[styles.input, styles.multilineInput]}
-            placeholder="In my free time, I like to..."
-            value={profileData.q6}
-            onChangeText={(text) => handleChange("q6", text)}
             multiline
             numberOfLines={3}
             maxLength={100}

@@ -256,7 +256,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
       if (!isInitialCall) {
         Alert.alert(
           "Code Sent",
-          "A new verification code has been sent to your email."
+          "A new verification code has been sent to your email. It may take a few minutes to arrive - please check your spam folder if you don't see it."
         );
       }
     } catch (error: any) {
@@ -329,7 +329,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
               <Text style={styles.instructions}>
                 {codeExpired
                   ? "Your verification code has expired. Please request a new code below."
-                  : "Enter the 6-digit code from the email below:"}
+                  : "Enter the 6-digit code from the email below. It may take a few minutes to arrive."}
               </Text>
 
               <VerificationCodeInput
@@ -388,8 +388,7 @@ export default function EmailVerificationScreen({ navigation, route }: any) {
 
             <View style={styles.helpContainer}>
               <Text style={styles.helpText}>
-                Didn't receive the code? Check your spam folder or try
-                resending.
+                Didn't receive the code? It may take a few minutes to arrive. Check your spam folder or try resending.
               </Text>
             </View>
           </View>

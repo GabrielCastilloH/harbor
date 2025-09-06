@@ -62,9 +62,6 @@ interface CreateUserData {
   q1?: string;
   q2?: string;
   q3?: string;
-  q4?: string;
-  q5?: string;
-  q6?: string;
   email: string;
 }
 
@@ -81,9 +78,6 @@ interface UpdateUserData {
   q1?: string;
   q2?: string;
   q3?: string;
-  q4?: string;
-  q5?: string;
-  q6?: string;
 }
 
 /**
@@ -257,9 +251,6 @@ export const createUser = functions.https.onCall(
         userData.q1,
         userData.q2,
         userData.q3,
-        userData.q4,
-        userData.q5,
-        userData.q6,
       ];
 
       const inappropriateWords = [
@@ -317,9 +308,6 @@ export const createUser = functions.https.onCall(
             q1: userData.q1 || existingData?.q1 || "",
             q2: userData.q2 || existingData?.q2 || "",
             q3: userData.q3 || existingData?.q3 || "",
-            q4: userData.q4 || existingData?.q4 || "",
-            q5: userData.q5 || existingData?.q5 || "",
-            q6: userData.q6 || existingData?.q6 || "",
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };
 
@@ -343,13 +331,12 @@ export const createUser = functions.https.onCall(
             q1: userData.q1 || "",
             q2: userData.q2 || "",
             q3: userData.q3 || "",
-            q4: userData.q4 || "",
-            q5: userData.q5 || "",
-            q6: userData.q6 || "",
             currentMatches: [],
             paywallSeen: false,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            // New availability field
+            availability: -1,
           };
 
           transaction.set(db.collection("users").doc(firebaseUid), newUserDoc);
