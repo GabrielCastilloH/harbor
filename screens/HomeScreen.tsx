@@ -26,7 +26,6 @@ import LoadingScreen from "../components/LoadingScreen";
 import UnviewedMatchesHandler from "../components/UnviewedMatchesHandler";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
-import SocketService from "../util/SocketService";
 import {
   UserService,
   SwipeService,
@@ -35,6 +34,8 @@ import {
   MatchService,
 } from "../networking";
 import { getBlurredImageUrl } from "../networking/ImageService";
+import { db } from "../firebaseConfig";
+import { doc, onSnapshot, query, collection, where } from "firebase/firestore";
 // PREMIUM DISABLED: Superwall imports commented out
 // import { usePlacement } from "expo-superwall";
 // PREMIUM DISABLED: Premium hook commented out
@@ -111,42 +112,60 @@ export default function HomeScreen() {
     // signal("pageview", { screen: "Home" });
   }, []);
 
-  // Initialize socket connection
+  // Set up real-time listener for new matches
   useEffect(() => {
     if (!userId || !isAuthenticated || !currentUser) {
       return;
     }
-    const socketService = SocketService.getInstance();
-    socketService.connect();
 
-    // Authenticate with the socket server
-    socketService.authenticate(userId);
+    // Set up a listener for new matches
+    const matchQuery = query(
+      collection(db, "matches"),
+      where("isActive", "==", true),
+      where("user2Id", "==", userId)
+    );
 
-    // Set up match event handler
-    socketService.onMatch(async (matchData) => {
-      try {
-        const chatResponse = await ChatFunctions.createChannel({
-          userId1: userId,
-          userId2: matchData.matchedProfile.uid,
-        });
-      } catch (chatError) {
-        console.error(
-          "HomeScreen - [SOCKET][CHAT] Error creating chat channel:",
-          chatError
-        );
-      } finally {
-        setMatchedProfile(matchData.matchedProfile);
-        setShowMatch(true);
-        // Clear recommendations since user is now in a match
-        setRecommendations([]);
-        setCurrentProfile(null);
-      }
+    const unsubscribe = onSnapshot(matchQuery, async (querySnapshot) => {
+      querySnapshot.docChanges().forEach(async (change) => {
+        // Check for a new match document that was added
+        if (change.type === "added") {
+          const newMatch = change.doc.data();
+          const matchedUserId = newMatch.user1Id; // The user who swiped on you
+
+          try {
+            // Create chat channel for the new match
+            const chatResponse = await ChatFunctions.createChannel({
+              userId1: userId,
+              userId2: matchedUserId,
+            });
+          } catch (chatError) {
+            console.error(
+              "HomeScreen - [FIRESTORE][CHAT] Error creating chat channel:",
+              chatError
+            );
+          }
+
+          try {
+            // To get the matched user's profile, fetch their data
+            const profile = await UserService.getUserById(matchedUserId);
+            if (profile) {
+              setMatchedProfile(profile);
+              setCurrentMatchId(change.doc.id);
+              setShowMatch(true);
+
+              // Clear recommendations since user is now in a match
+              setRecommendations([]);
+              setCurrentProfile(null);
+            }
+          } catch (error) {
+            console.error("Error fetching matched user profile:", error);
+          }
+        }
+      });
     });
 
-    // Cleanup on unmount
-    return () => {
-      socketService.disconnect();
-    };
+    // Cleanup the listener when the component unmounts
+    return () => unsubscribe();
   }, [userId, isAuthenticated, currentUser]);
 
   // Refresh FCM token when entering HomeScreen (for existing users)
