@@ -201,7 +201,9 @@ export const createSwipe = functions.https.onCall(
               messageCount: 0,
               user1Consented: false,
               user2Consented: false,
-              user1Viewed: false,
+              // The user who swiped (swiperId) has now viewed the match
+              user1Viewed: true,
+              // The user who was swiped on (swipedId) has NOT yet viewed it
               user2Viewed: false,
               createdAt: admin.firestore.FieldValue.serverTimestamp(),
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -213,6 +215,88 @@ export const createSwipe = functions.https.onCall(
             transaction.update(swipedUserRef, {
               currentMatches: admin.firestore.FieldValue.arrayUnion(matchId),
             });
+
+            // Create the chat channel from the backend
+            try {
+              const { StreamChat } = await import("stream-chat");
+              const { SecretManagerServiceClient } = await import(
+                "@google-cloud/secret-manager"
+              );
+
+              const secretManager = new SecretManagerServiceClient();
+
+              // Get Stream API credentials from Secret Manager
+              const [streamApiKeyVersion, streamApiSecretVersion] =
+                await Promise.all([
+                  secretManager.accessSecretVersion({
+                    name: "projects/harbor-ch/secrets/STREAM_API_KEY/versions/latest",
+                  }),
+                  secretManager.accessSecretVersion({
+                    name: "projects/harbor-ch/secrets/STREAM_API_SECRET/versions/latest",
+                  }),
+                ]);
+
+              const apiKey =
+                streamApiKeyVersion[0].payload?.data?.toString() || "";
+              const apiSecret =
+                streamApiSecretVersion[0].payload?.data?.toString() || "";
+
+              if (apiKey && apiSecret) {
+                const serverClient = StreamChat.getInstance(apiKey, apiSecret);
+
+                // Create channel ID (sorted to ensure consistency)
+                const channelId = [swiperId, swipedId].sort().join("-");
+
+                // Create or get the channel
+                const channel = serverClient.channel("messaging", channelId, {
+                  members: [swiperId, swipedId],
+                  created_by_id: swiperId,
+                });
+
+                try {
+                  await channel.create();
+                } catch (err: any) {
+                  if (err && err.code === 16) {
+                    // Channel already exists, just use it
+                    await channel.watch();
+                  } else {
+                    throw err;
+                  }
+                }
+
+                // Update channel with matchId
+                try {
+                  await channel.update({
+                    // @ts-ignore - Adding custom field to channel data
+                    matchId: matchId,
+                  });
+
+                  // Send system message for new matches
+                  try {
+                    await channel.sendMessage({
+                      text: "You've matched! Start chatting now.",
+                      user_id: "system",
+                    });
+
+                    // Mark that intro message has been sent in the match document
+                    await db.collection("matches").doc(matchId).update({
+                      introMessageSent: true,
+                      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    });
+                  } catch (messageErr) {
+                    // Don't fail the channel creation if system message fails
+                  }
+                } catch (updateErr) {
+                  // Don't fail the match creation if channel update fails
+                }
+              }
+            } catch (chatError) {
+              console.error(
+                "Backend Error: Failed to create chat channel:",
+                chatError
+              );
+              // Don't throw here, as we still want the match to be created
+            }
           }
         }
 
