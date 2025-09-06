@@ -137,7 +137,16 @@ export default function HomeScreen() {
           try {
             // To get the matched user's profile, fetch their data
             const profile = await UserService.getUserById(matchedUserId);
-            if (profile) {
+            console.log("🔍 [MATCH] Fetched profile for matched user:", {
+              matchedUserId,
+              profile,
+              hasProfile: !!profile,
+              profileKeys: profile ? Object.keys(profile) : null,
+              userProfile: userProfile,
+              hasUserProfile: !!userProfile,
+            });
+
+            if (profile && userProfile) {
               setMatchedProfile(profile);
               setCurrentMatchId(change.doc.id);
               setShowMatch(true);
@@ -145,9 +154,18 @@ export default function HomeScreen() {
               // Clear recommendations since user is now in a match
               setRecommendations([]);
               setCurrentProfile(null);
+            } else {
+              console.log("❌ [MATCH] Missing profile data:", {
+                matchedProfile: !!profile,
+                userProfile: !!userProfile,
+                matchedUserId,
+              });
             }
           } catch (error) {
-            console.error("Error fetching matched user profile:", error);
+            console.error(
+              "❌ [MATCH] Error fetching matched user profile:",
+              error
+            );
           }
         }
       });
@@ -454,14 +472,20 @@ export default function HomeScreen() {
         // Chat channel is now created automatically by the backend
         // Match viewed status is now handled automatically by the backend
 
-        // Always show the match modal if a match is made
-        setMatchedProfile(profile);
-        setCurrentMatchId(response.matchId || null);
-        setShowMatch(true);
+        // Only show the match modal if we have both profiles
+        if (userProfile) {
+          setMatchedProfile(profile);
+          setCurrentMatchId(response.matchId || null);
+          setShowMatch(true);
 
-        // Clear recommendations since user is now in a match
-        setRecommendations([]);
-        setCurrentProfile(null);
+          // Clear recommendations since user is now in a match
+          setRecommendations([]);
+          setCurrentProfile(null);
+        } else {
+          console.log(
+            "❌ [SWIPE MATCH] Cannot show match modal - userProfile is null"
+          );
+        }
       } else {
         // Update current profile to the next one only if no match
         const currentIndex = recommendations.findIndex(
