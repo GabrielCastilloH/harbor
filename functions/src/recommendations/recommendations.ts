@@ -2,20 +2,17 @@ import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { CallableRequest } from "firebase-functions/v2/https";
 
-// Keep the logToNtfy function available for future use
-// @ts-ignore
-async function logToNtfy(msg: string) {
-  try {
-    await fetch("https://ntfy.sh/harbor-debug-randomr", {
-      method: "POST",
-      body: `[${new Date().toISOString()}] ${msg}`,
-    });
-  } catch (error) {
-    console.error("Failed to log to ntfy:", error);
+const db = admin.firestore();
+
+/**
+ * Shuffles an array randomly using the Fisher-Yates (Knuth) shuffle algorithm.
+ */
+function shuffleArray(array: any[]) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
   }
 }
-
-const db = admin.firestore();
 
 /**
  * Determines if two users are compatible based on their gender and sexual orientation
@@ -51,21 +48,18 @@ function isUserInterestedIn(user1: any, user2: any): boolean {
 
   switch (orientation1) {
     case "Heterosexual":
-      // Heterosexual people are interested in the opposite gender
       if (gender1 === "Male") return gender2 === "Female";
       if (gender1 === "Female") return gender2 === "Male";
       if (gender1 === "Non-Binary") return gender2 === "Non-Binary";
       return false;
 
     case "Homosexual":
-      // Homosexual people are interested in the same gender
       if (gender1 === "Male") return gender2 === "Male";
       if (gender1 === "Female") return gender2 === "Female";
       if (gender1 === "Non-Binary") return gender2 === "Non-Binary";
       return false;
 
     case "Bisexual":
-      // Bisexual people are interested in their own gender and other genders
       if (gender1 === "Male") return gender2 === "Male" || gender2 === "Female";
       if (gender1 === "Female")
         return gender2 === "Male" || gender2 === "Female";
@@ -73,7 +67,6 @@ function isUserInterestedIn(user1: any, user2: any): boolean {
       return false;
 
     case "Pansexual":
-      // Pansexual people are interested in all genders
       if (gender1 === "Male")
         return (
           gender2 === "Male" || gender2 === "Female" || gender2 === "Non-Binary"
@@ -94,7 +87,9 @@ function isUserInterestedIn(user1: any, user2: any): boolean {
 }
 
 /**
- * Gets user recommendations for swiping
+ * Gets user recommendations for swiping, prioritizing users who have swiped on you
+ * The final list is a 4:2 ratio of general users to users who swiped on you,
+ * with a random ordering.
  */
 export const getRecommendations = functions.https.onCall(
   {
@@ -126,82 +121,128 @@ export const getRecommendations = functions.https.onCall(
         );
       }
 
-      // Get the current user's data
       const userDoc = await db.collection("users").doc(userId).get();
       if (!userDoc.exists) {
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
       const currentUserData = userDoc.data();
-
-      // Check if current user is deactivated
       if (currentUserData?.isActive === false) {
         return { recommendations: [] };
       }
 
-      // Get all other users (excluding sensitive data)
+      // 1. Get all users and filter out the current user and deactivated users
       const allUsersSnapshot = await db.collection("users").get();
-      const allUsers = allUsersSnapshot.docs.map((doc) => {
-        const userData = doc.data();
-        // Remove sensitive data for security
-        const { images, email, ...userDataWithoutSensitiveInfo } = userData;
-        return {
-          uid: doc.id,
-          ...userDataWithoutSensitiveInfo,
-        };
-      });
+      const allUsers = allUsersSnapshot.docs
+        .map((doc) => {
+          const userData = doc.data();
+          const { images, email, ...userDataWithoutSensitiveInfo } = userData;
+          return { uid: doc.id, ...userDataWithoutSensitiveInfo };
+        })
+        .filter(
+          (user) => user.uid !== userId && (user as any).isActive !== false
+        );
 
-      // Filter out the current user, deactivated users, and users they've already swiped on
-      const otherUsers = allUsers.filter(
-        (user) => user.uid !== userId && (user as any).isActive !== false // Exclude deactivated users
-      );
+      // 2. Get users who have swiped right on the current user
+      const inboundSwipesSnapshot = await db
+        .collection("swipes")
+        .where("swipedId", "==", userId)
+        .where("direction", "==", "right")
+        .get();
 
-      // Get swipes by the current user
-      const swipesSnapshot = await db
+      const usersWhoSwipedOnYou = inboundSwipesSnapshot.docs
+        .map((doc) => allUsers.find((user) => user.uid === doc.data().swiperId))
+        .filter(Boolean) as any[];
+
+      // 3. Get users the current user has already swiped on
+      const mySwipesSnapshot = await db
         .collection("swipes")
         .where("swiperId", "==", userId)
         .get();
-
-      const swipedUserIds = swipesSnapshot.docs.map(
-        (doc) => doc.data().swipedId
+      const swipedUserIds = new Set(
+        mySwipesSnapshot.docs.map((doc) => doc.data().swipedId)
       );
 
-      // Filter out users the current user has already swiped on
-      const availableUsers = otherUsers.filter(
-        (user) => !swipedUserIds.includes(user.uid)
-      );
-
-      // Get all active matches to filter out users who are already matched
+      // 4. Get users who are in an active match
       const activeMatchesSnapshot = await db
         .collection("matches")
         .where("isActive", "==", true)
         .get();
-
       const matchedUserIds = new Set<string>();
-
       activeMatchesSnapshot.docs.forEach((doc) => {
         const matchData = doc.data();
-        if (matchData.user1Id && matchData.user2Id) {
-          matchedUserIds.add(matchData.user1Id);
-          matchedUserIds.add(matchData.user2Id);
-        }
+        matchedUserIds.add(matchData.user1Id);
+        matchedUserIds.add(matchData.user2Id);
       });
 
-      // Filter out users who are already in active matches
-      const trulyAvailableUsers = availableUsers.filter(
-        (user) => !matchedUserIds.has(user.uid)
+      // 5. Create two pools of compatible, available users
+      const whoSwipedOnYou = usersWhoSwipedOnYou.filter(
+        (user) =>
+          !swipedUserIds.has(user.uid) &&
+          !matchedUserIds.has(user.uid) &&
+          isCompatible(currentUserData, user)
       );
 
-      if (trulyAvailableUsers.length === 0) {
-        return { recommendations: [] };
+      const generalRecommendations = allUsers.filter(
+        (user) =>
+          !swipedUserIds.has(user.uid) &&
+          !matchedUserIds.has(user.uid) &&
+          !whoSwipedOnYou.some((p) => p.uid === user.uid) &&
+          isCompatible(currentUserData, user)
+      );
+
+      // 6. Shuffle both pools to ensure random selection
+      shuffleArray(whoSwipedOnYou);
+      shuffleArray(generalRecommendations);
+
+      // 7. Combine the pools with the specified 4:2 ratio and random order
+      const finalRecommendations: any[] = [];
+      const totalGeneral = generalRecommendations.length;
+      const totalSwipedOnYou = whoSwipedOnYou.length;
+
+      let generalIndex = 0;
+      let swipedOnYouIndex = 0;
+
+      while (
+        generalIndex < totalGeneral ||
+        swipedOnYouIndex < totalSwipedOnYou
+      ) {
+        // Determine the number of cards to pull from each pool in this batch
+        const generalCardsToPull = Math.min(4, totalGeneral - generalIndex);
+        const swipedOnYouCardsToPull = Math.min(
+          2,
+          totalSwipedOnYou - swipedOnYouIndex
+        );
+
+        // Create a temporary batch of cards
+        const tempBatch = [];
+        for (let i = 0; i < generalCardsToPull; i++) {
+          tempBatch.push({
+            type: "general",
+            user: generalRecommendations[generalIndex + i],
+          });
+        }
+        for (let i = 0; i < swipedOnYouCardsToPull; i++) {
+          tempBatch.push({
+            type: "swipedOnYou",
+            user: whoSwipedOnYou[swipedOnYouIndex + i],
+          });
+        }
+
+        // Shuffle the temporary batch to randomize the order
+        shuffleArray(tempBatch);
+
+        // Add the shuffled batch to the final recommendations
+        for (const card of tempBatch) {
+          finalRecommendations.push(card.user);
+        }
+
+        // Move indices forward
+        generalIndex += generalCardsToPull;
+        swipedOnYouIndex += swipedOnYouCardsToPull;
       }
 
-      // Apply intelligent matching based on sexual orientation and gender preferences
-      const filteredRecommendations = trulyAvailableUsers.filter((user) => {
-        return isCompatible(currentUserData, user);
-      });
-
-      return { recommendations: filteredRecommendations };
+      return { recommendations: finalRecommendations };
     } catch (error: any) {
       if (error instanceof functions.https.HttpsError) {
         throw error;

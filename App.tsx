@@ -28,6 +28,117 @@ import UnviewedMatchesHandler from "./components/UnviewedMatchesHandler";
 // import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
 // import { SUPERWALL_CONFIG } from "./firebaseConfig";
 
+// Expo Notifications imports
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
+
+// Configure notification behavior
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
+
+// Expo Notifications Setup Component
+function ExpoNotificationSetup() {
+  const [expoPushToken, setExpoPushToken] = useState<string>("");
+  const notificationListener = useRef<Notifications.Subscription | null>(null);
+  const responseListener = useRef<Notifications.Subscription | null>(null);
+
+  useEffect(() => {
+    registerForPushNotificationsAsync().then((token) => {
+      if (token) {
+        setExpoPushToken(token);
+      }
+    });
+
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
+        // Handle notification received
+      });
+
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        // Handle notification response
+      });
+
+    return () => {
+      if (notificationListener.current) {
+        Notifications.removeNotificationSubscription(
+          notificationListener.current
+        );
+      }
+      if (responseListener.current) {
+        Notifications.removeNotificationSubscription(responseListener.current);
+      }
+    };
+  }, []);
+
+  return null; // This component doesn't render anything
+}
+
+async function registerForPushNotificationsAsync() {
+  let token;
+
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "default",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#FF231F7C",
+    });
+  }
+
+  if (Device.isDevice) {
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== "granted") {
+      alert("Failed to get push token for push notification!");
+      return;
+    }
+    token = (
+      await Notifications.getExpoPushTokenAsync({
+        projectId: Constants.expoConfig?.extra?.eas?.projectId,
+      })
+    ).data;
+
+    // Save the token to Firestore user document via Firebase function
+    try {
+      const { getFunctions, httpsCallable } = await import(
+        "firebase/functions"
+      );
+      const { getAuth } = await import("firebase/auth");
+      const app = await import("./firebaseConfig");
+
+      const auth = getAuth();
+      if (auth.currentUser) {
+        const functions = getFunctions(app.default, "us-central1");
+        const savePushToken = httpsCallable(
+          functions,
+          "swipeFunctions-savePushToken"
+        );
+        await savePushToken({ token });
+      }
+    } catch (error) {
+      // Failed to save Expo push token to Firestore
+    }
+  } else {
+    alert("Must use physical device for Push Notifications");
+  }
+
+  return token;
+}
+
 // Define the authentication stack navigator
 const AuthStack = createNativeStackNavigator();
 
@@ -46,7 +157,6 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("App crashed:", error, errorInfo);
     // Log to your error reporting service here
   }
 
@@ -144,6 +254,7 @@ function AppContent() {
             />
           </BannedStack.Navigator>
           <NotificationHandler navigationRef={navigationRef} />
+          <ExpoNotificationSetup />
         </NavigationContainer>
       </GestureHandlerRootView>
     );
@@ -157,6 +268,7 @@ function AppContent() {
         {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
         {isAuthenticated && <UnviewedMatchesHandler />}
         <NotificationHandler navigationRef={navigationRef} />
+        <ExpoNotificationSetup />
       </NavigationContainer>
     </GestureHandlerRootView>
   );
