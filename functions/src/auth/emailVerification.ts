@@ -103,7 +103,7 @@ export const sendVerificationCode = functions.https.onCall(
       // Generate 6-digit verification code
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt =
-        admin.firestore.Timestamp.now().toMillis() + 5 * 60 * 1000; // 5 minutes
+        admin.firestore.Timestamp.now().toMillis() + 10 * 60 * 1000; // 10 minutes
 
       // Store code in Firestore
       await db.collection("verificationCodes").doc(userId).set({
@@ -127,13 +127,14 @@ export const sendVerificationCode = functions.https.onCall(
         from: `Harbor <noreply@${domain}>`,
         to: email,
         subject: "Your Harbor Verification Code",
-        text: `Hello,\n\nYour verification code for Harbor is: ${code}\n\nThis code is valid for 5 minutes.\n\nIf you did not request this verification code, please ignore this email.`,
+        text: `Hello,\n\nYour verification code for Harbor is: ${code}\n\nThis code is valid for 10 minutes.\n\nIf you don't see this email in your inbox, please check your spam folder. It may take a few minutes to arrive.\n\nIf you did not request this verification code, please ignore this email.`,
         html: `
           <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center; max-width: 600px; margin: 0 auto; background-color: #FeFeFe;">
             <h1 style="color: #1299a3; margin-bottom: 30px; font-size: 32px; font-weight: bold;">Harbor</h1>
             <p style="font-size: 18px; color: #231f20; margin-bottom: 20px;">Your verification code is:</p>
             <h2 style="font-size: 36px; font-weight: bold; color: #1299a3; letter-spacing: 5px; padding: 20px; border: 2px solid #1299a3; display: inline-block; border-radius: 12px; background-color: #e8f6f7; margin: 20px 0;">${code}</h2>
-            <p style="font-size: 14px; color: #a7b3b1; margin-top: 20px;">This code is valid for 5 minutes.</p>
+            <p style="font-size: 14px; color: #a7b3b1; margin-top: 20px;">This code is valid for 10 minutes.</p>
+            <p style="font-size: 14px; color: #a7b3b1; margin-top: 10px;">If you don't see this email in your inbox, please check your spam folder. It may take a few minutes to arrive.</p>
             <hr style="margin: 30px 0; border: none; border-top: 1px solid #edf3f3;">
             <p style="font-size: 12px; color: #a7b3b1;">If you did not request this verification code, please ignore this email.</p>
           </div>
