@@ -15,7 +15,6 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import BasicInfoView from "../components/BasicInfoView";
-import AcademicView from "../components/AcademicView";
 import PersonalView from "../components/PersonalView";
 import { getImageSource } from "../util/imageUtils";
 import {
@@ -486,7 +485,6 @@ export default function ProfileScreen() {
         </Modal>
 
         <View style={{ paddingHorizontal: 24 }}>
-          <AcademicView profile={profile} />
           <PersonalView profile={profile} />
         </View>
 

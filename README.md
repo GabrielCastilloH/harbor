@@ -218,11 +218,6 @@ App.tsx (Main Navigator)
 - **countRecentSwipes**: **Fetches a user's daily swipe count from their profile**
 - **getSwipesByUser**: Retrieves all swipes made by a specific user
 
-### Swipe Limit Functions (`swipeLimitFunctions`)
-
-- **getSwipeLimit**: **Fetches a user's daily swipe limit from their profile**
-- **incrementSwipeCount**: **Tracks and increments a user's daily swipe count with atomic transactions**
-
 ### Match Functions (`matchFunctions`)
 
 - **createMatch**: Creates match records between users
