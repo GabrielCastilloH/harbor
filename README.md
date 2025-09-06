@@ -16,7 +16,8 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 ### 💫 Smart Matching & Swiping
 
 - **Intelligent recommendations**: Algorithm considers sexual orientation, gender preferences, and mutual interest
-- **Daily swipe limits**: 5 swipes per day for all users
+- **Unified swipe system**: **Efficient daily swipe tracking stored directly in user profiles for optimal performance**
+- **Daily swipe limits**: **Configurable daily swipes for all users, with a framework for premium tiers**
 - **Instant match detection**: Real-time matching when two users swipe right on each other
 - **Swipe gesture controls**: Smooth card-based swiping with visual feedback
 
@@ -40,6 +41,74 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 - **Stream Chat delivery**: Notifications delivered through Stream Chat's reliable system
 - **Smart notification management**: Silent match notifications, configurable message alerts
 - **Cross-platform support**: Works on both iOS and Android devices
+
+## ⚡ Unified Swipe System
+
+Harbor implements a **unified swipe tracking system** that stores all swipe-related data directly in the user's profile document. This architectural decision provides significant performance and scalability benefits.
+
+### Why the Unified System is Superior
+
+#### 🚀 Performance Benefits
+
+- **Reduced Database Reads**: **50% fewer Firestore reads** - Previously required two separate reads (user document + swipe limits), now only one read needed
+- **Atomic Operations**: All swipe data updates happen in a single transaction, preventing race conditions
+- **Lower Latency**: Faster swipe operations due to reduced network round trips
+- **Cost Efficiency**: Fewer Firestore operations = lower Firebase costs
+
+#### 🔒 Data Consistency
+
+- **Transaction Safety**: Swipe count increments and limit checks happen atomically
+- **No Race Conditions**: Prevents users from exceeding limits during rapid swiping
+- **Automatic Reset**: Daily swipe counts reset automatically when date changes
+- **Single Source of Truth**: All user data in one document eliminates sync issues
+
+#### 🏗️ Scalability Advantages
+
+- **Linear Scaling**: Performance remains consistent as user base grows
+- **Simplified Architecture**: Fewer collections to manage and maintain
+- **Easier Debugging**: All user data in one place for easier troubleshooting
+- **Future-Proof**: Framework ready for premium tiers and advanced features
+
+### Technical Implementation
+
+#### Database Structure
+
+```typescript
+// User document in /users/{userId}
+{
+  // ... other user fields
+  swipesToday: 3,           // Current day's swipe count
+  maxSwipesPerDay: 5,       // Daily limit (configurable)
+  resetDate: "2025-09-06",  // Last reset date (YYYY-MM-DD)
+  isPremium: false,         // Premium status for future features
+}
+```
+
+#### Automatic Reset Logic
+
+```typescript
+// Automatic daily reset in getSwipeLimit function
+const today = new Date().toISOString().split("T")[0];
+if (resetDate !== today) {
+  swipesToday = 0;
+  resetDate = today;
+  // Update Firestore atomically
+}
+```
+
+#### Transaction-Based Increments
+
+```typescript
+// Atomic swipe count increment in createSwipe
+await db.runTransaction(async (transaction) => {
+  // Check limits, record swipe, and increment count
+  // All operations happen atomically
+  transaction.update(userRef, {
+    swipesToday: admin.firestore.FieldValue.increment(1),
+    resetDate: today,
+  });
+});
+```
 
 ## 🏗️ Technical Architecture
 
@@ -145,9 +214,9 @@ App.tsx (Main Navigator)
 
 ### Swipe Functions (`swipeFunctions`)
 
-- **createSwipe**: Records swipes and detects mutual matches
-- **getSwipeLimit**: Manages daily swipe limits (20 free, 40 premium)
-- **incrementSwipeCount**: Tracks daily swipe usage
+- **createSwipe**: Records swipes and detects mutual matches with unified swipe tracking
+- **countRecentSwipes**: **Fetches a user's daily swipe count from their profile**
+- **getSwipesByUser**: Retrieves all swipes made by a specific user
 
 ### Match Functions (`matchFunctions`)
 
@@ -228,7 +297,8 @@ Instead of using Firebase's built-in email verification links, Harbor implements
    ```typescript
    // Generate 6-digit code
    const code = Math.floor(100000 + Math.random() * 900000).toString();
-   const expiresAt = admin.firestore.Timestamp.now().toMillis() + 5 * 60 * 1000;
+   const expiresAt =
+     admin.firestore.Timestamp.now().toMillis() + 10 * 60 * 1000;
 
    // Store in Firestore
    await db.collection("verificationCodes").doc(userId).set({
@@ -286,7 +356,7 @@ Instead of using Firebase's built-in email verification links, Harbor implements
 
 #### Security Features
 
-- **6-digit codes** with 5-minute expiration
+- **6-digit codes** with 10-minute expiration
 - **One-time use** (deleted after verification)
 - **Server-side verification** (cannot be bypassed)
 - **Mailgun integration** with verified domain (`tryharbor.app`)
@@ -420,12 +490,9 @@ All fields must be completed before profile creation:
 | ---------------------------------- | ---------- | ---------- | --------------------------------- |
 | Your Name, Initial(s) or Nickname  | 1          | 50         | Your name, initial(s) or nickname |
 | About Me                           | 5          | 180        | Personal description              |
-| Q1: "This year, I really want to"  | 5          | 100        | Personal goal                     |
-| Q2: "Together we could"            | 5          | 100        | Shared activity                   |
-| Q3: "Favorite book, movie or song" | 5          | 100        | Cultural preference               |
-| Q4: "I chose my major because"     | 5          | 100        | Academic motivation               |
-| Q5: "My favorite study spot is"    | 5          | 100        | Study preference                  |
-| Q6: "Some of my hobbies are"       | 5          | 100        | Personal interests                |
+| Q1: "Together we could"            | 5          | 100        | Shared activity                   |
+| Q2: "Favorite book, movie or song" | 5          | 100        | Cultural preference               |
+| Q3: "Some of my hobbies are"       | 5          | 100        | Personal interests                |
 
 #### Data Types Definition
 
@@ -441,17 +508,19 @@ export type Profile = {
   sexualOrientation: string; // "Heterosexual", "Homosexual", "Bisexual", or "Pansexual"
   images: string[];
   aboutMe: string;
-  q1: string; // "This year, I really want to:"
-  q2: string; // "Together we could:"
-  q3: string; // "Favorite book, movie or song:"
-  q4: string; // "I chose my major because..."
-  q5: string; // "My favorite study spot is:"
-  q6: string; // "Some of my hobbies are:"
+  q1: string; // "Together we could:"
+  q2: string; // "Favorite book, movie or song:"
+  q3: string; // "Some of my hobbies are:"
   currentMatches?: string[];
   paywallSeen?: boolean;
   fcmToken?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
+  // Unified swipe system fields
+  swipesToday?: number;
+  maxSwipesPerDay?: number;
+  resetDate?: string;
+  isPremium?: boolean;
 };
 ```
 
