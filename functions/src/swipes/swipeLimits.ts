@@ -4,6 +4,10 @@ import { CallableRequest } from "firebase-functions/v2/https";
 
 const db = admin.firestore();
 
+// A single constant that tracks the max swipes per day for all users.
+// We've forgotten about the 'isPremium' thing for now.
+const MAX_SWIPES_PER_DAY = 5;
+
 /**
  * Gets the current swipe limit data for a user from their user document.
  */
@@ -27,7 +31,9 @@ export const getSwipeLimit = functions.https.onCall(
           "User must be authenticated"
         );
       }
+
       const { userId } = request.data;
+
       if (request.auth.uid !== userId) {
         throw new functions.https.HttpsError(
           "permission-denied",
@@ -37,15 +43,14 @@ export const getSwipeLimit = functions.https.onCall(
 
       const userRef = db.collection("users").doc(userId);
       const userDoc = await userRef.get();
+
       if (!userDoc.exists) {
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
       const userData = userDoc.data();
       const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-
       let swipesToday = userData?.swipesToday ?? 0;
-      let maxSwipesPerDay = userData?.maxSwipesPerDay ?? 5; // Default to 5
       let resetDate = userData?.resetDate ?? today;
 
       // Reset swipe count if a new day has started
@@ -59,11 +64,12 @@ export const getSwipeLimit = functions.https.onCall(
         });
       }
 
-      const canSwipe = swipesToday < maxSwipesPerDay;
+      const canSwipe = swipesToday < MAX_SWIPES_PER_DAY;
+
       return {
         userId,
         swipesToday,
-        maxSwipesPerDay,
+        maxSwipesPerDay: MAX_SWIPES_PER_DAY,
         canSwipe,
         resetDate,
       };
@@ -102,7 +108,9 @@ export const incrementSwipeCount = functions.https.onCall(
           "User must be authenticated"
         );
       }
+
       const { userId } = request.data;
+
       if (request.auth.uid !== userId) {
         throw new functions.https.HttpsError(
           "permission-denied",
@@ -115,9 +123,11 @@ export const incrementSwipeCount = functions.https.onCall(
 
       return await db.runTransaction(async (transaction) => {
         const userDoc = await transaction.get(userRef);
+
         if (!userDoc.exists) {
           throw new functions.https.HttpsError("not-found", "User not found");
         }
+
         const userData = userDoc.data();
         if (!userData) {
           throw new functions.https.HttpsError(
@@ -127,7 +137,6 @@ export const incrementSwipeCount = functions.https.onCall(
         }
 
         let currentSwipes = userData.swipesToday ?? 0;
-        const maxSwipesPerDay = userData.maxSwipesPerDay ?? 5;
         let resetDate = userData.resetDate ?? today;
 
         if (resetDate !== today) {
@@ -135,11 +144,11 @@ export const incrementSwipeCount = functions.https.onCall(
           resetDate = today;
         }
 
-        if (currentSwipes >= maxSwipesPerDay) {
+        if (currentSwipes >= MAX_SWIPES_PER_DAY) {
           return {
             userId,
             swipesToday: currentSwipes,
-            maxSwipesPerDay,
+            maxSwipesPerDay: MAX_SWIPES_PER_DAY,
             canSwipe: false,
             resetDate,
           };
@@ -155,8 +164,8 @@ export const incrementSwipeCount = functions.https.onCall(
         return {
           userId,
           swipesToday: newSwipeCount,
-          maxSwipesPerDay,
-          canSwipe: newSwipeCount < maxSwipesPerDay,
+          maxSwipesPerDay: MAX_SWIPES_PER_DAY,
+          canSwipe: newSwipeCount < MAX_SWIPES_PER_DAY,
           resetDate,
         };
       });

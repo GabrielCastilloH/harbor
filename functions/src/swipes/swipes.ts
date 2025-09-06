@@ -4,9 +4,9 @@ import { CallableRequest } from "firebase-functions/v2/https";
 
 const db = admin.firestore();
 
-// This constant is now for free users. Premium users will have a different value
-// stored on their user document.
-const DEFAULT_MAX_SWIPES_PER_DAY = 5;
+// A single constant that tracks the max swipes per day for all users.
+// We've forgotten about the 'isPremium' thing for now.
+const MAX_SWIPES_PER_DAY = 5;
 
 /**
  * Records a swipe and checks for matches
@@ -47,11 +47,9 @@ export const createSwipe = functions.https.onCall(
         );
       }
 
-      // Use a transaction for atomic operations on user documents
       await db.runTransaction(async (transaction) => {
         const swiperUserRef = db.collection("users").doc(swiperId);
         const swipedUserRef = db.collection("users").doc(swipedId);
-
         const [swiperUserDoc, swipedUserDoc] = await transaction.getAll(
           swiperUserRef,
           swipedUserRef
@@ -65,21 +63,17 @@ export const createSwipe = functions.https.onCall(
         }
 
         const swiperUser = swiperUserDoc.data();
-        const swipedUser = swipedUserDoc.data();
 
         // 1. Check for swipe limits based on the unified system
         const today = new Date().toISOString().split("T")[0];
-        const maxSwipesPerDay =
-          swiperUser?.maxSwipesPerDay ?? DEFAULT_MAX_SWIPES_PER_DAY;
         let swipesToday = swiperUser?.swipesToday ?? 0;
         const resetDate = swiperUser?.resetDate ?? today;
 
         if (resetDate !== today) {
           swipesToday = 0;
-          // We will update the reset date and swipe count at the end of the transaction
         }
 
-        if (swipesToday >= maxSwipesPerDay) {
+        if (swipesToday >= MAX_SWIPES_PER_DAY) {
           throw new functions.https.HttpsError(
             "resource-exhausted",
             "Daily swipe limit reached"
@@ -96,6 +90,8 @@ export const createSwipe = functions.https.onCall(
           .get();
 
         if (!unmatchedCheck.empty) {
+          // This part of the code could be simplified, but we'll leave it for now.
+          // It's not directly related to the swipe limit change.
           return {
             message: "Users have unmatched before, cannot match again",
             swipe: null,
@@ -141,15 +137,15 @@ export const createSwipe = functions.https.onCall(
           ...swipedActiveMatches2.docs,
         ];
 
-        // If user is not premium and already has a match, prevent the swipe
-        if (!swiperUser?.isPremium && swiperMatches.length >= 1) {
+        // Since we're forgetting about premium for now, these checks are not strictly necessary,
+        // but we'll leave them in case you want to use them later.
+        if (swiperMatches.length >= 1) {
           throw new functions.https.HttpsError(
             "permission-denied",
-            "Non-premium users cannot swipe while they have an active match"
+            "Users cannot swipe while they have an active match"
           );
         }
-
-        if (!swipedUser?.isPremium && swipedMatches.length >= 1) {
+        if (swipedMatches.length >= 1) {
           throw new functions.https.HttpsError(
             "permission-denied",
             "Cannot swipe on users who have active matches"
@@ -197,7 +193,6 @@ export const createSwipe = functions.https.onCall(
             match = true;
             const matchRef = db.collection("matches").doc();
             matchId = matchRef.id;
-
             const matchData = {
               user1Id: swiperId,
               user2Id: swipedId,
@@ -211,7 +206,6 @@ export const createSwipe = functions.https.onCall(
               createdAt: admin.firestore.FieldValue.serverTimestamp(),
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             };
-
             transaction.set(matchRef, matchData);
             transaction.update(swiperUserRef, {
               currentMatches: admin.firestore.FieldValue.arrayUnion(matchId),
@@ -238,6 +232,7 @@ export const createSwipe = functions.https.onCall(
           matchId,
         };
       });
+
       return {
         message: "Swipe operation completed successfully",
         swipe: null, // Returning null as we can't access swipeData from outside the transaction
@@ -279,6 +274,7 @@ export const countRecentSwipes = functions.https.onCall(
           "User must be authenticated"
         );
       }
+
       const { id } = request.data;
       if (request.auth.uid !== id) {
         throw new functions.https.HttpsError(
@@ -291,6 +287,7 @@ export const countRecentSwipes = functions.https.onCall(
       if (!userDoc.exists) {
         throw new functions.https.HttpsError("not-found", "User not found");
       }
+
       const userData = userDoc.data();
       if (!userData) {
         throw new functions.https.HttpsError(
@@ -302,19 +299,16 @@ export const countRecentSwipes = functions.https.onCall(
       const today = new Date().toISOString().split("T")[0];
       const resetDate = userData.resetDate ?? today;
       let swipesToday = userData.swipesToday ?? 0;
-      const maxSwipesPerDay =
-        userData.maxSwipesPerDay ?? DEFAULT_MAX_SWIPES_PER_DAY;
 
       // Check if we need to reset the count for the day
       if (resetDate !== today) {
         swipesToday = 0;
-        // No need to update Firestore here, as the next swipe will handle it via createSwipe
       }
 
       return {
         swipeCount: swipesToday,
-        dailyLimit: maxSwipesPerDay,
-        canSwipe: swipesToday < maxSwipesPerDay,
+        dailyLimit: MAX_SWIPES_PER_DAY,
+        canSwipe: swipesToday < MAX_SWIPES_PER_DAY,
       };
     } catch (error: any) {
       if (error instanceof functions.https.HttpsError) {
@@ -353,7 +347,6 @@ export const getSwipesByUser = functions.https.onCall(
       }
 
       const { userId } = request.data;
-
       if (!userId) {
         throw new functions.https.HttpsError(
           "invalid-argument",
@@ -361,7 +354,6 @@ export const getSwipesByUser = functions.https.onCall(
         );
       }
 
-      // Verify the requesting user is accessing their own data
       if (request.auth.uid !== userId) {
         throw new functions.https.HttpsError(
           "permission-denied",
@@ -383,11 +375,9 @@ export const getSwipesByUser = functions.https.onCall(
       return { swipes };
     } catch (error: any) {
       console.error("Error getting swipes by user:", error);
-
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-
       throw new functions.https.HttpsError(
         "internal",
         "Failed to get swipes by user"
@@ -431,7 +421,6 @@ export const savePushToken = functions.https.onCall(
         );
       }
 
-      // Verify the requesting user is accessing their own data
       if (request.auth.uid !== userId) {
         throw new functions.https.HttpsError(
           "permission-denied",
@@ -447,11 +436,9 @@ export const savePushToken = functions.https.onCall(
       return { message: "Push token saved successfully" };
     } catch (error: any) {
       console.error("Error saving push token:", error);
-
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-
       throw new functions.https.HttpsError(
         "internal",
         "Failed to save push token"
