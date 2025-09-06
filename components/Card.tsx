@@ -11,7 +11,6 @@ import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import BasicInfoView from "./BasicInfoView";
 import PersonalView from "./PersonalView";
-import PageIndicator from "./PageIndicator";
 import { getImageSource } from "../util/imageUtils";
 
 type CardProps = {
@@ -49,7 +48,6 @@ export default function Card({
       ]}
       {...(isTopCard ? panHandlers : {})}
     >
-      <PageIndicator currentView={currentView} />
       <View style={styles.contentContainer}>
         {currentView === 0 ? (
           <BasicInfoView profile={profile} />
