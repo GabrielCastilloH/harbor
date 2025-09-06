@@ -302,7 +302,7 @@ Instead of using Firebase's built-in email verification links, Harbor implements
    ```typescript
    // Generate 6-digit code
    const code = Math.floor(100000 + Math.random() * 900000).toString();
-   const expiresAt = admin.firestore.Timestamp.now().toMillis() + 5 * 60 * 1000;
+   const expiresAt = admin.firestore.Timestamp.now().toMillis() + 10 * 60 * 1000;
 
    // Store in Firestore
    await db.collection("verificationCodes").doc(userId).set({
@@ -360,7 +360,7 @@ Instead of using Firebase's built-in email verification links, Harbor implements
 
 #### Security Features
 
-- **6-digit codes** with 5-minute expiration
+- **6-digit codes** with 10-minute expiration
 - **One-time use** (deleted after verification)
 - **Server-side verification** (cannot be bypassed)
 - **Mailgun integration** with verified domain (`tryharbor.app`)
