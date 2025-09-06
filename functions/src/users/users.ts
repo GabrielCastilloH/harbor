@@ -350,6 +350,8 @@ export const createUser = functions.https.onCall(
             paywallSeen: false,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            // New availability field
+            availability: -1,
           };
 
           transaction.set(db.collection("users").doc(firebaseUid), newUserDoc);

@@ -21,6 +21,7 @@ export type Profile = {
   paywallSeen?: boolean;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
+  availability: number;
 };
 
 export interface CardViewProps {
