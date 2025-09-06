@@ -5,7 +5,7 @@ import { CallableRequest } from "firebase-functions/v2/https";
 const db = admin.firestore();
 
 /**
- * Gets the current swipe limit data for a user
+ * Gets the current swipe limit data for a user from their user document.
  */
 export const getSwipeLimit = functions.https.onCall(
   {
@@ -27,17 +27,7 @@ export const getSwipeLimit = functions.https.onCall(
           "User must be authenticated"
         );
       }
-
       const { userId } = request.data;
-
-      if (!userId) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "User ID is required"
-        );
-      }
-
-      // Verify the requesting user is accessing their own data
       if (request.auth.uid !== userId) {
         throw new functions.https.HttpsError(
           "permission-denied",
@@ -45,81 +35,42 @@ export const getSwipeLimit = functions.https.onCall(
         );
       }
 
-      // Get user's swipe limit document
-      const swipeLimitDoc = await db
-        .collection("swipeLimits")
-        .doc(userId)
-        .get();
-
-      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
-
-      if (!swipeLimitDoc.exists) {
-        // Create new swipe limit document
-        const newSwipeLimit = {
-          userId,
-          swipesToday: 0,
-          maxSwipesPerDay: 5, // Default to 5 swipes per day
-          canSwipe: true,
-          resetDate: today,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        };
-
-        await db.collection("swipeLimits").doc(userId).set(newSwipeLimit);
-
-        return {
-          userId,
-          swipesToday: 0,
-          maxSwipesPerDay: 5,
-          canSwipe: true,
-          resetDate: today,
-        };
+      const userRef = db.collection("users").doc(userId);
+      const userDoc = await userRef.get();
+      if (!userDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "User not found");
       }
 
-      const swipeLimitData = swipeLimitDoc.data();
-      if (!swipeLimitData) {
-        throw new functions.https.HttpsError(
-          "not-found",
-          "Swipe limit data not found"
-        );
-      }
+      const userData = userDoc.data();
+      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
-      // Check if we need to reset the counter (new day)
-      if (swipeLimitData.resetDate !== today) {
-        // Reset for new day
-        await db.collection("swipeLimits").doc(userId).update({
+      let swipesToday = userData?.swipesToday ?? 0;
+      let maxSwipesPerDay = userData?.maxSwipesPerDay ?? 5; // Default to 5
+      let resetDate = userData?.resetDate ?? today;
+
+      // Reset swipe count if a new day has started
+      if (resetDate !== today) {
+        swipesToday = 0;
+        resetDate = today;
+        await userRef.update({
           swipesToday: 0,
           resetDate: today,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-
-        return {
-          userId,
-          swipesToday: 0,
-          maxSwipesPerDay: swipeLimitData.maxSwipesPerDay,
-          canSwipe: true,
-          resetDate: today,
-        };
       }
 
-      // Check if user can still swipe today
-      const canSwipe =
-        swipeLimitData.swipesToday < swipeLimitData.maxSwipesPerDay;
-
+      const canSwipe = swipesToday < maxSwipesPerDay;
       return {
         userId,
-        swipesToday: swipeLimitData.swipesToday,
-        maxSwipesPerDay: swipeLimitData.maxSwipesPerDay,
+        swipesToday,
+        maxSwipesPerDay,
         canSwipe,
-        resetDate: swipeLimitData.resetDate,
+        resetDate,
       };
     } catch (error: any) {
-      console.error("Error getting swipe limit:", error);
-
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-
       throw new functions.https.HttpsError(
         "internal",
         "Failed to get swipe limit"
@@ -129,7 +80,7 @@ export const getSwipeLimit = functions.https.onCall(
 );
 
 /**
- * Increments the swipe count for a user
+ * Increments the swipe count for a user in a transactional way.
  */
 export const incrementSwipeCount = functions.https.onCall(
   {
@@ -151,90 +102,68 @@ export const incrementSwipeCount = functions.https.onCall(
           "User must be authenticated"
         );
       }
-
       const { userId } = request.data;
-
-      if (!userId) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "User ID is required"
-        );
-      }
-
-      // Verify the requesting user is accessing their own data
       if (request.auth.uid !== userId) {
         throw new functions.https.HttpsError(
           "permission-denied",
-          "User can only access their own swipe limit"
+          "User can only increment their own swipe count"
         );
       }
 
-      // Get current swipe limit data
-      const swipeLimitDoc = await db
-        .collection("swipeLimits")
-        .doc(userId)
-        .get();
-      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+      const userRef = db.collection("users").doc(userId);
+      const today = new Date().toISOString().split("T")[0];
 
-      if (!swipeLimitDoc.exists) {
-        throw new functions.https.HttpsError(
-          "not-found",
-          "Swipe limit not initialized"
-        );
-      }
+      return await db.runTransaction(async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists) {
+          throw new functions.https.HttpsError("not-found", "User not found");
+        }
+        const userData = userDoc.data();
+        if (!userData) {
+          throw new functions.https.HttpsError(
+            "not-found",
+            "User data not found"
+          );
+        }
 
-      const swipeLimitData = swipeLimitDoc.data();
-      if (!swipeLimitData) {
-        throw new functions.https.HttpsError(
-          "not-found",
-          "Swipe limit data not found"
-        );
-      }
+        let currentSwipes = userData.swipesToday ?? 0;
+        const maxSwipesPerDay = userData.maxSwipesPerDay ?? 5;
+        let resetDate = userData.resetDate ?? today;
 
-      // Check if we need to reset the counter (new day)
-      let currentSwipes = swipeLimitData.swipesToday;
-      let resetDate = swipeLimitData.resetDate;
+        if (resetDate !== today) {
+          currentSwipes = 0;
+          resetDate = today;
+        }
 
-      if (resetDate !== today) {
-        // Reset for new day
-        currentSwipes = 0;
-        resetDate = today;
-      }
+        if (currentSwipes >= maxSwipesPerDay) {
+          return {
+            userId,
+            swipesToday: currentSwipes,
+            maxSwipesPerDay,
+            canSwipe: false,
+            resetDate,
+          };
+        }
 
-      // Check if user can still swipe
-      if (currentSwipes >= swipeLimitData.maxSwipesPerDay) {
+        const newSwipeCount = currentSwipes + 1;
+        transaction.update(userRef, {
+          swipesToday: newSwipeCount,
+          resetDate,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
         return {
           userId,
-          swipesToday: currentSwipes,
-          maxSwipesPerDay: swipeLimitData.maxSwipesPerDay,
-          canSwipe: false,
+          swipesToday: newSwipeCount,
+          maxSwipesPerDay,
+          canSwipe: newSwipeCount < maxSwipesPerDay,
           resetDate,
         };
-      }
-
-      // Increment swipe count
-      const newSwipeCount = currentSwipes + 1;
-
-      await db.collection("swipeLimits").doc(userId).update({
-        swipesToday: newSwipeCount,
-        resetDate,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-
-      return {
-        userId,
-        swipesToday: newSwipeCount,
-        maxSwipesPerDay: swipeLimitData.maxSwipesPerDay,
-        canSwipe: newSwipeCount < swipeLimitData.maxSwipesPerDay,
-        resetDate,
-      };
     } catch (error: any) {
-      console.error("Error incrementing swipe count:", error);
-
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-
       throw new functions.https.HttpsError(
         "internal",
         "Failed to increment swipe count"
@@ -243,74 +172,7 @@ export const incrementSwipeCount = functions.https.onCall(
   }
 );
 
-/**
- * Updates a user's swipe limit based on their premium status
- */
-export const updateSwipeLimit = functions.https.onCall(
-  {
-    region: "us-central1",
-    memory: "256MiB",
-    timeoutSeconds: 60,
-    minInstances: 0,
-    maxInstances: 10,
-    concurrency: 80,
-    cpu: 1,
-    ingressSettings: "ALLOW_ALL",
-    invoker: "public",
-  },
-  async (request: CallableRequest<{ userId: string; isPremium: boolean }>) => {
-    try {
-      if (!request.auth) {
-        throw new functions.https.HttpsError(
-          "unauthenticated",
-          "User must be authenticated"
-        );
-      }
-
-      const { userId, isPremium } = request.data;
-
-      if (!userId || isPremium === undefined) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "User ID and premium status are required"
-        );
-      }
-
-      // Verify the requesting user is accessing their own data
-      if (request.auth.uid !== userId) {
-        throw new functions.https.HttpsError(
-          "permission-denied",
-          "User can only update their own swipe limit"
-        );
-      }
-
-      const maxSwipesPerDay = 5; // Always use 5 swipes per day
-
-      // Update or create swipe limit document
-      await db.collection("swipeLimits").doc(userId).set(
-        {
-          userId,
-          maxSwipesPerDay,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-
-      return {
-        message: "Swipe limit updated successfully",
-        maxSwipesPerDay,
-      };
-    } catch (error: any) {
-      console.error("Error updating swipe limit:", error);
-
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
-      }
-
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to update swipe limit"
-      );
-    }
-  }
-);
+export const swipeLimitFunctions = {
+  getSwipeLimit,
+  incrementSwipeCount,
+};
