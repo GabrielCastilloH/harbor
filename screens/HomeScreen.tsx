@@ -132,18 +132,7 @@ export default function HomeScreen() {
           const newMatch = change.doc.data();
           const matchedUserId = newMatch.user1Id; // The user who swiped on you
 
-          try {
-            // Create chat channel for the new match
-            const chatResponse = await ChatFunctions.createChannel({
-              userId1: userId,
-              userId2: matchedUserId,
-            });
-          } catch (chatError) {
-            console.error(
-              "HomeScreen - [FIRESTORE][CHAT] Error creating chat channel:",
-              chatError
-            );
-          }
+          // Chat channel is now created automatically by the backend when match is created
 
           try {
             // To get the matched user's profile, fetch their data
@@ -460,33 +449,15 @@ export default function HomeScreen() {
         canSwipe: limitData.canSwipe,
       });
 
-      // Step 3: If it's a match, create chat channel and show modal
+      // Step 3: If it's a match, show modal
       if (response.match) {
-        try {
-          const chatResponse = await ChatFunctions.createChannel({
-            userId1: userId,
-            userId2: profile.uid,
-          });
-        } catch (chatError) {
-          console.error(
-            "❌ [NOTIFICATION] Error creating chat channel:",
-            chatError
-          );
-        }
+        // Chat channel is now created automatically by the backend
+        // Match viewed status is now handled automatically by the backend
 
         // Always show the match modal if a match is made
         setMatchedProfile(profile);
         setCurrentMatchId(response.matchId || null);
         setShowMatch(true);
-
-        // Mark match as viewed
-        if (response.matchId) {
-          try {
-            await MatchService.markMatchAsViewed(response.matchId, userId);
-          } catch (error) {
-            console.error("Error marking match as viewed:", error);
-          }
-        }
 
         // Clear recommendations since user is now in a match
         setRecommendations([]);
