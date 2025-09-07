@@ -3,7 +3,7 @@ import { Profile } from "../types/App";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { auth } from "../firebaseConfig";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { UserService } from "../networking/UserService";
+import { UserService, SwipeService } from "../networking";
 
 interface AppContextType {
   channel: any;
@@ -25,6 +25,14 @@ interface AppContextType {
   setProfileExists: (exists: boolean) => void;
   refreshAuthState: (user: User) => void;
   isBanned: boolean;
+  // 🚀 NEW: Centralized user data state
+  userProfile: Profile | null;
+  swipeLimit: {
+    swipesToday: number;
+    maxSwipesPerDay: number;
+    canSwipe: boolean;
+  } | null;
+  isLoadingUserData: boolean;
 }
 
 const defaultValue: AppContextType = {
@@ -47,6 +55,10 @@ const defaultValue: AppContextType = {
   setProfileExists: () => {},
   refreshAuthState: () => {},
   isBanned: false,
+  // 🚀 NEW: Default values for centralized user data
+  userProfile: null,
+  swipeLimit: null,
+  isLoadingUserData: false,
 };
 
 export const AppContext = React.createContext<AppContextType>(defaultValue);
@@ -71,6 +83,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     isInitialized: false,
     isBanned: false, // 💡 Unified state management
   });
+
+  // 🚀 NEW: Centralized user data state
+  const [userProfile, setUserProfile] = useState<Profile | null>(null);
+  const [swipeLimit, setSwipeLimit] = useState<{
+    swipesToday: number;
+    maxSwipesPerDay: number;
+    canSwipe: boolean;
+  } | null>(null);
+  const [isLoadingUserData, setIsLoadingUserData] = useState<boolean>(false);
 
   // 🏆 The Fix: Use a ref to prevent race conditions from duplicate listener calls
   const isProcessingAuthRef = useRef(false);
@@ -120,6 +141,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           isInitialized: true,
           isBanned: false, // 💡 Reset ban status on logout
         });
+
+        // 🚀 NEW: Clear centralized user data on logout
+        setUserProfile(null);
+        setSwipeLimit(null);
+        setIsLoadingUserData(false);
         return;
       }
 
@@ -178,6 +204,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           isInitialized: true,
           isBanned: false, // 💡 User has profile, not banned
         });
+
+        // 🚀 NEW: Fetch centralized user data after successful auth
+        fetchUserData(user.uid);
       } else {
         setAppState({
           ...appState,
@@ -218,6 +247,38 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       if (storedStreamUserToken) setStreamUserToken(storedStreamUserToken);
     } catch (error) {
       // Silent fail for Stream credentials loading
+    }
+  };
+
+  // 🚀 NEW: Centralized user data fetching
+  const fetchUserData = async (userId: string) => {
+    setIsLoadingUserData(true);
+    try {
+      // Fetch user profile and swipe limits in parallel
+      const [profileResponse, swipeLimitResponse] = await Promise.all([
+        UserService.getUserById(userId).catch(() => null), // Graceful fallback
+        SwipeService.countRecentSwipes(userId).catch(() => null), // Graceful fallback
+      ]);
+
+      // Set user profile
+      if (profileResponse && profileResponse.user) {
+        setUserProfile(profileResponse.user);
+      } else if (profileResponse) {
+        setUserProfile(profileResponse);
+      }
+
+      // Set swipe limit
+      if (swipeLimitResponse) {
+        setSwipeLimit({
+          swipesToday: swipeLimitResponse.swipesToday,
+          maxSwipesPerDay: swipeLimitResponse.maxSwipesPerDay,
+          canSwipe: swipeLimitResponse.canSwipe,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    } finally {
+      setIsLoadingUserData(false);
     }
   };
 
@@ -271,6 +332,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           setAppState({ ...appState, profileExists: exists }),
         refreshAuthState,
         isBanned,
+        // 🚀 NEW: Centralized user data
+        userProfile,
+        swipeLimit,
+        isLoadingUserData,
       }}
     >
       {children}
