@@ -323,7 +323,7 @@ export default function ChatScreen() {
       />
 
       {/* Clarity Bar */}
-      <ClarityBar clarityPercent={clarityPercent} />
+      <ClarityBar clarityPercent={clarityPercent} inChat={true} />
 
       <View style={styles.channelContainer}>
         <Channel channel={channel}>

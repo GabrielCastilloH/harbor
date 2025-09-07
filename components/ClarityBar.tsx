@@ -4,15 +4,25 @@ import Colors from "../constants/Colors";
 
 interface ClarityBarProps {
   clarityPercent?: number;
+  inChat?: boolean; // New prop to handle in-chat styles
 }
 
-const ClarityBar: React.FC<ClarityBarProps> = ({ clarityPercent }) => {
+const ClarityBar: React.FC<ClarityBarProps> = ({
+  clarityPercent,
+  inChat = false,
+}) => {
   if (typeof clarityPercent !== "number") {
     return null; // Don't render if there's no clarity percentage
   }
 
   return (
-    <View style={styles.clarityContainer}>
+    <View
+      style={[
+        styles.clarityContainer,
+        // Apply conditional styles for the chat screen
+        inChat && styles.inChatContainer,
+      ]}
+    >
       <Text style={styles.clarityLabel}>
         {Math.round(clarityPercent)}% Clear
       </Text>
@@ -38,6 +48,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 8,
+  },
+  // New conditional styles for in-chat implementation
+  inChatContainer: {
+    paddingHorizontal: 16,
+    backgroundColor: Colors.secondary100,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.secondary200,
   },
   clarityLabel: {
     marginRight: 8,
