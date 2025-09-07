@@ -20,6 +20,8 @@ import { useNavigation } from "@react-navigation/native";
 import { UserService } from "../networking";
 // import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
 import { usePremium } from "../hooks/usePremium";
+import { getUnifiedClarityPercent } from "../constants/blurConfig";
+import ClarityBar from "../components/ClarityBar";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
@@ -39,6 +41,9 @@ export default function ChatScreen() {
   const [consentStatus, setConsentStatus] = useState<any>(null);
   const [isMatchActive, setIsMatchActive] = useState<boolean>(false);
   const [hasMatchedUser, setHasMatchedUser] = useState<boolean>(false);
+  const [clarityPercent, setClarityPercent] = useState<number | undefined>(
+    undefined
+  );
   // debug counters removed
   const lastHandledMessageIdRef = useRef<string | null>(null);
   const lastAppliedFreezeRef = useRef<boolean | null>(null);
@@ -169,6 +174,13 @@ export default function ChatScreen() {
           if (consentStatusResponse && activeMatchId) {
             setConsentStatus(consentStatusResponse);
 
+            // Calculate initial clarity percentage
+            const clarity = getUnifiedClarityPercent({
+              messageCount: consentStatusResponse.messageCount,
+              bothConsented: consentStatusResponse.bothConsented,
+            });
+            setClarityPercent(clarity);
+
             const isSelfUser1 = consentStatusResponse.user1Id === userId;
             const showForSelf = isSelfUser1
               ? consentStatusResponse.shouldShowConsentForUser1
@@ -227,6 +239,13 @@ export default function ChatScreen() {
           // Check if we need to show consent screen
           const status = await ConsentService.getConsentStatus(matchId);
           setConsentStatus(status);
+
+          // Update clarity bar with latest data
+          const clarity = getUnifiedClarityPercent({
+            messageCount: status.messageCount,
+            bothConsented: status.bothConsented,
+          });
+          setClarityPercent(clarity);
 
           // Check if channel is frozen due to unmatch
           const isChannelFrozen = channel.data?.frozen || false;
@@ -302,6 +321,9 @@ export default function ChatScreen() {
           },
         }}
       />
+
+      {/* Clarity Bar */}
+      <ClarityBar clarityPercent={clarityPercent} />
 
       <View style={styles.channelContainer}>
         <Channel channel={channel}>
