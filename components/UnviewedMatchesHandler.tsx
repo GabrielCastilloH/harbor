@@ -15,10 +15,13 @@ export default function UnviewedMatchesHandler() {
   const [unviewedMatches, setUnviewedMatches] = useState<UnviewedMatch[]>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [showMatchModal, setShowMatchModal] = useState(false);
+  // ✅ NEW: State to track if we've already fetched matches this session
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
     const checkUnviewedMatches = async () => {
-      if (!isAuthenticated || !userId) {
+      // ✅ FIX: Don't run the fetch if we've already done it
+      if (!isAuthenticated || !userId || hasLoaded) {
         return;
       }
 
@@ -29,55 +32,42 @@ export default function UnviewedMatchesHandler() {
           setUnviewedMatches(response.matches);
           setCurrentMatchIndex(0);
           setShowMatchModal(true);
-
-          // Mark the first match as viewed
-          const firstMatch = response.matches[0];
-          if (firstMatch?.matchId && userId) {
-            try {
-              await MatchService.markMatchAsViewed(firstMatch.matchId, userId);
-            } catch (error) {
-              console.error("Error marking match as viewed:", error);
-            }
-          }
         }
       } catch (error) {
         console.error("Error checking unviewed matches:", error);
+      } finally {
+        // ✅ NEW: Set the flag to true after the fetch attempt, regardless of the outcome
+        setHasLoaded(true);
       }
     };
 
-    // Check for unviewed matches when app initializes
     checkUnviewedMatches();
-  }, [isAuthenticated, userId]);
+  }, [isAuthenticated, userId, hasLoaded]); // ✅ Update dependency array
 
   const handleMatchModalClose = async () => {
+    // Mark the current match as viewed before closing or moving to the next
     if (
       unviewedMatches.length > 0 &&
       currentMatchIndex < unviewedMatches.length
     ) {
       const currentMatch = unviewedMatches[currentMatchIndex];
-
-      // Move to next match or close modal
-      if (currentMatchIndex + 1 < unviewedMatches.length) {
-        setCurrentMatchIndex(currentMatchIndex + 1);
-
-        // Mark the next match as viewed
-        const nextMatch = unviewedMatches[currentMatchIndex + 1];
-        if (nextMatch?.matchId && userId) {
-          try {
-            await MatchService.markMatchAsViewed(nextMatch.matchId, userId);
-          } catch (error) {
-            console.error("Error marking match as viewed:", error);
-          }
+      if (currentMatch?.matchId && userId) {
+        try {
+          await MatchService.markMatchAsViewed(currentMatch.matchId, userId);
+        } catch (error) {
+          console.error("Error marking match as viewed:", error);
         }
-      } else {
-        setShowMatchModal(false);
-        setUnviewedMatches([]);
-        setCurrentMatchIndex(0);
       }
+    }
+
+    if (currentMatchIndex + 1 < unviewedMatches.length) {
+      setCurrentMatchIndex(currentMatchIndex + 1);
     } else {
+      // If no more unviewed matches, close the modal completely
       setShowMatchModal(false);
       setUnviewedMatches([]);
       setCurrentMatchIndex(0);
+      setHasLoaded(false); // ✅ NEW: Allow a re-fetch if component re-mounts
     }
   };
 

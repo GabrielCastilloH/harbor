@@ -9,6 +9,7 @@ import {
   Text,
 } from "react-native";
 import Colors from "../constants/Colors";
+import ClarityBar from "./ClarityBar";
 
 interface ImageItem {
   id: string;
@@ -91,36 +92,16 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
           )}
         </View>
 
-        {/* Move clarity row inside page wrapper so the card shadow flows above it */}
-        {typeof clarityPercent === "number" && (
-          <View
-            style={[
-              styles.clarityRow,
-              {
-                width: imageSize,
-                alignSelf: "center",
-                marginTop: 10,
-              },
-            ]}
-          >
-            <Text style={[styles.clarityLabel]}>
-              {Math.round(clarityPercent)}% Clear
-            </Text>
-            <View style={[styles.clarityTrack]}>
-              <View
-                style={[
-                  styles.clarityFill,
-                  {
-                    width: `${Math.max(
-                      0,
-                      Math.min(100, Math.round(clarityPercent))
-                    )}%`,
-                  },
-                ]}
-              />
-            </View>
-          </View>
-        )}
+        {/* Clarity Bar */}
+        <View
+          style={{
+            width: imageSize,
+            alignSelf: "center",
+            marginTop: 10,
+          }}
+        >
+          <ClarityBar clarityPercent={clarityPercent} />
+        </View>
       </View>
     );
   };
@@ -270,30 +251,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
   },
   activeDot: {
-    backgroundColor: Colors.primary500,
-  },
-  clarityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  clarityLabel: {
-    color: Colors.primary500,
-    fontWeight: "600",
-    fontSize: 14,
-    minWidth: 72,
-    textAlign: "left",
-  },
-  clarityTrack: {
-    flex: 1,
-    height: 8,
-    borderRadius: 8,
-    backgroundColor: "#e6eef1",
-    overflow: "hidden",
-  },
-  clarityFill: {
-    height: 8,
-    borderRadius: 8,
     backgroundColor: Colors.primary500,
   },
 });
