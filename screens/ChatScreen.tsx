@@ -113,77 +113,82 @@ export default function ChatScreen() {
 
   // (Removed) Immediate modal on frozen channel per user request
 
-  // Check consent state when component mounts or when we resolve a matchId
+  // 🚀 REMOVED: Redundant consent state checking - now handled in parallel fetch above
+  // Only handle match migration separately since it's a one-time operation
   useEffect(() => {
-    const checkConsentState = async () => {
-      if (!channel || !userId || !activeMatchId) return;
+    const migrateMatchConsent = async () => {
+      if (!activeMatchId) return;
       try {
-        // TEMPORARY: Migrate existing match to new consent fields
-        try {
-          await MatchService.migrateMatchConsent(activeMatchId);
-        } catch (migrationError) {}
-
-        const status = await ConsentService.getConsentStatus(activeMatchId);
-        setConsentStatus(status);
-
-        const isChannelFrozen = (channel.data as any)?.frozen || false;
-        const isSelfUser1 = status.user1Id === userId;
-        const showForSelf = isSelfUser1
-          ? status.shouldShowConsentForUser1
-          : status.shouldShowConsentForUser2;
-
-        // Always surface modal when current user must consent
-        setShowConsentModal(showForSelf);
-
-        // Chat should be frozen if:
-        // 1. Channel is frozen due to unmatch, OR
-        // 2. Consent screen should be shown for current user, OR
-        // 3. Consent screen should be shown for either user (meaning message threshold reached but not both consented)
-        const shouldFreezeChat =
-          isChannelFrozen || showForSelf || status.shouldShowConsentScreen;
-        setIsChatFrozen(shouldFreezeChat);
-
-        const currentUserConsented = isSelfUser1
-          ? status.user1Consented
-          : status.user2Consented;
-        setUserConsented(currentUserConsented);
-
-        // Do NOT sync server-side freeze for consent. Keep server freeze solely for real unmatch.
-      } catch (error) {
-        console.error("[#CONSENT] Error checking consent state:", error);
+        await MatchService.migrateMatchConsent(activeMatchId);
+      } catch (migrationError) {
+        // Silent fail for migration
       }
     };
-    checkConsentState();
-  }, [channel, userId, activeMatchId]);
+    migrateMatchConsent();
+  }, [activeMatchId]);
 
-  // Fetch matched user name and enable profile button immediately
+  // 🚀 OPTIMIZED: Fetch matched user data and consent status in parallel
   useEffect(() => {
-    const getMatchedUserName = async () => {
+    const fetchChatData = async () => {
       if (!channel || !userId) {
         return;
       }
 
       const otherMembers = channel?.state?.members || {};
-
       const otherUserId = Object.keys(otherMembers).find(
         (key) => key !== userId
       );
 
       if (otherUserId) {
         setMatchedUserId(otherUserId);
-        // Enable profile button immediately when we have a matched user
         setHasMatchedUser(true);
 
         try {
-          const response = await UserService.getUserById(otherUserId);
+          // 🚀 OPTIMIZATION: Fetch matched user profile and consent status in parallel
+          const [matchedProfileResponse, consentStatusResponse] =
+            await Promise.all([
+              UserService.getUserById(otherUserId).catch(() => null),
+              activeMatchId
+                ? ConsentService.getConsentStatus(activeMatchId).catch(
+                    () => null
+                  )
+                : Promise.resolve(null),
+            ]);
 
-          if (response) {
-            const userData = (response as any).user || response;
+          // Set matched user name
+          if (matchedProfileResponse) {
+            const userData =
+              (matchedProfileResponse as any).user || matchedProfileResponse;
             const firstName = userData.firstName || "User";
             setMatchedUserName(firstName);
+          } else {
+            setMatchedUserName("User");
+          }
+
+          // Set consent status if we have a match ID
+          if (consentStatusResponse && activeMatchId) {
+            setConsentStatus(consentStatusResponse);
+
+            const isSelfUser1 = consentStatusResponse.user1Id === userId;
+            const showForSelf = isSelfUser1
+              ? consentStatusResponse.shouldShowConsentForUser1
+              : consentStatusResponse.shouldShowConsentForUser2;
+
+            const isChannelFrozen = (channel.data as any)?.frozen || false;
+            setShowConsentModal(showForSelf);
+            setIsChatFrozen(
+              isChannelFrozen ||
+                showForSelf ||
+                consentStatusResponse.shouldShowConsentScreen
+            );
+
+            const currentUserConsented = isSelfUser1
+              ? consentStatusResponse.user1Consented
+              : consentStatusResponse.user2Consented;
+            setUserConsented(currentUserConsented);
           }
         } catch (error) {
-          console.error("Error fetching matched user name:", error);
+          console.error("Error fetching chat data:", error);
           setMatchedUserName("User");
         }
       } else {
@@ -191,8 +196,8 @@ export default function ChatScreen() {
       }
     };
 
-    getMatchedUserName();
-  }, [channel, userId]);
+    fetchChatData();
+  }, [channel, userId, activeMatchId]);
 
   // Set layout ready when we have the user name
   useEffect(() => {
