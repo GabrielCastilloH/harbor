@@ -171,6 +171,7 @@ export default function ChatNavigator() {
     streamUserToken,
     setStreamApiKey,
     setStreamUserToken,
+    setUnreadCount,
   } = useAppContext();
 
   const [profile, setProfile] = useState<any>(null);
@@ -450,6 +451,9 @@ export default function ChatNavigator() {
       try {
         const unreadCountResponse = await chatClient.getUnreadCount();
         const totalUnreadCount = unreadCountResponse.total_unread_count;
+
+        // Update global context for tab badge
+        setUnreadCount(totalUnreadCount);
 
         // Set the app icon badge number
         // CRITICAL: Add a platform check here - setBadge is iOS-only

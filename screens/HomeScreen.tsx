@@ -43,7 +43,16 @@ import { doc, onSnapshot, query, collection, where } from "firebase/firestore";
 import { RootStackParamList } from "../types/navigation";
 
 export default function HomeScreen() {
-  const { userId, isAuthenticated, currentUser, isBanned } = useAppContext();
+  const {
+    userId,
+    isAuthenticated,
+    currentUser,
+    isBanned,
+    // 🚀 NEW: Use centralized user data from AppContext
+    userProfile,
+    swipeLimit: contextSwipeLimit,
+    isLoadingUserData,
+  } = useAppContext();
   // const { signal } = useTelemetryDeck();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
@@ -51,14 +60,13 @@ export default function HomeScreen() {
     useState<boolean>(true);
   const [recommendationsFetched, setRecommendationsFetched] =
     useState<boolean>(false);
-  const [loadingProfile, setLoadingProfile] = useState<boolean>(true);
+  // 🚀 REMOVED: loadingProfile, userProfile, swipeLimit, loadingSwipeLimit - now handled by AppContext
   const [isNoPressed, setIsNoPressed] = useState(false);
   const [isYesPressed, setIsYesPressed] = useState(false);
   const [touchStart, setTouchStart] = useState({ x: 0, y: 0 });
   const [showMatch, setShowMatch] = useState(false);
   const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
-  const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [isUserActive, setIsUserActive] = useState<boolean>(true);
   const [swipeInProgress, setSwipeInProgress] = useState(false);
   const [lastSwipedProfile, setLastSwipedProfile] = useState<string | null>(
@@ -66,12 +74,6 @@ export default function HomeScreen() {
   );
   // PREMIUM DISABLED: Paywall state commented out
   // const [hasShownPaywall, setHasShownPaywall] = useState(false);
-  const [swipeLimit, setSwipeLimit] = useState<{
-    swipesToday: number;
-    maxSwipesPerDay: number;
-    canSwipe: boolean;
-  } | null>(null);
-  const [loadingSwipeLimit, setLoadingSwipeLimit] = useState<boolean>(true);
   const [currentCardProfile, setCurrentCardProfile] = useState<Profile | null>(
     null
   );
@@ -132,23 +134,12 @@ export default function HomeScreen() {
           const newMatch = change.doc.data();
           const matchedUserId = newMatch.user1Id; // The user who swiped on you
 
-          try {
-            // Create chat channel for the new match
-            const chatResponse = await ChatFunctions.createChannel({
-              userId1: userId,
-              userId2: matchedUserId,
-            });
-          } catch (chatError) {
-            console.error(
-              "HomeScreen - [FIRESTORE][CHAT] Error creating chat channel:",
-              chatError
-            );
-          }
+          // Chat channel is now created automatically by the backend when match is created
 
           try {
             // To get the matched user's profile, fetch their data
             const profile = await UserService.getUserById(matchedUserId);
-            if (profile) {
+            if (profile && userProfile) {
               setMatchedProfile(profile);
               setCurrentMatchId(change.doc.id);
               setShowMatch(true);
@@ -190,37 +181,14 @@ export default function HomeScreen() {
     refreshStreamNotificationToken();
   }, [userId, isAuthenticated, currentUser]);
 
+  // 🚀 REMOVED: fetchUserProfile useEffect - now handled by AppContext
+  // Update user active status when userProfile changes from AppContext
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!userId || !isAuthenticated || !currentUser) {
-        return;
-      }
-      setLoadingProfile(true);
-      try {
-        const response = await UserService.getUserById(userId);
-        if (response) {
-          const profile = response.user || response;
-          setUserProfile(profile);
-          // Set user active status (default to true if not specified)
-          setIsUserActive(profile.isActive !== false);
-        }
-      } catch (error: any) {
-        // If user not found, don't show error - they might be setting up their account
-        if (
-          error?.code === "not-found" ||
-          error?.code === "functions/not-found"
-        ) {
-          // User not found, skipping user profile fetch
-        } else {
-          console.error("❌ [HOMESCREEN] Error fetching user profile:", error);
-        }
-      } finally {
-        setLoadingProfile(false);
-      }
-    };
-
-    fetchUserProfile();
-  }, [userId, isAuthenticated, currentUser]);
+    if (userProfile) {
+      // Default to true if isActive property doesn't exist
+      setIsUserActive((userProfile as any).isActive !== false);
+    }
+  }, [userProfile]);
 
   // PREMIUM DISABLED: Paywall logic commented out
   // useEffect(() => {
@@ -246,30 +214,7 @@ export default function HomeScreen() {
   //   }
   // }, [userProfile, hasShownPaywall, userId]);
 
-  // Fetch swipe limits when user profile is loaded
-  useEffect(() => {
-    const fetchSwipeLimit = async () => {
-      if (!userId || !isAuthenticated) {
-        return;
-      }
-
-      setLoadingSwipeLimit(true);
-      try {
-        const limitData = await SwipeService.countRecentSwipes(userId);
-        setSwipeLimit({
-          swipesToday: limitData.swipesToday,
-          maxSwipesPerDay: limitData.maxSwipesPerDay,
-          canSwipe: limitData.canSwipe,
-        });
-      } catch (error) {
-        console.error("❌ [HOMESCREEN] Error fetching swipe limit:", error);
-      } finally {
-        setLoadingSwipeLimit(false);
-      }
-    };
-
-    fetchSwipeLimit();
-  }, [userId, isAuthenticated]);
+  // 🚀 REMOVED: fetchSwipeLimit useEffect - now handled by AppContext
 
   useEffect(() => {
     const fetchRecommendations = async () => {
@@ -413,11 +358,11 @@ export default function HomeScreen() {
     }
 
     // PREMIUM DISABLED: Swipe limit paywall commented out
-    if (swipeLimit && !swipeLimit.canSwipe) {
+    if (contextSwipeLimit && !contextSwipeLimit.canSwipe) {
       // Simply show alert without premium upgrade option
       Alert.alert(
         "Daily Limit Reached",
-        `You've used all ${swipeLimit.maxSwipesPerDay} swipes for today. Try again tomorrow!`
+        `You've used all ${contextSwipeLimit.maxSwipesPerDay} swipes for today. Try again tomorrow!`
       );
       return;
     }
@@ -452,45 +397,24 @@ export default function HomeScreen() {
         "right"
       );
 
-      // Step 2: Update swipe limit state
-      const limitData = await SwipeService.countRecentSwipes(userId);
-      setSwipeLimit({
-        swipesToday: limitData.swipesToday,
-        maxSwipesPerDay: limitData.maxSwipesPerDay,
-        canSwipe: limitData.canSwipe,
-      });
+      // 🚀 REMOVED: Swipe limit update - now handled by AppContext
+      // The swipe limit will be updated automatically by the backend
 
-      // Step 3: If it's a match, create chat channel and show modal
+      // Step 3: If it's a match, show modal
       if (response.match) {
-        try {
-          const chatResponse = await ChatFunctions.createChannel({
-            userId1: userId,
-            userId2: profile.uid,
-          });
-        } catch (chatError) {
-          console.error(
-            "❌ [NOTIFICATION] Error creating chat channel:",
-            chatError
-          );
+        // Chat channel is now created automatically by the backend
+        // Match viewed status is now handled automatically by the backend
+
+        // Only show the match modal if we have both profiles
+        if (userProfile) {
+          setMatchedProfile(profile);
+          setCurrentMatchId(response.matchId || null);
+          setShowMatch(true);
+
+          // Clear recommendations since user is now in a match
+          setRecommendations([]);
+          setCurrentProfile(null);
         }
-
-        // Always show the match modal if a match is made
-        setMatchedProfile(profile);
-        setCurrentMatchId(response.matchId || null);
-        setShowMatch(true);
-
-        // Mark match as viewed
-        if (response.matchId) {
-          try {
-            await MatchService.markMatchAsViewed(response.matchId, userId);
-          } catch (error) {
-            console.error("Error marking match as viewed:", error);
-          }
-        }
-
-        // Clear recommendations since user is now in a match
-        setRecommendations([]);
-        setCurrentProfile(null);
       } else {
         // Update current profile to the next one only if no match
         const currentIndex = recommendations.findIndex(
@@ -528,7 +452,7 @@ export default function HomeScreen() {
     }
 
     // Check swipe limit for left swipes too
-    if (swipeLimit && !swipeLimit.canSwipe) {
+    if (contextSwipeLimit && !contextSwipeLimit.canSwipe) {
       return;
     }
 
@@ -543,13 +467,8 @@ export default function HomeScreen() {
         "left"
       );
 
-      // Step 2: Update swipe limit state
-      const limitData = await SwipeService.countRecentSwipes(userId);
-      setSwipeLimit({
-        swipesToday: limitData.swipesToday,
-        maxSwipesPerDay: limitData.maxSwipesPerDay,
-        canSwipe: limitData.canSwipe,
-      });
+      // 🚀 REMOVED: Swipe limit update - now handled by AppContext
+      // The swipe limit will be updated automatically by the backend
 
       // Update current profile to the next one
       const currentIndex = recommendations.findIndex(
@@ -615,9 +534,8 @@ export default function HomeScreen() {
     // }
   };
 
-  // Show loading screen until all necessary data is loaded
-  const isLoading =
-    loadingProfile || loadingRecommendations || loadingSwipeLimit;
+  // 🚀 OPTIMIZED: Use centralized loading state from AppContext
+  const isLoading = isLoadingUserData || loadingRecommendations;
   const hasRequiredData = userId && isAuthenticated && currentUser;
   const hasCompletedInitialLoad = recommendationsFetched;
 
