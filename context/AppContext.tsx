@@ -33,6 +33,9 @@ interface AppContextType {
     canSwipe: boolean;
   } | null;
   isLoadingUserData: boolean;
+  // 🚀 NEW: Global unread count for chat badge
+  unreadCount: number;
+  setUnreadCount: (count: number) => void;
 }
 
 const defaultValue: AppContextType = {
@@ -59,6 +62,8 @@ const defaultValue: AppContextType = {
   userProfile: null,
   swipeLimit: null,
   isLoadingUserData: false,
+  unreadCount: 0,
+  setUnreadCount: () => {},
 };
 
 export const AppContext = React.createContext<AppContextType>(defaultValue);
@@ -92,6 +97,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     canSwipe: boolean;
   } | null>(null);
   const [isLoadingUserData, setIsLoadingUserData] = useState<boolean>(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
   // 🏆 The Fix: Use a ref to prevent race conditions from duplicate listener calls
   const isProcessingAuthRef = useRef(false);
@@ -336,6 +342,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         userProfile,
         swipeLimit,
         isLoadingUserData,
+        // 🚀 NEW: Unread count for chat
+        unreadCount,
+        setUnreadCount,
       }}
     >
       {children}
