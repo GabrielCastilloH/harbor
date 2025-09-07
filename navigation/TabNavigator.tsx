@@ -12,7 +12,7 @@ import Colors from "../constants/Colors";
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
-  const { currentUser } = useAppContext();
+  const { currentUser, unreadCount } = useAppContext();
 
   // Initialize Stream notifications when TabNavigator loads (after account setup)
   useEffect(() => {
@@ -62,6 +62,7 @@ export default function TabNavigator() {
         options={{
           title: "Chats",
           headerShown: false,
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
           ),
