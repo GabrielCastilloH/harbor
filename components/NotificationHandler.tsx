@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 import messaging from "@react-native-firebase/messaging";
 import notifee, { EventType } from "@notifee/react-native";
 import { NavigationContainerRef } from "@react-navigation/native";
-import { StreamChat } from "stream-chat";
 
 interface NotificationHandlerProps {
   navigationRef: React.RefObject<NavigationContainerRef<any> | null>;
@@ -39,36 +38,14 @@ export default function NotificationHandler({
       .getInitialNotification()
       .then((remoteMessage) => {
         if (remoteMessage) {
-          // Navigate to relevant channel screen for Stream Chat messages
-          if (
-            remoteMessage.data?.type === "message.new" &&
-            remoteMessage.data?.channel_id
-          ) {
-            const channelId = remoteMessage.data.channel_id;
-            // Delay navigation to ensure navigation is ready
-            setTimeout(() => {
-              navigationRef.current?.navigate("ChatsTab", {
-                screen: "ChatScreen",
-                params: { channelId },
-              });
-            }, 1000);
-          }
+          // App launched from iOS notification (quit state). Do not navigate.
         }
       });
 
     // Handle notification opened app from quit state (Android)
     notifee.getInitialNotification().then((initialNotification) => {
       if (initialNotification) {
-        const channelId = initialNotification.notification.data?.channel_id;
-        if (channelId) {
-          // Delay navigation to ensure navigation is ready
-          setTimeout(() => {
-            navigationRef.current?.navigate("ChatsTab", {
-              screen: "ChatScreen",
-              params: { channelId },
-            });
-          }, 1000);
-        }
+        // App launched from Android notification (quit state). Do not navigate.
       }
     });
 
