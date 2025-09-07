@@ -7,7 +7,7 @@ export const BLUR_CONFIG = {
 
   // Message thresholds
   MESSAGES_TO_CLEAR_BLUR: 30, // 100% → 0% fake unblur (really 100% → 80%)
-  MESSAGES_TO_CLEAR_ORIGINAL: 40, // 80% → 0% real unblur after consent (changed from 50 to 40)
+  MESSAGES_TO_CLEAR_ORIGINAL: 10, // 80% → 0% real unblur after consent (changed from 40 to 10)
 };
 
 export function getClientBlurLevel({

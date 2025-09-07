@@ -553,7 +553,7 @@ export const BLUR_CONFIG = {
   SERVER_BLUR_PERCENT: 80, // Server-side blur for _blurred.jpg
   CLIENT_MAX_BLUR_RADIUS: 50, // Max React Native blur radius
   MESSAGES_TO_CLEAR_BLUR: 30, // Phase 1: 100% → 0% fake unblur
-  MESSAGES_TO_CLEAR_ORIGINAL: 50, // Phase 2: 80% → 0% real unblur
+  MESSAGES_TO_CLEAR_ORIGINAL: 10, // Phase 2: 80% → 0% real unblur
 };
 ```
 
