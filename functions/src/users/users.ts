@@ -59,9 +59,9 @@ interface CreateUserData {
   sexualOrientation?: string;
   images?: string[];
   aboutMe?: string;
-  q1?: string;
-  q2?: string;
-  q3?: string;
+  q1?: string; // "Together we could"
+  q2?: string; // "Favorite book, movie or song"
+  q3?: string; // "Some of my hobbies are"
   email: string;
 }
 
@@ -75,9 +75,9 @@ interface UpdateUserData {
   images?: string[];
   oldImages?: string[]; // Add oldImages for cleanup
   aboutMe?: string;
-  q1?: string;
-  q2?: string;
-  q3?: string;
+  q1?: string; // "Together we could"
+  q2?: string; // "Favorite book, movie or song"
+  q3?: string; // "Some of my hobbies are"
 }
 
 /**
@@ -179,34 +179,16 @@ export const createUser = functions.https.onCall(
           field: "q1",
           maxLength: 100,
           minLength: 5,
-          name: "answer to 'This year, I really want to'",
+          name: "answer to 'Together we could'",
         },
         {
           field: "q2",
           maxLength: 100,
           minLength: 5,
-          name: "answer to 'Together we could'",
-        },
-        {
-          field: "q3",
-          maxLength: 100,
-          minLength: 5,
           name: "answer to 'Favorite book, movie or song'",
         },
         {
-          field: "q4",
-          maxLength: 100,
-          minLength: 5,
-          name: "answer to 'I chose my major because'",
-        },
-        {
-          field: "q5",
-          maxLength: 100,
-          minLength: 5,
-          name: "answer to 'My favorite study spot is'",
-        },
-        {
-          field: "q6",
+          field: "q3",
           maxLength: 100,
           minLength: 5,
           name: "answer to 'Some of my hobbies are'",
@@ -588,34 +570,16 @@ export const updateUser = functions.https.onCall(
           field: "q1",
           maxLength: 100,
           minLength: 5,
-          name: "answer to 'This year, I really want to'",
+          name: "answer to 'Together we could'",
         },
         {
           field: "q2",
           maxLength: 100,
           minLength: 5,
-          name: "answer to 'Together we could'",
-        },
-        {
-          field: "q3",
-          maxLength: 100,
-          minLength: 5,
           name: "answer to 'Favorite book, movie or song'",
         },
         {
-          field: "q4",
-          maxLength: 100,
-          minLength: 5,
-          name: "answer to 'I chose my major because'",
-        },
-        {
-          field: "q5",
-          maxLength: 100,
-          minLength: 5,
-          name: "answer to 'My favorite study spot is'",
-        },
-        {
-          field: "q6",
+          field: "q3",
           maxLength: 100,
           minLength: 5,
           name: "answer to 'Some of my hobbies are'",
