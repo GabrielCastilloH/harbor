@@ -201,9 +201,6 @@ export default function AccountSetupScreen({
         q1: profileData.q1,
         q2: profileData.q2,
         q3: profileData.q3,
-        q4: profileData.q4,
-        q5: profileData.q5,
-        q6: profileData.q6,
         images: imageFilenames, // Send the filenames as strings, not URLs
       };
 
