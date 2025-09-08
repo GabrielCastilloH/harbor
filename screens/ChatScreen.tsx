@@ -4,8 +4,8 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
-  Platform, // Import Platform to check OS
-  KeyboardAvoidingView, // Import KeyboardAvoidingView
+  Platform,
+  Keyboard,
 } from "react-native";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Channel, MessageInput, MessageList } from "stream-chat-react-native";
@@ -20,14 +20,13 @@ import HeaderBack from "../components/HeaderBack";
 import LoadingScreen from "../components/LoadingScreen";
 import { useNavigation } from "@react-navigation/native";
 import { UserService } from "../networking";
-// import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
 import { usePremium } from "../hooks/usePremium";
 import { getUnifiedClarityPercent } from "../constants/blurConfig";
 import ClarityBar from "../components/ClarityBar";
+import { useSafeAreaInsets } from "react-native-safe-area-context"; // ⚠️ Import the hook
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
-  // const { signal } = useTelemetryDeck();
   const navigation = useNavigation();
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [isChatFrozen, setIsChatFrozen] = useState(false);
@@ -35,7 +34,6 @@ export default function ChatScreen() {
   const [matchedUserName, setMatchedUserName] = useState<string>("Loading...");
   const [matchedUserId, setMatchedUserId] = useState<string>("");
   const [isLayoutReady, setIsLayoutReady] = useState(false);
-  // local consent status object is not needed beyond immediate decisions; avoid storing full object
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
   const [consentSubmitting, setConsentSubmitting] = useState<
     null | "unmatch" | "continue"
@@ -46,31 +44,25 @@ export default function ChatScreen() {
   const [clarityPercent, setClarityPercent] = useState<number | undefined>(
     undefined
   );
-  // debug counters removed
   const lastHandledMessageIdRef = useRef<string | null>(null);
   const lastAppliedFreezeRef = useRef<boolean | null>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-  // debug logger removed
+  // ⚠️ Get safe area insets
+  const insets = useSafeAreaInsets();
 
-  // Default resolver: always compute matchId from the other channel member via backend
   const fetchAndApplyConsentStatus = useCallback(
     async (matchId: string) => {
       try {
         const status = await ConsentService.getConsentStatus(matchId);
         setConsentStatus(status);
-
         const isSelfUser1 = status.user1Id === userId;
         const showForSelf = isSelfUser1
           ? status.shouldShowConsentForUser1
           : status.shouldShowConsentForUser2;
-
         const channelFrozen = Boolean((channel as any)?.data?.frozen);
-        // Show modal only when consent logic requires it; keep chat frozen if server says so
         setShowConsentModal(showForSelf);
         setIsChatFrozen(channelFrozen || showForSelf);
-
-        // IMPORTANT: Never toggle server-side channel freeze for consent flow.
-        // We only soft-freeze locally so the header/message doesn't imply "unmatched".
       } catch (e) {
         console.error("[#CONSENT] fetchAndApplyConsentStatus error:", e);
       }
@@ -92,7 +84,6 @@ export default function ChatScreen() {
       if (fetchedMatchId) {
         setActiveMatchId(fetchedMatchId);
         setIsMatchActive(true);
-        // Start consent UI fetch immediately for faster modal display
         fetchAndApplyConsentStatus(fetchedMatchId);
         return fetchedMatchId;
       } else {
@@ -105,53 +96,54 @@ export default function ChatScreen() {
     return null;
   }, [channel, userId, fetchAndApplyConsentStatus]);
 
-  // Removed: tab bar hide/show logic to keep tab bar visible on ChatScreen
-
-  // Resolve matchId when channel/user changes
   useEffect(() => {
     resolveMatchId();
   }, [resolveMatchId]);
 
-  // Track page view for TelemetryDeck
   useEffect(() => {
-    // Send a signal whenever this screen is viewed
-    // signal("pageview", { screen: "Chat" });
-  }, []);
+    // ⚠️ Updated Keyboard event listeners
+    const keyboardWillShowSub = Keyboard.addListener(
+      "keyboardWillShow",
+      (e) => {
+        // Subtract the bottom safe area inset and a custom constant for iOS
+        const constantToSubtract = Platform.OS === "ios" ? 34 : 0;
+        setKeyboardHeight(
+          e.endCoordinates.height - insets.bottom - constantToSubtract
+        );
+      }
+    );
+    const keyboardWillHideSub = Keyboard.addListener("keyboardWillHide", () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      keyboardWillShowSub.remove();
+      keyboardWillHideSub.remove();
+    };
+  }, [insets.bottom]); // ⚠️ Add insets.bottom as a dependency
 
-  // (Removed) Immediate modal on frozen channel per user request
-
-  // 🚀 REMOVED: Redundant consent state checking - now handled in parallel fetch above
-  // Only handle match migration separately since it's a one-time operation
   useEffect(() => {
     const migrateMatchConsent = async () => {
       if (!activeMatchId) return;
       try {
         await MatchService.migrateMatchConsent(activeMatchId);
-      } catch (migrationError) {
-        // Silent fail for migration
-      }
+      } catch (migrationError) {}
     };
     migrateMatchConsent();
   }, [activeMatchId]);
 
-  // 🚀 OPTIMIZED: Fetch matched user data and consent status in parallel
   useEffect(() => {
     const fetchChatData = async () => {
       if (!channel || !userId) {
         return;
       }
-
       const otherMembers = channel?.state?.members || {};
       const otherUserId = Object.keys(otherMembers).find(
         (key) => key !== userId
       );
-
       if (otherUserId) {
         setMatchedUserId(otherUserId);
         setHasMatchedUser(true);
-
         try {
-          // 🚀 OPTIMIZATION: Fetch matched user profile and consent status in parallel
           const [matchedProfileResponse, consentStatusResponse] =
             await Promise.all([
               UserService.getUserById(otherUserId).catch(() => null),
@@ -161,8 +153,6 @@ export default function ChatScreen() {
                   )
                 : Promise.resolve(null),
             ]);
-
-          // Set matched user name
           if (matchedProfileResponse) {
             const userData =
               (matchedProfileResponse as any).user || matchedProfileResponse;
@@ -171,23 +161,17 @@ export default function ChatScreen() {
           } else {
             setMatchedUserName("User");
           }
-
-          // Set consent status if we have a match ID
           if (consentStatusResponse && activeMatchId) {
             setConsentStatus(consentStatusResponse);
-
-            // Calculate initial clarity percentage
             const clarity = getUnifiedClarityPercent({
               messageCount: consentStatusResponse.messageCount,
               bothConsented: consentStatusResponse.bothConsented,
             });
             setClarityPercent(clarity);
-
             const isSelfUser1 = consentStatusResponse.user1Id === userId;
             const showForSelf = isSelfUser1
               ? consentStatusResponse.shouldShowConsentForUser1
               : consentStatusResponse.shouldShowConsentForUser2;
-
             const isChannelFrozen = (channel.data as any)?.frozen || false;
             setShowConsentModal(showForSelf);
             setIsChatFrozen(
@@ -195,7 +179,6 @@ export default function ChatScreen() {
                 showForSelf ||
                 consentStatusResponse.shouldShowConsentScreen
             );
-
             const currentUserConsented = isSelfUser1
               ? consentStatusResponse.user1Consented
               : consentStatusResponse.user2Consented;
@@ -209,11 +192,9 @@ export default function ChatScreen() {
         setHasMatchedUser(false);
       }
     };
-
     fetchChatData();
   }, [channel, userId, activeMatchId]);
 
-  // Set layout ready when we have the user name
   useEffect(() => {
     if (matchedUserName !== "Loading...") {
       setIsLayoutReady(true);
@@ -224,8 +205,6 @@ export default function ChatScreen() {
     if (!channel) {
       return;
     }
-
-    // Set up message listener
     const handleNewMessage = async (event: any) => {
       const matchId = activeMatchId || (await resolveMatchId());
       const eventId = event?.message?.id;
@@ -235,23 +214,15 @@ export default function ChatScreen() {
       if (eventId) lastHandledMessageIdRef.current = eventId;
       if (matchId) {
         try {
-          // First increment the message count
           await updateMessageCount(matchId);
-
-          // Check if we need to show consent screen
           const status = await ConsentService.getConsentStatus(matchId);
           setConsentStatus(status);
-
-          // Update clarity bar with latest data
           const clarity = getUnifiedClarityPercent({
             messageCount: status.messageCount,
             bothConsented: status.bothConsented,
           });
           setClarityPercent(clarity);
-
-          // Check if channel is frozen due to unmatch
           const isChannelFrozen = channel.data?.frozen || false;
-
           if (isChannelFrozen) {
             setIsChatFrozen(true);
             setShowConsentModal(false);
@@ -260,33 +231,22 @@ export default function ChatScreen() {
             const showForSelf = isSelfUser1
               ? status.shouldShowConsentForUser1
               : status.shouldShowConsentForUser2;
-
-            // Chat should be frozen if:
-            // 1. Consent screen should be shown for current user, OR
-            // 2. Consent screen should be shown for either user (meaning message threshold reached but not both consented)
             const shouldFreezeChat =
               showForSelf || status.shouldShowConsentScreen;
             setIsChatFrozen(shouldFreezeChat);
             setShowConsentModal(showForSelf);
-
-            // Do NOT touch server-side freeze/unfreeze for consent flow
           }
         } catch (error) {
           console.error("[#CONSENT] message.new error:", error);
         }
       }
     };
-
-    // Subscribe to new message events
     channel.on("message.new", handleNewMessage);
-
-    // Cleanup listener on unmount
     return () => {
       channel.off("message.new", handleNewMessage);
     };
   }, [channel, userId, activeMatchId, resolveMatchId]);
 
-  // Don't render the main content until layout is ready to prevent jarring shifts
   if (!isLayoutReady) {
     return (
       <View style={styles.loadingContainer}>
@@ -297,6 +257,10 @@ export default function ChatScreen() {
       </View>
     );
   }
+
+  const dismissTheKeyboard = () => {
+    Keyboard.dismiss();
+  };
 
   return (
     <View style={styles.container}>
@@ -323,16 +287,16 @@ export default function ChatScreen() {
           },
         }}
       />
-
-      {/* Clarity Bar */}
       <ClarityBar clarityPercent={clarityPercent} inChat={true} />
-
-      <KeyboardAvoidingView // Use KeyboardAvoidingView here
-        behavior={Platform.OS === "ios" ? "padding" : "height"} // Set behavior based on OS
-        style={styles.keyboardAvoidingView} // Apply a new style for the view
+      <Pressable
+        style={styles.fullScreenPressable}
+        onPress={dismissTheKeyboard}
       >
         <Channel channel={channel} disableKeyboardCompatibleView>
-          <View style={styles.channelContent}>
+          {/* ⚠️ Adjust paddingBottom by subtracting the safe area inset */}
+          <View
+            style={[styles.channelContent, { paddingBottom: keyboardHeight }]}
+          >
             <MessageList />
             {isChatFrozen ? (
               <View style={styles.disabledContainer}>
@@ -349,106 +313,98 @@ export default function ChatScreen() {
             )}
           </View>
         </Channel>
+      </Pressable>
 
-        {/* Consent Modal - Inside the Channel view */}
-        {showConsentModal && (
-          <View style={styles.modalOverlay}>
-            <View style={styles.warningModalContent}>
-              <Text style={styles.warningTitle}>Photos Will Be Revealed</Text>
-              <Text style={styles.warningText}>
-                You have been talking to your match for a short while. Your
-                photos will start becoming clearer. This is your last chance to
-                unmatch while remaining anonymous.
-              </Text>
-              <View style={styles.warningButtons}>
-                <Pressable
-                  style={[
-                    styles.warningButton,
-                    styles.unmatchButton,
-                    consentSubmitting ? { opacity: 0.7 } : null,
-                  ]}
-                  disabled={!!consentSubmitting}
-                  onPress={async () => {
-                    if (consentSubmitting) return;
-                    setConsentSubmitting("unmatch");
+      {showConsentModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.warningModalContent}>
+            <Text style={styles.warningTitle}>Photos Will Be Revealed</Text>
+            <Text style={styles.warningText}>
+              You have been talking to your match for a short while. Your photos
+              will start becoming clearer. This is your last chance to unmatch
+              while remaining anonymous.
+            </Text>
+            <View style={styles.warningButtons}>
+              <Pressable
+                style={[
+                  styles.warningButton,
+                  styles.unmatchButton,
+                  consentSubmitting ? { opacity: 0.7 } : null,
+                ]}
+                disabled={!!consentSubmitting}
+                onPress={async () => {
+                  if (consentSubmitting) return;
+                  setConsentSubmitting("unmatch");
+                  try {
+                    const matchId = activeMatchId || (await resolveMatchId());
+                    if (!matchId || !userId) return;
+                    await ConsentService.updateConsent(matchId, userId, false);
                     try {
-                      const matchId = activeMatchId || (await resolveMatchId());
-                      if (!matchId || !userId) return;
-                      await ConsentService.updateConsent(
-                        matchId,
-                        userId,
-                        false
-                      );
-                      // Server freeze for explicit unmatch only
-                      try {
-                        const channelId =
-                          (channel as any)?.id ||
-                          (channel as any)?.cid?.split(":")[1];
-                        if (channelId) {
-                          await fetchUpdateChannelChatStatus(channelId, true);
-                          lastAppliedFreezeRef.current = true;
-                        }
-                      } catch {}
-                      setIsChatFrozen(true);
-                      setShowConsentModal(false);
-                    } catch (e) {
-                      console.error("[#CONSENT] Unmatch/decline error:", e);
-                    } finally {
-                      setConsentSubmitting(null);
-                    }
-                  }}
-                >
-                  {consentSubmitting === "unmatch" ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={styles.warningButtonText}>Unmatch</Text>
-                  )}
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.warningButton,
-                    styles.continueButton,
-                    consentSubmitting ? { opacity: 0.7 } : null,
-                  ]}
-                  disabled={!!consentSubmitting}
-                  onPress={async () => {
-                    if (consentSubmitting) return;
-                    setConsentSubmitting("continue");
-                    try {
-                      const matchId = activeMatchId || (await resolveMatchId());
-                      if (!matchId || !userId) return;
-                      const res = await ConsentService.updateConsent(
-                        matchId,
-                        userId,
-                        true
-                      );
-                      if (res.bothConsented) {
-                        // Backend now sends system message when both consent.
-                        // Locally unfreeze UI.
-                        setIsChatFrozen(false);
-                        setShowConsentModal(false);
-                      } else {
-                        setShowConsentModal(false);
-                        setIsChatFrozen(true);
+                      const channelId =
+                        (channel as any)?.id ||
+                        (channel as any)?.cid?.split(":")[1];
+                      if (channelId) {
+                        await fetchUpdateChannelChatStatus(channelId, true);
+                        lastAppliedFreezeRef.current = true;
                       }
-                    } catch (e) {
-                      console.error("[#CONSENT] Continue error:", e);
-                    } finally {
-                      setConsentSubmitting(null);
+                    } catch {}
+                    setIsChatFrozen(true);
+                    setShowConsentModal(false);
+                  } catch (e) {
+                    console.error("[#CONSENT] Unmatch/decline error:", e);
+                  } finally {
+                    setConsentSubmitting(null);
+                  }
+                }}
+              >
+                {consentSubmitting === "unmatch" ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.warningButtonText}>Unmatch</Text>
+                )}
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.warningButton,
+                  styles.continueButton,
+                  consentSubmitting ? { opacity: 0.7 } : null,
+                ]}
+                disabled={!!consentSubmitting}
+                onPress={async () => {
+                  if (consentSubmitting) return;
+                  setConsentSubmitting("continue");
+                  try {
+                    const matchId = activeMatchId || (await resolveMatchId());
+                    if (!matchId || !userId) return;
+                    const res = await ConsentService.updateConsent(
+                      matchId,
+                      userId,
+                      true
+                    );
+                    if (res.bothConsented) {
+                      setIsChatFrozen(false);
+                      setShowConsentModal(false);
+                    } else {
+                      setShowConsentModal(false);
+                      setIsChatFrozen(true);
                     }
-                  }}
-                >
-                  {consentSubmitting === "continue" ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={styles.warningButtonText}>Continue</Text>
-                  )}
-                </Pressable>
-              </View>
+                  } catch (e) {
+                    console.error("[#CONSENT] Continue error:", e);
+                  } finally {
+                    setConsentSubmitting(null);
+                  }
+                }}
+              >
+                {consentSubmitting === "continue" ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.warningButtonText}>Continue</Text>
+                )}
+              </Pressable>
             </View>
           </View>
-        )}
-      </KeyboardAvoidingView>
+        </View>
+      )}
     </View>
   );
 }
@@ -458,17 +414,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "white",
   },
-  keyboardAvoidingView: {
+  fullScreenPressable: {
     flex: 1,
-  },
-  channelContainer: {
-    flex: 1,
-    backgroundColor: "white",
   },
   channelContent: {
     flex: 1,
     backgroundColor: "white",
-    // Remove the manual padding here
   },
   disabledContainer: {
     padding: 16,
