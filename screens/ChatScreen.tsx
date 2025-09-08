@@ -4,6 +4,8 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
+  Platform, // Import Platform to check OS
+  KeyboardAvoidingView, // Import KeyboardAvoidingView
 } from "react-native";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Channel, MessageInput, MessageList } from "stream-chat-react-native";
@@ -325,8 +327,11 @@ export default function ChatScreen() {
       {/* Clarity Bar */}
       <ClarityBar clarityPercent={clarityPercent} inChat={true} />
 
-      <View style={styles.channelContainer}>
-        <Channel channel={channel}>
+      <KeyboardAvoidingView // Use KeyboardAvoidingView here
+        behavior={Platform.OS === "ios" ? "padding" : "height"} // Set behavior based on OS
+        style={styles.keyboardAvoidingView} // Apply a new style for the view
+      >
+        <Channel channel={channel} disableKeyboardCompatibleView>
           <View style={styles.channelContent}>
             <MessageList />
             {isChatFrozen ? (
@@ -443,7 +448,7 @@ export default function ChatScreen() {
             </View>
           </View>
         )}
-      </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -453,6 +458,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "white",
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   channelContainer: {
     flex: 1,
     backgroundColor: "white",
@@ -460,7 +468,7 @@ const styles = StyleSheet.create({
   channelContent: {
     flex: 1,
     backgroundColor: "white",
-    paddingBottom: 35, // Manual keyboard spacing to avoid KeyboardAvoidingView conflicts with Stream Chat
+    // Remove the manual padding here
   },
   disabledContainer: {
     padding: 16,
