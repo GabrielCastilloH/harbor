@@ -23,7 +23,7 @@ import { UserService } from "../networking";
 import { usePremium } from "../hooks/usePremium";
 import { getUnifiedClarityPercent } from "../constants/blurConfig";
 import ClarityBar from "../components/ClarityBar";
-import { useSafeAreaInsets } from "react-native-safe-area-context"; // ⚠️ Import the hook
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
@@ -48,7 +48,6 @@ export default function ChatScreen() {
   const lastAppliedFreezeRef = useRef<boolean | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-  // ⚠️ Get safe area insets
   const insets = useSafeAreaInsets();
 
   const fetchAndApplyConsentStatus = useCallback(
@@ -101,11 +100,9 @@ export default function ChatScreen() {
   }, [resolveMatchId]);
 
   useEffect(() => {
-    // ⚠️ Updated Keyboard event listeners
     const keyboardWillShowSub = Keyboard.addListener(
       "keyboardWillShow",
       (e) => {
-        // Subtract the bottom safe area inset and a custom constant for iOS
         const constantToSubtract = Platform.OS === "ios" ? 34 : 0;
         setKeyboardHeight(
           e.endCoordinates.height - insets.bottom - constantToSubtract
@@ -119,7 +116,7 @@ export default function ChatScreen() {
       keyboardWillShowSub.remove();
       keyboardWillHideSub.remove();
     };
-  }, [insets.bottom]); // ⚠️ Add insets.bottom as a dependency
+  }, [insets.bottom]);
 
   useEffect(() => {
     const migrateMatchConsent = async () => {
@@ -293,7 +290,6 @@ export default function ChatScreen() {
         onPress={dismissTheKeyboard}
       >
         <Channel channel={channel} disableKeyboardCompatibleView>
-          {/* ⚠️ Adjust paddingBottom by subtracting the safe area inset */}
           <View
             style={[styles.channelContent, { paddingBottom: keyboardHeight }]}
           >
