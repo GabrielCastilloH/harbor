@@ -77,7 +77,7 @@ export default function BannedAccountScreen() {
 
         {/* Harbor Logo/Branding */}
         <View style={styles.brandingContainer}>
-          <Text style={styles.brandingText}>Harbor Relationship App</Text>
+          <Text style={styles.brandingText}>Harbor</Text>
           <Text style={styles.brandingSubtext}>
             Community Guidelines Matter
           </Text>

@@ -332,7 +332,7 @@ export default function ProfileScreen() {
         <View style={styles.unmatchedContainer}>
           <Text style={styles.unmatchedText}>
             You are not allowed to view profiles of people you are no longer
-            matched with.
+            connected with.
           </Text>
         </View>
       </View>
@@ -503,11 +503,11 @@ export default function ProfileScreen() {
                 <View style={styles.unmatchLoadingContainer}>
                   <ActivityIndicator size="small" color={Colors.secondary100} />
                   <Text style={styles.unmatchButtonTextFull}>
-                    Unmatching...
+                    Un-connecting...
                   </Text>
                 </View>
               ) : (
-                <Text style={styles.unmatchButtonTextFull}>Unmatch</Text>
+                <Text style={styles.unmatchButtonTextFull}>Un-connect</Text>
               )}
             </Pressable>
           </View>
