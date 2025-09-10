@@ -437,7 +437,12 @@ export const getUserById = functions.https.onCall(
       // Remove sensitive data from the response for security
       if (userData) {
         const { images, email, ...userDataWithoutSensitiveInfo } = userData;
-        return { user: userDataWithoutSensitiveInfo };
+        return {
+          user: {
+            ...userDataWithoutSensitiveInfo,
+            uid: userDoc.id, // Add the document ID as uid
+          },
+        };
       }
 
       return { user: userData };

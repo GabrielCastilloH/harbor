@@ -65,12 +65,23 @@ export default function StudyGroupConnectionsScreen() {
   };
 
   const handleMemberPress = (member: Profile) => {
-    if (member.uid && member.uid !== currentUserId) {
-      (navigation as any).navigate("ProfileScreen", {
-        userId: member.uid,
-        matchId: null,
-      });
+    // Check if the member has a valid uid
+    if (!member.uid) {
+      console.error("Member has no UID, cannot navigate to profile.");
+      return;
     }
+
+    // Prevent self-navigation
+    if (member.uid === currentUserId) {
+      console.log("You cannot view your own profile from here.");
+      return;
+    }
+
+    // Navigate to the profile screen
+    (navigation as any).navigate("ProfileScreen", {
+      userId: member.uid,
+      matchId: null,
+    });
   };
 
   const renderMember = ({ item }: { item: Profile }) => (
