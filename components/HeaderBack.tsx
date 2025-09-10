@@ -9,7 +9,9 @@ interface HeaderBackProps {
   onBack: () => void;
   onTitlePress?: () => void;
   rightIcon?: {
-    name: string;
+    name?: string;
+    text?: string;
+    textStyle?: any;
     onPress: () => void;
     disabled?: boolean;
   };
@@ -74,11 +76,15 @@ export default function HeaderBack({
             }}
             disabled={rightIcon.disabled}
           >
-            <Ionicons
-              name={rightIcon.name as any}
-              size={24}
-              color={Colors.primary500}
-            />
+            {rightIcon.text ? (
+              <Text style={rightIcon.textStyle}>{rightIcon.text}</Text>
+            ) : (
+              <Ionicons
+                name={rightIcon.name as any}
+                size={24}
+                color={Colors.primary500}
+              />
+            )}
           </Pressable>
         ) : (
           <View style={{ width: 40 }} />
