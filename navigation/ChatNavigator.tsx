@@ -25,6 +25,7 @@ import {
 import { NavigationProp } from "@react-navigation/native";
 import ProfileScreen from "../screens/ProfileScreen";
 import ReportScreen from "../screens/ReportScreen";
+import StudyGroupConnectionsScreen from "../screens/StudyGroupConnectionsScreen";
 import { useAppContext } from "../context/AppContext";
 import { RootStackParamList } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -591,6 +592,13 @@ export default function ChatNavigator() {
           <Stack.Screen
             name="ReportScreen"
             component={ReportScreen}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="StudyGroupConnections"
+            component={StudyGroupConnectionsScreen}
             options={{
               headerShown: false,
             }}

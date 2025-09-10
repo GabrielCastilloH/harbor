@@ -7,7 +7,13 @@ import {
   Platform,
   Keyboard,
 } from "react-native";
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import { Channel, MessageInput, MessageList } from "stream-chat-react-native";
 import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
@@ -49,6 +55,54 @@ export default function ChatScreen() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const insets = useSafeAreaInsets();
+
+  // Study group detection
+  const isStudyGroup = useMemo(() => {
+    if (!channel) return false;
+    const members = channel.state?.members || {};
+    const memberCount = Object.keys(members).length;
+    return memberCount > 2;
+  }, [channel]);
+
+  // Update the header title logic
+  const headerTitle = useMemo(() => {
+    if (isStudyGroup) {
+      return "Study Group";
+    }
+    return matchedUserName;
+  }, [isStudyGroup, matchedUserName]);
+
+  // Update the header right icon and title press logic
+  const handleHeaderPress = useCallback(() => {
+    if (!channel) return;
+    const memberIds = Object.keys(channel.state?.members || {});
+
+    if (isStudyGroup) {
+      (navigation as any).navigate("StudyGroupConnections", {
+        channelId: channel.id,
+        memberIds: memberIds,
+      });
+    } else if (matchedUserId) {
+      (navigation as any).navigate("ProfileScreen", {
+        userId: matchedUserId,
+        matchId: null,
+      });
+    }
+  }, [channel, isStudyGroup, matchedUserId, navigation]);
+
+  const rightIconConfig = useMemo(() => {
+    if (isStudyGroup) {
+      return {
+        name: "people",
+        onPress: handleHeaderPress,
+      };
+    } else {
+      return {
+        name: "person",
+        onPress: handleHeaderPress,
+      };
+    }
+  }, [isStudyGroup, handleHeaderPress]);
 
   const fetchAndApplyConsentStatus = useCallback(
     async (matchId: string) => {
@@ -262,27 +316,10 @@ export default function ChatScreen() {
   return (
     <View style={styles.container}>
       <HeaderBack
-        title={matchedUserName}
+        title={headerTitle}
         onBack={() => navigation.goBack()}
-        onTitlePress={() => {
-          if (matchedUserId) {
-            (navigation as any).navigate("ProfileScreen", {
-              userId: matchedUserId,
-              matchId: null,
-            });
-          }
-        }}
-        rightIcon={{
-          name: "person",
-          onPress: () => {
-            if (matchedUserId) {
-              (navigation as any).navigate("ProfileScreen", {
-                userId: matchedUserId,
-                matchId: null,
-              });
-            }
-          },
-        }}
+        onTitlePress={handleHeaderPress}
+        rightIcon={rightIconConfig}
       />
       <ClarityBar clarityPercent={clarityPercent} inChat={true} />
       <Pressable
