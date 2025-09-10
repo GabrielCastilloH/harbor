@@ -25,7 +25,7 @@ type ReportScreenParams = {
     reportedUserId: string;
     reportedUserEmail?: string;
     reportedUserName?: string;
-    matchId: string;
+    matchId?: string; // Make matchId optional
   };
 };
 
@@ -43,13 +43,14 @@ export default function ReportScreen() {
   const [explanation, setExplanation] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [isBlocking, setIsBlocking] = useState(false);
 
   const route = useRoute<RouteProp<ReportScreenParams, "ReportScreen">>();
   const navigation = useNavigation();
   const { userId: currentUserId } = useAppContext();
 
   const { reportedUserId, reportedUserEmail, reportedUserName, matchId } =
-    route.params;
+    route.params || {};
 
   // Remove the reported card when returning to home screen
   useFocusEffect(
@@ -64,6 +65,64 @@ export default function ReportScreen() {
 
   const handleBack = () => {
     navigation.goBack();
+  };
+
+  const handleBlockUser = async () => {
+    Alert.alert(
+      "Block User",
+      "Are you sure you want to block this user? This will also unmatch you.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            setIsBlocking(true);
+            try {
+              const functions = getFunctions();
+              const currentUser = auth.currentUser;
+              if (!currentUser) {
+                throw new Error("User not authenticated");
+              }
+
+              const blockUser = httpsCallable(
+                functions,
+                "reportFunctions-blockUser"
+              );
+
+              await blockUser({
+                blockedUserId: reportedUserId,
+                matchId: matchId,
+              });
+
+              Alert.alert(
+                "User Blocked",
+                "This user has been successfully blocked.",
+                [
+                  {
+                    text: "OK",
+                    onPress: () => {
+                      navigation.goBack();
+                    },
+                  },
+                ]
+              );
+            } catch (error) {
+              console.error("Error blocking user:", error);
+              Alert.alert(
+                "Error",
+                "Failed to block user. Please try again later."
+              );
+            } finally {
+              setIsBlocking(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleSubmit = async () => {
@@ -142,7 +201,16 @@ export default function ReportScreen() {
 
   return (
     <View style={styles.container}>
-      <HeaderBack title="Report User" onBack={handleBack} />
+      <HeaderBack
+        title="Report User"
+        onBack={handleBack}
+        rightIcon={{
+          text: "Block",
+          textStyle: styles.blockButtonText,
+          onPress: handleBlockUser,
+          disabled: isBlocking || isSubmitting,
+        }}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
@@ -209,10 +277,10 @@ export default function ReportScreen() {
               <Pressable
                 style={[
                   styles.submitButton,
-                  isSubmitting && styles.submitButtonDisabled,
+                  (isSubmitting || isBlocking) && styles.submitButtonDisabled,
                 ]}
                 onPress={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isBlocking}
               >
                 {isSubmitting ? (
                   <View style={styles.submitLoadingContainer}>
@@ -322,5 +390,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  blockButtonText: {
+    color: Colors.strongRed,
+    fontWeight: "bold",
+    fontSize: 16,
   },
 });

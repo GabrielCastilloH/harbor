@@ -1,4 +1,4 @@
-//// filepath: /Users/gabrielcastillo/Developer/AppDevelopment/app1/app1/screens/HomeScreen.tsx
+// filepath: /Users/gabrielcastillo/Developer/AppDevelopment/app1/app1/screens/HomeScreen.tsx
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -543,6 +543,9 @@ export default function HomeScreen() {
     return <LoadingScreen loadingText="Loading your Harbor" />;
   }
 
+  // Determine whether to show the buttons
+  const showButtons = recommendations.length > 0;
+
   return (
     <View style={{ flex: 1, backgroundColor: Colors.primary100 }}>
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
@@ -589,63 +592,65 @@ export default function HomeScreen() {
               isUserActive={isUserActive}
             />
           </View>
-          <View style={styles.buttonsContainer}>
-            <TouchableOpacity
-              activeOpacity={1}
-              style={[
-                styles.button,
-                styles.noButton,
-                isNoPressed && { backgroundColor: Colors.red },
-                (!isUserActive || isBanned) && { opacity: 0.5 },
-              ]}
-              onPressIn={(event) => {
-                if (!isUserActive || isBanned) return;
-                setIsNoPressed(true);
-                handleTouchStart(event);
-              }}
-              onPressOut={(event) => {
-                if (!isUserActive || isBanned) return;
-                handleTouchEnd(event, true);
-              }}
-              disabled={!isUserActive || isBanned}
-            >
-              <Image
-                source={require("../assets/images/shipwreck.png")}
-                style={{
-                  height: 40,
-                  width: 40,
-                  tintColor: isNoPressed ? Colors.primary100 : Colors.red,
+          {showButtons && (
+            <View style={styles.buttonsContainer}>
+              <TouchableOpacity
+                activeOpacity={1}
+                style={[
+                  styles.button,
+                  styles.noButton,
+                  isNoPressed && { backgroundColor: Colors.red },
+                  (!isUserActive || isBanned) && { opacity: 0.5 },
+                ]}
+                onPressIn={(event) => {
+                  if (!isUserActive || isBanned) return;
+                  setIsNoPressed(true);
+                  handleTouchStart(event);
                 }}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={1}
-              style={[
-                styles.button,
-                styles.yesButton,
-                isYesPressed && { backgroundColor: Colors.green },
-                (!isUserActive || isBanned) && { opacity: 0.5 },
-              ]}
-              onPressIn={(event) => {
-                if (!isUserActive || isBanned) return;
-                setIsYesPressed(true);
-                handleTouchStart(event);
-              }}
-              onPressOut={(event) => {
-                if (!isUserActive || isBanned) return;
-                handleTouchEnd(event, false);
-              }}
-              disabled={!isUserActive || isBanned}
-            >
-              <View style={{ marginBottom: 3, marginLeft: 2 }}>
-                <FontAwesome6
-                  name="sailboat"
-                  size={35}
-                  color={isYesPressed ? Colors.primary100 : Colors.green}
+                onPressOut={(event) => {
+                  if (!isUserActive || isBanned) return;
+                  handleTouchEnd(event, true);
+                }}
+                disabled={!isUserActive || isBanned}
+              >
+                <Image
+                  source={require("../assets/images/shipwreck.png")}
+                  style={{
+                    height: 40,
+                    width: 40,
+                    tintColor: isNoPressed ? Colors.primary100 : Colors.red,
+                  }}
                 />
-              </View>
-            </TouchableOpacity>
-          </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={1}
+                style={[
+                  styles.button,
+                  styles.yesButton,
+                  isYesPressed && { backgroundColor: Colors.green },
+                  (!isUserActive || isBanned) && { opacity: 0.5 },
+                ]}
+                onPressIn={(event) => {
+                  if (!isUserActive || isBanned) return;
+                  setIsYesPressed(true);
+                  handleTouchStart(event);
+                }}
+                onPressOut={(event) => {
+                  if (!isUserActive || isBanned) return;
+                  handleTouchEnd(event, false);
+                }}
+                disabled={!isUserActive || isBanned}
+              >
+                <View style={{ marginBottom: 3, marginLeft: 2 }}>
+                  <FontAwesome6
+                    name="sailboat"
+                    size={35}
+                    color={isYesPressed ? Colors.primary100 : Colors.green}
+                  />
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
           <MatchModal
             visible={showMatch}
             onClose={handleMatchModalClose}
