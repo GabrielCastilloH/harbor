@@ -196,10 +196,12 @@ export default React.forwardRef(function AnimatedStack(
 
     return (
       <View style={styles.noMoreCardsContainer}>
-        <Text style={styles.noMoreCardsTitle}>No More Swipes</Text>
+        <Text style={styles.noMoreCardsTitle}>
+          No More Avilable Connections
+        </Text>
         <Text style={styles.noMoreCardsText}>
-          You have no more swipes left for today. {"\n"} Come back tomorrow for
-          more.
+          You have no more connections left for today. {"\n"} Come back tomorrow
+          for more.
         </Text>
       </View>
     );
