@@ -49,7 +49,12 @@ export default function StudyGroupConnectionsScreen() {
             return userData;
           });
 
-        setMembers(memberProfiles);
+        // Filter out the current user's profile
+        const filteredMembers = memberProfiles.filter(
+          (member) => member.uid !== currentUserId
+        );
+
+        setMembers(filteredMembers);
       } catch (error) {
         console.error("Error fetching study group members:", error);
       } finally {
@@ -58,7 +63,7 @@ export default function StudyGroupConnectionsScreen() {
     };
 
     fetchMembers();
-  }, [memberIds]);
+  }, [memberIds, currentUserId]); // Add currentUserId to the dependency array
 
   const handleBack = () => {
     navigation.goBack();
@@ -68,12 +73,6 @@ export default function StudyGroupConnectionsScreen() {
     // Check if the member has a valid uid
     if (!member.uid) {
       console.error("Member has no UID, cannot navigate to profile.");
-      return;
-    }
-
-    // Prevent self-navigation
-    if (member.uid === currentUserId) {
-      console.log("You cannot view your own profile from here.");
       return;
     }
 
