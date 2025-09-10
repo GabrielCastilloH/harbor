@@ -229,61 +229,16 @@ export default function ProfileScreen() {
   // No need to check blur warning state here anymore
 
   useEffect(() => {
-    if (userId === currentUserId) return;
-    if (!matchId) return; // Don't show report button if matchId is not available
-
-    navigationRef.current.setOptions({
-      headerBackTitle: "Back",
-      headerRight: () => (
-        <Pressable
-          onPress={() => {
-            if (!navigationRef.current) {
-              console.error("❌ Navigation ref is null!");
-              Alert.alert("Error", "Navigation not available");
-              return;
-            }
-
-            if (!matchId) {
-              console.error("❌ MatchId is null!");
-              Alert.alert("Error", "Match not found");
-              return;
-            }
-
-            try {
-              navigationRef.current.navigate("ReportScreen", {
-                reportedUserId: userId,
-                reportedUserEmail: profile?.email,
-                reportedUserName: profile?.firstName,
-                matchId: matchId,
-              });
-            } catch (error) {
-              console.error("❌ Navigation error:", error);
-              Alert.alert("Error", "Failed to navigate to report screen");
-            }
-          }}
-          style={({ pressed }) => [
-            styles.reportButton,
-            pressed && styles.reportButtonPressed,
-          ]}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="flag" size={20} color={Colors.strongRed} />
-        </Pressable>
-      ),
-    });
+    // Header is custom-rendered via HeaderBack below. Keeping this effect no-op.
   }, [navigationRef, userId, currentUserId, profile, matchId]);
 
   const handleReport = () => {
-    if (!userId || !profile || !matchId) {
-      return;
-    }
-
+    if (!userId || !profile) return;
     try {
       navigationRef.current.navigate("ReportScreen", {
         reportedUserId: userId,
         reportedUserEmail: profile.email,
         reportedUserName: profile.firstName,
-        matchId: matchId,
       });
     } catch (error) {
       console.error("❌ Navigation error:", error);
