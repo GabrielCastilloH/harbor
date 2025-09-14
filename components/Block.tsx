@@ -14,6 +14,12 @@ import Animated, {
 const { width: screenWidth } = Dimensions.get("window");
 const SWIPE_THRESHOLD = screenWidth * 0.2; // 20% of screen width
 
+// Define a strict spring configuration
+const STRICT_SPRING_CONFIG = {
+  damping: 30, // Lower values make it more bouncy, higher values make it more strict
+  stiffness: 200, // Higher values make the spring 'tighter' and faster
+};
+
 const Post = () => {
   const translateX = useSharedValue(0);
 
@@ -32,14 +38,15 @@ const Post = () => {
     onEnd: (event) => {
       if (event.translationX > SWIPE_THRESHOLD) {
         // Swipe right: move to the red square
-        translateX.value = withSpring(0);
+        translateX.value = withSpring(0, STRICT_SPRING_CONFIG);
       } else if (event.translationX < -SWIPE_THRESHOLD) {
         // Swipe left: move to the blue square
-        translateX.value = withSpring(-screenWidth);
+        translateX.value = withSpring(-screenWidth, STRICT_SPRING_CONFIG);
       } else {
         // Not enough of a swipe, snap back to the current position
         translateX.value = withSpring(
-          translateX.value > -screenWidth / 2 ? 0 : -screenWidth
+          translateX.value > -screenWidth / 2 ? 0 : -screenWidth,
+          STRICT_SPRING_CONFIG
         );
       }
     },
