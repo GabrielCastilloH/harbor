@@ -1,10 +1,11 @@
 import React from "react";
-import { StyleSheet, FlatList, SafeAreaView } from "react-native";
+import { StyleSheet, FlatList, SafeAreaView, Text, View } from "react-native";
 import Post from "../components/Block";
 import { Profile } from "../types/App";
 import Colors from "../constants/Colors";
+import { useAppContext } from "../context/AppContext";
 
-// Generate dummy profile data
+// Only generates 3 dummy profiles
 const generateDummyProfiles = (): Profile[] => [
   {
     uid: "dummy-user-1",
@@ -63,56 +64,28 @@ const generateDummyProfiles = (): Profile[] => [
     q3: "Playing guitar, environmental activism, and board game nights.",
     availability: 0.8,
   },
-  {
-    uid: "dummy-user-4",
-    email: "emma.rodriguez@cornell.edu",
-    firstName: "Emma",
-    yearLevel: "Junior",
-    age: 20,
-    major: "Psychology",
-    gender: "Female",
-    sexualOrientation: "Heterosexual",
-    images: [
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop&crop=face",
-    ],
-    aboutMe:
-      "Psychology major who loves understanding people and cultures. Always up for deep conversations and new experiences!",
-    q1: "Together we could explore different cuisines and have late-night philosophical discussions.",
-    q2: "Favorite book: The Alchemist - love the journey of self-discovery!",
-    q3: "Traveling, cooking, and learning new languages.",
-    availability: 0.6,
-  },
-  {
-    uid: "dummy-user-5",
-    email: "jordan.kim@cornell.edu",
-    firstName: "Jordan",
-    yearLevel: "Senior",
-    age: 22,
-    major: "Business",
-    gender: "Non-Binary",
-    sexualOrientation: "Pansexual",
-    images: [
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=600&fit=crop&crop=face",
-    ],
-    aboutMe:
-      "Business student with entrepreneurial dreams. Love connecting with people and building meaningful relationships!",
-    q1: "Together we could start a side project and explore the local startup scene.",
-    q2: "Favorite movie: The Social Network - inspiring entrepreneurial journey!",
-    q3: "Networking events, fitness, and trying new cuisines.",
-    availability: 0.4,
-  },
 ];
 
-// Duplicate the profiles to create more posts
-const DUMMY_POSTS = Array.from({ length: 20 }, (_, i) => {
-  const profileIndex = i % generateDummyProfiles().length;
-  return {
-    id: `post-${i}`,
-    profile: generateDummyProfiles()[profileIndex],
-  };
-});
-
 const FeedScreen = () => {
+  const { currentUser } = useAppContext();
+
+  // Get the current user's email from context
+  const currentUserEmail = currentUser?.email || "";
+
+  // Conditionally load dummy data
+  const DUMMY_POSTS =
+    currentUserEmail === "gac232@cornell.edu"
+      ? // If the user is `gac232@cornell.edu`, create posts from the dummy data
+        Array.from({ length: 20 }, (_, i) => {
+          const profileIndex = i % generateDummyProfiles().length;
+          return {
+            id: `post-${i}`,
+            profile: generateDummyProfiles()[profileIndex],
+          };
+        })
+      : // Otherwise, return an empty array
+        [];
+
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
@@ -120,6 +93,17 @@ const FeedScreen = () => {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <Post profile={item.profile} />}
         showsVerticalScrollIndicator={false}
+        // Add an empty list component for when there's no data
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyTitle}>No More Available</Text>
+            <Text style={styles.emptyTitle}>Connections</Text>
+            <Text style={styles.emptySubtitle}>
+              You have no more connections left for today. Come back tomorrow
+              for more.
+            </Text>
+          </View>
+        )}
       />
     </SafeAreaView>
   );
@@ -129,6 +113,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.primary100,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+    marginTop: 100,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: Colors.primary500,
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 8,
   },
 });
 
