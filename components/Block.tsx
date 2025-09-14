@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Dimensions } from "react-native";
+import { StyleSheet, Dimensions, View } from "react-native";
 import {
   PanGestureHandler,
   GestureHandlerRootView,
@@ -10,6 +10,10 @@ import Animated, {
   useAnimatedGestureHandler,
   withSpring,
 } from "react-native-reanimated";
+import BasicInfoView from "./BasicInfoView";
+import PersonalView from "./PersonalView";
+import { Profile } from "../types/App";
+import Colors from "../constants/Colors";
 
 const { width: screenWidth } = Dimensions.get("window");
 const SWIPE_THRESHOLD = screenWidth * 0.2; // 20% of screen width
@@ -20,7 +24,11 @@ const STRICT_SPRING_CONFIG = {
   stiffness: 200, // Higher values make the spring 'tighter' and faster
 };
 
-const Post = () => {
+interface PostProps {
+  profile: Profile;
+}
+
+const Post = ({ profile }: PostProps) => {
   const translateX = useSharedValue(0);
 
   const gestureHandler = useAnimatedGestureHandler({
@@ -66,8 +74,12 @@ const Post = () => {
         activeOffsetY={[-20, 20]}
       >
         <Animated.View style={[styles.container, animatedStyle]}>
-          <Animated.View style={[styles.block, styles.redBlock]} />
-          <Animated.View style={[styles.block, styles.blueBlock]} />
+          <View style={styles.viewContainer}>
+            <BasicInfoView profile={profile} />
+          </View>
+          <View style={styles.viewContainer}>
+            <PersonalView profile={profile} />
+          </View>
         </Animated.View>
       </PanGestureHandler>
     </GestureHandlerRootView>
@@ -76,20 +88,17 @@ const Post = () => {
 
 const styles = StyleSheet.create({
   container: {
+    marginVertical: 20,
     flexDirection: "row", // Arrange children horizontally
     width: screenWidth * 2, // Container needs to be twice the screen width
-    height: screenWidth,
-    marginVertical: 10,
+    height: screenWidth * 1.2,
+    backgroundColor: Colors.secondary100,
   },
-  block: {
+  viewContainer: {
+    padding: 30,
     width: screenWidth,
     height: "100%",
-  },
-  redBlock: {
-    backgroundColor: "#FF0000",
-  },
-  blueBlock: {
-    backgroundColor: "#0000FF",
+    borderRadius: 12,
   },
 });
 
