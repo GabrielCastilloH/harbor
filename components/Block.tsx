@@ -37,38 +37,47 @@ const Post = ({ profile }: PostProps) => {
   const [isLiked, setIsLiked] = useState(false);
   const [isDisliked, setIsDisliked] = useState(false);
 
-  const handleStateUpdate = (liked: boolean, disliked: boolean) => {
-    setIsLiked(liked);
-    setIsDisliked(disliked);
-  };
-
   const gestureHandler = useAnimatedGestureHandler({
     onStart: (_, context: any) => {
+      // Prevent swiping if a choice has already been made
+      if (isLiked || isDisliked) {
+        return;
+      }
       context.startX = translateX.value;
     },
     onActive: (event, context: any) => {
+      if (isLiked || isDisliked) {
+        return;
+      }
       const nextTranslateX = context.startX + event.translationX;
       translateX.value = nextTranslateX;
     },
     onEnd: (event) => {
       if (isLiked || isDisliked) {
-        // Prevent further interaction after a choice has been made
         return;
       }
 
       if (event.translationX > SWIPE_THRESHOLD) {
         // Swiped right (like)
+        // Animate the card off-screen to the right
         translateX.value = withSpring(screenWidth, STRICT_SPRING_CONFIG);
-        opacity.value = withSpring(0.5);
-        runOnJS(handleStateUpdate)(true, false);
+        runOnJS(setIsLiked)(true);
+        runOnJS(setIsDisliked)(false);
       } else if (event.translationX < -SWIPE_THRESHOLD) {
         // Swiped left (dislike)
+        // Animate the card off-screen to the left
         translateX.value = withSpring(-screenWidth, STRICT_SPRING_CONFIG);
-        opacity.value = withSpring(0.5);
-        runOnJS(handleStateUpdate)(false, true);
+        runOnJS(setIsLiked)(false);
+        runOnJS(setIsDisliked)(true);
       } else {
-        // No significant swipe, snap back to center
-        translateX.value = withSpring(0, STRICT_SPRING_CONFIG);
+        // No significant swipe, snap back to a valid position
+        if (translateX.value < -screenWidth / 2) {
+          // Snap back to the "PersonalView"
+          translateX.value = withSpring(-screenWidth, STRICT_SPRING_CONFIG);
+        } else {
+          // Snap back to the "BasicInfoView"
+          translateX.value = withSpring(0, STRICT_SPRING_CONFIG);
+        }
       }
     },
   });
@@ -81,14 +90,16 @@ const Post = ({ profile }: PostProps) => {
   });
 
   const dot1Style = useAnimatedStyle(() => {
-    const isSelected = translateX.value > -screenWidth / 2;
+    // Correctly determine if BasicInfoView is selected (within a certain range of 0)
+    const isSelected = translateX.value > -screenWidth * 0.5;
     return {
       backgroundColor: isSelected ? Colors.primary500 : Colors.primary100,
     };
   });
 
   const dot2Style = useAnimatedStyle(() => {
-    const isSelected = translateX.value < -screenWidth / 2;
+    // Correctly determine if PersonalView is selected
+    const isSelected = translateX.value < -screenWidth * 0.5;
     return {
       backgroundColor: isSelected ? Colors.primary500 : Colors.primary100,
     };
@@ -96,6 +107,7 @@ const Post = ({ profile }: PostProps) => {
 
   const handleLike = () => {
     if (!isLiked && !isDisliked) {
+      // Animate the card off-screen to the right
       translateX.value = withSpring(screenWidth, STRICT_SPRING_CONFIG);
       opacity.value = withSpring(0.5);
       setIsLiked(true);
@@ -104,11 +116,19 @@ const Post = ({ profile }: PostProps) => {
 
   const handleDislike = () => {
     if (!isLiked && !isDisliked) {
+      // Animate the card off-screen to the left
       translateX.value = withSpring(-screenWidth, STRICT_SPRING_CONFIG);
       opacity.value = withSpring(0.5);
       setIsDisliked(true);
     }
   };
+
+  const decidedAnimatedStyle = useAnimatedStyle(() => {
+    const decidedOpacity = isLiked || isDisliked ? 0.5 : 1;
+    return {
+      opacity: withSpring(decidedOpacity),
+    };
+  });
 
   return (
     <GestureHandlerRootView>
@@ -116,8 +136,11 @@ const Post = ({ profile }: PostProps) => {
         onGestureEvent={gestureHandler}
         activeOffsetX={[-10, 10]}
         activeOffsetY={[-20, 20]}
+        enabled={!isLiked && !isDisliked}
       >
-        <Animated.View style={[styles.container, animatedStyle]}>
+        <Animated.View
+          style={[styles.container, animatedStyle, decidedAnimatedStyle]}
+        >
           <View style={styles.viewContainer}>
             <BasicInfoView profile={profile} />
           </View>
