@@ -53,31 +53,20 @@ const Post = ({ profile }: PostProps) => {
       translateX.value = nextTranslateX;
     },
     onEnd: (event) => {
-      if (isLiked || isDisliked) {
-        return;
-      }
+      console.log("PanGestureHandler: onEnd triggered for navigation");
+      console.log(`Current translateX.value: ${translateX.value}`);
 
-      if (event.translationX > SWIPE_THRESHOLD) {
-        // Swiped right (like)
-        // Animate the card off-screen to the right
-        translateX.value = withSpring(screenWidth, STRICT_SPRING_CONFIG);
-        runOnJS(setIsLiked)(true);
-        runOnJS(setIsDisliked)(false);
-      } else if (event.translationX < -SWIPE_THRESHOLD) {
-        // Swiped left (dislike)
-        // Animate the card off-screen to the left
+      // Logic for swiping between views (card snapping)
+      if (translateX.value < -screenWidth / 2) {
+        console.log("onEnd: Swiped left. Snapping to PersonalView");
+        // Snap to the "PersonalView"
         translateX.value = withSpring(-screenWidth, STRICT_SPRING_CONFIG);
-        runOnJS(setIsLiked)(false);
-        runOnJS(setIsDisliked)(true);
       } else {
-        // No significant swipe, snap back to a valid position
-        if (translateX.value < -screenWidth / 2) {
-          // Snap back to the "PersonalView"
-          translateX.value = withSpring(-screenWidth, STRICT_SPRING_CONFIG);
-        } else {
-          // Snap back to the "BasicInfoView"
-          translateX.value = withSpring(0, STRICT_SPRING_CONFIG);
-        }
+        console.log(
+          "onEnd: Swiped right or not far enough. Snapping to BasicInfoView"
+        );
+        // Snap back to the "BasicInfoView"
+        translateX.value = withSpring(0, STRICT_SPRING_CONFIG);
       }
     },
   });
@@ -106,29 +95,32 @@ const Post = ({ profile }: PostProps) => {
   });
 
   const handleLike = () => {
+    console.log("handleLike: Thumbs up button pressed!");
     if (!isLiked && !isDisliked) {
-      // Animate the card off-screen to the right
-      translateX.value = withSpring(screenWidth, STRICT_SPRING_CONFIG);
+      console.log("handleLike: Updating state to isLiked = true");
       opacity.value = withSpring(0.5);
-      setIsLiked(true);
+      runOnJS(setIsLiked)(true);
+      console.log("handleLike: State updated. Card should be grayed out.");
+    } else {
+      console.log(
+        "handleLike: A choice has already been made. Ignoring press."
+      );
     }
   };
 
   const handleDislike = () => {
+    console.log("handleDislike: X button pressed!");
     if (!isLiked && !isDisliked) {
-      // Animate the card off-screen to the left
-      translateX.value = withSpring(-screenWidth, STRICT_SPRING_CONFIG);
+      console.log("handleDislike: Updating state to isDisliked = true");
       opacity.value = withSpring(0.5);
-      setIsDisliked(true);
+      runOnJS(setIsDisliked)(true);
+      console.log("handleDislike: State updated. Card should be grayed out.");
+    } else {
+      console.log(
+        "handleDislike: A choice has already been made. Ignoring press."
+      );
     }
   };
-
-  const decidedAnimatedStyle = useAnimatedStyle(() => {
-    const decidedOpacity = isLiked || isDisliked ? 0.5 : 1;
-    return {
-      opacity: withSpring(decidedOpacity),
-    };
-  });
 
   return (
     <GestureHandlerRootView>
@@ -138,9 +130,7 @@ const Post = ({ profile }: PostProps) => {
         activeOffsetY={[-20, 20]}
         enabled={!isLiked && !isDisliked}
       >
-        <Animated.View
-          style={[styles.container, animatedStyle, decidedAnimatedStyle]}
-        >
+        <Animated.View style={[styles.container, animatedStyle]}>
           <View style={styles.viewContainer}>
             <BasicInfoView profile={profile} />
           </View>
