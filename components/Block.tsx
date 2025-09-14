@@ -53,18 +53,11 @@ const Post = ({ profile }: PostProps) => {
       translateX.value = nextTranslateX;
     },
     onEnd: (event) => {
-      console.log("PanGestureHandler: onEnd triggered for navigation");
-      console.log(`Current translateX.value: ${translateX.value}`);
-
       // Logic for swiping between views (card snapping)
       if (translateX.value < -screenWidth / 2) {
-        console.log("onEnd: Swiped left. Snapping to PersonalView");
         // Snap to the "PersonalView"
         translateX.value = withSpring(-screenWidth, STRICT_SPRING_CONFIG);
       } else {
-        console.log(
-          "onEnd: Swiped right or not far enough. Snapping to BasicInfoView"
-        );
         // Snap back to the "BasicInfoView"
         translateX.value = withSpring(0, STRICT_SPRING_CONFIG);
       }
@@ -95,30 +88,16 @@ const Post = ({ profile }: PostProps) => {
   });
 
   const handleLike = () => {
-    console.log("handleLike: Thumbs up button pressed!");
     if (!isLiked && !isDisliked) {
-      console.log("handleLike: Updating state to isLiked = true");
       opacity.value = withSpring(0.5);
       runOnJS(setIsLiked)(true);
-      console.log("handleLike: State updated. Card should be grayed out.");
-    } else {
-      console.log(
-        "handleLike: A choice has already been made. Ignoring press."
-      );
     }
   };
 
   const handleDislike = () => {
-    console.log("handleDislike: X button pressed!");
     if (!isLiked && !isDisliked) {
-      console.log("handleDislike: Updating state to isDisliked = true");
       opacity.value = withSpring(0.5);
       runOnJS(setIsDisliked)(true);
-      console.log("handleDislike: State updated. Card should be grayed out.");
-    } else {
-      console.log(
-        "handleDislike: A choice has already been made. Ignoring press."
-      );
     }
   };
 
