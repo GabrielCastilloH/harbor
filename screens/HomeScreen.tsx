@@ -41,6 +41,124 @@ import { doc, onSnapshot, query, collection, where } from "firebase/firestore";
 // import { usePremium } from "../hooks/usePremium";
 import { RootStackParamList } from "../types/navigation";
 
+// Dummy data for testing
+const generateDummyProfiles = (): Profile[] => [
+  {
+    uid: "dummy-user-1",
+    email: "alex.johnson@cornell.edu",
+    firstName: "Alex",
+    yearLevel: "Junior",
+    age: 20,
+    major: "Computer Science",
+    gender: "Male",
+    sexualOrientation: "Heterosexual",
+    images: [
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop&crop=face",
+    ],
+    aboutMe:
+      "Love hiking, coding, and trying new coffee shops around campus. Always up for a good conversation!",
+    q1: "Together we could explore Ithaca's waterfalls and grab some amazing food downtown.",
+    q2: "Favorite movie: Inception - love the mind-bending plot twists!",
+    q3: "Rock climbing, photography, and learning new programming languages.",
+    availability: 0.7,
+  },
+  {
+    uid: "dummy-user-2",
+    email: "sarah.chen@cornell.edu",
+    firstName: "Sarah",
+    yearLevel: "Senior",
+    age: 21,
+    major: "Biology",
+    gender: "Female",
+    sexualOrientation: "Heterosexual",
+    images: [
+      "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=600&fit=crop&crop=face",
+    ],
+    aboutMe:
+      "Pre-med student who loves volunteering and spending time in nature. Looking for someone to share adventures with!",
+    q1: "Together we could volunteer at the local animal shelter and go on weekend hiking trips.",
+    q2: "Favorite book: The Seven Husbands of Evelyn Hugo - such a beautiful story!",
+    q3: "Painting, yoga, and trying new restaurants in Collegetown.",
+    availability: 0.5,
+  },
+  {
+    uid: "dummy-user-3",
+    email: "marcus.williams@cornell.edu",
+    firstName: "Marcus",
+    yearLevel: "Sophomore",
+    age: 19,
+    major: "Engineering",
+    gender: "Male",
+    sexualOrientation: "Bisexual",
+    images: [
+      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=600&fit=crop&crop=face",
+    ],
+    aboutMe:
+      "Engineering student with a passion for music and sustainability. Always looking to make new connections!",
+    q1: "Together we could start a campus sustainability initiative and jam out to some music.",
+    q2: "Favorite song: Bohemian Rhapsody - classic that never gets old!",
+    q3: "Playing guitar, environmental activism, and board game nights.",
+    availability: 0.8,
+  },
+  {
+    uid: "dummy-user-4",
+    email: "emma.rodriguez@cornell.edu",
+    firstName: "Emma",
+    yearLevel: "Junior",
+    age: 20,
+    major: "Psychology",
+    gender: "Female",
+    sexualOrientation: "Heterosexual",
+    images: [
+      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop&crop=face",
+    ],
+    aboutMe:
+      "Psychology major who loves understanding people and cultures. Always up for deep conversations and new experiences!",
+    q1: "Together we could explore different cuisines and have late-night philosophical discussions.",
+    q2: "Favorite book: The Alchemist - love the journey of self-discovery!",
+    q3: "Traveling, cooking, and learning new languages.",
+    availability: 0.6,
+  },
+  {
+    uid: "dummy-user-5",
+    email: "jordan.kim@cornell.edu",
+    firstName: "Jordan",
+    yearLevel: "Senior",
+    age: 22,
+    major: "Business",
+    gender: "Non-Binary",
+    sexualOrientation: "Pansexual",
+    images: [
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=600&fit=crop&crop=face",
+    ],
+    aboutMe:
+      "Business student with entrepreneurial dreams. Love connecting with people and building meaningful relationships!",
+    q1: "Together we could start a side project and explore the local startup scene.",
+    q2: "Favorite movie: The Social Network - inspiring entrepreneurial journey!",
+    q3: "Networking events, fitness, and trying new cuisines.",
+    availability: 0.4,
+  },
+  {
+    uid: "dummy-user-6",
+    email: "taylor.brown@cornell.edu",
+    firstName: "Taylor",
+    yearLevel: "Sophomore",
+    age: 19,
+    major: "Art History",
+    gender: "Female",
+    sexualOrientation: "Bisexual",
+    images: [
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=600&fit=crop&crop=face",
+    ],
+    aboutMe:
+      "Art history major with a love for museums and creative expression. Looking for someone to share cultural experiences with!",
+    q1: "Together we could visit art galleries and have picnics in the botanical gardens.",
+    q2: "Favorite book: The Goldfinch - beautifully written and thought-provoking!",
+    q3: "Sketching, visiting museums, and attending cultural events.",
+    availability: 0.9,
+  },
+];
+
 export default function HomeScreen() {
   const {
     userId,
@@ -209,79 +327,21 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const fetchRecommendations = async () => {
-      if (!userId || !isAuthenticated || !currentUser) {
-        return;
-      }
-
-      // Check if user has active matches before fetching recommendations
-      if (!userId) {
-        // Continue with recommendations fetch if no userId
-      } else {
-        try {
-          const activeMatchesResponse = await MatchService.getActiveMatches(
-            userId
-          );
-          const hasActiveMatches =
-            activeMatchesResponse.matches &&
-            activeMatchesResponse.matches.length > 0;
-
-          if (hasActiveMatches) {
-            // User is in a match, don't fetch recommendations
-            setRecommendations([]);
-            setCurrentCardProfile(null);
-            setLoadingRecommendations(false);
-            setRecommendationsFetched(true);
-            return;
-          }
-        } catch (error) {
-          console.error(
-            "❌ [HOMESCREEN] Error checking active matches:",
-            error
-          );
-          // Continue with recommendations fetch if we can't check matches
-        }
-      }
-
       setLoadingRecommendations(true);
-      try {
-        const response = await RecommendationService.getRecommendations(userId);
-        if (response && response.recommendations) {
-          // Fetch secure image URLs for each recommendation
-          const recommendationsWithSecureImages = await Promise.all(
-            response.recommendations.map(async (profile: Profile) => {
-              try {
-                // For now, we'll keep the original images in the profile
-                // but we can add secure image URLs later if needed
-                return profile;
-              } catch (error) {
-                console.error(
-                  "Error fetching secure images for profile:",
-                  error
-                );
-                return profile;
-              }
-            })
-          );
-          setRecommendations(recommendationsWithSecureImages);
-          if (recommendationsWithSecureImages.length > 0) {
-            setCurrentCardProfile(recommendationsWithSecureImages[0]);
-          }
-        }
-      } catch (error: any) {
-        console.error("❌ [HOMESCREEN] Error fetching recommendations:", error);
 
-        // If user not found, don't show error - they might be setting up their account
-        if (error?.code === "not-found") {
-          // User not found, skipping recommendations fetch
-        }
-      } finally {
-        setLoadingRecommendations(false);
-        setRecommendationsFetched(true);
+      // Always show dummy data for testing
+      console.log("🎭 [HOMESCREEN] Using dummy data for testing");
+      const dummyProfiles = generateDummyProfiles();
+      setRecommendations(dummyProfiles);
+      if (dummyProfiles.length > 0) {
+        setCurrentCardProfile(dummyProfiles[0]);
       }
+      setLoadingRecommendations(false);
+      setRecommendationsFetched(true);
     };
 
     fetchRecommendations();
-  }, [userId, isAuthenticated, currentUser]);
+  }, []); // Empty dependency array - run once on mount
 
   const handleTouchStart = (event: GestureResponderEvent) => {
     setTouchStart({
@@ -321,12 +381,43 @@ export default function HomeScreen() {
     }
 
     // PREMIUM DISABLED: Swipe limit paywall commented out
-    if (contextSwipeLimit && !contextSwipeLimit.canSwipe) {
+    // Allow dummy data to be swiped even when limit is reached
+    if (
+      contextSwipeLimit &&
+      !contextSwipeLimit.canSwipe &&
+      !profile.uid.startsWith("dummy-user-")
+    ) {
       // Simply show alert without premium upgrade option
       Alert.alert(
         "Daily Limit Reached",
         `You've used all ${contextSwipeLimit.maxSwipesPerDay} swipes for today. Try again tomorrow!`
       );
+      return;
+    }
+
+    // Handle dummy data - skip backend calls
+    if (profile.uid.startsWith("dummy-user-")) {
+      console.log(
+        "🎭 [HOMESCREEN] Swiping right on dummy user:",
+        profile.firstName
+      );
+      setSwipeInProgress(true);
+      setLastSwipedProfile(profile.uid);
+
+      // Simulate a small delay for realistic feel
+      setTimeout(() => {
+        // Update current profile to the next one
+        const currentIndex = recommendations.findIndex(
+          (p) => p.uid === profile.uid
+        );
+        if (currentIndex < recommendations.length - 1) {
+          setCurrentCardProfile(recommendations[currentIndex + 1]);
+        } else {
+          setCurrentCardProfile(null);
+        }
+        setSwipeInProgress(false);
+        setLastSwipedProfile(null);
+      }, 500);
       return;
     }
 
@@ -410,7 +501,38 @@ export default function HomeScreen() {
     }
 
     // Check swipe limit for left swipes too
-    if (contextSwipeLimit && !contextSwipeLimit.canSwipe) {
+    // Allow dummy data to be swiped even when limit is reached
+    if (
+      contextSwipeLimit &&
+      !contextSwipeLimit.canSwipe &&
+      !profile.uid.startsWith("dummy-user-")
+    ) {
+      return;
+    }
+
+    // Handle dummy data - skip backend calls
+    if (profile.uid.startsWith("dummy-user-")) {
+      console.log(
+        "🎭 [HOMESCREEN] Swiping left on dummy user:",
+        profile.firstName
+      );
+      setSwipeInProgress(true);
+      setLastSwipedProfile(profile.uid);
+
+      // Simulate a small delay for realistic feel
+      setTimeout(() => {
+        // Update current profile to the next one
+        const currentIndex = recommendations.findIndex(
+          (p) => p.uid === profile.uid
+        );
+        if (currentIndex < recommendations.length - 1) {
+          setCurrentCardProfile(recommendations[currentIndex + 1]);
+        } else {
+          setCurrentCardProfile(null);
+        }
+        setSwipeInProgress(false);
+        setLastSwipedProfile(null);
+      }, 500);
       return;
     }
 
