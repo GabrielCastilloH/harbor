@@ -1,5 +1,5 @@
-import React from "react";
-import { StyleSheet, Dimensions, View } from "react-native";
+import React, { useState } from "react";
+import { StyleSheet, Dimensions, View, TouchableOpacity } from "react-native";
 import {
   PanGestureHandler,
   GestureHandlerRootView,
@@ -14,6 +14,7 @@ import BasicInfoView from "./BasicInfoView";
 import PersonalView from "./PersonalView";
 import { Profile } from "../types/App";
 import Colors from "../constants/Colors";
+import { FontAwesome } from "@expo/vector-icons";
 
 const { width: screenWidth } = Dimensions.get("window");
 const SWIPE_THRESHOLD = screenWidth * 0.2; // 20% of screen width
@@ -30,6 +31,7 @@ interface PostProps {
 
 const Post = ({ profile }: PostProps) => {
   const translateX = useSharedValue(0);
+  const [isLiked, setIsLiked] = useState(false);
 
   const gestureHandler = useAnimatedGestureHandler({
     onStart: (_, context: any) => {
@@ -66,6 +68,20 @@ const Post = ({ profile }: PostProps) => {
     };
   });
 
+  const dot1Style = useAnimatedStyle(() => {
+    const isSelected = translateX.value > -screenWidth / 2;
+    return {
+      backgroundColor: isSelected ? Colors.primary500 : Colors.primary100,
+    };
+  });
+
+  const dot2Style = useAnimatedStyle(() => {
+    const isSelected = translateX.value < -screenWidth / 2;
+    return {
+      backgroundColor: isSelected ? Colors.primary500 : Colors.primary100,
+    };
+  });
+
   return (
     <GestureHandlerRootView>
       <PanGestureHandler
@@ -82,6 +98,22 @@ const Post = ({ profile }: PostProps) => {
           </View>
         </Animated.View>
       </PanGestureHandler>
+
+      <View style={styles.indicatorContainer}>
+        <Animated.View style={[styles.dot, dot1Style]} />
+        <Animated.View style={[styles.dot, dot2Style]} />
+      </View>
+
+      <TouchableOpacity
+        style={styles.thumbsUpButton}
+        onPress={() => setIsLiked(!isLiked)}
+      >
+        <FontAwesome
+          name={isLiked ? "thumbs-up" : "thumbs-o-up"}
+          size={30}
+          color={Colors.primary500}
+        />
+      </TouchableOpacity>
     </GestureHandlerRootView>
   );
 };
@@ -99,6 +131,27 @@ const styles = StyleSheet.create({
     width: screenWidth,
     height: "100%",
     borderRadius: 12,
+  },
+  thumbsUpButton: {
+    position: "absolute",
+    bottom: 40,
+    right: 25,
+    padding: 10,
+  },
+  indicatorContainer: {
+    position: "absolute",
+    bottom: 40,
+    left: "50%",
+    transform: [{ translateX: -15 }],
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
 });
 
