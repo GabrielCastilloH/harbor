@@ -178,9 +178,6 @@ export default function HomeScreen() {
   const [recommendationsFetched, setRecommendationsFetched] =
     useState<boolean>(false);
   // 🚀 REMOVED: loadingProfile, userProfile, swipeLimit, loadingSwipeLimit - now handled by AppContext
-  const [isNoPressed, setIsNoPressed] = useState(false);
-  const [isYesPressed, setIsYesPressed] = useState(false);
-  const [touchStart, setTouchStart] = useState({ x: 0, y: 0 });
   const [isUserActive, setIsUserActive] = useState<boolean>(true);
   const [swipeInProgress, setSwipeInProgress] = useState(false);
   const [lastSwipedProfile, setLastSwipedProfile] = useState<string | null>(
@@ -342,29 +339,6 @@ export default function HomeScreen() {
 
     fetchRecommendations();
   }, []); // Empty dependency array - run once on mount
-
-  const handleTouchStart = (event: GestureResponderEvent) => {
-    setTouchStart({
-      x: event.nativeEvent.pageX,
-      y: event.nativeEvent.pageY,
-    });
-  };
-
-  const handleTouchEnd = (event: GestureResponderEvent, isNo: boolean) => {
-    const moveThreshold = 30; // pixels
-    const dx = Math.abs(event.nativeEvent.pageX - touchStart.x);
-    const dy = Math.abs(event.nativeEvent.pageY - touchStart.y);
-
-    if (dx < moveThreshold && dy < moveThreshold) {
-      if (isNo) {
-        stackRef.current?.swipeLeft();
-      } else {
-        stackRef.current?.swipeRight();
-      }
-    }
-    setIsNoPressed(false);
-    setIsYesPressed(false);
-  };
 
   const handleSwipeRight = async (profile: Profile) => {
     // Check if user is banned
@@ -623,9 +597,6 @@ export default function HomeScreen() {
     return <LoadingScreen loadingText="Loading your Harbor" />;
   }
 
-  // Determine whether to show the buttons
-  const showButtons = recommendations.length > 0;
-
   return (
     <View style={{ flex: 1, backgroundColor: Colors.primary100 }}>
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
@@ -672,65 +643,6 @@ export default function HomeScreen() {
               isUserActive={isUserActive}
             />
           </View>
-          {showButtons && (
-            <View style={styles.buttonsContainer}>
-              <TouchableOpacity
-                activeOpacity={1}
-                style={[
-                  styles.button,
-                  styles.noButton,
-                  isNoPressed && { backgroundColor: Colors.red },
-                  (!isUserActive || isBanned) && { opacity: 0.5 },
-                ]}
-                onPressIn={(event) => {
-                  if (!isUserActive || isBanned) return;
-                  setIsNoPressed(true);
-                  handleTouchStart(event);
-                }}
-                onPressOut={(event) => {
-                  if (!isUserActive || isBanned) return;
-                  handleTouchEnd(event, true);
-                }}
-                disabled={!isUserActive || isBanned}
-              >
-                <Image
-                  source={require("../assets/images/shipwreck.png")}
-                  style={{
-                    height: 40,
-                    width: 40,
-                    tintColor: isNoPressed ? Colors.primary100 : Colors.red,
-                  }}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={1}
-                style={[
-                  styles.button,
-                  styles.yesButton,
-                  isYesPressed && { backgroundColor: Colors.green },
-                  (!isUserActive || isBanned) && { opacity: 0.5 },
-                ]}
-                onPressIn={(event) => {
-                  if (!isUserActive || isBanned) return;
-                  setIsYesPressed(true);
-                  handleTouchStart(event);
-                }}
-                onPressOut={(event) => {
-                  if (!isUserActive || isBanned) return;
-                  handleTouchEnd(event, false);
-                }}
-                disabled={!isUserActive || isBanned}
-              >
-                <View style={{ marginBottom: 3, marginLeft: 2 }}>
-                  <FontAwesome6
-                    name="sailboat"
-                    size={35}
-                    color={isYesPressed ? Colors.primary100 : Colors.green}
-                  />
-                </View>
-              </TouchableOpacity>
-            </View>
-          )}
           <UnviewedMatchesHandler />
         </GestureHandlerRootView>
       </SafeAreaView>
@@ -781,29 +693,5 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 0,
     justifyContent: "center",
-  },
-  buttonsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-evenly",
-    alignItems: "center",
-    paddingBottom: 20,
-    paddingHorizontal: 30,
-    paddingTop: 20,
-    minHeight: 120,
-  },
-  button: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 5,
-    backgroundColor: Colors.primary100,
-  },
-  noButton: {
-    borderColor: Colors.red,
-  },
-  yesButton: {
-    borderColor: Colors.green,
   },
 });
