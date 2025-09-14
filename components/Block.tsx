@@ -9,12 +9,13 @@ import Animated, {
   useAnimatedStyle,
   useAnimatedGestureHandler,
   withSpring,
+  runOnJS,
 } from "react-native-reanimated";
 import BasicInfoView from "./BasicInfoView";
 import PersonalView from "./PersonalView";
 import { Profile } from "../types/App";
 import Colors from "../constants/Colors";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome, Octicons } from "@expo/vector-icons";
 
 const { width: screenWidth } = Dimensions.get("window");
 const SWIPE_THRESHOLD = screenWidth * 0.2; // 20% of screen width
@@ -31,7 +32,15 @@ interface PostProps {
 
 const Post = ({ profile }: PostProps) => {
   const translateX = useSharedValue(0);
+  const opacity = useSharedValue(1);
+
   const [isLiked, setIsLiked] = useState(false);
+  const [isDisliked, setIsDisliked] = useState(false);
+
+  const handleStateUpdate = (liked: boolean, disliked: boolean) => {
+    setIsLiked(liked);
+    setIsDisliked(disliked);
+  };
 
   const gestureHandler = useAnimatedGestureHandler({
     onStart: (_, context: any) => {
@@ -39,25 +48,27 @@ const Post = ({ profile }: PostProps) => {
     },
     onActive: (event, context: any) => {
       const nextTranslateX = context.startX + event.translationX;
-      // Clamp the value to prevent swiping too far off-screen
-      translateX.value = Math.max(
-        Math.min(nextTranslateX, 0), // Swiping starts from the left (red square), so max is 0
-        -screenWidth // Swipe left to the blue square
-      );
+      translateX.value = nextTranslateX;
     },
     onEnd: (event) => {
+      if (isLiked || isDisliked) {
+        // Prevent further interaction after a choice has been made
+        return;
+      }
+
       if (event.translationX > SWIPE_THRESHOLD) {
-        // Swipe right: move to the red square
-        translateX.value = withSpring(0, STRICT_SPRING_CONFIG);
+        // Swiped right (like)
+        translateX.value = withSpring(screenWidth, STRICT_SPRING_CONFIG);
+        opacity.value = withSpring(0.5);
+        runOnJS(handleStateUpdate)(true, false);
       } else if (event.translationX < -SWIPE_THRESHOLD) {
-        // Swipe left: move to the blue square
+        // Swiped left (dislike)
         translateX.value = withSpring(-screenWidth, STRICT_SPRING_CONFIG);
+        opacity.value = withSpring(0.5);
+        runOnJS(handleStateUpdate)(false, true);
       } else {
-        // Not enough of a swipe, snap back to the current position
-        translateX.value = withSpring(
-          translateX.value > -screenWidth / 2 ? 0 : -screenWidth,
-          STRICT_SPRING_CONFIG
-        );
+        // No significant swipe, snap back to center
+        translateX.value = withSpring(0, STRICT_SPRING_CONFIG);
       }
     },
   });
@@ -65,6 +76,7 @@ const Post = ({ profile }: PostProps) => {
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [{ translateX: translateX.value }],
+      opacity: opacity.value,
     };
   });
 
@@ -81,6 +93,22 @@ const Post = ({ profile }: PostProps) => {
       backgroundColor: isSelected ? Colors.primary500 : Colors.primary100,
     };
   });
+
+  const handleLike = () => {
+    if (!isLiked && !isDisliked) {
+      translateX.value = withSpring(screenWidth, STRICT_SPRING_CONFIG);
+      opacity.value = withSpring(0.5);
+      setIsLiked(true);
+    }
+  };
+
+  const handleDislike = () => {
+    if (!isLiked && !isDisliked) {
+      translateX.value = withSpring(-screenWidth, STRICT_SPRING_CONFIG);
+      opacity.value = withSpring(0.5);
+      setIsDisliked(true);
+    }
+  };
 
   return (
     <GestureHandlerRootView>
@@ -105,8 +133,21 @@ const Post = ({ profile }: PostProps) => {
       </View>
 
       <TouchableOpacity
+        style={styles.dislikeButton}
+        onPress={handleDislike}
+        disabled={isLiked || isDisliked}
+      >
+        <Octicons
+          name={isDisliked ? "x-circle-fill" : "x-circle"}
+          size={30}
+          color={Colors.primary500}
+        />
+      </TouchableOpacity>
+
+      <TouchableOpacity
         style={styles.thumbsUpButton}
-        onPress={() => setIsLiked(!isLiked)}
+        onPress={handleLike}
+        disabled={isLiked || isDisliked}
       >
         <FontAwesome
           name={isLiked ? "thumbs-up" : "thumbs-o-up"}
@@ -136,6 +177,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 40,
     right: 25,
+    padding: 10,
+  },
+  dislikeButton: {
+    position: "absolute",
+    bottom: 40,
+    left: 25,
     padding: 10,
   },
   indicatorContainer: {
