@@ -21,7 +21,6 @@ import {
 import { streamNotificationService } from "../util/streamNotifService";
 import Colors from "../constants/Colors";
 import AnimatedStack from "../components/AnimatedStack";
-import MatchModal from "./MatchModal";
 import LoadingScreen from "../components/LoadingScreen";
 import UnviewedMatchesHandler from "../components/UnviewedMatchesHandler";
 import { Profile } from "../types/App";
@@ -64,9 +63,6 @@ export default function HomeScreen() {
   const [isNoPressed, setIsNoPressed] = useState(false);
   const [isYesPressed, setIsYesPressed] = useState(false);
   const [touchStart, setTouchStart] = useState({ x: 0, y: 0 });
-  const [showMatch, setShowMatch] = useState(false);
-  const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
-  const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   const [isUserActive, setIsUserActive] = useState<boolean>(true);
   const [swipeInProgress, setSwipeInProgress] = useState(false);
   const [lastSwipedProfile, setLastSwipedProfile] = useState<string | null>(
@@ -78,7 +74,6 @@ export default function HomeScreen() {
     null
   );
   const [shouldRemoveCurrentCard, setShouldRemoveCurrentCard] = useState(false);
-  const [currentMatchId, setCurrentMatchId] = useState<string | null>(null);
   const stackRef = React.useRef<{
     swipeLeft: () => void;
     swipeRight: () => void;
@@ -140,13 +135,9 @@ export default function HomeScreen() {
             // To get the matched user's profile, fetch their data
             const profile = await UserService.getUserById(matchedUserId);
             if (profile && userProfile) {
-              setMatchedProfile(profile);
-              setCurrentMatchId(change.doc.id);
-              setShowMatch(true);
-
               // Clear recommendations since user is now in a match
               setRecommendations([]);
-              setCurrentProfile(null);
+              setCurrentCardProfile(null);
             }
           } catch (error) {
             console.error("Error fetching matched user profile:", error);
@@ -237,7 +228,7 @@ export default function HomeScreen() {
           if (hasActiveMatches) {
             // User is in a match, don't fetch recommendations
             setRecommendations([]);
-            setCurrentProfile(null);
+            setCurrentCardProfile(null);
             setLoadingRecommendations(false);
             setRecommendationsFetched(true);
             return;
@@ -273,7 +264,7 @@ export default function HomeScreen() {
           );
           setRecommendations(recommendationsWithSecureImages);
           if (recommendationsWithSecureImages.length > 0) {
-            setCurrentProfile(recommendationsWithSecureImages[0]);
+            setCurrentCardProfile(recommendationsWithSecureImages[0]);
           }
         }
       } catch (error: any) {
@@ -313,34 +304,6 @@ export default function HomeScreen() {
     }
     setIsNoPressed(false);
     setIsYesPressed(false);
-  };
-
-  const handleMatchModalClose = () => {
-    setShowMatch(false);
-    // Refresh recommendations when match modal is closed
-    // This allows users to continue swiping if they want to
-    if (userId && isAuthenticated && currentUser) {
-      // Trigger a re-fetch of recommendations
-      const fetchRecommendations = async () => {
-        try {
-          const response = await RecommendationService.getRecommendations(
-            userId
-          );
-          if (response && response.recommendations) {
-            setRecommendations(response.recommendations);
-            if (response.recommendations.length > 0) {
-              setCurrentProfile(response.recommendations[0]);
-            }
-          }
-        } catch (error) {
-          console.error(
-            "❌ [HOMESCREEN] Error refreshing recommendations after match:",
-            error
-          );
-        }
-      };
-      fetchRecommendations();
-    }
   };
 
   const handleSwipeRight = async (profile: Profile) => {
@@ -405,15 +368,10 @@ export default function HomeScreen() {
         // Chat channel is now created automatically by the backend
         // Match viewed status is now handled automatically by the backend
 
-        // Only show the match modal if we have both profiles
+        // Clear recommendations since user is now in a match
         if (userProfile) {
-          setMatchedProfile(profile);
-          setCurrentMatchId(response.matchId || null);
-          setShowMatch(true);
-
-          // Clear recommendations since user is now in a match
           setRecommendations([]);
-          setCurrentProfile(null);
+          setCurrentCardProfile(null);
         }
       } else {
         // Update current profile to the next one only if no match
@@ -421,9 +379,9 @@ export default function HomeScreen() {
           (p) => p.uid === profile.uid
         );
         if (currentIndex < recommendations.length - 1) {
-          setCurrentProfile(recommendations[currentIndex + 1]);
+          setCurrentCardProfile(recommendations[currentIndex + 1]);
         } else {
-          setCurrentProfile(null);
+          setCurrentCardProfile(null);
         }
       }
     } catch (error) {
@@ -475,9 +433,9 @@ export default function HomeScreen() {
         (p) => p.uid === profile.uid
       );
       if (currentIndex < recommendations.length - 1) {
-        setCurrentProfile(recommendations[currentIndex + 1]);
+        setCurrentCardProfile(recommendations[currentIndex + 1]);
       } else {
-        setCurrentProfile(null);
+        setCurrentCardProfile(null);
       }
     } catch (error) {
       console.error(`❌ [HOMESCREEN] Error creating left swipe:`, error);
@@ -651,13 +609,6 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
           )}
-          <MatchModal
-            visible={showMatch}
-            onClose={handleMatchModalClose}
-            matchedProfile={matchedProfile}
-            currentProfile={userProfile}
-            matchId={currentMatchId || undefined}
-          />
           <UnviewedMatchesHandler />
         </GestureHandlerRootView>
       </SafeAreaView>
