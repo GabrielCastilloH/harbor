@@ -74,8 +74,8 @@ const FeedScreen = () => {
 
   // Conditionally load dummy data
   const DUMMY_POSTS =
-    currentUserEmail === "gac232@cornell.edu"
-      ? // If the user is `gac232@cornell.edu`, create posts from the dummy data
+    currentUserEmail === "zb98@cornell.edu"
+      ? // If the user is `zb98@cornell.edu`, create posts from the dummy data
         Array.from({ length: 20 }, (_, i) => {
           const profileIndex = i % generateDummyProfiles().length;
           return {
