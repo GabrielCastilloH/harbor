@@ -5,8 +5,8 @@ import { Profile } from "../types/App";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 
-// Only generates 3 dummy profiles
-const generateDummyProfiles = (): Profile[] => [
+// Define a single instance of the 3 dummy profiles to avoid duplicates
+const DUMMY_PROFILES: Profile[] = [
   {
     uid: "dummy-user-1",
     email: "alex.johnson@cornell.edu",
@@ -72,26 +72,18 @@ const FeedScreen = () => {
   // Get the current user's email from context
   const currentUserEmail = currentUser?.email || "";
 
-  // Conditionally load dummy data
-  const DUMMY_POSTS =
+  // Conditionally select the data source
+  const profilesToDisplay =
     currentUserEmail === "zb98@cornell.edu"
-      ? // If the user is `zb98@cornell.edu`, create posts from the dummy data
-        Array.from({ length: 20 }, (_, i) => {
-          const profileIndex = i % generateDummyProfiles().length;
-          return {
-            id: `post-${i}`,
-            profile: generateDummyProfiles()[profileIndex],
-          };
-        })
-      : // Otherwise, return an empty array
-        [];
+      ? DUMMY_PROFILES // Use the single array of dummy profiles
+      : []; // Empty array for all other users
 
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
-        data={DUMMY_POSTS}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <Post profile={item.profile} />}
+        data={profilesToDisplay}
+        keyExtractor={(item) => item.uid || `profile-${Math.random()}`}
+        renderItem={({ item }) => <Post profile={item} />}
         showsVerticalScrollIndicator={false}
         // Add an empty list component for when there's no data
         ListEmptyComponent={() => (
