@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { StyleSheet, FlatList, SafeAreaView, Text, View } from "react-native";
 import Post from "../components/Block";
 import { Profile } from "../types/App";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
+import { RecommendationService } from "../networking";
 
 // Define a single instance of the 3 dummy profiles to avoid duplicates
 const DUMMY_PROFILES: Profile[] = [
@@ -67,16 +68,69 @@ const DUMMY_PROFILES: Profile[] = [
 ];
 
 const FeedScreen = () => {
-  const { currentUser } = useAppContext();
+  const { currentUser, userId } = useAppContext();
+  const [recommendations, setRecommendations] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Get the current user's email from context
   const currentUserEmail = currentUser?.email || "";
+
+  // Fetch recommendations from backend for non-dummy users
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      // Skip fetching for dummy user or if no userId
+      if (currentUserEmail === "zb98@cornell.edu" || !userId) {
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await RecommendationService.getRecommendations(userId);
+        setRecommendations(response.recommendations || []);
+      } catch (err: any) {
+        console.error("Error fetching recommendations:", err);
+        setError("Failed to load recommendations");
+        setRecommendations([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecommendations();
+  }, [userId, currentUserEmail]);
 
   // Conditionally select the data source
   const profilesToDisplay =
     currentUserEmail === "zb98@cornell.edu"
       ? DUMMY_PROFILES // Use the single array of dummy profiles
-      : []; // Empty array for all other users
+      : recommendations; // Use backend recommendations for other users
+
+  // Show loading state for non-dummy users
+  if (currentUserEmail !== "zb98@cornell.edu" && loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading recommendations...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show error state for non-dummy users
+  if (currentUserEmail !== "zb98@cornell.edu" && error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyTitle}>Error Loading</Text>
+          <Text style={styles.emptyTitle}>Recommendations</Text>
+          <Text style={styles.emptySubtitle}>{error}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -105,6 +159,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.primary100,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+  },
+  loadingText: {
+    fontSize: 18,
+    color: Colors.primary500,
+    textAlign: "center",
   },
   emptyContainer: {
     flex: 1,
