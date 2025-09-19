@@ -1,6 +1,7 @@
 import SettingsScreen from "../screens/SettingsScreen";
 import EditProfileScreen from "../screens/EditProfileScreen";
 import SelfProfileScreen from "../screens/SelfProfileScreen";
+import GroupSizeScreen from "../screens/GroupSizeScreen";
 import Colors from "../constants/Colors";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
@@ -29,6 +30,11 @@ export default function SettingsStack() {
       <Stack.Screen
         name="SelfProfile"
         component={SelfProfileScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="GroupSize"
+        component={GroupSizeScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

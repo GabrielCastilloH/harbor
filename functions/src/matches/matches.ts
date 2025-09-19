@@ -5,6 +5,129 @@ import { CallableRequest } from "firebase-functions/v2/https";
 const db = admin.firestore();
 
 /**
+ * Creates a group match between multiple users
+ */
+export const createGroupMatch = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (
+    request: CallableRequest<{ memberIds: string[]; groupSize: number }>
+  ) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { memberIds, groupSize } = request.data;
+
+      if (!memberIds || !Array.isArray(memberIds) || memberIds.length < 2) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "At least 2 member IDs are required"
+        );
+      }
+
+      if (![2, 3, 4].includes(groupSize)) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Group size must be 2, 3, or 4"
+        );
+      }
+
+      if (memberIds.length !== groupSize) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Number of members must match group size"
+        );
+      }
+
+      // Check if any of these users already have an active group match together
+      const existingMatches = await db
+        .collection("matches")
+        .where("isActive", "==", true)
+        .where("type", "==", "group")
+        .get();
+
+      for (const matchDoc of existingMatches.docs) {
+        const matchData = matchDoc.data();
+        const existingMembers = matchData.memberIds || [];
+
+        // Check if there's any overlap between existing members and new members
+        const hasOverlap = memberIds.some((id) => existingMembers.includes(id));
+        if (hasOverlap) {
+          throw new functions.https.HttpsError(
+            "already-exists",
+            "One or more users are already in an active group match"
+          );
+        }
+      }
+
+      // Create new group match
+      const matchData = {
+        type: "group",
+        memberIds: memberIds,
+        groupSize: groupSize,
+        matchDate: admin.firestore.FieldValue.serverTimestamp(),
+        isActive: true,
+        messageCount: 0,
+        // Track consent for each member
+        memberConsent: memberIds.reduce((acc, id) => {
+          acc[id] = false;
+          return acc;
+        }, {} as Record<string, boolean>),
+        // Track view status for each member
+        memberViewed: memberIds.reduce((acc, id) => {
+          acc[id] = false;
+          return acc;
+        }, {} as Record<string, boolean>),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      const matchRef = await db.collection("matches").add(matchData);
+
+      // Update all member users to include this match in their currentMatches
+      const batch = db.batch();
+      for (const memberId of memberIds) {
+        const userRef = db.collection("users").doc(memberId);
+        batch.update(userRef, {
+          currentMatches: admin.firestore.FieldValue.arrayUnion(matchRef.id),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
+
+      return {
+        message: "Group match created successfully",
+        matchId: matchRef.id,
+        match: { id: matchRef.id, ...matchData },
+      };
+    } catch (error: any) {
+      console.error("Error creating group match:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to create group match"
+      );
+    }
+  }
+);
+
+/**
  * Creates a match between two users
  */
 export const createMatch = functions.https.onCall(
@@ -56,6 +179,7 @@ export const createMatch = functions.https.onCall(
 
       // Create new match
       const matchData = {
+        type: "individual", // Mark as individual match
         user1Id,
         user2Id,
         matchDate: admin.firestore.FieldValue.serverTimestamp(),
@@ -1057,6 +1181,7 @@ export const migrateMatchConsent = functions.https.onCall(
 
 export const matchFunctions = {
   createMatch,
+  createGroupMatch,
   getActiveMatches,
   unmatchUsers,
   updateMatchChannel,
