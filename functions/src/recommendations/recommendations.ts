@@ -134,6 +134,7 @@ export const getRecommendations = functions.https.onCall(
 
       const userAvailability = currentUserData?.availability ?? -1;
       const useAvailabilityMatching = userAvailability !== -1;
+      const userGroupSize = currentUserData?.groupSize ?? 2;
 
       // Helper function to filter users
       const filterUser = (u: any) => {
@@ -141,7 +142,9 @@ export const getRecommendations = functions.https.onCall(
           u.uid !== userId &&
           !swipedUserIds.has(u.uid) &&
           !matchedUserIds.has(u.uid) &&
-          isCompatible(currentUserData, u)
+          isCompatible(currentUserData, u) &&
+          // Prioritize users with the same group size preference
+          (u.groupSize === userGroupSize || u.groupSize === undefined)
         );
       };
 
