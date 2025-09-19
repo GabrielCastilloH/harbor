@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, FlatList, SafeAreaView, Text, View } from "react-native";
 import Post from "../components/Block";
+import LoadingScreen from "../components/LoadingScreen";
 import { Profile } from "../types/App";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
@@ -110,13 +111,7 @@ const FeedScreen = () => {
 
   // Show loading state for non-dummy users
   if (currentUserEmail !== "zb98@cornell.edu" && loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading recommendations...</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <LoadingScreen loadingText="Loading your Harbor" />;
   }
 
   // Show error state for non-dummy users
@@ -159,17 +154,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.primary100,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 40,
-  },
-  loadingText: {
-    fontSize: 18,
-    color: Colors.primary500,
-    textAlign: "center",
   },
   emptyContainer: {
     flex: 1,

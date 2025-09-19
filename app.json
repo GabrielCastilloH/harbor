@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.gabrielach.harbor",
+      "bundleIdentifier": "app.tryharbor",
       "googleServicesFile": "./GoogleService-Info.plist",
       "buildNumber": "1",
       "entitlements": {
@@ -44,13 +44,13 @@
         "android.permission.VIBRATE",
         "android.permission.WAKE_LOCK"
       ],
-      "package": "com.gabrielach.harbor",
+      "package": "app.tryharbor",
       "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "scheme": "com.gabrielach.harbor",
+    "scheme": "app.tryharbor",
     "plugins": [
       [
         "expo-notifications",
@@ -89,7 +89,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "9d174596-e440-4892-9ffb-bbcd18bcde65"
+        "projectId": "97ea7c4c-5788-42cf-b4b6-a924e333df46"
       }
     },
     "owner": "gabrielcastillo"
