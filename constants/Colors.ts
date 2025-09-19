@@ -2,6 +2,7 @@
 export default {
   primary500: "#1299a3", // main color
   primary100: "#e8f6f7", // off white
+  secondary800: "#6b7574", // darkGray
   secondary500: "#a7b3b1", // gray
   secondary200: "#edf3f3", // light gray
   secondary100: "#FeFeFe", // almost white
