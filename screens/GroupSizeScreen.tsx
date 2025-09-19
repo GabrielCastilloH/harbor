@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
   },
   optionDescription: {
     fontSize: 14,
-    color: Colors.secondary500,
+    color: Colors.secondary800,
   },
   selectedOptionDescription: {
     color: Colors.primary500,
