@@ -123,7 +123,6 @@ const Post = ({ profile }: PostProps) => {
 
         // Handle match result if there's a match
         if (result.match) {
-          console.log("🎉 Match created!", result);
           // You could show a match notification here
         }
       } catch (error: any) {
