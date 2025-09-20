@@ -129,7 +129,15 @@ export const createSwipe = functions.https.onCall(
     }>
   ) => {
     try {
+      console.log("🚀 [SWIPES] createSwipe function called");
+      console.log("📝 [SWIPES] Request data:", request.data);
+      console.log(
+        "🔐 [SWIPES] Auth:",
+        request.auth ? "Authenticated" : "Not authenticated"
+      );
+
       if (!request.auth) {
+        console.log("❌ [SWIPES] Authentication failed - no auth provided");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -137,15 +145,21 @@ export const createSwipe = functions.https.onCall(
       }
 
       const { swiperId, swipedId, direction } = request.data;
+      console.log("👤 [SWIPES] Swiper ID:", swiperId);
+      console.log("👤 [SWIPES] Swiped ID:", swipedId);
+      console.log("👆 [SWIPES] Direction:", direction);
 
       if (!swiperId || !swipedId || !direction) {
+        console.log("❌ [SWIPES] Missing required parameters");
         throw new functions.https.HttpsError(
           "invalid-argument",
           "Swiper ID, swiped ID, and direction are required"
         );
       }
 
+      console.log("🔄 [SWIPES] Starting database transaction");
       const result = await db.runTransaction(async (transaction) => {
+        console.log("📊 [SWIPES] Inside transaction - fetching user documents");
         const swiperUserRef = db.collection("users").doc(swiperId);
         const swipedUserRef = db.collection("users").doc(swipedId);
         const [swiperUserDoc, swipedUserDoc] = await transaction.getAll(
@@ -153,7 +167,16 @@ export const createSwipe = functions.https.onCall(
           swipedUserRef
         );
 
+        console.log("👤 [SWIPES] Swiper user exists:", swiperUserDoc.exists);
+        console.log("👤 [SWIPES] Swiped user exists:", swipedUserDoc.exists);
+
         if (!swiperUserDoc.exists || !swipedUserDoc.exists) {
+          console.log(
+            "❌ [SWIPES] User not found - swiper exists:",
+            swiperUserDoc.exists,
+            "swiped exists:",
+            swipedUserDoc.exists
+          );
           throw new functions.https.HttpsError(
             "not-found",
             "Swiper or swiped user not found"
@@ -161,17 +184,39 @@ export const createSwipe = functions.https.onCall(
         }
 
         const swiperUser = swiperUserDoc.data();
+        console.log("📋 [SWIPES] Swiper user data:", {
+          uid: swiperUser?.uid,
+          email: swiperUser?.email,
+          groupSize: swiperUser?.groupSize,
+          swipesToday: swiperUser?.swipesToday,
+          resetDate: swiperUser?.resetDate,
+        });
 
         // 1. Check for swipe limits based on the unified system
         const today = new Date().toISOString().split("T")[0];
         let swipesToday = swiperUser?.swipesToday ?? 0;
         const resetDate = swiperUser?.resetDate ?? today;
 
+        console.log(
+          "📅 [SWIPES] Date check - today:",
+          today,
+          "resetDate:",
+          resetDate
+        );
+        console.log(
+          "🔢 [SWIPES] Swipes today:",
+          swipesToday,
+          "max allowed:",
+          MAX_SWIPES_PER_DAY
+        );
+
         if (resetDate !== today) {
+          console.log("🔄 [SWIPES] Resetting swipe count for new day");
           swipesToday = 0;
         }
 
         if (swipesToday >= MAX_SWIPES_PER_DAY) {
+          console.log("❌ [SWIPES] Daily swipe limit reached");
           throw new functions.https.HttpsError(
             "resource-exhausted",
             "Daily swipe limit reached"
@@ -179,6 +224,7 @@ export const createSwipe = functions.https.onCall(
         }
 
         // 2. Check if users have unmatched before
+        console.log("🔍 [SWIPES] Checking for previous unmatched users");
         const unmatchedCheck = await db
           .collection("matches")
           .where("user1Id", "in", [swiperId, swipedId])
@@ -187,9 +233,17 @@ export const createSwipe = functions.https.onCall(
           .limit(1)
           .get();
 
+        console.log(
+          "📋 [SWIPES] Unmatched check results:",
+          unmatchedCheck.empty
+            ? "No previous unmatched"
+            : "Found previous unmatched"
+        );
+
         if (!unmatchedCheck.empty) {
-          // This part of the code could be simplified, but we'll leave it for now.
-          // It's not directly related to the swipe limit change.
+          console.log(
+            "❌ [SWIPES] Users have unmatched before, cannot match again"
+          );
           return {
             message: "Users have unmatched before, cannot match again",
             swipe: null,
@@ -198,6 +252,7 @@ export const createSwipe = functions.https.onCall(
         }
 
         // 3. Check if users can match by looking at their actual active matches
+        console.log("🔍 [SWIPES] Checking for active matches");
         const [
           swiperActiveMatches1,
           swiperActiveMatches2,
@@ -235,15 +290,26 @@ export const createSwipe = functions.https.onCall(
           ...swipedActiveMatches2.docs,
         ];
 
+        console.log(
+          "📊 [SWIPES] Active matches - swiper:",
+          swiperMatches.length,
+          "swiped:",
+          swipedMatches.length
+        );
+
         // Since we're forgetting about premium for now, these checks are not strictly necessary,
         // but we'll leave them in case you want to use them later.
         if (swiperMatches.length >= 1) {
+          console.log("❌ [SWIPES] Swiper has active matches, cannot swipe");
           throw new functions.https.HttpsError(
             "permission-denied",
             "Users cannot swipe while they have an active match"
           );
         }
         if (swipedMatches.length >= 1) {
+          console.log(
+            "❌ [SWIPES] Swiped user has active matches, cannot swipe"
+          );
           throw new functions.https.HttpsError(
             "permission-denied",
             "Cannot swipe on users who have active matches"
@@ -251,6 +317,7 @@ export const createSwipe = functions.https.onCall(
         }
 
         // 4. Check if swipe already exists
+        console.log("🔍 [SWIPES] Checking for existing swipe");
         const existingSwipe = await db
           .collection("swipes")
           .where("swiperId", "==", swiperId)
@@ -259,7 +326,15 @@ export const createSwipe = functions.https.onCall(
           .limit(1)
           .get();
 
+        console.log(
+          "📋 [SWIPES] Existing swipe check:",
+          existingSwipe.empty ? "No existing swipe" : "Found existing swipe"
+        );
+
         if (!existingSwipe.empty) {
+          console.log(
+            "⚠️ [SWIPES] Swipe already exists, returning existing data"
+          );
           return {
             message: "Swipe already exists",
             swipe: existingSwipe.docs[0].data(),
@@ -275,6 +350,7 @@ export const createSwipe = functions.https.onCall(
         };
 
         // 5. Check for mutual swipe and create a match if it exists
+        console.log("💕 [SWIPES] Starting match creation logic");
         let match = false;
         let matchId = null;
         let isGroupMatch = false;
@@ -282,10 +358,18 @@ export const createSwipe = functions.https.onCall(
         if (direction === "right") {
           // Get the group size preference of the swiper
           const swiperGroupSize = swiperUser?.groupSize || 2;
+          console.log(
+            "👥 [SWIPES] Swiper group size preference:",
+            swiperGroupSize
+          );
 
           // STRICT GROUP SIZE MATCHING: Only match users in groups of their selected size
           if (swiperGroupSize === 2) {
+            console.log(
+              "👫 [SWIPES] Processing individual match (group size 2)"
+            );
             // For group size 2, only create individual matches
+            console.log("🔍 [SWIPES] Checking for mutual right swipe");
             const mutualSwipe = await db
               .collection("swipes")
               .where("swiperId", "==", swipedId)
@@ -294,10 +378,17 @@ export const createSwipe = functions.https.onCall(
               .limit(1)
               .get();
 
+            console.log(
+              "💕 [SWIPES] Mutual swipe check:",
+              mutualSwipe.empty ? "No mutual swipe" : "Found mutual swipe!"
+            );
+
             if (!mutualSwipe.empty) {
+              console.log("🎉 [SWIPES] Creating individual match!");
               match = true;
               const matchRef = db.collection("matches").doc();
               matchId = matchRef.id;
+              console.log("🆔 [SWIPES] Match ID:", matchId);
 
               const matchData = {
                 type: "individual",
@@ -322,21 +413,34 @@ export const createSwipe = functions.https.onCall(
             }
           } else {
             // For group sizes 3 and 4, only create group matches
+            console.log(
+              "👥 [SWIPES] Processing group match (group size",
+              swiperGroupSize,
+              ")"
+            );
             const groupFormation = await checkForGroupFormation(
               swiperId,
               swipedId,
               swiperGroupSize
             );
 
+            console.log("🔍 [SWIPES] Group formation result:", {
+              canFormGroup: groupFormation.canFormGroup,
+              memberIds: groupFormation.memberIds,
+              expectedSize: swiperGroupSize,
+            });
+
             if (
               groupFormation.canFormGroup &&
               groupFormation.memberIds.length === swiperGroupSize
             ) {
               // Create a group match
+              console.log("🎉 [SWIPES] Creating group match!");
               match = true;
               const matchRef = db.collection("matches").doc();
               matchId = matchRef.id;
               isGroupMatch = true;
+              console.log("🆔 [SWIPES] Group Match ID:", matchId);
 
               const matchData = {
                 type: "group",
@@ -377,6 +481,7 @@ export const createSwipe = functions.https.onCall(
         }
 
         // 6. Record the swipe and update the swipe count
+        console.log("💾 [SWIPES] Recording swipe and updating count");
         const swipeRef = db.collection("swipes").doc();
         transaction.set(swipeRef, swipeData);
         transaction.update(swiperUserRef, {
@@ -385,7 +490,7 @@ export const createSwipe = functions.https.onCall(
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        return {
+        const result = {
           message: "Swipe recorded",
           swipe: swipeData,
           match,
@@ -393,10 +498,17 @@ export const createSwipe = functions.https.onCall(
           isGroupMatch,
           groupSize: isGroupMatch ? swiperUser?.groupSize || 2 : 2,
         };
+
+        console.log("✅ [SWIPES] Transaction completed successfully:", result);
+        return result;
       });
 
       // Create chat channel after transaction if there's a match
-      if (result.match && result.matchId) {
+      if (result.match && "matchId" in result && result.matchId) {
+        console.log(
+          "💬 [SWIPES] Creating chat channel for match:",
+          result.matchId
+        );
         try {
           const { StreamChat } = await import("stream-chat");
           const { SecretManagerServiceClient } = await import(
@@ -426,7 +538,7 @@ export const createSwipe = functions.https.onCall(
             let channelId: string;
             let channelMembers: string[];
 
-            if (result.isGroupMatch) {
+            if ("isGroupMatch" in result && result.isGroupMatch) {
               // For group matches, use match ID
               channelId = `group-${result.matchId}`;
               // Get member IDs from the match document
@@ -474,22 +586,18 @@ export const createSwipe = functions.https.onCall(
                 });
 
                 // Mark that intro message has been sent in the match document
-                await db.collection("matches").doc(result.matchId).update({
-                  introMessageSent: true,
-                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                });
+                if ("matchId" in result && result.matchId) {
+                  await db.collection("matches").doc(result.matchId).update({
+                    introMessageSent: true,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                  });
+                }
               } catch (messageErr) {
                 // Don't fail the channel creation if system message fails
               }
             } catch (updateErr) {
               // Don't fail the match creation if channel update fails
             }
-
-            console.log(
-              `✅ [SWIPES] Chat channel created successfully: ${channelId} (${
-                result.isGroupMatch ? "group" : "individual"
-              })`
-            );
           } else {
             console.error("❌ [SWIPES] Missing Stream API credentials");
           }
@@ -502,11 +610,29 @@ export const createSwipe = functions.https.onCall(
         }
       }
 
+      console.log(
+        "🎯 [SWIPES] Function completed successfully, returning result:",
+        result
+      );
       return result;
     } catch (error: any) {
+      console.error("💥 [SWIPES] Error in createSwipe function:", error);
+      console.error("💥 [SWIPES] Error details:", {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        stack: error.stack,
+      });
+
       if (error instanceof functions.https.HttpsError) {
+        console.log(
+          "🚨 [SWIPES] Throwing HttpsError:",
+          error.code,
+          error.message
+        );
         throw error;
       }
+      console.log("🚨 [SWIPES] Throwing generic internal error");
       throw new functions.https.HttpsError(
         "internal",
         "Failed to create swipe"
