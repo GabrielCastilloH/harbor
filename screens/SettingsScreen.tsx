@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useState } from "react";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { signOut } from "firebase/auth";
@@ -48,28 +48,36 @@ export default function SettingsScreen() {
   // PREMIUM DISABLED: useUser commented out
   // const { user } = useUser();
 
-  // Fetch user profile to get isActive status
-  React.useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!userId) return;
+  // Fetch user profile to get isActive status and group size
+  const fetchUserProfile = React.useCallback(async () => {
+    if (!userId) return;
 
-      setIsLoadingProfile(true);
-      try {
-        const profile = await UserService.getUserById(userId);
+    setIsLoadingProfile(true);
+    try {
+      const profile = await UserService.getUserById(userId);
 
-        // Handle the nested structure returned by UserService
-        const userData = profile.user || profile;
-        setUserProfile(userData);
-        setCurrentGroupSize(userData.groupSize || 2);
-      } catch (error) {
-        console.error("Error fetching user profile:", error);
-      } finally {
-        setIsLoadingProfile(false);
-      }
-    };
-
-    fetchUserProfile();
+      // Handle the nested structure returned by UserService
+      const userData = profile.user || profile;
+      setUserProfile(userData);
+      setCurrentGroupSize(userData.groupSize || 2);
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    } finally {
+      setIsLoadingProfile(false);
+    }
   }, [userId]);
+
+  // Fetch profile on mount
+  React.useEffect(() => {
+    fetchUserProfile();
+  }, [fetchUserProfile]);
+
+  // Refresh profile data when screen comes into focus (e.g., returning from GroupSizeScreen)
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchUserProfile();
+    }, [fetchUserProfile])
+  );
 
   // Track page view for TelemetryDeck
   React.useEffect(() => {
