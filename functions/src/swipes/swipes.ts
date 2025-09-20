@@ -283,55 +283,9 @@ export const createSwipe = functions.https.onCall(
           // Get the group size preference of the swiper
           const swiperGroupSize = swiperUser?.groupSize || 2;
 
-          // Check if we can form a group match
-          const groupFormation = await checkForGroupFormation(
-            swiperId,
-            swipedId,
-            swiperGroupSize
-          );
-
-          if (
-            groupFormation.canFormGroup &&
-            groupFormation.memberIds.length > 2
-          ) {
-            // Create a group match
-            match = true;
-            const matchRef = db.collection("matches").doc();
-            matchId = matchRef.id;
-            isGroupMatch = true;
-
-            const matchData = {
-              type: "group",
-              memberIds: groupFormation.memberIds,
-              groupSize: swiperGroupSize,
-              matchDate: admin.firestore.FieldValue.serverTimestamp(),
-              isActive: true,
-              messageCount: 0,
-              // Track consent for each member
-              memberConsent: groupFormation.memberIds.reduce((acc, id) => {
-                acc[id] = false;
-                return acc;
-              }, {} as Record<string, boolean>),
-              // Track view status for each member
-              memberViewed: groupFormation.memberIds.reduce((acc, id) => {
-                acc[id] = id === swiperId; // Only the swiper has viewed it initially
-                return acc;
-              }, {} as Record<string, boolean>),
-              createdAt: admin.firestore.FieldValue.serverTimestamp(),
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            };
-
-            transaction.set(matchRef, matchData);
-
-            // Update all member users to include this match in their currentMatches
-            for (const memberId of groupFormation.memberIds) {
-              const memberRef = db.collection("users").doc(memberId);
-              transaction.update(memberRef, {
-                currentMatches: admin.firestore.FieldValue.arrayUnion(matchId),
-              });
-            }
-          } else {
-            // Check for traditional individual match (group size 2 or no group formation possible)
+          // STRICT GROUP SIZE MATCHING: Only match users in groups of their selected size
+          if (swiperGroupSize === 2) {
+            // For group size 2, only create individual matches
             const mutualSwipe = await db
               .collection("swipes")
               .where("swiperId", "==", swipedId)
@@ -352,12 +306,8 @@ export const createSwipe = functions.https.onCall(
                 matchDate: admin.firestore.FieldValue.serverTimestamp(),
                 isActive: true,
                 messageCount: 0,
-                user1Consented: false,
-                user2Consented: false,
-                // The user who swiped (swiperId) has now viewed the match
-                user1Viewed: true,
-                // The user who was swiped on (swipedId) has NOT yet viewed it
-                user2Viewed: false,
+                bothConsented: false,
+                bothViewed: false,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               };
@@ -370,6 +320,59 @@ export const createSwipe = functions.https.onCall(
                 currentMatches: admin.firestore.FieldValue.arrayUnion(matchId),
               });
             }
+          } else {
+            // For group sizes 3 and 4, only create group matches
+            const groupFormation = await checkForGroupFormation(
+              swiperId,
+              swipedId,
+              swiperGroupSize
+            );
+
+            if (
+              groupFormation.canFormGroup &&
+              groupFormation.memberIds.length === swiperGroupSize
+            ) {
+              // Create a group match
+              match = true;
+              const matchRef = db.collection("matches").doc();
+              matchId = matchRef.id;
+              isGroupMatch = true;
+
+              const matchData = {
+                type: "group",
+                memberIds: groupFormation.memberIds,
+                groupSize: swiperGroupSize,
+                matchDate: admin.firestore.FieldValue.serverTimestamp(),
+                isActive: true,
+                messageCount: 0,
+                // Track consent for each member (all must consent for group blur to work)
+                memberConsent: groupFormation.memberIds.reduce((acc, id) => {
+                  acc[id] = false;
+                  return acc;
+                }, {} as Record<string, boolean>),
+                // Track view status for each member
+                memberViewed: groupFormation.memberIds.reduce((acc, id) => {
+                  acc[id] = id === swiperId; // Only the swiper has viewed it initially
+                  return acc;
+                }, {} as Record<string, boolean>),
+                // Group-specific blur logic: all members must consent for real unblur
+                allMembersConsented: false,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              };
+
+              transaction.set(matchRef, matchData);
+
+              // Update all member users to include this match in their currentMatches
+              for (const memberId of groupFormation.memberIds) {
+                const memberRef = db.collection("users").doc(memberId);
+                transaction.update(memberRef, {
+                  currentMatches:
+                    admin.firestore.FieldValue.arrayUnion(matchId),
+                });
+              }
+            }
+            // If group formation fails, no match is created (strict group size enforcement)
           }
         }
 

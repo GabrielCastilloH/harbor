@@ -47,6 +47,46 @@ export function getClientBlurLevel({
 }
 
 /**
+ * Get client blur level for group matches
+ * All members must consent for real unblur to begin
+ */
+export function getGroupClientBlurLevel({
+  messageCount,
+  allMembersConsented,
+}: {
+  messageCount: number;
+  allMembersConsented: boolean;
+}): number {
+  const MAX_CLIENT_BLUR_RADIUS = BLUR_CONFIG.CLIENT_MAX_BLUR_RADIUS;
+  const percentageToBlurRadius = (percent: number) =>
+    Math.round((percent / 100) * MAX_CLIENT_BLUR_RADIUS);
+
+  if (!allMembersConsented) {
+    // Phase 1: Fake reveal on _blurred.jpg (all group members see this)
+    const progress = Math.min(
+      messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR,
+      1
+    );
+    // 100% → 0% (theatrical blur, still lands at 80% because server blur remains)
+    const blurPercent = 100 * (1 - progress);
+    return percentageToBlurRadius(blurPercent);
+  } else {
+    // Phase 2: Real reveal on _original.jpg (only after ALL members consent)
+    const phase2Messages = Math.max(
+      0,
+      messageCount - BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR
+    );
+    const progress = Math.min(
+      phase2Messages / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL,
+      1
+    );
+    // 80% → 0%
+    const blurPercent = BLUR_CONFIG.SERVER_BLUR_PERCENT * (1 - progress);
+    return percentageToBlurRadius(blurPercent);
+  }
+}
+
+/**
  * Returns the emulated blur percentage remaining (0-100) that we surface to users.
  * This abstracts whether we are viewing _blurred or _original; it reflects the UX model.
  */
@@ -59,6 +99,39 @@ export function getEmulatedBlurPercent({
 }): number {
   // Phase 1: 100% -> 0% over MESSAGES_TO_CLEAR_BLUR
   if (!bothConsented) {
+    const progress = Math.min(
+      messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR,
+      1
+    );
+    const remaining = 100 * (1 - progress);
+    return Math.round(remaining);
+  }
+  // Phase 2: emulate 80% -> 0% over MESSAGES_TO_CLEAR_ORIGINAL
+  const phase2Messages = Math.max(
+    0,
+    messageCount - BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR
+  );
+  const progress = Math.min(
+    phase2Messages / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL,
+    1
+  );
+  const remaining = BLUR_CONFIG.SERVER_BLUR_PERCENT * (1 - progress);
+  return Math.round(remaining);
+}
+
+/**
+ * Get emulated blur percentage for group matches
+ * All members must consent for real unblur to begin
+ */
+export function getGroupEmulatedBlurPercent({
+  messageCount,
+  allMembersConsented,
+}: {
+  messageCount: number;
+  allMembersConsented: boolean;
+}): number {
+  // Phase 1: 100% -> 0% over MESSAGES_TO_CLEAR_BLUR
+  if (!allMembersConsented) {
     const progress = Math.min(
       messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR,
       1
@@ -100,6 +173,42 @@ export function getUnifiedClarityPercent({
   const stageTwoGain = BLUR_CONFIG.SERVER_BLUR_PERCENT; // e.g., 80
 
   if (!bothConsented) {
+    // Phase 1: progress from 0 → stageOneGain
+    const progress = Math.min(
+      messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR,
+      1
+    );
+    return Math.round(stageOneGain * progress);
+  }
+
+  // Phase 2: continue from stageOneGain → 100
+  const phase2Messages = Math.max(
+    0,
+    messageCount - BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR
+  );
+  const progress = Math.min(
+    phase2Messages / BLUR_CONFIG.MESSAGES_TO_CLEAR_ORIGINAL,
+    1
+  );
+  const clarity = stageOneGain + stageTwoGain * progress; // 20 + 80*progress
+  return Math.round(clarity);
+}
+
+/**
+ * Get unified clarity percentage for group matches
+ * All members must consent for real unblur to begin
+ */
+export function getGroupUnifiedClarityPercent({
+  messageCount,
+  allMembersConsented,
+}: {
+  messageCount: number;
+  allMembersConsented: boolean;
+}): number {
+  const stageOneGain = 100 - BLUR_CONFIG.SERVER_BLUR_PERCENT; // e.g., 20
+  const stageTwoGain = BLUR_CONFIG.SERVER_BLUR_PERCENT; // e.g., 80
+
+  if (!allMembersConsented) {
     // Phase 1: progress from 0 → stageOneGain
     const progress = Math.min(
       messageCount / BLUR_CONFIG.MESSAGES_TO_CLEAR_BLUR,
