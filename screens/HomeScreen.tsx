@@ -111,13 +111,6 @@ const FeedScreen = () => {
     // For Zain (zb98@cornell.edu), only show dummy profiles if no recommendations are returned
     if (currentUserEmail === "zb98@cornell.edu") {
       const hasRecommendations = recommendations.length > 0;
-      console.log(
-        `[HomeScreen] Zain's recommendations: ${
-          recommendations.length
-        } found, using ${
-          hasRecommendations ? "recommendations" : "dummy profiles"
-        }`
-      );
       return hasRecommendations ? recommendations : DUMMY_PROFILES;
     }
     // For all other users, always use backend recommendations
