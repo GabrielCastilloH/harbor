@@ -18,12 +18,14 @@ import Colors from "../constants/Colors";
 import { FontAwesome, Octicons } from "@expo/vector-icons";
 
 const { width: screenWidth } = Dimensions.get("window");
-const SWIPE_THRESHOLD = screenWidth * 0.2; // 20% of screen width
+const SWIPE_THRESHOLD = screenWidth * 0.15; // 15% of screen width - more sensitive
+const SWIPE_SENSITIVITY = screenWidth * 0.25; // 25% threshold for switching views
 
-// Define a strict spring configuration
-const STRICT_SPRING_CONFIG = {
-  damping: 30, // Lower values make it more bouncy, higher values make it more strict
-  stiffness: 200, // Higher values make the spring 'tighter' and faster
+// Define a smoother spring configuration
+const SMOOTH_SPRING_CONFIG = {
+  damping: 20, // Lower damping for more responsive feel
+  stiffness: 300, // Higher stiffness for snappier animations
+  mass: 0.8, // Lower mass for lighter feel
 };
 
 interface PostProps {
@@ -53,13 +55,21 @@ const Post = ({ profile }: PostProps) => {
       translateX.value = nextTranslateX;
     },
     onEnd: (event) => {
-      // Logic for swiping between views (card snapping)
-      if (translateX.value < -screenWidth / 2) {
-        // Snap to the "PersonalView"
-        translateX.value = withSpring(-screenWidth, STRICT_SPRING_CONFIG);
+      // Logic for swiping between views (card snapping) - much more sensitive
+      const velocity = event.velocityX;
+      const currentPosition = translateX.value;
+
+      // Consider both position and velocity for more natural swiping
+      const shouldSwitchToPersonal =
+        currentPosition < -SWIPE_SENSITIVITY ||
+        (currentPosition < -screenWidth * 0.1 && velocity < -500);
+
+      if (shouldSwitchToPersonal) {
+        // Snap to the "PersonalView" - only need to swipe 25% of screen width or fast swipe
+        translateX.value = withSpring(-screenWidth, SMOOTH_SPRING_CONFIG);
       } else {
         // Snap back to the "BasicInfoView"
-        translateX.value = withSpring(0, STRICT_SPRING_CONFIG);
+        translateX.value = withSpring(0, SMOOTH_SPRING_CONFIG);
       }
     },
   });
@@ -72,16 +82,16 @@ const Post = ({ profile }: PostProps) => {
   });
 
   const dot1Style = useAnimatedStyle(() => {
-    // Correctly determine if BasicInfoView is selected (within a certain range of 0)
-    const isSelected = translateX.value > -screenWidth * 0.5;
+    // Determine if BasicInfoView is selected (within the sensitivity threshold)
+    const isSelected = translateX.value > -SWIPE_SENSITIVITY;
     return {
       backgroundColor: isSelected ? Colors.primary500 : Colors.primary100,
     };
   });
 
   const dot2Style = useAnimatedStyle(() => {
-    // Correctly determine if PersonalView is selected
-    const isSelected = translateX.value < -screenWidth * 0.5;
+    // Determine if PersonalView is selected
+    const isSelected = translateX.value < -SWIPE_SENSITIVITY;
     return {
       backgroundColor: isSelected ? Colors.primary500 : Colors.primary100,
     };
@@ -105,8 +115,8 @@ const Post = ({ profile }: PostProps) => {
     <GestureHandlerRootView>
       <PanGestureHandler
         onGestureEvent={gestureHandler}
-        activeOffsetX={[-10, 10]}
-        activeOffsetY={[-20, 20]}
+        activeOffsetX={[-5, 5]} // More sensitive horizontal detection
+        activeOffsetY={[-15, 15]} // Slightly more sensitive vertical detection
         enabled={!isLiked && !isDisliked}
       >
         <Animated.View style={[styles.container, animatedStyle]}>
