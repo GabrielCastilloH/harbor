@@ -18,6 +18,7 @@ const DUMMY_PROFILES: Profile[] = [
     major: "Computer Science",
     gender: "Male",
     sexualOrientation: "Heterosexual",
+    groupSize: 2, // Default group size for dummy profiles
     images: [
       "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop&crop=face",
     ],
@@ -37,6 +38,7 @@ const DUMMY_PROFILES: Profile[] = [
     major: "Biology",
     gender: "Female",
     sexualOrientation: "Heterosexual",
+    groupSize: 2, // Default group size for dummy profiles
     images: [
       "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=600&fit=crop&crop=face",
     ],
@@ -56,6 +58,7 @@ const DUMMY_PROFILES: Profile[] = [
     major: "Engineering",
     gender: "Male",
     sexualOrientation: "Bisexual",
+    groupSize: 2, // Default group size for dummy profiles
     images: [
       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=600&fit=crop&crop=face",
     ],
@@ -77,11 +80,11 @@ const FeedScreen = () => {
   // Get the current user's email from context
   const currentUserEmail = currentUser?.email || "";
 
-  // Fetch recommendations from backend for non-dummy users
+  // Fetch recommendations from backend for all users
   useEffect(() => {
     const fetchRecommendations = async () => {
-      // Skip fetching for dummy user or if no userId
-      if (currentUserEmail === "zb98@cornell.edu" || !userId) {
+      // Skip fetching if no userId
+      if (!userId) {
         return;
       }
 
@@ -101,21 +104,33 @@ const FeedScreen = () => {
     };
 
     fetchRecommendations();
-  }, [userId, currentUserEmail]);
+  }, [userId]);
 
   // Conditionally select the data source
-  const profilesToDisplay =
-    currentUserEmail === "zb98@cornell.edu"
-      ? DUMMY_PROFILES // Use the single array of dummy profiles
-      : recommendations; // Use backend recommendations for other users
+  const profilesToDisplay = (() => {
+    // For Zain (zb98@cornell.edu), only show dummy profiles if no recommendations are returned
+    if (currentUserEmail === "zb98@cornell.edu") {
+      const hasRecommendations = recommendations.length > 0;
+      console.log(
+        `[HomeScreen] Zain's recommendations: ${
+          recommendations.length
+        } found, using ${
+          hasRecommendations ? "recommendations" : "dummy profiles"
+        }`
+      );
+      return hasRecommendations ? recommendations : DUMMY_PROFILES;
+    }
+    // For all other users, always use backend recommendations
+    return recommendations;
+  })();
 
-  // Show loading state for non-dummy users
-  if (currentUserEmail !== "zb98@cornell.edu" && loading) {
+  // Show loading state for all users
+  if (loading) {
     return <LoadingScreen loadingText="Loading your Harbor" />;
   }
 
-  // Show error state for non-dummy users
-  if (currentUserEmail !== "zb98@cornell.edu" && error) {
+  // Show error state for all users
+  if (error) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.emptyContainer}>
