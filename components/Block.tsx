@@ -1,5 +1,11 @@
 import React, { useState } from "react";
-import { StyleSheet, Dimensions, View, TouchableOpacity } from "react-native";
+import {
+  StyleSheet,
+  Dimensions,
+  View,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
 import {
   PanGestureHandler,
   GestureHandlerRootView,
@@ -16,6 +22,8 @@ import PersonalView from "./PersonalView";
 import { Profile } from "../types/App";
 import Colors from "../constants/Colors";
 import { FontAwesome, Octicons } from "@expo/vector-icons";
+import { useAppContext } from "../context/AppContext";
+import { SwipeService } from "../networking/SwipeService";
 
 const { width: screenWidth } = Dimensions.get("window");
 const SWIPE_THRESHOLD = screenWidth * 0.15; // 15% of screen width - more sensitive
@@ -33,22 +41,24 @@ interface PostProps {
 }
 
 const Post = ({ profile }: PostProps) => {
+  const { userId } = useAppContext();
   const translateX = useSharedValue(0);
   const opacity = useSharedValue(1);
 
   const [isLiked, setIsLiked] = useState(false);
   const [isDisliked, setIsDisliked] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const gestureHandler = useAnimatedGestureHandler({
     onStart: (_, context: any) => {
-      // Prevent swiping if a choice has already been made
-      if (isLiked || isDisliked) {
+      // Prevent swiping if a choice has already been made or is processing
+      if (isLiked || isDisliked || isProcessing) {
         return;
       }
       context.startX = translateX.value;
     },
     onActive: (event, context: any) => {
-      if (isLiked || isDisliked) {
+      if (isLiked || isDisliked || isProcessing) {
         return;
       }
       const nextTranslateX = context.startX + event.translationX;
@@ -97,17 +107,83 @@ const Post = ({ profile }: PostProps) => {
     };
   });
 
-  const handleLike = () => {
-    if (!isLiked && !isDisliked) {
-      opacity.value = withSpring(0.5);
-      runOnJS(setIsLiked)(true);
+  const handleLike = async () => {
+    if (!isLiked && !isDisliked && !isProcessing && userId && profile.uid) {
+      setIsProcessing(true);
+      try {
+        const result = await SwipeService.createSwipe(
+          userId,
+          profile.uid,
+          "right"
+        );
+
+        // Update UI state
+        opacity.value = withSpring(0.5);
+        setIsLiked(true);
+
+        // Handle match result if there's a match
+        if (result.match) {
+          console.log("🎉 Match created!", result);
+          // You could show a match notification here
+        }
+      } catch (error: any) {
+        console.error("Error creating like swipe:", error);
+
+        // Show user-friendly error message
+        if (error.code === "resource-exhausted") {
+          Alert.alert(
+            "Daily Limit Reached",
+            "You've reached your daily swipe limit. Come back tomorrow!"
+          );
+        } else if (error.code === "permission-denied") {
+          Alert.alert(
+            "Cannot Swipe",
+            error.message || "You cannot swipe on this user right now."
+          );
+        } else {
+          Alert.alert("Error", "Failed to record swipe. Please try again.");
+        }
+
+        // Reset UI state on error
+        opacity.value = withSpring(1);
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
-  const handleDislike = () => {
-    if (!isLiked && !isDisliked) {
-      opacity.value = withSpring(0.5);
-      runOnJS(setIsDisliked)(true);
+  const handleDislike = async () => {
+    if (!isLiked && !isDisliked && !isProcessing && userId && profile.uid) {
+      setIsProcessing(true);
+      try {
+        await SwipeService.createSwipe(userId, profile.uid, "left");
+
+        // Update UI state
+        opacity.value = withSpring(0.5);
+        setIsDisliked(true);
+      } catch (error: any) {
+        console.error("Error creating dislike swipe:", error);
+
+        // Show user-friendly error message
+        if (error.code === "resource-exhausted") {
+          Alert.alert(
+            "Daily Limit Reached",
+            "You've reached your daily swipe limit. Come back tomorrow!"
+          );
+        } else if (error.code === "permission-denied") {
+          Alert.alert(
+            "Cannot Swipe",
+            error.message || "You cannot swipe on this user right now."
+          );
+        } else {
+          Alert.alert("Error", "Failed to record swipe. Please try again.");
+        }
+
+        // Reset UI state on error
+        opacity.value = withSpring(1);
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -117,7 +193,7 @@ const Post = ({ profile }: PostProps) => {
         onGestureEvent={gestureHandler}
         activeOffsetX={[-5, 5]} // More sensitive horizontal detection
         activeOffsetY={[-15, 15]} // Slightly more sensitive vertical detection
-        enabled={!isLiked && !isDisliked}
+        enabled={!isLiked && !isDisliked && !isProcessing}
       >
         <Animated.View style={[styles.container, animatedStyle]}>
           <View style={styles.viewContainer}>
@@ -137,24 +213,24 @@ const Post = ({ profile }: PostProps) => {
       <TouchableOpacity
         style={styles.dislikeButton}
         onPress={handleDislike}
-        disabled={isLiked || isDisliked}
+        disabled={isLiked || isDisliked || isProcessing}
       >
         <Octicons
           name={isDisliked ? "x-circle-fill" : "x-circle"}
           size={30}
-          color={Colors.primary500}
+          color={isProcessing ? Colors.secondary500 : Colors.primary500}
         />
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.thumbsUpButton}
         onPress={handleLike}
-        disabled={isLiked || isDisliked}
+        disabled={isLiked || isDisliked || isProcessing}
       >
         <FontAwesome
           name={isLiked ? "thumbs-up" : "thumbs-o-up"}
           size={30}
-          color={Colors.primary500}
+          color={isProcessing ? Colors.secondary500 : Colors.primary500}
         />
       </TouchableOpacity>
     </GestureHandlerRootView>
