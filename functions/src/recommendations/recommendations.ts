@@ -15,82 +15,7 @@ function shuffleArray(array: any[]) {
 }
 
 /**
- * Determines if two users are compatible based on their gender and sexual orientation
- */
-function isCompatible(user1: any, user2: any): boolean {
-  const gender1 = user1.gender;
-  const orientation1 = user1.sexualOrientation;
-  const gender2 = user2.gender;
-  const orientation2 = user2.sexualOrientation;
-
-  // If either user is missing required data, don't show them
-  if (!gender1 || !orientation1 || !gender2 || !orientation2) {
-    return false;
-  }
-
-  // Check if user1 would be interested in user2
-  const user1InterestedInUser2 = isUserInterestedIn(user1, user2);
-
-  // Check if user2 would be interested in user1
-  const user2InterestedInUser1 = isUserInterestedIn(user2, user1);
-
-  // Both users must be interested in each other for compatibility
-  return user1InterestedInUser2 && user2InterestedInUser1;
-}
-
-/**
- * Determines if user1 would be interested in user2 based on gender and sexual orientation
- */
-function isUserInterestedIn(user1: any, user2: any): boolean {
-  const gender1 = user1.gender;
-  const orientation1 = user1.sexualOrientation;
-  const gender2 = user2.gender;
-
-  switch (orientation1) {
-    case "Heterosexual":
-      if (gender1 === "Male") return gender2 === "Female";
-      if (gender1 === "Female") return gender2 === "Male";
-      if (gender1 === "Non-Binary") return gender2 === "Non-Binary";
-      return false;
-
-    case "Homosexual":
-      if (gender1 === "Male") return gender2 === "Male";
-      if (gender1 === "Female") return gender2 === "Female";
-      if (gender1 === "Non-Binary") return gender2 === "Non-Binary";
-      return false;
-
-    case "Bisexual":
-      if (gender1 === "Male") return gender2 === "Male" || gender2 === "Female";
-      if (gender1 === "Female")
-        return gender2 === "Male" || gender2 === "Female";
-      if (gender1 === "Non-Binary") return gender2 === "Non-Binary";
-      return false;
-
-    case "Pansexual":
-      if (gender1 === "Male")
-        return (
-          gender2 === "Male" || gender2 === "Female" || gender2 === "Non-Binary"
-        );
-      if (gender1 === "Female")
-        return (
-          gender2 === "Male" || gender2 === "Female" || gender2 === "Non-Binary"
-        );
-      if (gender1 === "Non-Binary")
-        return (
-          gender2 === "Male" || gender2 === "Female" || gender2 === "Non-Binary"
-        );
-      return false;
-
-    default:
-      return false;
-  }
-}
-
-/**
  * Gets user recommendations for swiping, prioritizing users who have swiped on you.
- * The final list is a 4:2 ratio of general users to users who swiped on you,
- * with a random ordering. It also uses an "availability" value to match users
- * with similar availabilities if the value is not -1.
  */
 export const getRecommendations = functions.https.onCall(
   {
@@ -122,6 +47,28 @@ export const getRecommendations = functions.https.onCall(
         );
       }
 
+      // Check for active matches first - if user has an active match, return empty recommendations
+      const [activeMatchesSnapshot1, activeMatchesSnapshot2] =
+        await Promise.all([
+          db
+            .collection("matches")
+            .where("isActive", "==", true)
+            .where("user1Id", "==", userId)
+            .get(),
+          db
+            .collection("matches")
+            .where("isActive", "==", true)
+            .where("user2Id", "==", userId)
+            .get(),
+        ]);
+
+      if (
+        activeMatchesSnapshot1.docs.length > 0 ||
+        activeMatchesSnapshot2.docs.length > 0
+      ) {
+        return { recommendations: [] };
+      }
+
       const userDoc = await db.collection("users").doc(userId).get();
       if (!userDoc.exists) {
         throw new functions.https.HttpsError("not-found", "User not found");
@@ -132,11 +79,7 @@ export const getRecommendations = functions.https.onCall(
         return { recommendations: [] };
       }
 
-      const userAvailability = currentUserData?.availability ?? -1;
-      const useAvailabilityMatching = userAvailability !== -1;
-      const userGroupSize = currentUserData?.groupSize ?? 2;
-
-      // Step 1: Preload swipes and matches to filter out irrelevant users early
+      // Step 1: Preload swipes to filter out irrelevant users early
       const mySwipesSnapshot = await db
         .collection("swipes")
         .where("swiperId", "==", userId)
@@ -145,28 +88,12 @@ export const getRecommendations = functions.https.onCall(
         mySwipesSnapshot.docs.map((doc) => doc.data().swipedId)
       );
 
-      const activeMatchesSnapshot = await db
-        .collection("matches")
-        .where("isActive", "==", true)
-        .get();
+      // Create filter set for users to exclude (swiped users + current user)
       const matchedUserIds = new Set<string>();
-      activeMatchesSnapshot.docs.forEach((doc) => {
-        const matchData = doc.data();
-        matchedUserIds.add(matchData.user1Id);
-        matchedUserIds.add(matchData.user2Id);
-      });
-
-      // Helper function to filter users (defined after swipedUserIds and matchedUserIds are available)
-      const filterUser = (u: any) => {
-        return (
-          u.uid !== userId &&
-          !swipedUserIds.has(u.uid) &&
-          !matchedUserIds.has(u.uid) &&
-          isCompatible(currentUserData, u) &&
-          // Prioritize users with the same group size preference
-          (u.groupSize === userGroupSize || u.groupSize === undefined)
-        );
-      };
+      matchedUserIds.add(userId); // Add current user to avoid self-match
+      for (const id of swipedUserIds) {
+        matchedUserIds.add(id);
+      }
 
       // Step 2: Get users who swiped on you (highest priority)
       const inboundSwipesSnapshot = await db
@@ -179,58 +106,77 @@ export const getRecommendations = functions.https.onCall(
         (doc) => doc.data().swiperId
       );
 
-      // Fetch users who swiped on you directly using document IDs
       let swipedUsers: any[] = [];
       if (whoSwipedOnYouIds.length > 0) {
-        // Limit to 10 for performance (Firestore 'in' queries are limited to 10 items)
-        const limitedIds = whoSwipedOnYouIds.slice(0, 10);
-        const swipedUsersSnapshot = await db
-          .collection("users")
-          .where(admin.firestore.FieldPath.documentId(), "in", limitedIds)
-          .get();
+        const uniqueInboundSwipes = whoSwipedOnYouIds.filter(
+          (id) => !matchedUserIds.has(id)
+        );
+        if (uniqueInboundSwipes.length > 0) {
+          const limitedIds = uniqueInboundSwipes.slice(0, 10);
+          const swipedUsersSnapshot = await db
+            .collection("users")
+            .where(admin.firestore.FieldPath.documentId(), "in", limitedIds)
+            .get();
 
-        swipedUsers = swipedUsersSnapshot.docs
-          .map((doc) => {
+          swipedUsers = swipedUsersSnapshot.docs.map((doc) => {
             const userData = doc.data();
             const { images, email, ...userDataWithoutSensitiveInfo } = userData;
             return { uid: doc.id, ...userDataWithoutSensitiveInfo };
-          })
-          .filter(filterUser);
+          });
+        }
       }
 
       // Step 3: Fetch availability-based users (medium priority)
       let availabilityUsers: any[] = [];
+      const userAvailability = currentUserData?.availability ?? -1;
+      const useAvailabilityMatching = userAvailability !== -1;
+
       if (useAvailabilityMatching) {
         const availabilityValue = userAvailability % 1;
         const lowerBound = availabilityValue - 0.15;
         const upperBound = availabilityValue + 0.15;
+        const compatibilityData = getCompatibilityQuery(currentUserData);
 
         const availabilitySnapshot = await db
           .collection("users")
           .where("availability", ">=", lowerBound)
           .where("availability", "<=", upperBound)
+          .where("sexualOrientation", "in", compatibilityData.orientation)
+          .where("gender", "in", compatibilityData.gender)
+          .where(
+            admin.firestore.FieldPath.documentId(),
+            "not-in",
+            Array.from(matchedUserIds)
+          )
           .limit(50)
           .get();
 
-        availabilityUsers = availabilitySnapshot.docs
-          .map((doc) => {
-            const userData = doc.data();
-            const { images, email, ...userDataWithoutSensitiveInfo } = userData;
-            return { uid: doc.id, ...userDataWithoutSensitiveInfo };
-          })
-          .filter(filterUser);
-      }
-
-      // Step 4: Fetch general users as fallback (lowest priority)
-      const generalSnapshot = await db.collection("users").limit(50).get();
-
-      const generalUsers = generalSnapshot.docs
-        .map((doc) => {
+        availabilityUsers = availabilitySnapshot.docs.map((doc) => {
           const userData = doc.data();
           const { images, email, ...userDataWithoutSensitiveInfo } = userData;
           return { uid: doc.id, ...userDataWithoutSensitiveInfo };
-        })
-        .filter(filterUser);
+        });
+      }
+
+      // Step 4: Fetch general users as fallback (lowest priority)
+      const compatibilityData = getCompatibilityQuery(currentUserData);
+      const generalSnapshot = await db
+        .collection("users")
+        .where("sexualOrientation", "in", compatibilityData.orientation)
+        .where("gender", "in", compatibilityData.gender)
+        .where(
+          admin.firestore.FieldPath.documentId(),
+          "not-in",
+          Array.from(matchedUserIds)
+        )
+        .limit(50)
+        .get();
+
+      const generalUsers = generalSnapshot.docs.map((doc) => {
+        const userData = doc.data();
+        const { images, email, ...userDataWithoutSensitiveInfo } = userData;
+        return { uid: doc.id, ...userDataWithoutSensitiveInfo };
+      });
 
       // Step 5: Merge results in priority order
       shuffleArray(swipedUsers);
@@ -255,6 +201,71 @@ export const getRecommendations = functions.https.onCall(
     }
   }
 );
+
+/**
+ * Generates the necessary Firestore query parameters for compatibility.
+ * This helper function makes the main function more readable and performant.
+ */
+function getCompatibilityQuery(currentUserData: any) {
+  const userGender = currentUserData.gender;
+  const userOrientation = currentUserData.sexualOrientation;
+  let compatibleGenders: string[] = [];
+  let compatibleOrientations: string[] = [];
+
+  switch (userOrientation) {
+    case "Heterosexual":
+      if (userGender === "Male") {
+        compatibleGenders.push("Female");
+        compatibleOrientations.push("Heterosexual", "Bisexual", "Pansexual");
+      } else if (userGender === "Female") {
+        compatibleGenders.push("Male");
+        compatibleOrientations.push("Heterosexual", "Bisexual", "Pansexual");
+      }
+      break;
+
+    case "Homosexual":
+      if (userGender === "Male") {
+        compatibleGenders.push("Male");
+        compatibleOrientations.push("Homosexual", "Bisexual", "Pansexual");
+      } else if (userGender === "Female") {
+        compatibleGenders.push("Female");
+        compatibleOrientations.push("Homosexual", "Bisexual", "Pansexual");
+      }
+      break;
+
+    case "Bisexual":
+      if (userGender === "Male" || userGender === "Female") {
+        compatibleGenders.push("Male", "Female");
+        compatibleOrientations.push(
+          "Bisexual",
+          "Pansexual",
+          "Heterosexual",
+          "Homosexual"
+        );
+      }
+      break;
+
+    case "Pansexual":
+      compatibleGenders.push("Male", "Female", "Non-Binary");
+      compatibleOrientations.push(
+        "Bisexual",
+        "Pansexual",
+        "Heterosexual",
+        "Homosexual"
+      );
+      break;
+
+    default:
+      break;
+  }
+
+  if (compatibleGenders.length === 0) {
+    // Fallback for cases not explicitly handled to prevent an error with 'in' queries
+    return { gender: [userGender], orientation: [userOrientation] };
+  }
+
+  return { gender: compatibleGenders, orientation: compatibleOrientations };
+}
 
 export const recommendationsFunctions = {
   getRecommendations,
