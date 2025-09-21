@@ -145,6 +145,57 @@ export const createSwipe = functions.https.onCall(
         );
       }
 
+      // Check for active matches before allowing any swipe
+      const [
+        swiperActiveMatches1,
+        swiperActiveMatches2,
+        swipedActiveMatches1,
+        swipedActiveMatches2,
+      ] = await Promise.all([
+        db
+          .collection("matches")
+          .where("isActive", "==", true)
+          .where("user1Id", "==", swiperId)
+          .get(),
+        db
+          .collection("matches")
+          .where("isActive", "==", true)
+          .where("user2Id", "==", swiperId)
+          .get(),
+        db
+          .collection("matches")
+          .where("isActive", "==", true)
+          .where("user1Id", "==", swipedId)
+          .get(),
+        db
+          .collection("matches")
+          .where("isActive", "==", true)
+          .where("user2Id", "==", swipedId)
+          .get(),
+      ]);
+
+      // Check if swiper has an active match
+      if (
+        swiperActiveMatches1.docs.length > 0 ||
+        swiperActiveMatches2.docs.length > 0
+      ) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "Cannot swipe while you have an active match"
+        );
+      }
+
+      // Check if swiped user has an active match
+      if (
+        swipedActiveMatches1.docs.length > 0 ||
+        swipedActiveMatches2.docs.length > 0
+      ) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "Cannot swipe on a user who has an active match"
+        );
+      }
+
       const result = await db.runTransaction(async (transaction) => {
         const swiperUserRef = db.collection("users").doc(swiperId);
         const swipedUserRef = db.collection("users").doc(swipedId);
@@ -195,58 +246,7 @@ export const createSwipe = functions.https.onCall(
           };
         }
 
-        // 3. Check if users can match by looking at their actual active matches
-        const [
-          swiperActiveMatches1,
-          swiperActiveMatches2,
-          swipedActiveMatches1,
-          swipedActiveMatches2,
-        ] = await Promise.all([
-          db
-            .collection("matches")
-            .where("user1Id", "==", swiperId)
-            .where("isActive", "==", true)
-            .get(),
-          db
-            .collection("matches")
-            .where("user2Id", "==", swiperId)
-            .where("isActive", "==", true)
-            .get(),
-          db
-            .collection("matches")
-            .where("user1Id", "==", swipedId)
-            .where("isActive", "==", true)
-            .get(),
-          db
-            .collection("matches")
-            .where("user2Id", "==", swipedId)
-            .where("isActive", "==", true)
-            .get(),
-        ]);
-
-        const swiperMatches = [
-          ...swiperActiveMatches1.docs,
-          ...swiperActiveMatches2.docs,
-        ];
-        const swipedMatches = [
-          ...swipedActiveMatches1.docs,
-          ...swipedActiveMatches2.docs,
-        ];
-
-        // Since we're forgetting about premium for now, these checks are not strictly necessary,
-        // but we'll leave them in case you want to use them later.
-        if (swiperMatches.length >= 1) {
-          throw new functions.https.HttpsError(
-            "permission-denied",
-            "Users cannot swipe while they have an active match"
-          );
-        }
-        if (swipedMatches.length >= 1) {
-          throw new functions.https.HttpsError(
-            "permission-denied",
-            "Cannot swipe on users who have active matches"
-          );
-        }
+        // Active match checks are now done before the transaction for better performance
 
         // 4. Check if swipe already exists
         const existingSwipe = await db
