@@ -136,18 +136,6 @@ export const getRecommendations = functions.https.onCall(
       const useAvailabilityMatching = userAvailability !== -1;
       const userGroupSize = currentUserData?.groupSize ?? 2;
 
-      // Helper function to filter users
-      const filterUser = (u: any) => {
-        return (
-          u.uid !== userId &&
-          !swipedUserIds.has(u.uid) &&
-          !matchedUserIds.has(u.uid) &&
-          isCompatible(currentUserData, u) &&
-          // Prioritize users with the same group size preference
-          (u.groupSize === userGroupSize || u.groupSize === undefined)
-        );
-      };
-
       // Step 1: Preload swipes and matches to filter out irrelevant users early
       const mySwipesSnapshot = await db
         .collection("swipes")
@@ -167,6 +155,18 @@ export const getRecommendations = functions.https.onCall(
         matchedUserIds.add(matchData.user1Id);
         matchedUserIds.add(matchData.user2Id);
       });
+
+      // Helper function to filter users (defined after swipedUserIds and matchedUserIds are available)
+      const filterUser = (u: any) => {
+        return (
+          u.uid !== userId &&
+          !swipedUserIds.has(u.uid) &&
+          !matchedUserIds.has(u.uid) &&
+          isCompatible(currentUserData, u) &&
+          // Prioritize users with the same group size preference
+          (u.groupSize === userGroupSize || u.groupSize === undefined)
+        );
+      };
 
       // Step 2: Get users who swiped on you (highest priority)
       const inboundSwipesSnapshot = await db
