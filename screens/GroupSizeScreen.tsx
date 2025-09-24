@@ -105,8 +105,8 @@ export default function GroupSizeScreen() {
 
       <View style={styles.content}>
         <Text style={styles.description}>
-          Choose your preferred group size for matching. This determines how
-          many people will be in your matches.
+          Choose your preferred group size for connecting. This determines how
+          many people will be in your connections.
         </Text>
 
         <View style={styles.optionsContainer}>
