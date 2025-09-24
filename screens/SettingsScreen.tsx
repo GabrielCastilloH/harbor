@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useState } from "react";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { signOut } from "firebase/auth";
@@ -36,6 +36,7 @@ export default function SettingsScreen() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [currentGroupSize, setCurrentGroupSize] = useState<number>(2);
   const {
     isNotificationsEnabled,
     isLoading,
@@ -47,27 +48,36 @@ export default function SettingsScreen() {
   // PREMIUM DISABLED: useUser commented out
   // const { user } = useUser();
 
-  // Fetch user profile to get isActive status
-  React.useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!userId) return;
+  // Fetch user profile to get isActive status and group size
+  const fetchUserProfile = React.useCallback(async () => {
+    if (!userId) return;
 
-      setIsLoadingProfile(true);
-      try {
-        const profile = await UserService.getUserById(userId);
+    setIsLoadingProfile(true);
+    try {
+      const profile = await UserService.getUserById(userId);
 
-        // Handle the nested structure returned by UserService
-        const userData = profile.user || profile;
-        setUserProfile(userData);
-      } catch (error) {
-        console.error("Error fetching user profile:", error);
-      } finally {
-        setIsLoadingProfile(false);
-      }
-    };
-
-    fetchUserProfile();
+      // Handle the nested structure returned by UserService
+      const userData = profile.user || profile;
+      setUserProfile(userData);
+      setCurrentGroupSize(userData.groupSize || 2);
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    } finally {
+      setIsLoadingProfile(false);
+    }
   }, [userId]);
+
+  // Fetch profile on mount
+  React.useEffect(() => {
+    fetchUserProfile();
+  }, [fetchUserProfile]);
+
+  // Refresh profile data when screen comes into focus (e.g., returning from GroupSizeScreen)
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchUserProfile();
+    }, [fetchUserProfile])
+  );
 
   // Track page view for TelemetryDeck
   React.useEffect(() => {
@@ -171,6 +181,11 @@ export default function SettingsScreen() {
     navigation.navigate("SelfProfile" as never);
   };
 
+  const handleGroupSize = () => {
+    // Navigate to group size selection screen
+    navigation.navigate("GroupSize" as never);
+  };
+
   const handlePrivacyPolicy = () => {
     Linking.openURL("https://www.tryharbor.app/privacy");
   };
@@ -209,6 +224,12 @@ export default function SettingsScreen() {
               },
               disabled: isLoading,
             }}
+          />
+
+          <SettingsButton
+            icon="people-outline"
+            text={`Group Size: ${currentGroupSize}`}
+            onPress={handleGroupSize}
           />
         </View>
 

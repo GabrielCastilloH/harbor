@@ -19,6 +19,7 @@ export type Profile = {
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
   availability: number;
+  groupSize: number; // Preferred group size for matching (2, 3, or 4)
 };
 
 export interface CardViewProps {
