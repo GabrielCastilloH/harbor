@@ -374,14 +374,50 @@ export const createSwipe = functions.https.onCall(
           }
         }
 
-        // 6. Record the swipe and update the swipe count
+        // 6. Record the swipe (legacy flat collection) and dual-write to per-user subcollections
         const swipeRef = db.collection("swipes").doc();
         transaction.set(swipeRef, swipeData);
+
+        const outgoingRef = db
+          .collection("swipes")
+          .doc(swiperId)
+          .collection("outgoing")
+          .doc(swipedId);
+        transaction.set(outgoingRef, {
+          direction,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        const incomingRef = db
+          .collection("swipes")
+          .doc(swipedId)
+          .collection("incoming")
+          .doc(swiperId);
+        transaction.set(incomingRef, {
+          direction,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
         transaction.update(swiperUserRef, {
           swipesToday: admin.firestore.FieldValue.increment(1),
           resetDate: today,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+
+        // Also bump per-user swipe counter subdoc to avoid contention in future
+        const countersRef = db
+          .collection("users")
+          .doc(swiperId)
+          .collection("counters")
+          .doc("swipes");
+        transaction.set(
+          countersRef,
+          {
+            count: admin.firestore.FieldValue.increment(1),
+            resetDate: today,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
 
         const result = {
           message: "Swipe recorded",

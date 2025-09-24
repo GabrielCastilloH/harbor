@@ -315,20 +315,10 @@ export const getImages = functions.https.onCall(
       const targetUserData = targetUserDoc.data();
       const images = targetUserData?.images || [];
 
-      // SECURITY FIX: Get match info - check both individual and group matches
-      const individualMatchQuery = await db
+      // SECURITY FIX: Get match info using unified participantIds when possible
+      const participantMatchQuery = await db
         .collection("matches")
-        .where("user1Id", "in", [currentUserId, targetUserId])
-        .where("user2Id", "in", [currentUserId, targetUserId])
-        .where("type", "==", "individual")
-        .where("isActive", "==", true)
-        .limit(1)
-        .get();
-
-      const groupMatchQuery = await db
-        .collection("matches")
-        .where("memberIds", "array-contains", currentUserId)
-        .where("type", "==", "group")
+        .where("participantIds", "array-contains", currentUserId)
         .where("isActive", "==", true)
         .get();
 
@@ -339,31 +329,36 @@ export const getImages = functions.https.onCall(
       let isGroupMatch = false;
       let hasValidMatch = false;
 
-      // Check individual match first
-      if (!individualMatchQuery.empty) {
-        const matchData = individualMatchQuery.docs[0].data();
-        user1Consented = matchData?.user1Consented || false;
-        user2Consented = matchData?.user2Consented || false;
-        messageCount = matchData?.messageCount ?? 0;
-        isGroupMatch = false;
-        hasValidMatch = true;
-      } else {
-        // Check group matches
-        for (const matchDoc of groupMatchQuery.docs) {
-          const matchData = matchDoc.data();
-          const memberIds = matchData?.memberIds || [];
+      // Prefer unified participantIds approach; fallback to legacy fields per document
+      for (const matchDoc of participantMatchQuery.docs) {
+        const matchData = matchDoc.data() as any;
+        const ids: string[] =
+          matchData.participantIds || matchData.memberIds || [];
+        if (ids.includes(targetUserId)) {
+          hasValidMatch = true;
+          isGroupMatch = matchData.type === "group";
+          messageCount = matchData?.messageCount ?? 0;
 
-          // Verify both users are in this group match
-          if (
-            memberIds.includes(currentUserId) &&
-            memberIds.includes(targetUserId)
-          ) {
-            allMembersConsented = matchData?.allMembersConsented || false;
-            messageCount = matchData?.messageCount ?? 0;
-            isGroupMatch = true;
-            hasValidMatch = true;
-            break;
+          if (isGroupMatch) {
+            // Group consent requires all true
+            const consentMap =
+              matchData.participantConsent || matchData.memberConsent || {};
+            allMembersConsented = Object.values(consentMap).every(Boolean);
+          } else {
+            // Individual: support unified and legacy
+            const consentMap = matchData.participantConsent || {};
+            if (
+              consentMap[currentUserId] !== undefined ||
+              consentMap[targetUserId] !== undefined
+            ) {
+              user1Consented = Boolean(consentMap[currentUserId]);
+              user2Consented = Boolean(consentMap[targetUserId]);
+            } else {
+              user1Consented = Boolean(matchData.user1Consented);
+              user2Consented = Boolean(matchData.user2Consented);
+            }
           }
+          break;
         }
       }
 

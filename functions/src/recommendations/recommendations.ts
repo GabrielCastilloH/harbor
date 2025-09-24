@@ -47,25 +47,14 @@ export const getRecommendations = functions.https.onCall(
         );
       }
 
-      // Check for active matches first - if user has an active match, return empty recommendations
-      const [activeMatchesSnapshot1, activeMatchesSnapshot2] =
-        await Promise.all([
-          db
-            .collection("matches")
-            .where("isActive", "==", true)
-            .where("user1Id", "==", userId)
-            .get(),
-          db
-            .collection("matches")
-            .where("isActive", "==", true)
-            .where("user2Id", "==", userId)
-            .get(),
-        ]);
+      // Check for active matches first - unified schema (participantIds)
+      const activeMatchesSnapshot = await db
+        .collection("matches")
+        .where("participantIds", "array-contains", userId)
+        .where("isActive", "==", true)
+        .get();
 
-      if (
-        activeMatchesSnapshot1.docs.length > 0 ||
-        activeMatchesSnapshot2.docs.length > 0
-      ) {
+      if (activeMatchesSnapshot.docs.length > 0) {
         return { recommendations: [] };
       }
 
@@ -80,13 +69,24 @@ export const getRecommendations = functions.https.onCall(
       }
 
       // Step 1: Preload swipes to filter out irrelevant users early
-      const mySwipesSnapshot = await db
-        .collection("swipes")
-        .where("swiperId", "==", userId)
-        .get();
-      const swipedUserIds = new Set(
-        mySwipesSnapshot.docs.map((doc) => doc.data().swipedId)
-      );
+      // Prefer per-user subcollection; fallback to flat collection
+      let swipedUserIds = new Set<string>();
+      try {
+        const outgoing = await db
+          .collection("swipes")
+          .doc(userId)
+          .collection("outgoing")
+          .get();
+        swipedUserIds = new Set(outgoing.docs.map((d) => d.id));
+      } catch (_e) {
+        const mySwipesSnapshot = await db
+          .collection("swipes")
+          .where("swiperId", "==", userId)
+          .get();
+        swipedUserIds = new Set(
+          mySwipesSnapshot.docs.map((doc) => doc.data().swipedId)
+        );
+      }
 
       // Create filter set for users to exclude (swiped users + current user)
       const matchedUserIds = new Set<string>();
@@ -96,15 +96,26 @@ export const getRecommendations = functions.https.onCall(
       }
 
       // Step 2: Get users who swiped on you (highest priority)
-      const inboundSwipesSnapshot = await db
-        .collection("swipes")
-        .where("swipedId", "==", userId)
-        .where("direction", "==", "right")
-        .get();
-
-      const whoSwipedOnYouIds = inboundSwipesSnapshot.docs.map(
-        (doc) => doc.data().swiperId
-      );
+      let whoSwipedOnYouIds: string[] = [];
+      try {
+        const incoming = await db
+          .collection("swipes")
+          .doc(userId)
+          .collection("incoming")
+          .get();
+        whoSwipedOnYouIds = incoming.docs
+          .filter((d) => (d.data() as any).direction === "right")
+          .map((d) => d.id);
+      } catch (_e) {
+        const inboundSwipesSnapshot = await db
+          .collection("swipes")
+          .where("swipedId", "==", userId)
+          .where("direction", "==", "right")
+          .get();
+        whoSwipedOnYouIds = inboundSwipesSnapshot.docs.map(
+          (doc) => doc.data().swiperId
+        );
+      }
 
       let swipedUsers: any[] = [];
       if (whoSwipedOnYouIds.length > 0) {

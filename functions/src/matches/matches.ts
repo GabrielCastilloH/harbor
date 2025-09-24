@@ -74,37 +74,46 @@ export const createGroupMatch = functions.https.onCall(
         }
       }
 
-      // Create new group match
+      // Create new group match (unified schema)
       const matchData = {
         type: "group",
         memberIds: memberIds,
+        participantIds: memberIds,
         groupSize: groupSize,
         matchDate: admin.firestore.FieldValue.serverTimestamp(),
         isActive: true,
+        status: "active",
         messageCount: 0,
-        // Track consent for each member
-        memberConsent: memberIds.reduce((acc, id) => {
+        participantConsent: memberIds.reduce((acc, id) => {
           acc[id] = false;
           return acc;
         }, {} as Record<string, boolean>),
-        // Track view status for each member
-        memberViewed: memberIds.reduce((acc, id) => {
+        participantViewed: memberIds.reduce((acc, id) => {
           acc[id] = false;
           return acc;
         }, {} as Record<string, boolean>),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      };
+      } as any;
 
       const matchRef = await db.collection("matches").add(matchData);
 
-      // Update all member users to include this match in their currentMatches
+      // Dual-write: keep legacy users.currentMatches array, and create subcollection entry
       const batch = db.batch();
       for (const memberId of memberIds) {
         const userRef = db.collection("users").doc(memberId);
         batch.update(userRef, {
           currentMatches: admin.firestore.FieldValue.arrayUnion(matchRef.id),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        const subRef = db
+          .collection("users")
+          .doc(memberId)
+          .collection("currentMatches")
+          .doc(matchRef.id);
+        batch.set(subRef, {
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          status: "active",
         });
       }
       await batch.commit();
@@ -179,19 +188,47 @@ export const createMatch = functions.https.onCall(
 
       // Create new match
       const matchData = {
-        type: "individual", // Mark as individual match
+        type: "individual",
         user1Id,
         user2Id,
+        participantIds: [user1Id, user2Id],
         matchDate: admin.firestore.FieldValue.serverTimestamp(),
         isActive: true,
+        status: "active",
         messageCount: 0,
+        participantConsent: { [user1Id]: false, [user2Id]: false },
+        participantViewed: { [user1Id]: false, [user2Id]: false },
+        // Keep legacy fields for compatibility
         user1Consented: false,
         user2Consented: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      };
+      } as any;
 
       const matchRef = await db.collection("matches").add(matchData);
+
+      // Dual-write subcollection entries under both users
+      const batch = db.batch();
+      const u1Ref = db.collection("users").doc(user1Id);
+      const u2Ref = db.collection("users").doc(user2Id);
+      // Keep legacy array for compatibility
+      batch.update(u1Ref, {
+        currentMatches: admin.firestore.FieldValue.arrayUnion(matchRef.id),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      batch.update(u2Ref, {
+        currentMatches: admin.firestore.FieldValue.arrayUnion(matchRef.id),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      batch.set(u1Ref.collection("currentMatches").doc(matchRef.id), {
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        status: "active",
+      });
+      batch.set(u2Ref.collection("currentMatches").doc(matchRef.id), {
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        status: "active",
+      });
+      await batch.commit();
 
       return {
         message: "Match created successfully",
@@ -515,6 +552,7 @@ export const unmatchUsers = functions.https.onCall(
         // Deactivate the match
         transaction.update(db.collection("matches").doc(matchId), {
           isActive: false,
+          status: "unmatched",
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
@@ -528,6 +566,34 @@ export const unmatchUsers = functions.https.onCall(
           currentMatches: admin.firestore.FieldValue.arrayRemove(matchId),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+
+        // Also mark user subcollection entries as unmatched
+        const u1Sub = db
+          .collection("users")
+          .doc(matchData.user1Id)
+          .collection("currentMatches")
+          .doc(matchId);
+        const u2Sub = db
+          .collection("users")
+          .doc(matchData.user2Id)
+          .collection("currentMatches")
+          .doc(matchId);
+        transaction.set(
+          u1Sub,
+          {
+            status: "unmatched",
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+        transaction.set(
+          u2Sub,
+          {
+            status: "unmatched",
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
       });
 
       // Freeze the chat channel and send system message
