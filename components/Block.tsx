@@ -27,7 +27,7 @@ import { SwipeService } from "../networking/SwipeService";
 
 const { width: screenWidth } = Dimensions.get("window");
 const SWIPE_THRESHOLD = screenWidth * 0.15; // 15% of screen width - more sensitive
-const SWIPE_SENSITIVITY = screenWidth * 0.25; // 25% threshold for switching views
+const SWIPE_SENSITIVITY = screenWidth * 0.12; // Lower threshold for easier switching
 
 // Define a smoother spring configuration
 const SMOOTH_SPRING_CONFIG = {
@@ -51,7 +51,6 @@ const Post = ({ profile }: PostProps) => {
 
   const gestureHandler = useAnimatedGestureHandler({
     onStart: (_, context: any) => {
-      // Prevent swiping if a choice has already been made or is processing
       if (isLiked || isDisliked || isProcessing) {
         return;
       }
@@ -65,20 +64,26 @@ const Post = ({ profile }: PostProps) => {
       translateX.value = nextTranslateX;
     },
     onEnd: (event) => {
-      // Logic for swiping between views (card snapping) - much more sensitive
       const velocity = event.velocityX;
       const currentPosition = translateX.value;
 
-      // Consider both position and velocity for more natural swiping
-      const shouldSwitchToPersonal =
-        currentPosition < -SWIPE_SENSITIVITY ||
-        (currentPosition < -screenWidth * 0.1 && velocity < -500);
+      const fastLeft = velocity < -300;
+      const fastRight = velocity > 300;
 
-      if (shouldSwitchToPersonal) {
-        // Snap to the "PersonalView" - only need to swipe 25% of screen width or fast swipe
+      if (fastLeft) {
+        translateX.value = withSpring(-screenWidth, SMOOTH_SPRING_CONFIG);
+        return;
+      }
+      if (fastRight) {
+        translateX.value = withSpring(0, SMOOTH_SPRING_CONFIG);
+        return;
+      }
+
+      // Snap to whichever view we're closer to
+      const halfwayPoint = -screenWidth / 2;
+      if (currentPosition < halfwayPoint) {
         translateX.value = withSpring(-screenWidth, SMOOTH_SPRING_CONFIG);
       } else {
-        // Snap back to the "BasicInfoView"
         translateX.value = withSpring(0, SMOOTH_SPRING_CONFIG);
       }
     },
