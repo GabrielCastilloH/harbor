@@ -1,4 +1,5 @@
 import * as functions from "firebase-functions/v2";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
 import { CallableRequest } from "firebase-functions/v2/https";
 
@@ -757,3 +758,87 @@ export const swipeFunctions = {
   getSwipesByUser,
   savePushToken,
 };
+
+/**
+ * Scheduled job: Reset daily swipe counters and notify active users.
+ * Runs every day at 10 AM America/New_York.
+ */
+export const resetDailySwipes = onSchedule(
+  {
+    schedule: "0 10 * * *",
+    timeZone: "America/New_York",
+    region: "us-central1",
+  },
+  async () => {
+    // Paginate users to avoid loading too many at once
+    const pageSize = 400;
+    let lastDoc: FirebaseFirestore.DocumentSnapshot | null = null;
+    let processed = 0;
+
+    while (true) {
+      let query = db
+        .collection("users")
+        .orderBy(admin.firestore.FieldPath.documentId())
+        .limit(pageSize);
+      if (lastDoc) {
+        query = query.startAfter(lastDoc.id);
+      }
+
+      const usersSnap = await query.get();
+      if (usersSnap.empty) break;
+
+      // Batch updates in chunks (<= 500)
+      const batch = db.batch();
+      const notifyTasks: Array<Promise<void>> = [];
+
+      for (const userDoc of usersSnap.docs) {
+        const userId = userDoc.id;
+        const countersRef = db
+          .collection("users")
+          .doc(userId)
+          .collection("counters")
+          .doc("swipes");
+        const countersSnap = await countersRef.get();
+        if (!countersSnap.exists) continue;
+
+        const data = countersSnap.data() as { count?: number } | undefined;
+        const count = Number(data?.count || 0);
+
+        batch.update(countersRef, {
+          count: 0,
+          resetDate: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        if (count >= 3) {
+          const fcmToken =
+            (userDoc.get("fcmToken") as string | undefined) || undefined;
+          if (fcmToken) {
+            notifyTasks.push(
+              admin
+                .messaging()
+                .send({
+                  token: fcmToken,
+                  notification: {
+                    title: "Daily Swipe Reset",
+                    body: "Your swipes have been reset! Keep connecting 🚀",
+                  },
+                })
+                .then(() => {})
+                .catch(() => {})
+            );
+          }
+        }
+      }
+
+      await batch.commit();
+      await Promise.allSettled(notifyTasks);
+
+      processed += usersSnap.size;
+      lastDoc = usersSnap.docs[usersSnap.docs.length - 1];
+      if (usersSnap.size < pageSize) break;
+    }
+
+    return;
+  }
+);
