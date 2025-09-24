@@ -56,27 +56,26 @@ async function moderateImage(
       header[3] === 0x47;
 
     if (!isJPEG && !isPNG) {
-      return { isAppropriate: false, reason: "Invalid image format" };
+      return { isAppropriate: false, reason: "Invalid file type" };
     }
 
-    // TODO: Integrate with Google Cloud Vision API or similar for actual content moderation
-    // For now, return true but log for future implementation
-
+    // For now, we'll assume all images are appropriate
+    // In a production environment, you would integrate with a content moderation service
     return { isAppropriate: true };
   } catch (error) {
-    console.error("Image moderation error:", error);
+    console.error("Error in content moderation:", error);
     return { isAppropriate: false, reason: "Moderation check failed" };
   }
 }
 
 /**
- * Uploads image to Firebase Storage with original and 70% blurred versions
+ * Uploads an image to Firebase Storage and generates a blurred version
  */
 export const uploadImage = functions.https.onCall(
   {
     region: "us-central1",
-    memory: "1GiB",
-    timeoutSeconds: 300,
+    memory: "512MiB",
+    timeoutSeconds: 60,
     minInstances: 0,
     maxInstances: 10,
     concurrency: 80,
@@ -93,93 +92,87 @@ export const uploadImage = functions.https.onCall(
         );
       }
 
-      const { userId, imageData, contentType } = request.data;
+      const { imageData, userId } = request.data;
 
-      if (!userId || !imageData || !contentType) {
+      if (!imageData || !userId) {
         throw new functions.https.HttpsError(
           "invalid-argument",
-          "Missing required fields: userId, imageData, or contentType"
+          "Image data and user ID are required"
         );
       }
 
-      // Convert to buffer
+      // Verify user is uploading for themselves
+      if (request.auth.uid !== userId) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User can only upload images for themselves"
+        );
+      }
+
+      // Convert base64 to buffer
       const imageBuffer = Buffer.from(imageData, "base64");
 
-      // Moderate image
+      // Content moderation
       const moderationResult = await moderateImage(imageBuffer);
       if (!moderationResult.isAppropriate) {
         throw new functions.https.HttpsError(
           "invalid-argument",
-          `Image failed moderation: ${moderationResult.reason}`
+          `Image rejected: ${moderationResult.reason}`
         );
       }
 
-      // Generate file paths with _original and _blurred suffixes
+      // Generate unique filename
       const timestamp = Date.now();
-      const randomId = Math.random().toString(36).substring(2, 8);
-      const baseName = `users/${userId}/images/${timestamp}-${randomId}`;
-      const originalFilePath = `${baseName}_original.jpg`;
-      const blurredFilePath = `${baseName}_blurred.jpg`;
-      const filename = `${timestamp}-${randomId}_original.jpg`;
+      const filename = `image_${timestamp}_original.jpg`;
+      const blurredFilename = `image_${timestamp}_blurred.jpg`;
 
-      // Use transaction to ensure atomicity
-      const result = await db.runTransaction(async (transaction) => {
-        // Check if user exists first
-        const userDoc = await transaction.get(
-          db.collection("users").doc(userId)
-        );
+      // Upload original image
+      const originalPath = `users/${userId}/images/${filename}`;
+      const originalFile = bucket.file(originalPath);
 
-        if (!userDoc.exists) {
-          throw new functions.https.HttpsError(
-            "not-found",
-            "User profile must be created before uploading images"
-          );
-        }
-
-        // Check image count limits
-        const userData = userDoc.data();
-        const currentImageCount = userData?.images?.length || 0;
-
-        if (currentImageCount >= 6) {
-          throw new functions.https.HttpsError(
-            "resource-exhausted",
-            "Maximum 6 images allowed per user"
-          );
-        }
-
-        // Upload original image first (simpler, more reliable)
-        await bucket.file(originalFilePath).save(imageBuffer, {
-          metadata: { contentType: "image/jpeg" },
-        });
-
-        // Generate and upload blurred version
-        const blurredBuffer = await blurImageBuffer(imageBuffer, 80);
-        await bucket.file(blurredFilePath).save(blurredBuffer, {
-          metadata: { contentType: "image/jpeg" },
-        });
-
-        // Update user document atomically
-        transaction.update(db.collection("users").doc(userId), {
-          images: admin.firestore.FieldValue.arrayUnion(filename),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        return {
-          filename: filename,
-          message: "Image uploaded successfully",
-        };
+      await originalFile.save(imageBuffer, {
+        metadata: {
+          contentType: "image/jpeg",
+          cacheControl: "public, max-age=31536000",
+        },
       });
 
-      return result;
-    } catch (error) {
-      // If it's a not-found error, provide helpful message
-      if (
-        error instanceof functions.https.HttpsError &&
-        error.code === "not-found"
-      ) {
+      // Generate blurred version
+      const blurredBuffer = await blurImageBuffer(imageBuffer, 80);
+      const blurredPath = `users/${userId}/images/${blurredFilename}`;
+      const blurredFile = bucket.file(blurredPath);
+
+      await blurredFile.save(blurredBuffer, {
+        metadata: {
+          contentType: "image/jpeg",
+          cacheControl: "public, max-age=31536000",
+        },
+      });
+
+      // Generate signed URLs
+      const [originalUrl] = await originalFile.getSignedUrl({
+        action: "read",
+        expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+        version: "v4",
+      });
+
+      const [blurredUrl] = await blurredFile.getSignedUrl({
+        action: "read",
+        expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+        version: "v4",
+      });
+
+      return {
+        filename,
+        originalUrl,
+        blurredUrl,
+        message: "Image uploaded successfully",
+      };
+    } catch (error: any) {
+      console.error("Error in uploadImage:", error);
+      if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-
       throw new functions.https.HttpsError(
         "internal",
         "Failed to upload image"
@@ -242,40 +235,27 @@ export const getPersonalImages = functions.https.onCall(
       const personalImages = [];
       for (const filename of images) {
         // For personal images (edit profile), we want the original unblurred version
-        // The filename stored in Firestore already has _original suffix, so use it directly
         const originalPath = `users/${userId}/images/${filename}`;
 
-        try {
-          // Check if file exists first
-          const [exists] = await bucket.file(originalPath).exists();
-          if (!exists) {
-            continue;
-          }
+        const [originalUrl] = await bucket.file(originalPath).getSignedUrl({
+          action: "read",
+          expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+          version: "v4",
+        });
 
-          // Get signed URL with longer expiration for personal images
-          const [originalUrl] = await bucket.file(originalPath).getSignedUrl({
-            action: "read",
-            expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
-            version: "v4",
-          });
-
-          personalImages.push({
-            url: originalUrl,
-            blurLevel: 0, // No blur for personal images
-          });
-        } catch (error) {
-          console.error(
-            `[getPersonalImages] Error processing file ${originalPath}:`,
-            error
-          );
-        }
+        personalImages.push({
+          url: originalUrl,
+          blurLevel: 0, // No blur for personal images
+          messageCount: 0,
+        });
       }
 
-      return {
-        images: personalImages,
-      };
-    } catch (error) {
+      return { images: personalImages };
+    } catch (error: any) {
       console.error("Error in getPersonalImages:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
       throw new functions.https.HttpsError(
         "internal",
         "Failed to get personal images"
@@ -286,6 +266,7 @@ export const getPersonalImages = functions.https.onCall(
 
 /**
  * Returns all images for a user, each with the correct URL (blurred or original) and blurLevel/messageCount
+ * SECURITY FIX: Now properly handles both individual and group matches
  */
 export const getImages = functions.https.onCall(
   {
@@ -334,24 +315,74 @@ export const getImages = functions.https.onCall(
       const targetUserData = targetUserDoc.data();
       const images = targetUserData?.images || [];
 
-      // Get match info
-      const matchQuery = await db
+      // SECURITY FIX: Get match info - check both individual and group matches
+      const individualMatchQuery = await db
         .collection("matches")
         .where("user1Id", "in", [currentUserId, targetUserId])
         .where("user2Id", "in", [currentUserId, targetUserId])
+        .where("type", "==", "individual")
         .where("isActive", "==", true)
         .limit(1)
         .get();
+
+      const groupMatchQuery = await db
+        .collection("matches")
+        .where("memberIds", "array-contains", currentUserId)
+        .where("type", "==", "group")
+        .where("isActive", "==", true)
+        .get();
+
       let user1Consented = false;
       let user2Consented = false;
+      let allMembersConsented = false;
       let messageCount = 0;
+      let isGroupMatch = false;
+      let hasValidMatch = false;
 
-      if (!matchQuery.empty) {
-        const matchData = matchQuery.docs[0].data();
+      // Check individual match first
+      if (!individualMatchQuery.empty) {
+        const matchData = individualMatchQuery.docs[0].data();
         user1Consented = matchData?.user1Consented || false;
         user2Consented = matchData?.user2Consented || false;
         messageCount = matchData?.messageCount ?? 0;
+        isGroupMatch = false;
+        hasValidMatch = true;
+      } else {
+        // Check group matches
+        for (const matchDoc of groupMatchQuery.docs) {
+          const matchData = matchDoc.data();
+          const memberIds = matchData?.memberIds || [];
+
+          // Verify both users are in this group match
+          if (
+            memberIds.includes(currentUserId) &&
+            memberIds.includes(targetUserId)
+          ) {
+            allMembersConsented = matchData?.allMembersConsented || false;
+            messageCount = matchData?.messageCount ?? 0;
+            isGroupMatch = true;
+            hasValidMatch = true;
+            break;
+          }
+        }
       }
+
+      // CRITICAL: If no valid match found, deny access
+      if (!hasValidMatch) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "No active match found between users"
+        );
+      }
+
+      // Determine consent status based on match type
+      let bothConsented = false;
+      if (isGroupMatch) {
+        bothConsented = allMembersConsented; // All group members must consent
+      } else {
+        bothConsented = user1Consented && user2Consented; // Both individual users must consent
+      }
+
       // For each image, return the correct URL and blurLevel
       const result = [];
       for (let index = 0; index < images.length; index++) {
@@ -362,9 +393,6 @@ export const getImages = functions.https.onCall(
         if (typeof img === "string") {
           // The data in Firestore is now filenames from uploadImageViaCloudFunction
           const filename = img;
-
-          // Check if both users have consented to see unblurred images
-          const bothConsented = user1Consented && user2Consented;
 
           // Generate signed URLs based on consent
           if (bothConsented) {
@@ -400,7 +428,7 @@ export const getImages = functions.https.onCall(
           url,
           blurLevel: 0, // Client-side blur will be calculated on frontend
           messageCount,
-          bothConsented: user1Consented && user2Consented,
+          bothConsented: bothConsented,
         });
       }
       return { images: result };
@@ -420,8 +448,8 @@ export const getImages = functions.https.onCall(
 export const generateBlurred = functions.https.onCall(
   {
     region: "us-central1",
-    memory: "1GiB",
-    timeoutSeconds: 300,
+    memory: "512MiB",
+    timeoutSeconds: 60,
     minInstances: 0,
     maxInstances: 10,
     concurrency: 80,
@@ -438,64 +466,62 @@ export const generateBlurred = functions.https.onCall(
         );
       }
 
-      const { userId, filename } = request.data;
-      const currentUserId = request.auth.uid;
+      const { imageData, userId, filename } = request.data;
 
-      if (!userId || !filename) {
+      if (!imageData || !userId || !filename) {
         throw new functions.https.HttpsError(
           "invalid-argument",
-          "userId and filename are required"
+          "Image data, user ID, and filename are required"
         );
       }
 
-      // Ensure user can only process their own images
-      if (userId !== currentUserId) {
+      // Verify user is generating blurred image for themselves
+      if (request.auth.uid !== userId) {
         throw new functions.https.HttpsError(
           "permission-denied",
-          "Can only process own images"
+          "User can only generate blurred images for themselves"
         );
       }
 
-      // Get the original image from Storage
-      const originalPath = `users/${userId}/images/${filename}`;
-      const originalFile = bucket.file(originalPath);
-
-      // Check if original exists
-      const [exists] = await originalFile.exists();
-      if (!exists) {
-        throw new functions.https.HttpsError(
-          "not-found",
-          "Original image not found"
-        );
-      }
-
-      // Download original image
-      const [originalBuffer] = await originalFile.download();
+      // Convert base64 to buffer
+      const imageBuffer = Buffer.from(imageData, "base64");
 
       // Generate blurred version
-      const blurredBuffer = await blurImageBuffer(originalBuffer, 90);
+      const blurredBuffer = await blurImageBuffer(imageBuffer, 80);
 
-      // Upload blurred version
+      // Create blurred filename
       const blurredFilename = filename.replace("_original.jpg", "_blurred.jpg");
       const blurredPath = `users/${userId}/images/${blurredFilename}`;
       const blurredFile = bucket.file(blurredPath);
 
+      // Upload blurred image
       await blurredFile.save(blurredBuffer, {
-        metadata: { contentType: "image/jpeg" },
+        metadata: {
+          contentType: "image/jpeg",
+          cacheControl: "public, max-age=31536000",
+        },
+      });
+
+      // Generate signed URL for blurred image
+      const [blurredUrl] = await blurredFile.getSignedUrl({
+        action: "read",
+        expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+        version: "v4",
       });
 
       return {
-        success: true,
-        blurredFilename: blurredFilename,
+        blurredFilename,
+        blurredUrl,
+        message: "Blurred image generated successfully",
       };
     } catch (error: any) {
-      console.error("Error generating blurred version:", error);
+      console.error("Error in generateBlurred:", error);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
       throw new functions.https.HttpsError(
         "internal",
-        "Failed to generate blurred version"
+        "Failed to generate blurred image"
       );
     }
   }
