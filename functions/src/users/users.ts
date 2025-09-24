@@ -303,6 +303,11 @@ export const createUser = functions.https.onCall(
               userData.groupSize !== undefined
                 ? userData.groupSize
                 : existingData?.groupSize || 2,
+            // Preserve existing isActive if present; default to true
+            isActive:
+              existingData?.isActive !== undefined
+                ? existingData.isActive
+                : true,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };
 
@@ -334,6 +339,8 @@ export const createUser = functions.https.onCall(
             availability: -1,
             // Group size preference (default to 2)
             groupSize: userData.groupSize || 2,
+            // Explicit active flag for consistency
+            isActive: true,
           };
 
           transaction.set(db.collection("users").doc(firebaseUid), newUserDoc);
