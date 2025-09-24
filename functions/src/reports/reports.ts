@@ -423,7 +423,7 @@ export const reportAndUnmatch = functions.https.onCall(
 
           // Send system message about unmatch
           await channel.sendMessage({
-            text: "This chat has been frozen because one of the users unmatched.",
+            text: "This chat has been frozen because one of the users disconnected.",
             user_id: "system",
           });
         }
@@ -455,9 +455,173 @@ export const reportAndUnmatch = functions.https.onCall(
   }
 );
 
+/**
+ * Blocks a user, which also unmatches them if they were matched.
+ * This is a lighter-weight alternative to a full report.
+ */
+export const blockUser = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (
+    request: CallableRequest<{
+      blockedUserId: string;
+      matchId?: string; // Optional matchId for unmatching
+    }>
+  ) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { blockedUserId, matchId } = request.data;
+      const blockerId = request.auth.uid;
+
+      if (!blockedUserId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Missing required field: blockedUserId"
+        );
+      }
+
+      // Prevent self-blocking
+      if (blockerId === blockedUserId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Cannot block yourself"
+        );
+      }
+
+      // Use a transaction for atomic operations
+      await db.runTransaction(async (transaction) => {
+        // 1. Add the blocked user to the current user's 'blockedUsers' array
+        const blockerRef = db.collection("users").doc(blockerId);
+        const blockerDoc = await transaction.get(blockerRef);
+
+        if (!blockerDoc.exists) {
+          throw new functions.https.HttpsError(
+            "not-found",
+            "Blocker user not found"
+          );
+        }
+
+        // Add to the 'blockedUsers' array. arrayUnion ensures no duplicates.
+        transaction.update(blockerRef, {
+          blockedUsers: admin.firestore.FieldValue.arrayUnion(blockedUserId),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 2. Unmatch if a matchId is provided
+        if (matchId) {
+          const matchDoc = await transaction.get(
+            db.collection("matches").doc(matchId)
+          );
+          if (!matchDoc.exists) {
+            // It's possible the match was already deleted, don't throw an error.
+            console.warn("Match not found, continuing with block operation.");
+          } else {
+            const matchData = matchDoc.data();
+            if (matchData) {
+              // Deactivate the match
+              transaction.update(db.collection("matches").doc(matchId), {
+                isActive: false,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+
+              // Remove match from both users' currentMatches arrays
+              transaction.update(
+                db.collection("users").doc(matchData.user1Id),
+                {
+                  currentMatches:
+                    admin.firestore.FieldValue.arrayRemove(matchId),
+                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }
+              );
+              transaction.update(
+                db.collection("users").doc(matchData.user2Id),
+                {
+                  currentMatches:
+                    admin.firestore.FieldValue.arrayRemove(matchId),
+                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }
+              );
+            }
+          }
+        }
+      });
+
+      // 3. Freeze the chat channel (outside the transaction)
+      if (matchId) {
+        try {
+          const { StreamChat } = await import("stream-chat");
+          const { SecretManagerServiceClient } = await import(
+            "@google-cloud/secret-manager"
+          );
+
+          const secretManager = new SecretManagerServiceClient();
+
+          // Get Stream API credentials from Secret Manager
+          const [streamApiKeyVersion, streamApiSecretVersion] =
+            await Promise.all([
+              secretManager.accessSecretVersion({
+                name: "projects/harbor-ch/secrets/STREAM_API_KEY/versions/latest",
+              }),
+              secretManager.accessSecretVersion({
+                name: "projects/harbor-ch/secrets/STREAM_API_SECRET/versions/latest",
+              }),
+            ]);
+
+          const apiKey = streamApiKeyVersion[0].payload?.data?.toString() || "";
+          const apiSecret =
+            streamApiSecretVersion[0].payload?.data?.toString() || "";
+
+          if (apiKey && apiSecret) {
+            const serverClient = StreamChat.getInstance(apiKey, apiSecret);
+            const channelId = [blockerId, blockedUserId].sort().join("-");
+            const channel = serverClient.channel("messaging", channelId);
+
+            await channel.update({ frozen: true });
+            await channel.sendMessage({
+              text: "This chat has been frozen because one of the users blocked the other.",
+              user_id: "system",
+            });
+          }
+        } catch (streamError) {
+          console.error("Error freezing chat on block:", streamError);
+        }
+      }
+
+      return {
+        message: "User blocked successfully",
+        blockedUserId,
+      };
+    } catch (error: any) {
+      console.error("Error blocking user:", error);
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError("internal", "Failed to block user");
+    }
+  }
+);
+
 export const reportFunctions = {
   createReport,
   getReports,
   updateReportStatus,
   reportAndUnmatch,
+  blockUser,
 };
