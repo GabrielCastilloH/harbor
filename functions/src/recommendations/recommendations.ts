@@ -136,47 +136,55 @@ export const getRecommendations = functions.https.onCall(
         const lowerBound = availabilityValue - 0.15;
         const upperBound = availabilityValue + 0.15;
         const compatibilityData = getCompatibilityQuery(currentUserData);
+        if (
+          compatibilityData.orientation.length > 0 &&
+          compatibilityData.gender.length > 0
+        ) {
+          // Fetch a wider pool, filter out excluded users in memory
+          const availabilitySnapshot = await db
+            .collection("users")
+            .where("availability", ">=", lowerBound)
+            .where("availability", "<=", upperBound)
+            .where("sexualOrientation", "in", compatibilityData.orientation)
+            .where("gender", "in", compatibilityData.gender)
+            .limit(100)
+            .get();
 
-        const availabilitySnapshot = await db
-          .collection("users")
-          .where("availability", ">=", lowerBound)
-          .where("availability", "<=", upperBound)
-          .where("sexualOrientation", "in", compatibilityData.orientation)
-          .where("gender", "in", compatibilityData.gender)
-          .where(
-            admin.firestore.FieldPath.documentId(),
-            "not-in",
-            Array.from(matchedUserIds)
-          )
-          .limit(50)
-          .get();
-
-        availabilityUsers = availabilitySnapshot.docs.map((doc) => {
-          const userData = doc.data();
-          const { images, email, ...userDataWithoutSensitiveInfo } = userData;
-          return { uid: doc.id, ...userDataWithoutSensitiveInfo };
-        });
+          availabilityUsers = availabilitySnapshot.docs
+            .filter((doc) => !matchedUserIds.has(doc.id))
+            .map((doc) => {
+              const userData = doc.data();
+              const { images, email, ...userDataWithoutSensitiveInfo } =
+                userData;
+              return { uid: doc.id, ...userDataWithoutSensitiveInfo };
+            })
+            .slice(0, 50);
+        }
       }
 
       // Step 4: Fetch general users as fallback (lowest priority)
       const compatibilityData = getCompatibilityQuery(currentUserData);
-      const generalSnapshot = await db
-        .collection("users")
-        .where("sexualOrientation", "in", compatibilityData.orientation)
-        .where("gender", "in", compatibilityData.gender)
-        .where(
-          admin.firestore.FieldPath.documentId(),
-          "not-in",
-          Array.from(matchedUserIds)
-        )
-        .limit(50)
-        .get();
+      let generalUsers: any[] = [];
+      if (
+        compatibilityData.orientation.length > 0 &&
+        compatibilityData.gender.length > 0
+      ) {
+        const generalSnapshot = await db
+          .collection("users")
+          .where("sexualOrientation", "in", compatibilityData.orientation)
+          .where("gender", "in", compatibilityData.gender)
+          .limit(100)
+          .get();
 
-      const generalUsers = generalSnapshot.docs.map((doc) => {
-        const userData = doc.data();
-        const { images, email, ...userDataWithoutSensitiveInfo } = userData;
-        return { uid: doc.id, ...userDataWithoutSensitiveInfo };
-      });
+        generalUsers = generalSnapshot.docs
+          .filter((doc) => !matchedUserIds.has(doc.id))
+          .map((doc) => {
+            const userData = doc.data();
+            const { images, email, ...userDataWithoutSensitiveInfo } = userData;
+            return { uid: doc.id, ...userDataWithoutSensitiveInfo };
+          })
+          .slice(0, 50);
+      }
 
       // Step 5: Merge results in priority order
       shuffleArray(swipedUsers);
@@ -207,8 +215,13 @@ export const getRecommendations = functions.https.onCall(
  * This helper function makes the main function more readable and performant.
  */
 function getCompatibilityQuery(currentUserData: any) {
-  const userGender = currentUserData.gender;
-  const userOrientation = currentUserData.sexualOrientation;
+  const userGender = currentUserData?.gender;
+  const userOrientation = currentUserData?.sexualOrientation;
+
+  // Guard: if missing data, return empty arrays so callers can skip invalid 'in' queries
+  if (!userGender || !userOrientation) {
+    return { gender: [], orientation: [] };
+  }
   let compatibleGenders: string[] = [];
   let compatibleOrientations: string[] = [];
 
@@ -256,12 +269,15 @@ function getCompatibilityQuery(currentUserData: any) {
       break;
 
     default:
+      // Fallback for unknown orientations: narrow to user's own values
+      compatibleGenders.push(userGender);
+      compatibleOrientations.push(userOrientation);
       break;
   }
 
   if (compatibleGenders.length === 0) {
-    // Fallback for cases not explicitly handled to prevent an error with 'in' queries
-    return { gender: [userGender], orientation: [userOrientation] };
+    // As a final safeguard, return empty arrays so callers skip querying
+    return { gender: [], orientation: [] };
   }
 
   return { gender: compatibleGenders, orientation: compatibleOrientations };
