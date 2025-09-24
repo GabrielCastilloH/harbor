@@ -801,7 +801,7 @@ export const updateConsent = functions.https.onCall(
             const channelId = [user1Id, user2Id].sort().join("-");
             const channel = serverClient.channel("messaging", channelId);
             await channel.sendMessage({
-              text: "Both of you have decided to continue getting to know one another! 💕",
+              text: "Both of you have decided to continue getting to know one another!",
               user_id: "system",
             });
           }

@@ -43,7 +43,7 @@ import { usePremium } from "../hooks/usePremium";
 type ProfileScreenParams = {
   ProfileScreen: {
     userId: string;
-    matchId: string;
+    matchId?: string | null; // Made optional since profiles are now publicly viewable
   };
 };
 
@@ -89,18 +89,19 @@ export default function ProfileScreen() {
   const [matchLoading, setMatchLoading] = useState(false);
   const [unmatchLoading, setUnmatchLoading] = useState(false);
 
-  // Fetch matchId if not provided
-  useEffect(() => {
-    if (!matchId && userId && currentUserId) {
-      setMatchLoading(true);
-      MatchService.getMatchId(currentUserId, userId)
-        .then((id) => setMatchId(id))
-        .catch((e) => {
-          console.error("Error fetching matchId in ProfileScreen:", e);
-        })
-        .finally(() => setMatchLoading(false));
-    }
-  }, [matchId, userId, currentUserId]);
+  // Commented out: No longer checking for a valid matchId
+  // // Fetch matchId if not provided
+  // useEffect(() => {
+  //   if (!matchId && userId && currentUserId) {
+  //     setMatchLoading(true);
+  //     MatchService.getMatchId(currentUserId, userId)
+  //       .then((id) => setMatchId(id))
+  //       .catch((e) => {
+  //         console.error("Error fetching matchId in ProfileScreen:", e);
+  //       })
+  //       .finally(() => setMatchLoading(false));
+  //   }
+  // }, [matchId, userId, currentUserId]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -109,11 +110,12 @@ export default function ProfileScreen() {
         return;
       }
 
-      // Only fetch profile data if we have a valid match
-      if (!matchId && !matchLoading) {
-        setLoading(false);
-        return;
-      }
+      // Commented out: No longer checking for a valid match to fetch profile
+      // // Only fetch profile data if we have a valid match
+      // if (!matchId && !matchLoading) {
+      //   setLoading(false);
+      //   return;
+      // }
 
       try {
         const response = await UserService.getUserById(userId);
@@ -161,7 +163,8 @@ export default function ProfileScreen() {
     };
 
     fetchProfile();
-  }, [userId, matchId, matchLoading]);
+    // Commented out matchId, matchLoading from dependency array since they are not used
+  }, [userId]);
 
   // Fetch images with blur info - this ensures proper consent and blur levels
   useEffect(() => {
@@ -226,61 +229,16 @@ export default function ProfileScreen() {
   // No need to check blur warning state here anymore
 
   useEffect(() => {
-    if (userId === currentUserId) return;
-    if (!matchId) return; // Don't show report button if matchId is not available
-
-    navigationRef.current.setOptions({
-      headerBackTitle: "Back",
-      headerRight: () => (
-        <Pressable
-          onPress={() => {
-            if (!navigationRef.current) {
-              console.error("❌ Navigation ref is null!");
-              Alert.alert("Error", "Navigation not available");
-              return;
-            }
-
-            if (!matchId) {
-              console.error("❌ MatchId is null!");
-              Alert.alert("Error", "Match not found");
-              return;
-            }
-
-            try {
-              navigationRef.current.navigate("ReportScreen", {
-                reportedUserId: userId,
-                reportedUserEmail: profile?.email,
-                reportedUserName: profile?.firstName,
-                matchId: matchId,
-              });
-            } catch (error) {
-              console.error("❌ Navigation error:", error);
-              Alert.alert("Error", "Failed to navigate to report screen");
-            }
-          }}
-          style={({ pressed }) => [
-            styles.reportButton,
-            pressed && styles.reportButtonPressed,
-          ]}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="flag" size={20} color={Colors.strongRed} />
-        </Pressable>
-      ),
-    });
+    // Header is custom-rendered via HeaderBack below. Keeping this effect no-op.
   }, [navigationRef, userId, currentUserId, profile, matchId]);
 
   const handleReport = () => {
-    if (!userId || !profile || !matchId) {
-      return;
-    }
-
+    if (!userId || !profile) return;
     try {
       navigationRef.current.navigate("ReportScreen", {
         reportedUserId: userId,
         reportedUserEmail: profile.email,
         reportedUserName: profile.firstName,
-        matchId: matchId,
       });
     } catch (error) {
       console.error("❌ Navigation error:", error);
@@ -324,20 +282,21 @@ export default function ProfileScreen() {
     );
   };
 
-  // Show message when trying to view unmatched user's profile
-  if (!matchId && !matchLoading) {
-    return (
-      <View style={{ flex: 1 }}>
-        <HeaderBack title="Profile" onBack={() => navigation.goBack()} />
-        <View style={styles.unmatchedContainer}>
-          <Text style={styles.unmatchedText}>
-            You are not allowed to view profiles of people you are no longer
-            connected with.
-          </Text>
-        </View>
-      </View>
-    );
-  }
+  // Commented out the return block for unmatched users
+  // // Show message when trying to view unmatched user's profile
+  // if (!matchId && !matchLoading) {
+  //   return (
+  //     <View style={{ flex: 1 }}>
+  //       <HeaderBack title="Profile" onBack={() => navigation.goBack()} />
+  //       <View style={styles.unmatchedContainer}>
+  //         <Text style={styles.unmatchedText}>
+  //           You are not allowed to view profiles of people you are no longer
+  //           connected with.
+  //         </Text>
+  //       </View>
+  //     </View>
+  //   );
+  // }
 
   // Show loading screen for other loading states
   if (loading || !profile) {
