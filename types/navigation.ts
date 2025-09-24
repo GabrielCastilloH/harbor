@@ -10,7 +10,11 @@ export type RootStackParamList = {
     reportedUserId: string;
     reportedUserEmail?: string;
     reportedUserName?: string;
-    matchId: string;
+    matchId?: string;
+  };
+  StudyGroupConnections: {
+    channelId: string;
+    memberIds: string[];
   };
 };
 
