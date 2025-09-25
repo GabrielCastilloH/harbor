@@ -29,25 +29,20 @@ async function checkForGroupFormation(
     .map((doc) => doc.id)
     .filter((id) => id !== swiperId && id !== swipedId);
 
-  // Get all right swipes involving the swiper and swiped user
-  const swiperSwipes = await db
-    .collection("swipes")
-    .where("swiperId", "==", swiperId)
-    .where("direction", "==", "right")
-    .get();
-
-  const swipedSwipes = await db
-    .collection("swipes")
-    .where("swiperId", "==", swipedId)
-    .where("direction", "==", "right")
-    .get();
-
-  // Create sets of who each user has swiped right on
+  // Create sets of who each user has swiped right on (using subcollections)
+  const [swiperOutgoing, swipedOutgoing] = await Promise.all([
+    db.collection("swipes").doc(swiperId).collection("outgoing").get(),
+    db.collection("swipes").doc(swipedId).collection("outgoing").get(),
+  ]);
   const swiperLikes = new Set(
-    swiperSwipes.docs.map((doc) => doc.data().swipedId)
+    swiperOutgoing.docs
+      .filter((d) => (d.data() as any).direction === "right")
+      .map((d) => d.id)
   );
   const swipedLikes = new Set(
-    swipedSwipes.docs.map((doc) => doc.data().swipedId)
+    swipedOutgoing.docs
+      .filter((d) => (d.data() as any).direction === "right")
+      .map((d) => d.id)
   );
 
   // Check if swiper and swiped have mutual interest
@@ -61,14 +56,15 @@ async function checkForGroupFormation(
 
     // Find additional members who have swiped on at least 2 of the current members
     for (const candidateId of candidateUserIds) {
-      const candidateSwipes = await db
+      const candidateOutgoing = await db
         .collection("swipes")
-        .where("swiperId", "==", candidateId)
-        .where("direction", "==", "right")
+        .doc(candidateId)
+        .collection("outgoing")
         .get();
-
       const candidateLikes = new Set(
-        candidateSwipes.docs.map((doc) => doc.data().swipedId)
+        candidateOutgoing.docs
+          .filter((d) => (d.data() as any).direction === "right")
+          .map((d) => d.id)
       );
 
       // Count how many current members this candidate has swiped on
@@ -214,16 +210,23 @@ export const createSwipe = functions.https.onCall(
 
         const swiperUser = swiperUserDoc.data();
 
-        // 1. Check for swipe limits based on the unified system
+        // 1. Check for swipe limits using subdoc counter only
         const today = new Date().toISOString().split("T")[0];
-        let swipesToday = swiperUser?.swipesToday ?? 0;
-        const resetDate = swiperUser?.resetDate ?? today;
-
-        if (resetDate !== today) {
-          swipesToday = 0;
+        const counterRef = db
+          .collection("users")
+          .doc(swiperId)
+          .collection("counters")
+          .doc("swipes");
+        const counterSnap = await transaction.get(counterRef);
+        const counterData = counterSnap.exists
+          ? (counterSnap.data() as any)
+          : {};
+        const counterResetDate = counterData.resetDate ?? today;
+        let currentCount = Number(counterData.count || 0);
+        if (counterResetDate !== today) {
+          currentCount = 0;
         }
-
-        if (swipesToday >= MAX_SWIPES_PER_DAY) {
+        if (currentCount >= MAX_SWIPES_PER_DAY) {
           throw new functions.https.HttpsError(
             "resource-exhausted",
             "Daily swipe limit reached"
@@ -249,21 +252,17 @@ export const createSwipe = functions.https.onCall(
 
         // Active match checks are now done before the transaction for better performance
 
-        // 4. Check if swipe already exists
-        const existingSwipe = await db
-          .collection("swipes")
-          .where("swiperId", "==", swiperId)
-          .where("swipedId", "==", swipedId)
-          .where("direction", "==", direction)
-          .limit(1)
-          .get();
+        // 4. Check if swipe already exists (subcollection)
+        const existingSwipeDoc = await transaction.get(
+          db
+            .collection("swipes")
+            .doc(swiperId)
+            .collection("outgoing")
+            .doc(swipedId)
+        );
 
-        if (!existingSwipe.empty) {
-          return {
-            message: "Swipe already exists",
-            swipe: existingSwipe.docs[0].data(),
-            match: false,
-          };
+        if (existingSwipeDoc.exists) {
+          return { message: "Swipe already exists", swipe: null, match: false };
         }
 
         const swipeData = {
@@ -375,10 +374,7 @@ export const createSwipe = functions.https.onCall(
           }
         }
 
-        // 6. Record the swipe (legacy flat collection) and dual-write to per-user subcollections
-        const swipeRef = db.collection("swipes").doc();
-        transaction.set(swipeRef, swipeData);
-
+        // 6. Record the swipe to per-user subcollections only
         const outgoingRef = db
           .collection("swipes")
           .doc(swiperId)
@@ -398,20 +394,9 @@ export const createSwipe = functions.https.onCall(
           direction,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        transaction.update(swiperUserRef, {
-          swipesToday: admin.firestore.FieldValue.increment(1),
-          resetDate: today,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        // Also bump per-user swipe counter subdoc to avoid contention in future
-        const countersRef = db
-          .collection("users")
-          .doc(swiperId)
-          .collection("counters")
-          .doc("swipes");
+        // Increment per-user swipe counter subdoc only
         transaction.set(
-          countersRef,
+          counterRef,
           {
             count: admin.firestore.FieldValue.increment(1),
             resetDate: today,
@@ -588,32 +573,24 @@ export const countRecentSwipes = functions.https.onCall(
         );
       }
 
-      const userDoc = await db.collection("users").doc(id).get();
-      if (!userDoc.exists) {
-        throw new functions.https.HttpsError("not-found", "User not found");
-      }
-
-      const userData = userDoc.data();
-      if (!userData) {
-        throw new functions.https.HttpsError(
-          "not-found",
-          "User data not found"
-        );
-      }
-
       const today = new Date().toISOString().split("T")[0];
-      const resetDate = userData.resetDate ?? today;
-      let swipesToday = userData.swipesToday ?? 0;
-
-      // Check if we need to reset the count for the day
+      const counterRef = db
+        .collection("users")
+        .doc(id)
+        .collection("counters")
+        .doc("swipes");
+      const counterSnap = await counterRef.get();
+      const data = counterSnap.exists ? (counterSnap.data() as any) : {};
+      const resetDate = data.resetDate ?? today;
+      let count = Number(data.count || 0);
       if (resetDate !== today) {
-        swipesToday = 0;
+        count = 0;
       }
 
       return {
-        swipeCount: swipesToday,
+        swipeCount: count,
         dailyLimit: MAX_SWIPES_PER_DAY,
-        canSwipe: swipesToday < MAX_SWIPES_PER_DAY,
+        canSwipe: count < MAX_SWIPES_PER_DAY,
       };
     } catch (error: any) {
       if (error instanceof functions.https.HttpsError) {
