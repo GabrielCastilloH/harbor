@@ -5,6 +5,7 @@ import {
   View,
   TouchableOpacity,
   Alert,
+  ScrollView,
 } from "react-native";
 import {
   PanGestureHandler,
@@ -35,6 +36,9 @@ const SMOOTH_SPRING_CONFIG = {
   stiffness: 300, // Higher stiffness for snappier animations
   mass: 0.8, // Lower mass for lighter feel
 };
+
+// Require stronger horizontal intent before activating page swipe
+const VERTICAL_SCROLL_PRIORITY_SLOP = 20;
 
 interface PostProps {
   profile: Profile;
@@ -195,17 +199,20 @@ const Post = ({ profile }: PostProps) => {
     <GestureHandlerRootView>
       <PanGestureHandler
         onGestureEvent={gestureHandler}
-        activeOffsetX={[-5, 5]} // More sensitive horizontal detection
-        activeOffsetY={[-15, 15]} // Slightly more sensitive vertical detection
+        // Prioritize vertical scroll by requiring stronger horizontal movement
+        activeOffsetX={[
+          -VERTICAL_SCROLL_PRIORITY_SLOP,
+          VERTICAL_SCROLL_PRIORITY_SLOP,
+        ]}
         enabled={!isLiked && !isDisliked && !isProcessing}
       >
         <Animated.View style={[styles.container, animatedStyle]}>
-          <View style={styles.viewContainer}>
+          <ScrollView style={styles.viewContainer}>
             <BasicInfoView profile={profile} />
-          </View>
-          <View style={styles.viewContainer}>
+          </ScrollView>
+          <ScrollView style={styles.viewContainer}>
             <PersonalView profile={profile} />
-          </View>
+          </ScrollView>
         </Animated.View>
       </PanGestureHandler>
 
