@@ -143,39 +143,21 @@ export const createSwipe = functions.https.onCall(
       }
 
       // Check for active matches before allowing any swipe
-      const [
-        swiperActiveMatches1,
-        swiperActiveMatches2,
-        swipedActiveMatches1,
-        swipedActiveMatches2,
-      ] = await Promise.all([
+      const [swiperActiveMatches, swipedActiveMatches] = await Promise.all([
         db
           .collection("matches")
           .where("isActive", "==", true)
-          .where("user1Id", "==", swiperId)
+          .where("participantIds", "array-contains", swiperId)
           .get(),
         db
           .collection("matches")
           .where("isActive", "==", true)
-          .where("user2Id", "==", swiperId)
-          .get(),
-        db
-          .collection("matches")
-          .where("isActive", "==", true)
-          .where("user1Id", "==", swipedId)
-          .get(),
-        db
-          .collection("matches")
-          .where("isActive", "==", true)
-          .where("user2Id", "==", swipedId)
+          .where("participantIds", "array-contains", swipedId)
           .get(),
       ]);
 
       // Check if swiper has an active match
-      if (
-        swiperActiveMatches1.docs.length > 0 ||
-        swiperActiveMatches2.docs.length > 0
-      ) {
+      if (swiperActiveMatches.docs.length > 0) {
         throw new functions.https.HttpsError(
           "permission-denied",
           "Cannot swipe while you have an active match"
@@ -183,10 +165,7 @@ export const createSwipe = functions.https.onCall(
       }
 
       // Check if swiped user has an active match
-      if (
-        swipedActiveMatches1.docs.length > 0 ||
-        swipedActiveMatches2.docs.length > 0
-      ) {
+      if (swipedActiveMatches.docs.length > 0) {
         throw new functions.https.HttpsError(
           "permission-denied",
           "Cannot swipe on a user who has an active match"
@@ -236,8 +215,8 @@ export const createSwipe = functions.https.onCall(
         // 2. Check if users have unmatched before
         const unmatchedCheck = await db
           .collection("matches")
-          .where("user1Id", "in", [swiperId, swipedId])
-          .where("user2Id", "in", [swiperId, swipedId])
+          .where("participantIds", "array-contains", swiperId)
+          .where("participantIds", "array-contains", swipedId)
           .where("isActive", "==", false)
           .limit(1)
           .get();
@@ -303,13 +282,12 @@ export const createSwipe = functions.https.onCall(
 
               const matchData = {
                 type: "individual",
-                user1Id: swiperId,
-                user2Id: swipedId,
+                participantIds: [swiperId, swipedId],
                 matchDate: admin.firestore.FieldValue.serverTimestamp(),
                 isActive: true,
                 messageCount: 0,
-                bothConsented: false,
-                bothViewed: false,
+                participantConsent: { [swiperId]: false, [swipedId]: false },
+                participantViewed: { [swiperId]: false, [swipedId]: false },
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               };
