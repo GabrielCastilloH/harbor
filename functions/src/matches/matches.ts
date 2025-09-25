@@ -150,15 +150,22 @@ export const createMatch = functions.https.onCall(
       }
 
       // Check if match already exists using participantIds
-      const existingMatches = await db
+      // Firestore does not support multiple array-contains on the same field,
+      // so we use array-contains-any and filter the results in memory.
+      const potentialMatchesSnap = await db
         .collection("matches")
-        .where("participantIds", "array-contains", user1Id)
-        .where("participantIds", "array-contains", user2Id)
+        .where("participantIds", "array-contains-any", [user1Id, user2Id])
         .where("isActive", "==", true)
         .get();
 
-      if (!existingMatches.empty) {
-        const existingMatch = existingMatches.docs[0];
+      const existingMatchDoc = potentialMatchesSnap.docs.find((doc) => {
+        const data = doc.data() as any;
+        const participants = data.participantIds || [];
+        return participants.includes(user1Id) && participants.includes(user2Id);
+      });
+
+      if (existingMatchDoc) {
+        const existingMatch = existingMatchDoc;
         return {
           message: "Match already exists",
           matchId: existingMatch.id,
@@ -674,16 +681,22 @@ export const getMatchId = functions.https.onCall(
       }
 
       // Find existing match using participantIds
-      const matchQuery = await db
+      // Firestore limitation: cannot use two array-contains on the same field.
+      // Use array-contains-any and filter in memory to ensure both users present.
+      const possibleSnap = await db
         .collection("matches")
-        .where("participantIds", "array-contains", userId1)
-        .where("participantIds", "array-contains", userId2)
+        .where("participantIds", "array-contains-any", [userId1, userId2])
         .where("isActive", "==", true)
-        .limit(1)
         .get();
 
-      if (!matchQuery.empty) {
-        return { matchId: matchQuery.docs[0].id };
+      const foundDoc = possibleSnap.docs.find((doc) => {
+        const data = doc.data() as any;
+        const participants = data.participantIds || [];
+        return participants.includes(userId1) && participants.includes(userId2);
+      });
+
+      if (foundDoc) {
+        return { matchId: foundDoc.id };
       }
 
       return { matchId: null };
