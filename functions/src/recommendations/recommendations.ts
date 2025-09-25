@@ -56,6 +56,10 @@ export const getRecommendations = functions.https.onCall(
 
       recsLog(`start uid=${userId}`);
 
+      // Daily limits and dynamic recommendation sizing
+      const MAX_SWIPES_PER_DAY = 5;
+      const MAX_RECS_TO_FETCH = 10;
+
       // Check for active matches first - unified schema (participantIds)
       const activeMatchesSnapshot = await db
         .collection("matches")
@@ -81,6 +85,26 @@ export const getRecommendations = functions.https.onCall(
         recsLog(`exit: userInactive`);
         return { recommendations: [] };
       }
+
+      // NEW: determine today's swipe count from counters subdoc and compute target limit
+      const countersRef = db
+        .collection("users")
+        .doc(userId)
+        .collection("counters")
+        .doc("swipes");
+      const countersSnap = await countersRef.get();
+      const cData = countersSnap.exists ? (countersSnap.data() as any) : {};
+      const swipesMadeToday = Number(cData?.count || 0);
+      recsLog(`swipesMadeToday=${swipesMadeToday}`);
+
+      const remainingSwipes = Math.max(0, MAX_SWIPES_PER_DAY - swipesMadeToday);
+      if (remainingSwipes === 0) {
+        recsLog(`exit: Daily swipe limit reached.`);
+        return { recommendations: [] };
+      }
+
+      const finalRecsLimit = Math.max(0, MAX_RECS_TO_FETCH - swipesMadeToday);
+      recsLog(`finalRecsLimit=${finalRecsLimit}`);
 
       // Step 1: Preload swipes to filter out irrelevant users early
       // Prefer per-user subcollection; fallback to flat collection
@@ -114,15 +138,14 @@ export const getRecommendations = functions.https.onCall(
 
       // Step 2: Get users who swiped on you (highest priority)
       let whoSwipedOnYouIds: string[] = [];
-      const incoming = await db
+      const incomingSnapshot = await db
         .collection("swipes")
         .doc(userId)
         .collection("incoming")
+        .where("direction", "==", "right")
         .get();
-      whoSwipedOnYouIds = incoming.docs
-        .filter((d) => (d.data() as any).direction === "right")
-        .map((d) => d.id);
-      recsLog(`incomingRight(sub)=${whoSwipedOnYouIds.length}`);
+      whoSwipedOnYouIds = incomingSnapshot.docs.map((d) => d.id);
+      recsLog(`incomingRight(filtered)=${whoSwipedOnYouIds.length}`);
 
       let swipedUsers: any[] = [];
       if (whoSwipedOnYouIds.length > 0) {
@@ -220,14 +243,29 @@ export const getRecommendations = functions.https.onCall(
       shuffleArray(availabilityUsers);
       shuffleArray(generalUsers);
 
-      const recommendations = [
-        ...swipedUsers,
-        ...availabilityUsers,
-        ...generalUsers,
-      ];
+      // Merge with de-dup and cap by finalRecsLimit
+      const seen = new Set<string>();
+      const merged: any[] = [];
+      const pushUnique = (arr: any[]) => {
+        for (const u of arr) {
+          const id = u.uid;
+          if (!seen.has(id)) {
+            seen.add(id);
+            merged.push(u);
+            if (merged.length >= finalRecsLimit) return true;
+          }
+        }
+        return false;
+      };
 
-      recsLog(`finalSize=${recommendations.length}`);
-      return { recommendations };
+      if (!pushUnique(swipedUsers)) {
+        if (!pushUnique(availabilityUsers)) {
+          pushUnique(generalUsers);
+        }
+      }
+
+      recsLog(`finalSize=${merged.length} (capped at ${finalRecsLimit})`);
+      return { recommendations: merged };
     } catch (error: any) {
       try {
         recsLog(
