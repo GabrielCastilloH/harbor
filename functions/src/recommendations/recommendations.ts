@@ -114,27 +114,15 @@ export const getRecommendations = functions.https.onCall(
 
       // Step 2: Get users who swiped on you (highest priority)
       let whoSwipedOnYouIds: string[] = [];
-      try {
-        const incoming = await db
-          .collection("swipes")
-          .doc(userId)
-          .collection("incoming")
-          .get();
-        whoSwipedOnYouIds = incoming.docs
-          .filter((d) => (d.data() as any).direction === "right")
-          .map((d) => d.id);
-        recsLog(`incomingRight(sub)=${whoSwipedOnYouIds.length}`);
-      } catch (_e) {
-        const inboundSwipesSnapshot = await db
-          .collection("swipes")
-          .where("swipedId", "==", userId)
-          .where("direction", "==", "right")
-          .get();
-        whoSwipedOnYouIds = inboundSwipesSnapshot.docs.map(
-          (doc) => doc.data().swiperId
-        );
-        recsLog(`incomingRight(flat)=${whoSwipedOnYouIds.length}`);
-      }
+      const incoming = await db
+        .collection("swipes")
+        .doc(userId)
+        .collection("incoming")
+        .get();
+      whoSwipedOnYouIds = incoming.docs
+        .filter((d) => (d.data() as any).direction === "right")
+        .map((d) => d.id);
+      recsLog(`incomingRight(sub)=${whoSwipedOnYouIds.length}`);
 
       let swipedUsers: any[] = [];
       if (whoSwipedOnYouIds.length > 0) {
