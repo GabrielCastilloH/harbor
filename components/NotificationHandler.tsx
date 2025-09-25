@@ -73,52 +73,7 @@ export default function NotificationHandler({
     return unsubscribeForegroundEvent;
   }, [navigationRef]);
 
-  useEffect(() => {
-    // Handle foreground messages for Stream Chat notifications
-    const unsubscribeOnMessage = messaging().onMessage(
-      async (remoteMessage) => {
-        try {
-          const data = remoteMessage.data || {};
-          const type = data.type || data.event_type || data.category;
-          const sender = data.sender || data.source;
-          const text =
-            data.message || data.text || remoteMessage.notification?.body;
-
-          const isStream =
-            sender === "stream.chat" || data["stream-sdk"] === "react-native";
-          const isIntro =
-            text === "You've connected! Start chatting now." ||
-            text ===
-              "Both of you have decided to continue getting to know one another!";
-
-          if (!isStream || !isIntro) return;
-
-          const channelId = await notifee.createChannel({
-            id: "chat-messages",
-            name: "Chat Messages",
-          });
-
-          await notifee.displayNotification({
-            title: "🎉 It's a Match!",
-            body: text || "You've connected! Start chatting now.",
-            data,
-            android: {
-              channelId,
-              importance: AndroidImportance.HIGH,
-              pressAction: { id: "default" },
-            },
-          });
-        } catch (error) {
-          console.error(
-            "🔔 Error handling foreground match notification:",
-            error
-          );
-        }
-      }
-    );
-
-    return unsubscribeOnMessage;
-  }, []);
+  // Foreground notification logic removed - match modal now handles this
 
   // This component doesn't render anything
   return null;

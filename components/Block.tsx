@@ -20,6 +20,7 @@ import Animated, {
 } from "react-native-reanimated";
 import BasicInfoView from "./BasicInfoView";
 import PersonalView from "./PersonalView";
+import MatchModal from "./MatchModal";
 import { Profile } from "../types/App";
 import Colors from "../constants/Colors";
 import { FontAwesome, Octicons } from "@expo/vector-icons";
@@ -48,13 +49,16 @@ interface PostProps {
 }
 
 const Post = ({ profile }: PostProps) => {
-  const { userId } = useAppContext();
+  const { userId, profile: currentUserProfile } = useAppContext();
   const translateX = useSharedValue(0);
   const opacity = useSharedValue(1);
 
   const [isLiked, setIsLiked] = useState(false);
   const [isDisliked, setIsDisliked] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showMatchModal, setShowMatchModal] = useState(false);
+  const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
+  const [matchId, setMatchId] = useState<string | null>(null);
 
   const gestureHandler = useAnimatedGestureHandler({
     onStart: (_, context: any) => {
@@ -137,7 +141,9 @@ const Post = ({ profile }: PostProps) => {
 
         // Handle match result if there's a match
         if (result.match) {
-          // You could show a match notification here
+          setMatchedProfile(profile);
+          setMatchId(result.matchId || null);
+          setShowMatchModal(true);
         }
       } catch (error: any) {
         console.error("Error creating like swipe:", error);
@@ -249,6 +255,14 @@ const Post = ({ profile }: PostProps) => {
           color={isProcessing ? Colors.secondary500 : Colors.primary500}
         />
       </TouchableOpacity>
+
+      <MatchModal
+        visible={showMatchModal}
+        onClose={() => setShowMatchModal(false)}
+        matchedProfile={matchedProfile}
+        currentProfile={currentUserProfile}
+        matchId={matchId || undefined}
+      />
     </GestureHandlerRootView>
   );
 };
