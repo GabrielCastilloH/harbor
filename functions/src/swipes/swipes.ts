@@ -284,15 +284,19 @@ export const createSwipe = functions.https.onCall(
           // STRICT GROUP SIZE MATCHING: Only match users in groups of their selected size
           if (swiperGroupSize === 2) {
             // For group size 2, only create individual matches
-            const mutualSwipe = await db
+            // Use subcollection structure: swipes/{swipedId}/outgoing/{swiperId}
+            const otherOutgoingRef = db
               .collection("swipes")
-              .where("swiperId", "==", swipedId)
-              .where("swipedId", "==", swiperId)
-              .where("direction", "==", "right")
-              .limit(1)
-              .get();
+              .doc(swipedId)
+              .collection("outgoing")
+              .doc(swiperId);
+            const otherOutgoingSnap = await otherOutgoingRef.get();
 
-            if (!mutualSwipe.empty) {
+            const otherOutgoing = otherOutgoingSnap.exists
+              ? (otherOutgoingSnap.data() as any)
+              : null;
+
+            if (otherOutgoing && otherOutgoing.direction === "right") {
               match = true;
               const matchRef = db.collection("matches").doc();
               matchId = matchRef.id;
