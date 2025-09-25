@@ -331,7 +331,6 @@ export const createUser = functions.https.onCall(
             q1: userData.q1 || "",
             q2: userData.q2 || "",
             q3: userData.q3 || "",
-            currentMatches: [],
             paywallSeen: false,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),

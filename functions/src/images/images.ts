@@ -315,7 +315,7 @@ export const getImages = functions.https.onCall(
       const targetUserData = targetUserDoc.data();
       const images = targetUserData?.images || [];
 
-      // SECURITY FIX: Get match info using unified participantIds when possible
+      // SECURITY FIX: Get match info using unified participantIds only
       const participantMatchQuery = await db
         .collection("matches")
         .where("participantIds", "array-contains", currentUserId)
@@ -329,11 +329,10 @@ export const getImages = functions.https.onCall(
       let isGroupMatch = false;
       let hasValidMatch = false;
 
-      // Prefer unified participantIds approach; fallback to legacy fields per document
+      // Unified participantIds approach only
       for (const matchDoc of participantMatchQuery.docs) {
         const matchData = matchDoc.data() as any;
-        const ids: string[] =
-          matchData.participantIds || matchData.memberIds || [];
+        const ids: string[] = matchData.participantIds || [];
         if (ids.includes(targetUserId)) {
           hasValidMatch = true;
           isGroupMatch = matchData.type === "group";
@@ -341,11 +340,10 @@ export const getImages = functions.https.onCall(
 
           if (isGroupMatch) {
             // Group consent requires all true
-            const consentMap =
-              matchData.participantConsent || matchData.memberConsent || {};
+            const consentMap = matchData.participantConsent || {};
             allMembersConsented = Object.values(consentMap).every(Boolean);
           } else {
-            // Individual: support unified and legacy
+            // Individual: use unified consent map
             const consentMap = matchData.participantConsent || {};
             if (
               consentMap[currentUserId] !== undefined ||
@@ -353,9 +351,6 @@ export const getImages = functions.https.onCall(
             ) {
               user1Consented = Boolean(consentMap[currentUserId]);
               user2Consented = Boolean(consentMap[targetUserId]);
-            } else {
-              user1Consented = Boolean(matchData.user1Consented);
-              user2Consented = Boolean(matchData.user2Consented);
             }
           }
           break;
