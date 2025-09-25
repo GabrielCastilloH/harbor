@@ -495,7 +495,7 @@ export const createSwipe = functions.https.onCall(
               // Send system message for new matches
               try {
                 await channel.sendMessage({
-                  text: "You've matched! Start chatting now.",
+                  text: "You've connected! Start chatting now.",
                   user_id: "system",
                 });
 

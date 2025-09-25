@@ -18,18 +18,8 @@ export default function NotificationHandler({
     // Handle notification opened app from background state (iOS)
     const unsubscribeOnNotificationOpen = messaging().onNotificationOpenedApp(
       (remoteMessage) => {
-        // Navigate to relevant channel screen for Stream Chat messages
-        if (
-          remoteMessage.data?.type === "message.new" &&
-          remoteMessage.data?.channel_id
-        ) {
-          const channelId = remoteMessage.data.channel_id;
-
-          navigationRef.current?.navigate("ChatsTab", {
-            screen: "ChatScreen",
-            params: { channelId },
-          });
-        }
+        // Only open the app, do not navigate anywhere
+        // This prevents the "failed to fetch user profile" error
       }
     );
 
@@ -59,13 +49,8 @@ export default function NotificationHandler({
     const unsubscribeBackgroundEvent = notifee.onBackgroundEvent(
       async ({ detail, type }) => {
         if (type === EventType.PRESS) {
-          const channelId = detail.notification?.data?.channel_id;
-          if (channelId) {
-            navigationRef.current?.navigate("ChatsTab", {
-              screen: "ChatScreen",
-              params: { channelId },
-            });
-          }
+          // Only open the app, do not navigate anywhere
+          // This prevents the "failed to fetch user profile" error
           await Promise.resolve();
         }
       }
@@ -79,13 +64,8 @@ export default function NotificationHandler({
     const unsubscribeForegroundEvent = notifee.onForegroundEvent(
       ({ detail, type }) => {
         if (type === EventType.PRESS) {
-          const channelId = detail.notification?.data?.channel_id;
-          if (channelId) {
-            navigationRef.current?.navigate("ChatsTab", {
-              screen: "ChatScreen",
-              params: { channelId },
-            });
-          }
+          // Only open the app, do not navigate anywhere
+          // This prevents the "failed to fetch user profile" error
         }
       }
     );
