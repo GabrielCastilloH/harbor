@@ -12,13 +12,15 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 - **Consent-based transitions**: Users must consent to continue chatting after 30 messages to see clearer photos
 - **Server-side blur processing**: Secure image processing with 80% server-side blur for privacy
 - **Seamless client animations**: Smooth blur transitions create engaging user experience
+- **Group match support**: Unified blur system works for both individual and group matches
 
 ### 💫 Smart Matching & Swiping
 
 - **Intelligent recommendations**: Algorithm considers sexual orientation, gender preferences, and mutual interest
-- **Unified swipe system**: **Efficient daily swipe tracking stored directly in user profiles for optimal performance**
-- **Daily swipe limits**: **Configurable daily swipes for all users, with a framework for premium tiers**
+- **Unified swipe system**: **Efficient daily swipe tracking using subcollections for optimal performance**
+- **Daily swipe limits**: **5 swipes per day for all users (premium features currently disabled)**
 - **Instant match detection**: Real-time matching when two users swipe right on each other
+- **Group formation**: Automatic group match creation when multiple users with same group size preferences match
 - **Swipe gesture controls**: Smooth card-based swiping with visual feedback
 
 ### 💬 Real-time Chat System
@@ -27,12 +29,14 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 - **Progressive unlock system**: Chat becomes available after matching, photos unlock through conversation
 - **Consent modals**: Built-in consent flow ensures both users want to continue chatting
 - **Channel freezing**: Automatic chat freeze when users unmatch or report
+- **Group chat support**: Multi-user chat channels for group matches
 
 ### 🔐 Security & Privacy
 
 - **Cornell email verification**: Custom 6-digit code system designed for university email systems
 - **Image moderation**: Automated content screening for inappropriate images
 - **Report system**: Comprehensive reporting with automatic unmatching and chat freezing
+- **Account management**: Complete account deletion, banning, and deactivation systems
 - **Data protection**: Secure user data handling with Firebase security rules
 
 ### 📱 Push Notifications
@@ -42,31 +46,30 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 - **Smart notification management**: Silent match notifications, configurable message alerts
 - **Cross-platform support**: Works on both iOS and Android devices
 
-## ⚡ Unified Swipe System
+## ⚡ Swipe System Architecture
 
-Harbor implements a **unified swipe tracking system** that stores all swipe-related data directly in the user's profile document. This architectural decision provides significant performance and scalability benefits.
+Harbor implements a **subcollection-based swipe tracking system** that provides efficient daily swipe management and group formation capabilities.
 
-### Why the Unified System is Superior
+### Current Implementation
 
 #### 🚀 Performance Benefits
 
-- **Reduced Database Reads**: **50% fewer Firestore reads** - Previously required two separate reads (user document + swipe limits), now only one read needed
-- **Atomic Operations**: All swipe data updates happen in a single transaction, preventing race conditions
-- **Lower Latency**: Faster swipe operations due to reduced network round trips
-- **Cost Efficiency**: Fewer Firestore operations = lower Firebase costs
+- **Subcollection Organization**: Swipes stored in `/swipes/{userId}/outgoing/` and `/swipes/{userId}/incoming/` for efficient querying
+- **Counter-based Limits**: Daily swipe counts tracked in `/users/{userId}/counters/swipes` subcollection
+- **Atomic Operations**: All swipe data updates happen in transactions, preventing race conditions
+- **Group Formation**: Automatic group match creation when multiple users with same group size preferences match
 
 #### 🔒 Data Consistency
 
 - **Transaction Safety**: Swipe count increments and limit checks happen atomically
 - **No Race Conditions**: Prevents users from exceeding limits during rapid swiping
-- **Automatic Reset**: Daily swipe counts reset automatically when date changes
-- **Single Source of Truth**: All user data in one document eliminates sync issues
+- **Automatic Reset**: Daily swipe counts reset automatically via scheduled function
+- **Match Prevention**: Users with active matches cannot swipe until match is resolved
 
 #### 🏗️ Scalability Advantages
 
-- **Linear Scaling**: Performance remains consistent as user base grows
-- **Simplified Architecture**: Fewer collections to manage and maintain
-- **Easier Debugging**: All user data in one place for easier troubleshooting
+- **Efficient Querying**: Subcollections allow for fast retrieval of user's swipe history
+- **Group Support**: System supports both individual (2-person) and group (3-4 person) matches
 - **Future-Proof**: Framework ready for premium tiers and advanced features
 
 ### Technical Implementation
@@ -77,35 +80,53 @@ Harbor implements a **unified swipe tracking system** that stores all swipe-rela
 // User document in /users/{userId}
 {
   // ... other user fields
-  swipesToday: 3,           // Current day's swipe count
-  maxSwipesPerDay: 5,       // Daily limit (configurable)
-  resetDate: "2025-09-06",  // Last reset date (YYYY-MM-DD)
-  isPremium: false,         // Premium status for future features
+  groupSize: 2,             // Preferred group size (2, 3, or 4)
+  isActive: true,           // Account status
+  currentMatches: [],       // Array of active match IDs
+}
+
+// Swipe counter in /users/{userId}/counters/swipes
+{
+  count: 3,                 // Current day's swipe count
+  resetDate: timestamp,     // Last reset timestamp
+  updatedAt: timestamp,     // Last update timestamp
+}
+
+// Outgoing swipes in /swipes/{userId}/outgoing/{swipedUserId}
+{
+  direction: "right",       // "left" or "right"
+  timestamp: timestamp,     // When swipe occurred
+  swipedId: "user123",      // ID of swiped user
+}
+
+// Incoming swipes in /swipes/{userId}/incoming/{swiperId}
+{
+  direction: "right",       // "left" or "right"
+  timestamp: timestamp,     // When swipe occurred
+  swiperId: "user456",      // ID of swiper
 }
 ```
 
-#### Automatic Reset Logic
+#### Daily Reset Logic
 
 ```typescript
-// Automatic daily reset in getSwipeLimit function
-const today = new Date().toISOString().split("T")[0];
-if (resetDate !== today) {
-  swipesToday = 0;
-  resetDate = today;
-  // Update Firestore atomically
-}
+// Scheduled function runs daily to reset swipe counts
+export const resetDailySwipes = onSchedule("0 0 * * *", async () => {
+  // Reset all user swipe counters to 0
+  // Send notifications to users who reached their limit
+});
 ```
 
-#### Transaction-Based Increments
+#### Transaction-Based Swipe Creation
 
 ```typescript
-// Atomic swipe count increment in createSwipe
+// Atomic swipe creation in createSwipe function
 await db.runTransaction(async (transaction) => {
   // Check limits, record swipe, and increment count
   // All operations happen atomically
-  transaction.update(userRef, {
-    swipesToday: admin.firestore.FieldValue.increment(1),
-    resetDate: today,
+  transaction.update(countersRef, {
+    count: admin.firestore.FieldValue.increment(1),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 });
 ```
@@ -166,23 +187,27 @@ App.tsx (Main Navigator)
     │   ├── ChatList
     │   ├── ChatScreen
     │   ├── ProfileScreen
-    │   └── ReportScreen
+    │   ├── ReportScreen
+    │   └── StudyGroupConnectionsScreen
     └── SettingsTab (SettingsStack)
         ├── SettingsScreen
         ├── EditProfile
-        └── SelfProfile
+        ├── SelfProfile
+        └── GroupSizeScreen
 ```
 
 ### Core Screens
 
-- **HomeScreen**: Card-based swiping interface with recommendations
-- **ChatList**: List of active matches and conversations
-- **ChatScreen**: Real-time messaging with progressive photo reveal
-- **ProfileScreen**: View other users' profiles with blur effects
-- **AccountSetupScreen**: Onboarding flow for new users
-- **SettingsScreen**: App preferences and account management
-- **BannedAccountScreen**: Screen shown to banned users
+- **HomeScreen**: Card-based swiping interface with recommendations and group formation
+- **ChatList**: List of active matches and conversations with unread count badges
+- **ChatScreen**: Real-time messaging with progressive photo reveal and consent modals
+- **ProfileScreen**: View other users' profiles with blur effects and reporting options
+- **AccountSetupScreen**: Onboarding flow for new users with progress tracking
+- **SettingsScreen**: App preferences, account management, and group size selection
+- **BannedAccountScreen**: Screen shown to banned users with appeal contact
 - **DeletedAccountScreen**: Screen shown to deleted users
+- **StudyGroupConnectionsScreen**: Group match management and connections
+- **GroupSizeScreen**: Group size preference selection (2, 3, or 4 people)
 
 ### Component Architecture
 
@@ -191,52 +216,90 @@ App.tsx (Main Navigator)
 - **VerificationCodeInput**: Custom 6-digit code input for email verification
 - **MatchModal**: Celebration screen when users match
 - **SettingsButton**: Reusable settings interface component
+- **ClarityBar**: Visual progress indicator for photo reveal
+- **DataPicker**: Custom picker components for form inputs
+- **NotificationHandler**: Push notification management
+- **UnviewedMatchesHandler**: Handles unviewed match notifications
 
 ## 🔧 Firebase Cloud Functions
 
 ### Authentication Functions (`authFunctions`)
 
-- **sendVerificationCode**: Sends 6-digit codes via Mailgun
+- **sendVerificationCode**: Sends 6-digit codes via Mailgun with 2-minute cooldown
 - **verifyVerificationCode**: Validates codes and marks emails as verified
+- **getVerificationCooldown**: Returns remaining cooldown time for verification requests
 - **signInWithEmail**: Custom sign-in flow with Firestore user checking
 
 ### Chat Functions (`chatFunctions`)
 
 - **getStreamApiKey**: Provides Stream Chat API key to frontend
 - **generateUserToken**: Creates Stream Chat tokens for authenticated users
+- **generateToken**: Alias for generateUserToken
 - **createChatChannel**: Sets up messaging channels between matched users
+- **updateChannelChatStatus**: Freezes/unfreezes chat channels
+- **updateMessageCount**: Increments message count for consent tracking
 
 ### Image Functions (`imageFunctions`)
 
-- **uploadImage**: Processes and stores original + blurred image versions
-- **getImages**: Fetches user images with appropriate blur levels
+- **uploadImage**: Processes and stores original + blurred image versions with content moderation
+- **getImages**: Fetches user images with appropriate blur levels based on consent status
+- **getPersonalImages**: Returns unblurred images for user's own profile editing
+- **getOriginalImages**: Returns original images for current user's profile
 - **generateBlurred**: Creates blurred versions of uploaded images
 
 ### Swipe Functions (`swipeFunctions`)
 
-- **createSwipe**: Records swipes and detects mutual matches with unified swipe tracking
-- **countRecentSwipes**: **Fetches a user's daily swipe count from their profile**
+- **createSwipe**: Records swipes, detects mutual matches, and handles group formation
+- **countRecentSwipes**: Fetches a user's daily swipe count from counters subcollection
 - **getSwipesByUser**: Retrieves all swipes made by a specific user
+- **savePushToken**: Saves Expo push tokens for notifications
+- **resetDailySwipes**: Scheduled function that resets daily swipe counts
 
 ### Match Functions (`matchFunctions`)
 
-- **createMatch**: Creates match records between users
-- **getConsentStatus**: Manages consent flow for continued chatting
+- **createMatch**: Creates individual match records between two users
+- **createGroupMatch**: Creates group match records between multiple users
+- **getActiveMatches**: Retrieves all active matches for a user
+- **getUnviewedMatches**: Gets unviewed matches for showing match modals
 - **markMatchAsViewed**: Tracks when users view new matches
+- **unmatchUsers**: Deactivates matches and freezes chat channels
+- **updateMatchChannel**: Updates match channel ID
+- **getMatchId**: Finds match ID between two users
+- **updateConsent**: Updates user's consent status for continued chatting
+- **getConsentStatus**: Manages consent flow for continued chatting
+- **migrateMatchConsent**: Migrates old match documents to new consent schema
+- **incrementMatchMessages**: Increments message count for matches
 
 ### Recommendation Functions (`recommendationsFunctions`)
 
-- **getRecommendations**: Provides personalized user recommendations based on preferences
+- **getRecommendations**: Provides personalized user recommendations based on preferences and availability matching
 
 ### Report Functions (`reportFunctions`)
 
+- **createReport**: Creates user reports for moderation
+- **getReports**: Retrieves all reports (admin function)
+- **updateReportStatus**: Updates report status (admin function)
 - **reportAndUnmatch**: Handles user reports with automatic unmatching and chat freezing
+- **blockUser**: Blocks users and optionally unmatches them
 
 ### User Functions (`userFunctions`)
 
-- **createUserProfile**: Sets up new user profiles in Firestore
-- **updateUserProfile**: Manages profile updates
-- **deleteAccount**: Complete account deletion with data cleanup
+- **createUser**: Creates new user profiles with comprehensive validation
+- **getAllUsers**: Retrieves all users (admin function)
+- **getUserById**: Gets user by ID
+- **updateUser**: Updates user profiles with transactional image cleanup
+- **unmatchUser**: Unmatches a user from all their matches
+- **markPaywallAsSeen**: Marks paywall as seen (premium feature)
+- **deleteUser**: Complete account deletion with comprehensive data cleanup
+- **deactivateAccount**: Deactivates user account
+- **reactivateAccount**: Reactivates user account
+- **checkDeletedAccount**: Checks if email belongs to deleted account
+- **banUser**: Bans user account
+- **checkBannedStatus**: Checks if user is banned
+
+### Superwall Functions (`superwallFunctions`)
+
+- **getSuperwallApiKeys**: Provides Superwall API keys for premium features (currently disabled)
 
 ## 🔐 Authentication & Email Verification Flow
 
@@ -379,7 +442,7 @@ Instead of using Firebase's built-in email verification links, Harbor implements
 
 ## 🚫 Account Management & Banning System
 
-Harbor implements a comprehensive account management system that handles both account deletion and account banning. This system ensures that users who violate community guidelines or have their accounts compromised cannot access the platform.
+Harbor implements a comprehensive account management system that handles account deletion, banning, and deactivation. This system ensures that users who violate community guidelines or have their accounts compromised cannot access the platform.
 
 ### Account Deletion System
 
@@ -395,7 +458,12 @@ Harbor implements a comprehensive account management system that handles both ac
 #### User Flow
 
 1. **Deletion Request**: User requests account deletion in settings
-2. **Data Cleanup**: All user data is removed from Firestore collections
+2. **Comprehensive Data Cleanup**: All user data is removed from Firestore collections including:
+   - User profile data
+   - All matches and chat channels
+   - Swipe history
+   - Images from Firebase Storage
+   - Stream Chat user data
 3. **Account Marking**: User document is moved to `deletedAccounts` collection
 4. **Access Restriction**: User is redirected to `DeletedAccountScreen`
 5. **No Return**: Deleted accounts cannot be restored
@@ -404,28 +472,19 @@ Harbor implements a comprehensive account management system that handles both ac
 
 #### Database Structure
 
-You'll need to create a new Firestore collection to manage banned accounts:
-
 - **Collection Name**: `bannedAccounts`
-- **Document ID**: `userId` (Use the user's Firebase Authentication UID)
+- **Document ID**: `userId` (Firebase Authentication UID)
 - **Required Fields**:
   - `bannedByEmail` (string): User's email address at time of ban
-  - `unbanDate` (timestamp): When the ban expires (set to far future for permanent bans)
+  - `unbanDate` (timestamp): When the ban expires (null for permanent bans)
   - `reason` (string): Internal note about why user was banned
   - `createdAt` (timestamp): When the ban was created
 
-#### Manual Ban Process
+#### Ban Management Functions
 
-To ban a user, you'll need to manually create a document in the `bannedAccounts` collection:
-
-1. **Access Firebase Console**: Go to your Firebase project's Firestore Database
-2. **Create Collection**: If `bannedAccounts` doesn't exist, create it
-3. **Add Document**: Create a new document with the user's UID as the document ID
-4. **Fill Fields**:
-   - `bannedByEmail`: User's email address
-   - `unbanDate`: Set to a far future date (e.g., 2099-12-31) for permanent bans
-   - `reason`: Brief note about the violation (e.g., "Inappropriate behavior reported")
-   - `createdAt`: Current timestamp
+- **banUser**: Creates ban records with optional expiration dates
+- **checkBannedStatus**: Checks if user is banned and returns ban details
+- **Automatic Detection**: App checks ban status during authentication flow
 
 #### User Flow for Banned Accounts
 
@@ -434,20 +493,34 @@ To ban a user, you'll need to manually create a document in the `bannedAccounts`
 3. **No App Access**: Banned users cannot access any app features
 4. **Contact Information**: Screen displays contact email for appeals: `gabocastillo321@gmail.com`
 
-#### Implementation Details
+### Account Deactivation System
 
-The ban check is integrated into the main authentication flow in `AppContext`:
+#### Database Structure
 
-- **State Management**: New `isBanned` state variable tracks ban status
-- **Database Check**: After user authentication, check if UID exists in `bannedAccounts`
-- **Routing Logic**: If banned, redirect to `BannedAccountScreen` instead of main app
-- **Comprehensive Blocking**: All app functionality is disabled for banned users
+- **User Document Field**: `isActive` (boolean)
+- **Deactivation**: Set to `false` to deactivate account
+- **Reactivation**: Set to `true` to reactivate account
 
-#### Security Considerations
+#### Management Functions
 
-- **Client-Side Checks**: All interactive elements are disabled for banned users
-- **Server-Side Rules**: Firestore security rules should check ban status before allowing access
-- **No Circumvention**: Banned users cannot bypass restrictions through app manipulation
+- **deactivateAccount**: Deactivates user account while preserving data
+- **reactivateAccount**: Reactivates previously deactivated account
+- **Flexible Control**: Allows temporary account suspension without data loss
+
+### Implementation Details
+
+The account status check is integrated into the main authentication flow:
+
+- **State Management**: Account status variables track deletion, ban, and deactivation status
+- **Database Checks**: After user authentication, check multiple collections for account status
+- **Routing Logic**: Redirect to appropriate screen based on account status
+- **Comprehensive Blocking**: All app functionality is disabled for restricted accounts
+
+### Security Considerations
+
+- **Client-Side Checks**: All interactive elements are disabled for restricted users
+- **Server-Side Rules**: Firestore security rules check account status before allowing access
+- **No Circumvention**: Restricted users cannot bypass restrictions through app manipulation
 - **Appeal Process**: Clear contact information provided for legitimate appeals
 
 ### Account Status Priority
@@ -457,8 +530,9 @@ The app checks account status in this order:
 1. **Email Verification**: Must verify email before proceeding
 2. **Account Deletion**: Deleted accounts cannot be restored
 3. **Account Banning**: Banned accounts are completely restricted
-4. **Profile Setup**: New users must complete profile creation
-5. **Full Access**: Verified users with complete profiles can access all features
+4. **Account Deactivation**: Deactivated accounts are temporarily restricted
+5. **Profile Setup**: New users must complete profile creation
+6. **Full Access**: Verified users with complete profiles can access all features
 
 ## 📋 Profile Validation & Requirements
 
@@ -471,24 +545,25 @@ The app checks account status in this order:
 - **Format**: JPEG only
 - **Processing**: Auto-resized to 800x800 max, quality 80%
 - **Moderation**: Automated content screening for inappropriate content
-- **Storage**: Both original and 80% blurred versions stored
+- **Storage**: Both original and 80% blurred versions stored in Firebase Storage
 
 #### Required Fields
 
 All fields must be completed before profile creation:
 
-- **Your Name, Initial(s) or Nickname**: 1-50 characters
+- **Your Name, Initial(s) or Nickname**: 1-11 characters (enforced on backend)
 - **Age**: 18+ years old
 - **Gender**: Must select from dropdown (Male, Female, Non-Binary)
 - **Sexual Orientation**: Must select from dropdown (Heterosexual, Homosexual, Bisexual, Pansexual)
 - **Year Level**: Must select from dropdown (Freshman, Sophomore, Junior, Senior)
 - **Major**: Must select from dropdown (85+ options)
+- **Group Size**: Must select from dropdown (2, 3, or 4 people)
 
 #### Text Field Limits
 
 | Field                              | Min Length | Max Length | Description                       |
 | ---------------------------------- | ---------- | ---------- | --------------------------------- |
-| Your Name, Initial(s) or Nickname  | 1          | 50         | Your name, initial(s) or nickname |
+| Your Name, Initial(s) or Nickname  | 1          | 11         | Your name, initial(s) or nickname |
 | About Me                           | 5          | 180        | Personal description              |
 | Q1: "Together we could"            | 5          | 100        | Shared activity                   |
 | Q2: "Favorite book, movie or song" | 5          | 100        | Cultural preference               |
@@ -511,16 +586,15 @@ export type Profile = {
   q1: string; // "Together we could:"
   q2: string; // "Favorite book, movie or song:"
   q3: string; // "Some of my hobbies are:"
+  groupSize: number; // 2, 3, or 4
+  availability: number; // For matching algorithm
   currentMatches?: string[];
   paywallSeen?: boolean;
   fcmToken?: string;
+  expoPushToken?: string;
+  isActive?: boolean;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
-  // Unified swipe system fields
-  swipesToday?: number;
-  maxSwipesPerDay?: number;
-  resetDate?: string;
-  isPremium?: boolean;
 };
 ```
 
@@ -528,7 +602,7 @@ export type Profile = {
 
 ### Core Design Philosophy
 
-The app uses a **two-phase progressive blur system** that creates intrigue while maintaining privacy:
+The app uses a **unified progressive blur system** that works for both individual and group matches, creating intrigue while maintaining privacy:
 
 #### Phase 1: Pre-Consent (Theatrical Reveal)
 
@@ -557,7 +631,7 @@ export const BLUR_CONFIG = {
 };
 ```
 
-#### Blur Calculation Logic
+#### Unified Blur Calculation Logic
 
 ```typescript
 export function getClientBlurLevel({
@@ -588,26 +662,38 @@ export function getClientBlurLevel({
     return percentageToBlurRadius(blurPercent);
   }
 }
+
+// Group-specific blur calculation
+export function getGroupClientBlurLevel({
+  messageCount,
+  allMembersConsented,
+}: {
+  messageCount: number;
+  allMembersConsented: boolean;
+}): number {
+  // Similar logic but requires ALL group members to consent
+}
 ```
 
 ### Consent State Management
 
-#### Firestore Match Document Structure
+#### Unified Match Document Structure
 
 ```typescript
 interface Match {
-  user1Id: string;
-  user2Id: string;
-  user1Consented: boolean;
-  user2Consented: boolean;
+  type: "individual" | "group";
+  participantIds: string[]; // Unified field for both individual and group matches
+  memberIds?: string[]; // For group matches only
+  groupSize?: number; // For group matches only
+  participantConsent: Record<string, boolean>; // Unified consent tracking
+  participantViewed: Record<string, boolean>; // Unified view tracking
   messageCount: number;
   isActive: boolean;
   matchDate: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;
-  // Unviewed status tracking
-  user1Viewed: boolean;
-  user2Viewed: boolean;
+  consentMessageSent?: boolean;
+  introMessageSent?: boolean;
 }
 ```
 
@@ -615,19 +701,21 @@ interface Match {
 
 The `matchFunctions-getConsentStatus` callable returns:
 
-- `user1Id`, `user2Id`
-- `user1Consented`, `user2Consented`, `bothConsented`
+- `participantIds` (unified for both individual and group matches)
+- `participantConsent` (unified consent map)
+- `bothConsented` (for individual) / `allMembersConsented` (for group)
 - `messageCount`
-- `shouldShowConsentScreen` (true when `messageCount >= threshold` and not both consented)
-- `shouldShowConsentForUser1`, `shouldShowConsentForUser2` (per-user modal visibility)
-- `state` ("none_consented" | "one_consented" | "both_consented")
+- `shouldShowConsentScreen` (true when `messageCount >= threshold` and not all consented)
+- `shouldShowConsentForUser` (per-user modal visibility)
+- `state` ("none_consented" | "one_consented" | "both_consented" | "all_consented")
 
 #### Client Detection Flow
 
 1. **Message Counting**: Every new message increments `messageCount` via `chatFunctions-updateMessageCount`
 2. **Consent Checking**: After each message, calls `getConsentStatus(matchId)`
-3. **Modal Display**: Shows consent modal only when user's `shouldShowConsentForUserX` is true
-4. **Channel Management**: Freezes chat until both users consent when threshold reached
+3. **Modal Display**: Shows consent modal only when user's `shouldShowConsentForUser` is true
+4. **Channel Management**: Freezes chat until all participants consent when threshold reached
+5. **Group Support**: For group matches, requires ALL members to consent before Phase 2 begins
 
 ## 🔔 Push Notifications System
 
@@ -704,13 +792,13 @@ const initializeStreamNotifications = async () => {
 
 ### Current Status
 
-All premium features are currently **disabled** throughout the codebase. The app functions as a free-tier only application.
+All premium features are currently **disabled** throughout the codebase. The app functions as a free-tier only application with all users receiving the same features.
 
 ### Premium Feature Framework
 
 - **Superwall integration**: Complete premium paywall system implemented but commented out
-- **Swipe limits**: 5 swipes per day for all users
-- **Feature flags**: Comprehensive feature configuration system in place
+- **Swipe limits**: 5 swipes per day for all users (no premium advantage)
+- **Feature flags**: Comprehensive feature configuration system in place but returns free tier values
 
 ### Disabled Premium Features
 
@@ -725,6 +813,12 @@ export const usePremium = () => {
     canSeeWhoSwipedOnThem: canSeeWhoSwipedOnThem(isPremium), // Always returns false
   };
 };
+
+// Feature configuration always returns free tier
+export const getFeatureConfig = (isPremium: boolean): FeatureConfig => {
+  return FREE_FEATURES; // Always return free features
+  // Original: return isPremium ? PREMIUM_FEATURES : FREE_FEATURES;
+};
 ```
 
 ### Premium Infrastructure Ready
@@ -733,25 +827,35 @@ export const usePremium = () => {
 - **Feature gates**: Complete gating system throughout the app
 - **Backend support**: Cloud Functions ready for premium user management
 - **UI components**: Premium upgrade prompts implemented but show "coming soon" messages
+- **API keys**: Superwall API keys stored in Google Secret Manager but unused
 
 ## 🛡️ Security & Moderation
 
 ### Image Moderation
 
-- **Automated screening**: Content moderation for inappropriate images
-- **Upload validation**: Server-side checks before storage
+- **Automated screening**: Content moderation for inappropriate images with file size and type validation
+- **Upload validation**: Server-side checks before storage including JPEG/PNG validation
 - **Rejection handling**: Clear error messages for failed moderation
+- **Storage security**: Images stored in Firebase Storage with proper access controls
 
 ### User Reporting System
 
-- **Comprehensive reporting**: Multiple report categories with explanations
-- **Automatic actions**: Immediate unmatching and chat freezing
+- **Comprehensive reporting**: Multiple report categories with detailed explanations
+- **Automatic actions**: Immediate unmatching and chat freezing upon report submission
 - **Data collection**: Detailed report tracking for moderation review
+- **Block functionality**: Users can block other users without full reporting
+- **Duplicate prevention**: System prevents duplicate reports from same user
 
 ### Account Management
 
-- **Account deletion**: Complete removal with data cleanup and access restriction
-- **Account banning**: Comprehensive banning system for policy violations
+- **Account deletion**: Complete removal with comprehensive data cleanup including:
+  - User profile data
+  - All matches and chat channels
+  - Swipe history
+  - Images from Firebase Storage
+  - Stream Chat user data
+- **Account banning**: Comprehensive banning system for policy violations with optional expiration dates
+- **Account deactivation**: Temporary account suspension without data loss
 - **Status tracking**: Real-time monitoring of account states
 - **Appeal process**: Clear contact information for legitimate appeals
 
@@ -759,15 +863,17 @@ export const usePremium = () => {
 
 - **Firebase Security Rules**: Comprehensive Firestore and Storage rules
 - **Authentication checks**: All Cloud Functions require proper authentication
-- **Data validation**: Server-side validation for all user inputs
+- **Data validation**: Server-side validation for all user inputs with comprehensive error handling
 - **Privacy protection**: Sensitive data filtering in recommendations
+- **Email normalization**: Prevents email alias abuse and duplicate accounts
 
 ### Content Safety
 
-- **Image processing**: Automatic blur generation for privacy
+- **Image processing**: Automatic blur generation for privacy with 80% server-side blur
 - **Chat monitoring**: Ability to freeze channels for violations
 - **Account management**: Complete account deletion with data cleanup
 - **Ban enforcement**: Comprehensive blocking of banned users
+- **Consent system**: Progressive photo reveal requires explicit user consent
 
 ## 🚀 Getting Started
 
@@ -840,6 +946,8 @@ export const usePremium = () => {
 - **Enhanced matching**: Ability to see profiles that swiped on you
 - **Advanced filters**: Additional matching criteria and preferences
 - **Social features**: Group activities and events for Cornell students
+- **Group match improvements**: Enhanced group formation algorithms
+- **Availability matching**: More sophisticated compatibility scoring
 
 ### Technical Improvements
 
@@ -847,6 +955,8 @@ export const usePremium = () => {
 - **Analytics integration**: User behavior tracking and app usage metrics
 - **A/B testing**: Feature flag system for experimental features
 - **Accessibility**: Enhanced accessibility features for all users
+- **Offline support**: Basic offline functionality for viewing matches
+- **Push notification improvements**: More granular notification controls
 
 ## 🔧 Development Commands
 
@@ -883,26 +993,70 @@ firebase deploy
 
 ```
 harbor/
-├── App.tsx                 # Main app entry point
+├── App.tsx                 # Main app entry point with authentication flow
 ├── components/             # Reusable UI components
+│   ├── AnimatedStack.tsx   # Gesture-based swiping component
+│   ├── ImageCarousel.tsx   # Profile photo viewer with blur transitions
+│   ├── VerificationCodeInput.tsx # Custom 6-digit code input
+│   ├── ClarityBar.tsx      # Visual progress indicator for photo reveal
+│   ├── DataPicker.tsx      # Custom picker components
+│   ├── NotificationHandler.tsx # Push notification management
+│   └── UnviewedMatchesHandler.tsx # Unviewed match notifications
 ├── constants/             # App configuration and features
+│   ├── blurConfig.ts      # Progressive photo reveal configuration
+│   ├── Features.ts        # Premium feature configuration (disabled)
+│   ├── Colors.ts          # App color scheme
+│   └── Data.ts            # Static data (majors, etc.)
 ├── context/               # React Context providers
+│   ├── AppContext.tsx     # Main app state management
+│   └── NotificationContext.tsx # Notification state management
 ├── functions/             # Firebase Cloud Functions
 │   └── src/
 │       ├── auth/          # Authentication functions
 │       ├── chat/          # Stream Chat integration
-│       ├── images/        # Image processing
-│       ├── matches/       # Match management
-│       ├── recommendations/ # User recommendations
-│       ├── reports/       # Reporting system
-│       ├── swipes/        # Swipe handling
-│       └── users/         # User management
+│       ├── images/        # Image processing and moderation
+│       ├── matches/       # Match management (individual & group)
+│       ├── recommendations/ # User recommendations with availability matching
+│       ├── reports/       # Reporting and blocking system
+│       ├── swipes/        # Swipe handling and group formation
+│       ├── superwall/     # Premium features (disabled)
+│       └── users/         # User management and account operations
 ├── hooks/                 # Custom React hooks
+│   └── usePremium.ts      # Premium feature hook (disabled)
 ├── navigation/            # Navigation configuration
+│   ├── TabNavigator.tsx   # Main tab navigation
+│   ├── HomeStack.tsx      # Home screen stack
+│   ├── ChatNavigator.tsx  # Chat navigation with Stream Chat integration
+│   └── SettingsStack.tsx  # Settings navigation
 ├── networking/            # API service classes
+│   ├── AuthService.ts     # Authentication API calls
+│   ├── ChatFunctions.ts   # Stream Chat API integration
+│   ├── ImageService.ts    # Image upload and retrieval
+│   ├── MatchService.ts    # Match management API calls
+│   ├── RecommendationService.ts # User recommendations
+│   ├── SwipeService.ts    # Swipe operations
+│   ├── UserService.ts     # User profile management
+│   └── ReportService.ts   # Reporting and blocking
 ├── screens/               # Screen components
+│   ├── HomeScreen.tsx     # Card-based swiping interface
+│   ├── ChatList.tsx       # List of active matches
+│   ├── ChatScreen.tsx     # Real-time messaging with photo reveal
+│   ├── ProfileScreen.tsx  # View other users' profiles
+│   ├── AccountSetupScreen.tsx # Onboarding flow
+│   ├── SettingsScreen.tsx # App preferences and account management
+│   ├── GroupSizeScreen.tsx # Group size preference selection
+│   ├── StudyGroupConnectionsScreen.tsx # Group match management
+│   ├── BannedAccountScreen.tsx # Banned user screen
+│   ├── DeletedAccountScreen.tsx # Deleted user screen
+│   └── ReportScreen.tsx   # User reporting interface
 ├── types/                 # TypeScript type definitions
+│   ├── App.d.ts          # Global type definitions
+│   └── navigation.ts     # Navigation type definitions
 └── util/                  # Utility functions
+    ├── imageUtils.ts     # Image processing utilities
+    ├── chatPreloader.ts  # Chat data preloading
+    ├── SocketService.tsx # WebSocket management
+    └── streamNotifService.ts # Stream Chat notifications
 ```
 
 ---
