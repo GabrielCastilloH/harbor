@@ -77,41 +77,42 @@ export default function NotificationHandler({
     // Handle foreground messages for Stream Chat notifications
     const unsubscribeOnMessage = messaging().onMessage(
       async (remoteMessage) => {
-        // Only handle Stream Chat message notifications
-        if (
-          remoteMessage.data?.type === "message.new" &&
-          remoteMessage.data?.sender === "stream.chat"
-        ) {
-          try {
-            const isMatchNotification =
-              remoteMessage.data?.message ===
-              "You've connected! Start chatting now.";
+        try {
+          const data = remoteMessage.data || {};
+          const type = data.type || data.event_type || data.category;
+          const sender = data.sender || data.source;
+          const text =
+            data.message || data.text || remoteMessage.notification?.body;
 
-            // Create the android channel to send the notification to
-            const channelId = await notifee.createChannel({
-              id: "chat-messages",
-              name: "Chat Messages",
-            });
+          const isStream =
+            sender === "stream.chat" || data["stream-sdk"] === "react-native";
+          const isIntro =
+            text === "You've connected! Start chatting now." ||
+            text ===
+              "Both of you have decided to continue getting to know one another!";
 
-            // Only show an in-app banner for the specific match message
-            if (isMatchNotification) {
-              await notifee.displayNotification({
-                title: "🎉 It's a Match!",
-                body: "You've connected! Start chatting now.",
-                data: remoteMessage.data,
-                android: {
-                  channelId,
-                  importance: AndroidImportance.HIGH,
-                  pressAction: { id: "default" },
-                },
-              });
-            }
-          } catch (error) {
-            console.error(
-              "🔔 Error handling foreground match notification:",
-              error
-            );
-          }
+          if (!isStream || !isIntro) return;
+
+          const channelId = await notifee.createChannel({
+            id: "chat-messages",
+            name: "Chat Messages",
+          });
+
+          await notifee.displayNotification({
+            title: "🎉 It's a Match!",
+            body: text || "You've connected! Start chatting now.",
+            data,
+            android: {
+              channelId,
+              importance: AndroidImportance.HIGH,
+              pressAction: { id: "default" },
+            },
+          });
+        } catch (error) {
+          console.error(
+            "🔔 Error handling foreground match notification:",
+            error
+          );
         }
       }
     );
