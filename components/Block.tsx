@@ -30,11 +30,14 @@ const { width: screenWidth } = Dimensions.get("window");
 const SWIPE_THRESHOLD = screenWidth * 0.15; // 15% of screen width - more sensitive
 const SWIPE_SENSITIVITY = screenWidth * 0.12; // Lower threshold for easier switching
 
-// Define a smoother spring configuration
+// Define a spring configuration with reduced bounce/overshoot
 const SMOOTH_SPRING_CONFIG = {
-  damping: 20, // Lower damping for more responsive feel
-  stiffness: 300, // Higher stiffness for snappier animations
-  mass: 0.8, // Lower mass for lighter feel
+  damping: 26,
+  stiffness: 240,
+  mass: 0.9,
+  overshootClamping: true,
+  restDisplacementThreshold: 0.5,
+  restSpeedThreshold: 0.5,
 };
 
 // Require stronger horizontal intent before activating page swipe
@@ -64,8 +67,10 @@ const Post = ({ profile }: PostProps) => {
       if (isLiked || isDisliked || isProcessing) {
         return;
       }
-      const nextTranslateX = context.startX + event.translationX;
-      translateX.value = nextTranslateX;
+      const proposed = context.startX + event.translationX;
+      // Clamp between 0 (BasicInfoView) and -screenWidth (PersonalView)
+      const clamped = Math.max(-screenWidth, Math.min(0, proposed));
+      translateX.value = clamped;
     },
     onEnd: (event) => {
       const velocity = event.velocityX;
