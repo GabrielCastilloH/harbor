@@ -4,13 +4,6 @@ import { CallableRequest } from "firebase-functions/v2/https";
 
 const db = admin.firestore();
 
-// Console debug logger
-function recsLog(message: string) {
-  try {
-    console.log(`[recs] ${message}`);
-  } catch (_) {}
-}
-
 /**
  * Shuffles an array randomly using the Fisher-Yates (Knuth) shuffle algorithm.
  */
@@ -54,8 +47,6 @@ export const getRecommendations = functions.https.onCall(
         );
       }
 
-      recsLog(`start uid=${userId}`);
-
       // Daily limits and dynamic recommendation sizing
       const MAX_SWIPES_PER_DAY = 5;
       const MAX_RECS_TO_FETCH = 10;
@@ -67,22 +58,17 @@ export const getRecommendations = functions.https.onCall(
         .where("isActive", "==", true)
         .get();
 
-      recsLog(`activeMatches=${activeMatchesSnapshot.size}`);
       if (activeMatchesSnapshot.docs.length > 0) {
-        recsLog(`exit: hasActiveMatch`);
         return { recommendations: [] };
       }
 
       const userDoc = await db.collection("users").doc(userId).get();
       if (!userDoc.exists) {
-        recsLog(`error: userDoc not found`);
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
       const currentUserData = userDoc.data();
-      recsLog(`userActive=${currentUserData?.isActive !== false}`);
       if (currentUserData?.isActive === false) {
-        recsLog(`exit: userInactive`);
         return { recommendations: [] };
       }
 
@@ -95,16 +81,13 @@ export const getRecommendations = functions.https.onCall(
       const countersSnap = await countersRef.get();
       const cData = countersSnap.exists ? (countersSnap.data() as any) : {};
       const swipesMadeToday = Number(cData?.count || 0);
-      recsLog(`swipesMadeToday=${swipesMadeToday}`);
 
       const remainingSwipes = Math.max(0, MAX_SWIPES_PER_DAY - swipesMadeToday);
       if (remainingSwipes === 0) {
-        recsLog(`exit: Daily swipe limit reached.`);
         return { recommendations: [] };
       }
 
       const finalRecsLimit = Math.max(0, MAX_RECS_TO_FETCH - swipesMadeToday);
-      recsLog(`finalRecsLimit=${finalRecsLimit}`);
 
       // Step 1: Preload swipes to filter out irrelevant users early
       // Prefer per-user subcollection; fallback to flat collection
@@ -116,7 +99,6 @@ export const getRecommendations = functions.https.onCall(
           .collection("outgoing")
           .get();
         swipedUserIds = new Set(outgoing.docs.map((d) => d.id));
-        recsLog(`outgoing(sub)=${outgoing.size}`);
       } catch (_e) {
         const mySwipesSnapshot = await db
           .collection("swipes")
@@ -125,7 +107,6 @@ export const getRecommendations = functions.https.onCall(
         swipedUserIds = new Set(
           mySwipesSnapshot.docs.map((doc) => doc.data().swipedId)
         );
-        recsLog(`outgoing(flat)=${mySwipesSnapshot.size}`);
       }
 
       // Create filter set for users to exclude (swiped users + current user)
@@ -134,7 +115,6 @@ export const getRecommendations = functions.https.onCall(
       for (const id of swipedUserIds) {
         matchedUserIds.add(id);
       }
-      recsLog(`excludeSize=${matchedUserIds.size}`);
 
       // Step 2: Get users who swiped on you (highest priority)
       let whoSwipedOnYouIds: string[] = [];
@@ -145,14 +125,12 @@ export const getRecommendations = functions.https.onCall(
         .where("direction", "==", "right")
         .get();
       whoSwipedOnYouIds = incomingSnapshot.docs.map((d) => d.id);
-      recsLog(`incomingRight(filtered)=${whoSwipedOnYouIds.length}`);
 
       let swipedUsers: any[] = [];
       if (whoSwipedOnYouIds.length > 0) {
         const uniqueInboundSwipes = whoSwipedOnYouIds.filter(
           (id) => !matchedUserIds.has(id)
         );
-        recsLog(`uniqueInbound=${uniqueInboundSwipes.length}`);
         if (uniqueInboundSwipes.length > 0) {
           const limitedIds = uniqueInboundSwipes.slice(0, 10);
           const swipedUsersSnapshot = await db
@@ -165,7 +143,6 @@ export const getRecommendations = functions.https.onCall(
             const { images, email, ...userDataWithoutSensitiveInfo } = userData;
             return { uid: doc.id, ...userDataWithoutSensitiveInfo };
           });
-          recsLog(`swipedUsers(prio)=${swipedUsers.length}`);
         }
       }
 
@@ -179,13 +156,6 @@ export const getRecommendations = functions.https.onCall(
         const lowerBound = availabilityValue - 0.15;
         const upperBound = availabilityValue + 0.15;
         const compatibilityData = getCompatibilityQuery(currentUserData);
-        recsLog(
-          `availWindow=[${lowerBound.toFixed(2)},${upperBound.toFixed(
-            2
-          )}], compat g=${compatibilityData.gender.length} o=${
-            compatibilityData.orientation.length
-          }`
-        );
         if (
           compatibilityData.orientation.length > 0 &&
           compatibilityData.gender.length > 0
@@ -209,7 +179,6 @@ export const getRecommendations = functions.https.onCall(
               return { uid: doc.id, ...userDataWithoutSensitiveInfo };
             })
             .slice(0, 50);
-          recsLog(`availabilityUsers=${availabilityUsers.length}`);
         }
       }
 
@@ -235,7 +204,6 @@ export const getRecommendations = functions.https.onCall(
             return { uid: doc.id, ...userDataWithoutSensitiveInfo };
           })
           .slice(0, 50);
-        recsLog(`generalUsers=${generalUsers.length}`);
       }
 
       // Step 5: Merge results in priority order
@@ -264,14 +232,8 @@ export const getRecommendations = functions.https.onCall(
         }
       }
 
-      recsLog(`finalSize=${merged.length} (capped at ${finalRecsLimit})`);
       return { recommendations: merged };
     } catch (error: any) {
-      try {
-        recsLog(
-          `error name=${error?.name} code=${error?.code} msg=${error?.message}`
-        );
-      } catch (_) {}
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
