@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import messaging from "@react-native-firebase/messaging";
-import notifee, { EventType } from "@notifee/react-native";
+import notifee, { EventType, AndroidImportance } from "@notifee/react-native";
 import { NavigationContainerRef } from "@react-navigation/native";
 
 interface NotificationHandlerProps {
@@ -83,29 +83,34 @@ export default function NotificationHandler({
           remoteMessage.data?.sender === "stream.chat"
         ) {
           try {
+            const isMatchNotification =
+              remoteMessage.data?.message ===
+              "You've connected! Start chatting now.";
+
             // Create the android channel to send the notification to
             const channelId = await notifee.createChannel({
               id: "chat-messages",
               name: "Chat Messages",
             });
 
-            // Display the notification in foreground (optional - most chat apps don't show this)
-            // Uncomment if you want to show notifications even when app is open
-            /*
-          await notifee.displayNotification({
-            title: "New message",
-            body: remoteMessage.data?.message || "You have a new message",
-            data: remoteMessage.data,
-            android: {
-              channelId,
-              pressAction: {
-                id: "default",
-              },
-            },
-          });
-          */
+            // Only show an in-app banner for the specific match message
+            if (isMatchNotification) {
+              await notifee.displayNotification({
+                title: "🎉 It's a Match!",
+                body: "You've connected! Start chatting now.",
+                data: remoteMessage.data,
+                android: {
+                  channelId,
+                  importance: AndroidImportance.HIGH,
+                  pressAction: { id: "default" },
+                },
+              });
+            }
           } catch (error) {
-            console.error("🔔 Error handling foreground message:", error);
+            console.error(
+              "🔔 Error handling foreground match notification:",
+              error
+            );
           }
         }
       }
