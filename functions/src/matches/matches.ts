@@ -149,11 +149,11 @@ export const createMatch = functions.https.onCall(
         );
       }
 
-      // Check if match already exists (legacy fields kept for now until full participantIds adoption)
+      // Check if match already exists using participantIds
       const existingMatches = await db
         .collection("matches")
-        .where("user1Id", "in", [user1Id, user2Id])
-        .where("user2Id", "in", [user1Id, user2Id])
+        .where("participantIds", "array-contains", user1Id)
+        .where("participantIds", "array-contains", user2Id)
         .where("isActive", "==", true)
         .get();
 
@@ -169,8 +169,6 @@ export const createMatch = functions.https.onCall(
       // Create new match
       const matchData = {
         type: "individual",
-        user1Id,
-        user2Id,
         participantIds: [user1Id, user2Id],
         matchDate: admin.firestore.FieldValue.serverTimestamp(),
         isActive: true,
@@ -178,8 +176,6 @@ export const createMatch = functions.https.onCall(
         messageCount: 0,
         participantConsent: { [user1Id]: false, [user2Id]: false },
         participantViewed: { [user1Id]: false, [user2Id]: false },
-        user1Consented: false,
-        user2Consented: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       } as any;
@@ -237,32 +233,25 @@ export const getUnviewedMatches = functions.https.onCall(
         );
       }
 
-      // Prefer participantViewed in unified schema if present in future
+      // Get unviewed matches using participantIds and participantViewed
       const unviewedMatches = await db
         .collection("matches")
         .where("isActive", "==", true)
-        .where("user1Id", "==", userId)
-        .where("user1Viewed", "==", false)
+        .where("participantIds", "array-contains", userId)
         .get();
 
-      const unviewedMatches2 = await db
-        .collection("matches")
-        .where("isActive", "==", true)
-        .where("user2Id", "==", userId)
-        .where("user2Viewed", "==", false)
-        .get();
-
-      const allUnviewedMatches = [
-        ...unviewedMatches.docs,
-        ...unviewedMatches2.docs,
-      ];
+      const allUnviewedMatches = unviewedMatches.docs.filter((doc) => {
+        const matchData = doc.data();
+        return matchData.participantViewed?.[userId] === false;
+      });
 
       const matches = [] as any[];
       for (const doc of allUnviewedMatches) {
         const matchData = doc.data();
 
-        const otherUserId =
-          matchData.user1Id === userId ? matchData.user2Id : matchData.user1Id;
+        const otherUserId = matchData.participantIds.find(
+          (id: string) => id !== userId
+        );
         const otherUserDoc = await db
           .collection("users")
           .doc(otherUserId)
@@ -334,10 +323,8 @@ export const markMatchAsViewed = functions.https.onCall(
       const matchData = matchDoc.data();
       const updateData: any = {};
 
-      if (matchData?.user1Id === userId) {
-        updateData.user1Viewed = true;
-      } else if (matchData?.user2Id === userId) {
-        updateData.user2Viewed = true;
+      if (matchData?.participantIds?.includes(userId)) {
+        updateData[`participantViewed.${userId}`] = true;
       } else {
         throw new functions.https.HttpsError(
           "permission-denied",
@@ -507,10 +494,9 @@ export const unmatchUsers = functions.https.onCall(
 
         if (apiKey && apiSecret) {
           const serverClient = StreamChat.getInstance(apiKey, apiSecret);
-          const otherId =
-            matchData.user1Id === userId
-              ? matchData.user2Id
-              : matchData.user1Id;
+          const otherId = matchData.participantIds.find(
+            (id: string) => id !== userId
+          );
           const channelId = [userId, otherId].sort().join("-");
           const channel = serverClient.channel("messaging", channelId);
           await channel.update({ frozen: true });
@@ -687,11 +673,11 @@ export const getMatchId = functions.https.onCall(
         );
       }
 
-      // Prefer unified participantIds in the future; keep legacy check to find existing match
+      // Find existing match using participantIds
       const matchQuery = await db
         .collection("matches")
-        .where("user1Id", "in", [userId1, userId2])
-        .where("user2Id", "in", [userId1, userId2])
+        .where("participantIds", "array-contains", userId1)
+        .where("participantIds", "array-contains", userId2)
         .where("isActive", "==", true)
         .limit(1)
         .get();
@@ -764,8 +750,6 @@ export const updateConsent = functions.https.onCall(
       const matchRef = db.collection("matches").doc(matchId);
       let bothConsented = false;
       let shouldSendMessage = false;
-      let user1Id = "";
-      let user2Id = "";
 
       await db.runTransaction(async (transaction) => {
         const matchDoc = await transaction.get(matchRef);
@@ -776,29 +760,26 @@ export const updateConsent = functions.https.onCall(
 
         const matchData = matchDoc.data() as any;
 
-        user1Id = matchData.user1Id;
-        user2Id = matchData.user2Id;
-
-        if (userId !== user1Id && userId !== user2Id) {
+        if (!matchData.participantIds?.includes(userId)) {
           throw new functions.https.HttpsError(
             "permission-denied",
             "User not part of this match"
           );
         }
 
-        const updateData: any = {};
-        if (userId === user1Id) {
-          updateData.user1Consented = consented;
-        } else {
-          updateData.user2Consented = consented;
-        }
-        updateData.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+        const updateData: any = {
+          [`participantConsent.${userId}`]: consented,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
 
-        bothConsented =
-          (userId === user1Id
-            ? consented
-            : Boolean(matchData.user1Consented)) &&
-          (userId === user2Id ? consented : Boolean(matchData.user2Consented));
+        // Check if all participants have consented
+        const updatedConsent = {
+          ...matchData.participantConsent,
+          [userId]: consented,
+        };
+        bothConsented = matchData.participantIds.every(
+          (id: string) => updatedConsent[id] === true
+        );
 
         const consentMessageSent = Boolean(matchData.consentMessageSent);
 
@@ -812,6 +793,10 @@ export const updateConsent = functions.https.onCall(
 
       if (shouldSendMessage) {
         try {
+          // Get match data again for channel creation
+          const matchDoc = await matchRef.get();
+          const matchData = matchDoc.data() as any;
+
           const { StreamChat } = await import("stream-chat");
           const { SecretManagerServiceClient } = await import(
             "@google-cloud/secret-manager"
@@ -833,7 +818,7 @@ export const updateConsent = functions.https.onCall(
 
           if (apiKey && apiSecret) {
             const serverClient = StreamChat.getInstance(apiKey, apiSecret);
-            const channelId = [user1Id, user2Id].sort().join("-");
+            const channelId = matchData.participantIds.sort().join("-");
             const channel = serverClient.channel("messaging", channelId);
             await channel.sendMessage({
               text: "Both of you have decided to continue getting to know one another!",
@@ -902,63 +887,53 @@ export const getConsentStatus = functions.https.onCall(
       }
 
       const matchData = matchDoc.data() as any;
-      const user1Id = matchData.user1Id;
-      const user2Id = matchData.user2Id;
 
-      if (currentUserId !== user1Id && currentUserId !== user2Id) {
+      if (!matchData.participantIds?.includes(currentUserId)) {
         throw new functions.https.HttpsError(
           "permission-denied",
           "User not part of this match"
         );
       }
 
-      const user1Consented = Boolean(matchData.user1Consented);
-      const user2Consented = Boolean(matchData.user2Consented);
-      const bothConsented = user1Consented && user2Consented;
+      const participantConsent = matchData.participantConsent || {};
+      const bothConsented = matchData.participantIds.every(
+        (id: string) => participantConsent[id] === true
+      );
       const messageCount = matchData.messageCount || 0;
 
       const MESSAGE_THRESHOLD = 30;
       const shouldShowConsentScreen =
         messageCount >= MESSAGE_THRESHOLD && !bothConsented;
 
-      const shouldShowConsentForUser1 =
-        shouldShowConsentScreen && !user1Consented;
-      const shouldShowConsentForUser2 =
-        shouldShowConsentScreen && !user2Consented;
+      const shouldShowConsentForUser =
+        shouldShowConsentScreen && !participantConsent[currentUserId];
 
+      const consentedCount = matchData.participantIds.filter(
+        (id: string) => participantConsent[id] === true
+      ).length;
       const state = bothConsented
         ? "both_consented"
-        : user1Consented || user2Consented
+        : consentedCount > 0
         ? "one_consented"
         : "none_consented";
 
       return {
-        user1Id,
-        user2Id,
-        user1Consented,
-        user2Consented,
+        participantIds: matchData.participantIds,
+        participantConsent,
         bothConsented,
         messageCount,
         shouldShowConsentScreen,
-        shouldShowConsentForUser1,
-        shouldShowConsentForUser2,
+        shouldShowConsentForUser,
         state,
         consent: {
           state,
           messageThreshold: MESSAGE_THRESHOLD,
           bothConsented,
-          users: [
-            {
-              id: user1Id,
-              hasConsented: user1Consented,
-              shouldShow: shouldShowConsentForUser1,
-            },
-            {
-              id: user2Id,
-              hasConsented: user2Consented,
-              shouldShow: shouldShowConsentForUser2,
-            },
-          ],
+          users: matchData.participantIds.map((id: string) => ({
+            id,
+            hasConsented: participantConsent[id] === true,
+            shouldShow: shouldShowConsentScreen && !participantConsent[id],
+          })),
         },
       };
     } catch (error: any) {
