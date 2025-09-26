@@ -59,6 +59,13 @@ export const getRecommendations = functions.https.onCall(
       }
 
       const currentUserData = userDoc.data();
+      if (!currentUserData) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "User data not found"
+        );
+      }
+
       // Check if user account is active
       if (currentUserData?.isActive === false) {
         return { recommendations: [] };
@@ -167,17 +174,56 @@ export const getRecommendations = functions.https.onCall(
           compatibilityData.orientation.length > 0 &&
           compatibilityData.gender.length > 0
         ) {
-          // Fetch a wider pool, filter out excluded users in memory
-          const availabilitySnapshot = await db
+          try {
+            // Fetch a wider pool, filter out excluded users in memory
+            const availabilitySnapshot = await db
+              .collection("users")
+              .where("availability", ">=", lowerBound)
+              .where("availability", "<=", upperBound)
+              .where("sexualOrientation", "in", compatibilityData.orientation)
+              .where("gender", "in", compatibilityData.gender)
+              .limit(100)
+              .get();
+
+            availabilityUsers = availabilitySnapshot.docs
+              .filter((doc) => {
+                if (matchedUserIds.has(doc.id)) return false;
+                const userData = doc.data();
+                // Filter by isActive and isAvailable (defaults to true if not set)
+                const isActive = userData?.isActive !== false;
+                const isAvailable = userData?.isAvailable !== false;
+                return isActive && isAvailable;
+              })
+              .map((doc) => {
+                const userData = doc.data();
+                const { images, email, ...userDataWithoutSensitiveInfo } =
+                  userData;
+                return { uid: doc.id, ...userDataWithoutSensitiveInfo };
+              })
+              .slice(0, 50);
+          } catch (error) {
+            console.error("Error fetching availability users:", error);
+            availabilityUsers = [];
+          }
+        }
+      }
+
+      // Step 4: Fetch general users as fallback (lowest priority)
+      const compatibilityData = getCompatibilityQuery(currentUserData);
+      let generalUsers: any[] = [];
+      if (
+        compatibilityData.orientation.length > 0 &&
+        compatibilityData.gender.length > 0
+      ) {
+        try {
+          const generalSnapshot = await db
             .collection("users")
-            .where("availability", ">=", lowerBound)
-            .where("availability", "<=", upperBound)
             .where("sexualOrientation", "in", compatibilityData.orientation)
             .where("gender", "in", compatibilityData.gender)
             .limit(100)
             .get();
 
-          availabilityUsers = availabilitySnapshot.docs
+          generalUsers = generalSnapshot.docs
             .filter((doc) => {
               if (matchedUserIds.has(doc.id)) return false;
               const userData = doc.data();
@@ -193,38 +239,10 @@ export const getRecommendations = functions.https.onCall(
               return { uid: doc.id, ...userDataWithoutSensitiveInfo };
             })
             .slice(0, 50);
+        } catch (error) {
+          console.error("Error fetching general users:", error);
+          generalUsers = [];
         }
-      }
-
-      // Step 4: Fetch general users as fallback (lowest priority)
-      const compatibilityData = getCompatibilityQuery(currentUserData);
-      let generalUsers: any[] = [];
-      if (
-        compatibilityData.orientation.length > 0 &&
-        compatibilityData.gender.length > 0
-      ) {
-        const generalSnapshot = await db
-          .collection("users")
-          .where("sexualOrientation", "in", compatibilityData.orientation)
-          .where("gender", "in", compatibilityData.gender)
-          .limit(100)
-          .get();
-
-        generalUsers = generalSnapshot.docs
-          .filter((doc) => {
-            if (matchedUserIds.has(doc.id)) return false;
-            const userData = doc.data();
-            // Filter by isActive and isAvailable (defaults to true if not set)
-            const isActive = userData?.isActive !== false;
-            const isAvailable = userData?.isAvailable !== false;
-            return isActive && isAvailable;
-          })
-          .map((doc) => {
-            const userData = doc.data();
-            const { images, email, ...userDataWithoutSensitiveInfo } = userData;
-            return { uid: doc.id, ...userDataWithoutSensitiveInfo };
-          })
-          .slice(0, 50);
       }
 
       // Step 5: Merge results in priority order
@@ -255,6 +273,7 @@ export const getRecommendations = functions.https.onCall(
 
       return { recommendations: merged };
     } catch (error: any) {
+      console.error("Recommendations function error:", error);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
