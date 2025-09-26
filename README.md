@@ -70,7 +70,32 @@ Harbor implements a **subcollection-based swipe tracking system** that provides 
 
 - **Efficient Querying**: Subcollections allow for fast retrieval of user's swipe history
 - **Group Support**: System supports both individual (2-person) and group (3-4 person) matches
+- **Availability Tracking**: Index-based filtering prevents recommending users who are already in matches
 - **Future-Proof**: Framework ready for premium tiers and advanced features
+
+#### 🎯 User Availability System
+
+Harbor implements a scalable **availability tracking system** that prevents users currently in matches from being recommended to others:
+
+##### Database Fields
+
+- **`isActive`**: Controls account status (enabled/disabled)
+- **`isAvailable`**: Controls match availability (defaults to `true` if not set)
+  - `true`: User is available for new matches
+  - `false`: User is currently in an active match
+
+##### Automatic State Management
+
+- **Match Creation**: When users match, both/all participants are set to `isAvailable: false`
+- **Match Deletion**: When users unmatch, all participants are set to `isAvailable: true`
+- **Recommendation Filtering**: Only users with `isActive !== false` and `isAvailable !== false` are recommended
+
+##### Scalability Benefits
+
+- **Index-Based Filtering**: Firestore queries filter unavailable users at the database level
+- **No Memory Filtering**: Eliminates expensive in-memory filtering operations
+- **Composite Indexes**: Support efficient multi-field queries (orientation + gender + availability)
+- **Real-Time Updates**: Availability status updates immediately upon match state changes
 
 ### Technical Implementation
 
@@ -81,7 +106,8 @@ Harbor implements a **subcollection-based swipe tracking system** that provides 
 {
   // ... other user fields
   groupSize: 2,             // Preferred group size (2, 3, or 4)
-  isActive: true,           // Account status
+  isActive: true,           // Account status (account enabled/disabled)
+  isAvailable: true,        // Match availability (true = available to match, false = currently in a match)
   currentMatches: [],       // Array of active match IDs
 }
 
@@ -272,7 +298,7 @@ App.tsx (Main Navigator)
 
 ### Recommendation Functions (`recommendationsFunctions`)
 
-- **getRecommendations**: Provides personalized user recommendations based on preferences and availability matching
+- **getRecommendations**: Provides personalized user recommendations based on preferences, availability matching, and user availability status (excludes users currently in matches)
 
 ### Report Functions (`reportFunctions`)
 
@@ -592,7 +618,8 @@ export type Profile = {
   paywallSeen?: boolean;
   fcmToken?: string;
   expoPushToken?: string;
-  isActive?: boolean;
+  isActive?: boolean; // Account status (enabled/disabled)
+  isAvailable?: boolean; // Match availability (defaults to true, false when in active match)
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
