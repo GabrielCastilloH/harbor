@@ -95,29 +95,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [streamApiKey, setStreamApiKey] = useState<string | null>(null);
   const [streamUserToken, setStreamUserToken] = useState<string | null>(null);
 
-  // Debug when credentials change
-  useEffect(() => {
-    if (streamApiKey) {
-      console.log(
-        "🔑 AppContext - Stream API key set:",
-        streamApiKey.substring(0, 10) + "..."
-      );
-    } else {
-      console.log("🔑 AppContext - Stream API key cleared");
-    }
-  }, [streamApiKey]);
-
-  useEffect(() => {
-    if (streamUserToken) {
-      console.log(
-        "🎫 AppContext - Stream user token set:",
-        streamUserToken.substring(0, 10) + "..."
-      );
-    } else {
-      console.log("🎫 AppContext - Stream user token cleared");
-    }
-  }, [streamUserToken]);
-
   // 🏆 The Fix: Single atomic state object to prevent race conditions
   const [appState, setAppState] = useState({
     isAuthenticated: false,
@@ -295,7 +272,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const loadStreamCredentials = async () => {
     try {
-      console.log("🔍 AppContext - Loading Stream credentials from cache...");
       const [storedStreamApiKey, storedStreamUserToken] = await Promise.all([
         AsyncStorage.getItem("@streamApiKey"),
         AsyncStorage.getItem("@streamUserToken"),
@@ -309,12 +285,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             Date.now() - apiKeyData.timestamp > 7 * 24 * 60 * 60 * 1000; // 7 days
 
           if (!isExpired) {
-            console.log("✅ AppContext - Loaded cached Stream API key");
             setStreamApiKey(apiKeyData.apiKey);
           } else {
-            console.log(
-              "⏰ AppContext - Stream API key cache expired, removing"
-            );
             // API key cache expired, remove it
             await AsyncStorage.removeItem("@streamApiKey");
           }
@@ -331,10 +303,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           const isExpired = Date.now() > tokenData.expiresAt;
 
           if (!isExpired) {
-            console.log("✅ AppContext - Loaded cached Stream user token");
             setStreamUserToken(tokenData.token);
           } else {
-            console.log("⏰ AppContext - Stream user token expired, removing");
             // Token expired, remove it so it gets regenerated
             await AsyncStorage.removeItem("@streamUserToken");
           }
