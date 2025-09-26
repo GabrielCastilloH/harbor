@@ -74,34 +74,50 @@ export const createGroupMatch = functions.https.onCall(
         }
       }
 
-      // Create new group match (unified schema)
-      const matchData = {
-        type: "group",
-        memberIds: memberIds,
-        participantIds: memberIds,
-        groupSize: groupSize,
-        matchDate: admin.firestore.FieldValue.serverTimestamp(),
-        isActive: true,
-        status: "active",
-        messageCount: 0,
-        participantConsent: memberIds.reduce((acc, id) => {
-          acc[id] = false;
-          return acc;
-        }, {} as Record<string, boolean>),
-        participantViewed: memberIds.reduce((acc, id) => {
-          acc[id] = false;
-          return acc;
-        }, {} as Record<string, boolean>),
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      } as any;
+      // Create new group match and update user availability in a transaction
+      const matchRef = db.collection("matches").doc();
 
-      const matchRef = await db.collection("matches").add(matchData);
+      const result = await db.runTransaction(async (transaction) => {
+        // Create the match
+        const matchData = {
+          type: "group",
+          memberIds: memberIds,
+          participantIds: memberIds,
+          groupSize: groupSize,
+          matchDate: admin.firestore.FieldValue.serverTimestamp(),
+          isActive: true,
+          status: "active",
+          messageCount: 0,
+          participantConsent: memberIds.reduce((acc, id) => {
+            acc[id] = false;
+            return acc;
+          }, {} as Record<string, boolean>),
+          participantViewed: memberIds.reduce((acc, id) => {
+            acc[id] = false;
+            return acc;
+          }, {} as Record<string, boolean>),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        } as any;
+
+        transaction.set(matchRef, matchData);
+
+        // Set all group members as unavailable (in a match)
+        for (const memberId of memberIds) {
+          const memberRef = db.collection("users").doc(memberId);
+          transaction.update(memberRef, {
+            isAvailable: false,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        return { id: matchRef.id, ...matchData };
+      });
 
       return {
         message: "Group match created successfully",
         matchId: matchRef.id,
-        match: { id: matchRef.id, ...matchData },
+        match: result,
       };
     } catch (error: any) {
       console.error("Error creating group match:", error);
@@ -173,26 +189,45 @@ export const createMatch = functions.https.onCall(
         };
       }
 
-      // Create new match
-      const matchData = {
-        type: "individual",
-        participantIds: [user1Id, user2Id],
-        matchDate: admin.firestore.FieldValue.serverTimestamp(),
-        isActive: true,
-        status: "active",
-        messageCount: 0,
-        participantConsent: { [user1Id]: false, [user2Id]: false },
-        participantViewed: { [user1Id]: false, [user2Id]: false },
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      } as any;
+      // Create new match and update user availability in a transaction
+      const matchRef = db.collection("matches").doc();
+      const user1Ref = db.collection("users").doc(user1Id);
+      const user2Ref = db.collection("users").doc(user2Id);
 
-      const matchRef = await db.collection("matches").add(matchData);
+      const result = await db.runTransaction(async (transaction) => {
+        // Create the match
+        const matchData = {
+          type: "individual",
+          participantIds: [user1Id, user2Id],
+          matchDate: admin.firestore.FieldValue.serverTimestamp(),
+          isActive: true,
+          status: "active",
+          messageCount: 0,
+          participantConsent: { [user1Id]: false, [user2Id]: false },
+          participantViewed: { [user1Id]: false, [user2Id]: false },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        } as any;
+
+        transaction.set(matchRef, matchData);
+
+        // Set both users as unavailable (in a match)
+        transaction.update(user1Ref, {
+          isAvailable: false,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        transaction.update(user2Ref, {
+          isAvailable: false,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return { id: matchRef.id, ...matchData };
+      });
 
       return {
         message: "Match created successfully",
         matchId: matchRef.id,
-        match: { id: matchRef.id, ...matchData },
+        match: result,
       };
     } catch (error: any) {
       console.error("Error creating match:", error);
@@ -469,11 +504,21 @@ export const unmatchUsers = functions.https.onCall(
       }
 
       await db.runTransaction(async (transaction) => {
+        // Update match status
         transaction.update(db.collection("matches").doc(matchId), {
           isActive: false,
           status: "unmatched",
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+
+        // Set all participants as available again
+        for (const participantId of matchData.participantIds) {
+          const userRef = db.collection("users").doc(participantId);
+          transaction.update(userRef, {
+            isAvailable: true,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
       });
 
       // Freeze chat and notify remains the same
