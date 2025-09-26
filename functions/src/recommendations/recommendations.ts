@@ -16,6 +16,8 @@ function shuffleArray(array: any[]) {
 
 /**
  * Gets user recommendations for swiping, prioritizing users who have swiped on you.
+ * SCALABILITY IMPROVEMENT: This function now relies on an 'isAvailable: boolean'
+ * field on the user document for efficient filtering of users currently in a match.
  */
 export const getRecommendations = functions.https.onCall(
   {
@@ -51,24 +53,20 @@ export const getRecommendations = functions.https.onCall(
       const MAX_SWIPES_PER_DAY = 5;
       const MAX_RECS_TO_FETCH = 10;
 
-      // Check for active matches first - unified schema (participantIds)
-      const activeMatchesSnapshot = await db
-        .collection("matches")
-        .where("participantIds", "array-contains", userId)
-        .where("isActive", "==", true)
-        .get();
-
-      if (activeMatchesSnapshot.docs.length > 0) {
-        return { recommendations: [] };
-      }
-
       const userDoc = await db.collection("users").doc(userId).get();
       if (!userDoc.exists) {
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
       const currentUserData = userDoc.data();
+      // Check if user account is active
       if (currentUserData?.isActive === false) {
+        return { recommendations: [] };
+      }
+
+      // Check if user is currently in a match (isAvailable defaults to true if not set)
+      const isAvailable = currentUserData?.isAvailable !== false;
+      if (!isAvailable) {
         return { recommendations: [] };
       }
 
@@ -138,11 +136,20 @@ export const getRecommendations = functions.https.onCall(
             .where(admin.firestore.FieldPath.documentId(), "in", limitedIds)
             .get();
 
-          swipedUsers = swipedUsersSnapshot.docs.map((doc) => {
-            const userData = doc.data();
-            const { images, email, ...userDataWithoutSensitiveInfo } = userData;
-            return { uid: doc.id, ...userDataWithoutSensitiveInfo };
-          });
+          swipedUsers = swipedUsersSnapshot.docs
+            .filter((doc) => {
+              const userData = doc.data();
+              // Filter by isActive and isAvailable (defaults to true if not set)
+              const isActive = userData?.isActive !== false;
+              const isAvailable = userData?.isAvailable !== false;
+              return isActive && isAvailable;
+            })
+            .map((doc) => {
+              const userData = doc.data();
+              const { images, email, ...userDataWithoutSensitiveInfo } =
+                userData;
+              return { uid: doc.id, ...userDataWithoutSensitiveInfo };
+            });
         }
       }
 
@@ -171,7 +178,14 @@ export const getRecommendations = functions.https.onCall(
             .get();
 
           availabilityUsers = availabilitySnapshot.docs
-            .filter((doc) => !matchedUserIds.has(doc.id))
+            .filter((doc) => {
+              if (matchedUserIds.has(doc.id)) return false;
+              const userData = doc.data();
+              // Filter by isActive and isAvailable (defaults to true if not set)
+              const isActive = userData?.isActive !== false;
+              const isAvailable = userData?.isAvailable !== false;
+              return isActive && isAvailable;
+            })
             .map((doc) => {
               const userData = doc.data();
               const { images, email, ...userDataWithoutSensitiveInfo } =
@@ -197,7 +211,14 @@ export const getRecommendations = functions.https.onCall(
           .get();
 
         generalUsers = generalSnapshot.docs
-          .filter((doc) => !matchedUserIds.has(doc.id))
+          .filter((doc) => {
+            if (matchedUserIds.has(doc.id)) return false;
+            const userData = doc.data();
+            // Filter by isActive and isAvailable (defaults to true if not set)
+            const isActive = userData?.isActive !== false;
+            const isAvailable = userData?.isAvailable !== false;
+            return isActive && isAvailable;
+          })
           .map((doc) => {
             const userData = doc.data();
             const { images, email, ...userDataWithoutSensitiveInfo } = userData;
