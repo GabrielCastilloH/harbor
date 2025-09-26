@@ -1,4 +1,11 @@
-import React, { useState, ReactNode, useEffect, useRef } from "react";
+import React, {
+  useState,
+  ReactNode,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { Profile } from "../types/App";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { auth } from "../firebaseConfig";
@@ -36,6 +43,11 @@ interface AppContextType {
   // 🚀 NEW: Global unread count for chat badge
   unreadCount: number;
   setUnreadCount: (count: number) => void;
+  // 🚀 NEW: Caching functions
+  refreshUserData: (forceRefresh?: boolean) => void;
+  cacheStreamApiKey: (apiKey: string) => void;
+  cacheStreamUserToken: (token: string, expiresInHours?: number) => void;
+  clearAllCache: (userId: string) => void;
 }
 
 const defaultValue: AppContextType = {
@@ -64,6 +76,11 @@ const defaultValue: AppContextType = {
   isLoadingUserData: false,
   unreadCount: 0,
   setUnreadCount: () => {},
+  // 🚀 NEW: Default values for caching functions
+  refreshUserData: () => {},
+  cacheStreamApiKey: () => {},
+  cacheStreamUserToken: () => {},
+  clearAllCache: () => {},
 };
 
 export const AppContext = React.createContext<AppContextType>(defaultValue);
@@ -77,6 +94,29 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [thread, setThread] = useState<any>(null);
   const [streamApiKey, setStreamApiKey] = useState<string | null>(null);
   const [streamUserToken, setStreamUserToken] = useState<string | null>(null);
+
+  // Debug when credentials change
+  useEffect(() => {
+    if (streamApiKey) {
+      console.log(
+        "🔑 AppContext - Stream API key set:",
+        streamApiKey.substring(0, 10) + "..."
+      );
+    } else {
+      console.log("🔑 AppContext - Stream API key cleared");
+    }
+  }, [streamApiKey]);
+
+  useEffect(() => {
+    if (streamUserToken) {
+      console.log(
+        "🎫 AppContext - Stream user token set:",
+        streamUserToken.substring(0, 10) + "..."
+      );
+    } else {
+      console.log("🎫 AppContext - Stream user token cleared");
+    }
+  }, [streamUserToken]);
 
   // 🏆 The Fix: Single atomic state object to prevent race conditions
   const [appState, setAppState] = useState({
@@ -115,172 +155,233 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // The core function to check user and profile status.
   // This is now the single source of truth for handling auth state changes.
-  const checkAndSetAuthState = async (user: User | null) => {
-    // 🚦 Do not proceed if another process is already running
-    if (isProcessingAuthRef.current) {
-      return;
-    }
+  const checkAndSetAuthState = useCallback(
+    async (user: User | null) => {
+      // 🚦 Do not proceed if another process is already running
+      if (isProcessingAuthRef.current) {
+        return;
+      }
 
-    isProcessingAuthRef.current = true;
+      isProcessingAuthRef.current = true;
 
-    try {
-      if (!user) {
-        setStreamApiKey(null);
-        setStreamUserToken(null);
-        try {
-          await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
-        } catch (error) {
-          // Silent fail for data clearing
+      try {
+        if (!user) {
+          setStreamApiKey(null);
+          setStreamUserToken(null);
+          try {
+            await AsyncStorage.multiRemove([
+              "@streamApiKey",
+              "@streamUserToken",
+            ]);
+          } catch (error) {
+            // Silent fail for data clearing
+          }
+
+          // Clear the user when they log out
+          // Note: TelemetryDeck user ID will be reset on next app restart (DISABLED)
+
+          // 🏆 Atomic state update - using functional update to avoid stale state
+          setAppState((prevState) => ({
+            ...prevState,
+            isAuthenticated: false,
+            userId: null,
+            profile: null,
+            currentUser: null,
+            profileExists: false,
+            isInitialized: true,
+            isBanned: false, // 💡 Reset ban status on logout
+          }));
+
+          // 🚀 NEW: Clear centralized user data on logout
+          setUserProfile(null);
+          setSwipeLimit(null);
+          setIsLoadingUserData(false);
+
+          // Clear cached data for the user
+          if (appState.userId) {
+            await clearAllCache(appState.userId);
+          }
+          return;
         }
 
-        // Clear the user when they log out
-        // Note: TelemetryDeck user ID will be reset on next app restart (DISABLED)
+        // 🚀 OPTIMIZATION: Use Promise.all to fetch data in parallel
+        const { UserService } = require("../networking");
+        const [idToken, firestoreResponse, banStatus] = await Promise.all([
+          user.getIdToken(true),
+          UserService.getUserById(user.uid),
+          UserService.checkBannedStatus(user.uid),
+        ]);
 
-        // 🏆 Atomic state update
-        setAppState({
-          ...appState,
-          isAuthenticated: false,
-          userId: null,
-          profile: null,
-          currentUser: null,
-          profileExists: false,
-          isInitialized: true,
-          isBanned: false, // 💡 Reset ban status on logout
-        });
+        // Check if user is banned first
+        if (banStatus.isBanned) {
+          setAppState((prevState) => ({
+            ...prevState,
+            isAuthenticated: true,
+            userId: user.uid,
+            profile: null,
+            currentUser: user,
+            profileExists: false,
+            isInitialized: true,
+            isBanned: true, // 💡 Atomic state update
+          }));
+          return;
+        }
 
-        // 🚀 NEW: Clear centralized user data on logout
-        setUserProfile(null);
-        setSwipeLimit(null);
-        setIsLoadingUserData(false);
-        return;
-      }
+        if (!user.emailVerified) {
+          setAppState((prevState) => ({
+            ...prevState,
+            isAuthenticated: true,
+            userId: null,
+            profile: null,
+            currentUser: user,
+            profileExists: false,
+            isInitialized: true,
+            isBanned: false, // 💡 User not banned, just unverified
+          }));
+          return;
+        }
 
-      // 🚀 OPTIMIZATION: Use Promise.all to fetch data in parallel
-      const { UserService } = require("../networking");
-      const [idToken, firestoreResponse, banStatus] = await Promise.all([
-        user.getIdToken(true),
-        UserService.getUserById(user.uid),
-        UserService.checkBannedStatus(user.uid),
-      ]);
+        const response = firestoreResponse; // Use the result from Promise.all
 
-      // Check if user is banned first
-      if (banStatus.isBanned) {
-        setAppState({
-          ...appState,
+        if (response && response.user) {
+          await loadStreamCredentials();
+
+          // 🏆 Note: TelemetryDeck user ID is set in App.tsx and will be updated on next app restart (DISABLED)
+          // For now, we'll track user activity with the current anonymous user
+
+          setAppState((prevState) => ({
+            ...prevState,
+            isAuthenticated: true,
+            userId: user.uid,
+            profile: response.user,
+            currentUser: user,
+            profileExists: true,
+            isInitialized: true,
+            isBanned: false, // 💡 User has profile, not banned
+          }));
+
+          // 🚀 NEW: Fetch centralized user data after successful auth
+          fetchUserData(user.uid);
+        } else {
+          setAppState((prevState) => ({
+            ...prevState,
+            isAuthenticated: true,
+            userId: user.uid,
+            profile: null,
+            currentUser: user,
+            profileExists: false,
+            isInitialized: true,
+            isBanned: false, // 💡 User exists but no profile, not banned
+          }));
+        }
+      } catch (error: any) {
+        // Silent fail for auth state check
+        setAppState((prevState) => ({
+          ...prevState,
           isAuthenticated: true,
-          userId: user.uid,
-          profile: null,
-          currentUser: user,
-          profileExists: false,
-          isInitialized: true,
-          isBanned: true, // 💡 Atomic state update
-        });
-        return;
-      }
-
-      if (!user.emailVerified) {
-        setAppState({
-          ...appState,
-          isAuthenticated: true,
-          userId: null,
-          profile: null,
-          currentUser: user,
-          profileExists: false,
-          isInitialized: true,
-          isBanned: false, // 💡 User not banned, just unverified
-        });
-        return;
-      }
-
-      const response = firestoreResponse; // Use the result from Promise.all
-
-      if (response && response.user) {
-        await loadStreamCredentials();
-
-        // 🏆 Note: TelemetryDeck user ID is set in App.tsx and will be updated on next app restart (DISABLED)
-        // For now, we'll track user activity with the current anonymous user
-
-        setAppState({
-          ...appState,
-          isAuthenticated: true,
-          userId: user.uid,
-          profile: response.user,
-          currentUser: user,
-          profileExists: true,
-          isInitialized: true,
-          isBanned: false, // 💡 User has profile, not banned
-        });
-
-        // 🚀 NEW: Fetch centralized user data after successful auth
-        fetchUserData(user.uid);
-      } else {
-        setAppState({
-          ...appState,
-          isAuthenticated: true,
-          userId: user.uid,
+          userId: user?.uid || null,
           profile: null,
           currentUser: user,
           profileExists: false,
           isInitialized: true,
-          isBanned: false, // 💡 User exists but no profile, not banned
-        });
+          isBanned: false, // 💡 Default to not banned on error
+        }));
+      } finally {
+        isProcessingAuthRef.current = false;
       }
-    } catch (error: any) {
-      // Silent fail for auth state check
-      setAppState({
-        ...appState,
-        isAuthenticated: true,
-        userId: user?.uid || null,
-        profile: null,
-        currentUser: user,
-        profileExists: false,
-        isInitialized: true,
-        isBanned: false, // 💡 Default to not banned on error
-      });
-    } finally {
-      isProcessingAuthRef.current = false;
-    }
-  };
+    },
+    [appState.userId]
+  ); // Dependency on userId to clear correct cache on logout
 
   const loadStreamCredentials = async () => {
     try {
+      console.log("🔍 AppContext - Loading Stream credentials from cache...");
       const [storedStreamApiKey, storedStreamUserToken] = await Promise.all([
         AsyncStorage.getItem("@streamApiKey"),
         AsyncStorage.getItem("@streamUserToken"),
       ]);
 
-      if (storedStreamApiKey) setStreamApiKey(storedStreamApiKey);
-      if (storedStreamUserToken) setStreamUserToken(storedStreamUserToken);
+      // Load API key (cache for 7 days)
+      if (storedStreamApiKey) {
+        try {
+          const apiKeyData = JSON.parse(storedStreamApiKey);
+          const isExpired =
+            Date.now() - apiKeyData.timestamp > 7 * 24 * 60 * 60 * 1000; // 7 days
+
+          if (!isExpired) {
+            console.log("✅ AppContext - Loaded cached Stream API key");
+            setStreamApiKey(apiKeyData.apiKey);
+          } else {
+            console.log(
+              "⏰ AppContext - Stream API key cache expired, removing"
+            );
+            // API key cache expired, remove it
+            await AsyncStorage.removeItem("@streamApiKey");
+          }
+        } catch {
+          // If parsing fails, treat as old format and use directly
+          setStreamApiKey(storedStreamApiKey);
+        }
+      }
+
+      // Load user token (check expiration)
+      if (storedStreamUserToken) {
+        try {
+          const tokenData = JSON.parse(storedStreamUserToken);
+          const isExpired = Date.now() > tokenData.expiresAt;
+
+          if (!isExpired) {
+            console.log("✅ AppContext - Loaded cached Stream user token");
+            setStreamUserToken(tokenData.token);
+          } else {
+            console.log("⏰ AppContext - Stream user token expired, removing");
+            // Token expired, remove it so it gets regenerated
+            await AsyncStorage.removeItem("@streamUserToken");
+          }
+        } catch {
+          // If parsing fails, treat as old format and use directly
+          setStreamUserToken(storedStreamUserToken);
+        }
+      }
     } catch (error) {
-      // Silent fail for Stream credentials loading
+      console.error("🔴 AppContext - Error loading Stream credentials:", error);
     }
   };
 
-  // 🚀 NEW: Centralized user data fetching
-  const fetchUserData = async (userId: string) => {
+  // 🚀 CACHING: Smart user data fetching with cache-first approach
+  const fetchUserData = async (
+    userId: string,
+    forceRefresh: boolean = false
+  ) => {
     setIsLoadingUserData(true);
+
     try {
-      // Fetch user profile and swipe limits in parallel
-      const [profileResponse, swipeLimitResponse] = await Promise.all([
-        UserService.getUserById(userId).catch(() => null), // Graceful fallback
-        SwipeService.countRecentSwipes(userId).catch(() => null), // Graceful fallback
-      ]);
+      // Try to load from cache first (unless force refresh)
+      if (!forceRefresh) {
+        const [cachedProfile, cachedSwipeLimit] = await Promise.all([
+          loadCachedUserProfile(userId),
+          loadCachedSwipeLimit(userId),
+        ]);
 
-      // Set user profile
-      if (profileResponse && profileResponse.user) {
-        setUserProfile(profileResponse.user);
-      } else if (profileResponse) {
-        setUserProfile(profileResponse);
+        // If we have cached data, use it immediately
+        if (cachedProfile) {
+          setUserProfile(cachedProfile);
+        }
+        if (cachedSwipeLimit) {
+          setSwipeLimit(cachedSwipeLimit);
+        }
+
+        // If we have both cached, we can return early for instant loading
+        if (cachedProfile && cachedSwipeLimit) {
+          setIsLoadingUserData(false);
+          // Still fetch fresh data in background
+          fetchFreshUserData(userId);
+          return;
+        }
       }
 
-      // Set swipe limit
-      if (swipeLimitResponse) {
-        setSwipeLimit({
-          swipesToday: swipeLimitResponse.swipesToday,
-          maxSwipesPerDay: swipeLimitResponse.maxSwipesPerDay,
-          canSwipe: swipeLimitResponse.canSwipe,
-        });
-      }
+      // Fetch fresh data (either no cache or force refresh)
+      await fetchFreshUserData(userId);
     } catch (error) {
       console.error("Error fetching user data:", error);
     } finally {
@@ -288,67 +389,252 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   };
 
-  // Function to manually refresh auth state (used by EmailVerificationScreen)
-  const refreshAuthState = async (user: User) => {
-    await checkAndSetAuthState(user);
+  // Helper function to fetch fresh data and cache it
+  const fetchFreshUserData = async (userId: string) => {
+    try {
+      const [profileResponse, swipeLimitResponse] = await Promise.all([
+        UserService.getUserById(userId).catch(() => null),
+        SwipeService.countRecentSwipes(userId).catch(() => null),
+      ]);
+
+      // Cache and set user profile
+      if (profileResponse && profileResponse.user) {
+        await cacheUserProfile(userId, profileResponse.user);
+        setUserProfile(profileResponse.user);
+      } else if (profileResponse) {
+        await cacheUserProfile(userId, profileResponse);
+        setUserProfile(profileResponse);
+      }
+
+      // Cache and set swipe limit
+      if (swipeLimitResponse) {
+        const swipeLimitData = {
+          swipesToday: swipeLimitResponse.swipesToday,
+          maxSwipesPerDay: swipeLimitResponse.maxSwipesPerDay,
+          canSwipe: swipeLimitResponse.canSwipe,
+        };
+        await cacheSwipeLimit(userId, swipeLimitData);
+        setSwipeLimit(swipeLimitData);
+      }
+    } catch (error) {
+      console.error("Error fetching fresh user data:", error);
+    }
   };
 
-  // Ensure userId is never an empty string - convert to null
-  useEffect(() => {
-    if (userId === "") {
-      setAppState({
-        ...appState,
-        userId: null,
-      });
+  // Cache user profile with timestamp
+  const cacheUserProfile = async (userId: string, profile: any) => {
+    try {
+      const cacheData = {
+        profile,
+        timestamp: Date.now(),
+        userId,
+      };
+      await AsyncStorage.setItem(
+        `@userProfile_${userId}`,
+        JSON.stringify(cacheData)
+      );
+    } catch (error) {
+      console.error("Error caching user profile:", error);
     }
-  }, [userId]);
+  };
+
+  // Load cached user profile if not expired (1 hour cache)
+  const loadCachedUserProfile = async (userId: string): Promise<any | null> => {
+    try {
+      const cached = await AsyncStorage.getItem(`@userProfile_${userId}`);
+      if (!cached) return null;
+
+      const { profile, timestamp } = JSON.parse(cached);
+      const isExpired = Date.now() - timestamp > 60 * 60 * 1000; // 1 hour
+
+      return isExpired ? null : profile;
+    } catch (error) {
+      console.error("Error loading cached user profile:", error);
+      return null;
+    }
+  };
+
+  // Cache swipe limit with timestamp
+  const cacheSwipeLimit = async (userId: string, swipeLimit: any) => {
+    try {
+      const cacheData = {
+        swipeLimit,
+        timestamp: Date.now(),
+        userId,
+      };
+      await AsyncStorage.setItem(
+        `@swipeLimit_${userId}`,
+        JSON.stringify(cacheData)
+      );
+    } catch (error) {
+      console.error("Error caching swipe limit:", error);
+    }
+  };
+
+  // Load cached swipe limit if not expired (24 hour cache)
+  const loadCachedSwipeLimit = async (userId: string): Promise<any | null> => {
+    try {
+      const cached = await AsyncStorage.getItem(`@swipeLimit_${userId}`);
+      if (!cached) return null;
+
+      const { swipeLimit, timestamp } = JSON.parse(cached);
+      const isExpired = Date.now() - timestamp > 24 * 60 * 60 * 1000; // 24 hours
+
+      return isExpired ? null : swipeLimit;
+    } catch (error) {
+      console.error("Error loading cached swipe limit:", error);
+      return null;
+    }
+  };
+
+  // Cache Stream API key (rarely changes, cache for 7 days)
+  const cacheStreamApiKey = async (apiKey: string) => {
+    try {
+      const cacheData = {
+        apiKey,
+        timestamp: Date.now(),
+      };
+      await AsyncStorage.setItem("@streamApiKey", JSON.stringify(cacheData));
+    } catch (error) {
+      console.error("Error caching Stream API key:", error);
+    }
+  };
+
+  // Cache Stream user token with expiration
+  const cacheStreamUserToken = async (
+    token: string,
+    expiresInHours: number = 24
+  ) => {
+    try {
+      const cacheData = {
+        token,
+        expiresAt: Date.now() + expiresInHours * 60 * 60 * 1000,
+      };
+      await AsyncStorage.setItem("@streamUserToken", JSON.stringify(cacheData));
+    } catch (error) {
+      console.error("Error caching Stream user token:", error);
+    }
+  };
+
+  // Clear all cached data (useful for logout)
+  const clearAllCache = async (userId: string) => {
+    try {
+      await Promise.all([
+        AsyncStorage.removeItem(`@userProfile_${userId}`),
+        AsyncStorage.removeItem(`@swipeLimit_${userId}`),
+        AsyncStorage.removeItem("@streamApiKey"),
+        AsyncStorage.removeItem("@streamUserToken"),
+      ]);
+    } catch (error) {
+      console.error("Error clearing cache:", error);
+    }
+  };
+
+  // Function to manually refresh auth state (used by EmailVerificationScreen)
+  const refreshAuthState = useCallback(
+    async (user: User) => {
+      await checkAndSetAuthState(user);
+    },
+    [checkAndSetAuthState]
+  );
+
+  // ✅ THE FIX: Move all useCallback hooks to top level to avoid Rules of Hooks violation
+  const setUserIdCallback = useCallback(
+    (newUserId: string | null) =>
+      setAppState((prevState) => ({ ...prevState, userId: newUserId })),
+    []
+  );
+
+  const setProfileCallback = useCallback(
+    (newProfile: Profile | null) =>
+      setAppState((prevState) => ({ ...prevState, profile: newProfile })),
+    []
+  );
+
+  const setProfileExistsCallback = useCallback(
+    (exists: boolean) =>
+      setAppState((prevState) => ({ ...prevState, profileExists: exists })),
+    []
+  );
+
+  const refreshUserDataCallback = useCallback(
+    (forceRefresh?: boolean) => {
+      if (userId) {
+        fetchUserData(userId, forceRefresh);
+      }
+    },
+    [userId]
+  );
+
+  // ✅ REMOVED: Redundant useEffect - checkAndSetAuthState already handles userId correctly
 
   // Listen to Firebase Auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      // 🏆 All state updates now handled atomically in checkAndSetAuthState
-      await checkAndSetAuthState(user);
-    });
-
+    const unsubscribe = onAuthStateChanged(auth, checkAndSetAuthState);
     return () => unsubscribe();
-  }, []); // The dependency array is empty to prevent re-running on state changes.
+  }, [checkAndSetAuthState]); // The dependency array ensures the listener always has the latest version of the callback.
+
+  // ✅ THE FIX: Memoize the context value for performance
+  const contextValue = useMemo(
+    () => ({
+      channel,
+      setChannel,
+      thread,
+      setThread,
+      isAuthenticated,
+      userId,
+      setUserId: setUserIdCallback,
+      profile,
+      setProfile: setProfileCallback,
+      currentUser,
+      streamApiKey,
+      setStreamApiKey,
+      streamUserToken,
+      setStreamUserToken,
+      isInitialized,
+      profileExists,
+      setProfileExists: setProfileExistsCallback,
+      refreshAuthState,
+      isBanned,
+      // 🚀 NEW: Centralized user data
+      userProfile,
+      swipeLimit,
+      isLoadingUserData,
+      // 🚀 NEW: Unread count for chat
+      unreadCount,
+      setUnreadCount,
+      // 🚀 NEW: Caching functions
+      refreshUserData: refreshUserDataCallback,
+      cacheStreamApiKey,
+      cacheStreamUserToken,
+      clearAllCache,
+    }),
+    [
+      channel,
+      thread,
+      isAuthenticated,
+      userId,
+      profile,
+      currentUser,
+      streamApiKey,
+      streamUserToken,
+      isInitialized,
+      profileExists,
+      isBanned,
+      userProfile,
+      swipeLimit,
+      isLoadingUserData,
+      unreadCount,
+      refreshAuthState,
+      setUserIdCallback,
+      setProfileCallback,
+      setProfileExistsCallback,
+      refreshUserDataCallback,
+    ]
+  );
 
   return (
-    <AppContext.Provider
-      value={{
-        channel,
-        setChannel,
-        thread,
-        setThread,
-        isAuthenticated,
-        userId,
-        setUserId: (userId: string | null) =>
-          setAppState({ ...appState, userId }),
-        profile,
-        setProfile: (profile: Profile | null) =>
-          setAppState({ ...appState, profile }),
-        currentUser,
-        streamApiKey,
-        setStreamApiKey,
-        streamUserToken,
-        setStreamUserToken,
-        isInitialized,
-        profileExists,
-        setProfileExists: (exists: boolean) =>
-          setAppState({ ...appState, profileExists: exists }),
-        refreshAuthState,
-        isBanned,
-        // 🚀 NEW: Centralized user data
-        userProfile,
-        swipeLimit,
-        isLoadingUserData,
-        // 🚀 NEW: Unread count for chat
-        unreadCount,
-        setUnreadCount,
-      }}
-    >
-      {children}
-    </AppContext.Provider>
+    <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>
   );
 };
 
