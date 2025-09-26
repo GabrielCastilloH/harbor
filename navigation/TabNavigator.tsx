@@ -21,16 +21,9 @@ export default function TabNavigator() {
 
     const initializeStreamNotifications = async () => {
       try {
-        console.log(
-          "🔔 TabNavigator - About to call streamNotificationService.requestPermission()"
-        );
         hasInitializedNotifications.current = true;
         // Request permission for Stream Chat notifications
         const granted = await streamNotificationService.requestPermission();
-        console.log(
-          "🔔 TabNavigator - streamNotificationService.requestPermission() result:",
-          granted
-        );
         if (granted) {
           // Note: Device registration with Stream happens in ChatNavigator when client is ready
         }

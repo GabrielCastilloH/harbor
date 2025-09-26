@@ -133,9 +133,6 @@ async function registerForPushNotificationsAsync() {
       // Failed to save Expo push token to Firestore
     }
   } else {
-    console.log(
-      "🚨 ALERT SHOWN: Must use physical device for Push Notifications"
-    );
     alert("Must use physical device for Push Notifications");
   }
 

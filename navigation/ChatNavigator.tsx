@@ -166,8 +166,6 @@ const theme: DeepPartial<Theme> = {
 };
 
 export default function ChatNavigator() {
-  console.log("🚀 ChatNavigator - Component rendering");
-
   const {
     userId,
     streamApiKey,
@@ -179,17 +177,6 @@ export default function ChatNavigator() {
     cacheStreamApiKey,
     cacheStreamUserToken,
   } = useAppContext();
-
-  console.log("🔍 ChatNavigator - Context values:", {
-    userId: userId ? `${userId.substring(0, 8)}...` : null,
-    streamApiKey: streamApiKey ? `${streamApiKey.substring(0, 10)}...` : null,
-    streamUserToken: streamUserToken
-      ? `${streamUserToken.substring(0, 10)}...`
-      : null,
-    userProfile: userProfile
-      ? `${userProfile.firstName} (${userProfile.uid?.substring(0, 8)}...)`
-      : null,
-  });
 
   const [error, setError] = useState<string | null>(null);
 
@@ -206,20 +193,12 @@ export default function ChatNavigator() {
 
   // Update local state when context values change
   useEffect(() => {
-    console.log(
-      "🔑 ChatNavigator - streamApiKey changed:",
-      streamApiKey ? `${streamApiKey.substring(0, 10)}...` : null
-    );
     if (streamApiKey) {
       setChatApiKey(streamApiKey);
     }
   }, [streamApiKey]);
 
   useEffect(() => {
-    console.log(
-      "🎫 ChatNavigator - streamUserToken changed:",
-      streamUserToken ? `${streamUserToken.substring(0, 10)}...` : null
-    );
     if (streamUserToken) {
       setChatUserToken(streamUserToken);
     }
@@ -228,24 +207,12 @@ export default function ChatNavigator() {
   // Fetch Stream API key only if not pre-loaded
   useEffect(() => {
     const fetchApiKey = async () => {
-      console.log(
-        "🔑 ChatNavigator - fetchApiKey effect running, chatApiKey:",
-        chatApiKey ? `${chatApiKey.substring(0, 10)}...` : null
-      );
       if (chatApiKey) {
-        console.log(
-          "🔑 ChatNavigator - API key already exists, skipping fetch"
-        );
         return;
       }
 
       try {
-        console.log("🔑 ChatNavigator - Fetching API key from backend...");
         const apiKey = await ChatFunctions.getStreamApiKey();
-        console.log(
-          "✅ ChatNavigator - API key fetched successfully:",
-          apiKey.substring(0, 10) + "..."
-        );
         setChatApiKey(apiKey);
         setStreamApiKey(apiKey); // Store in context for future use
         cacheStreamApiKey(apiKey); // 🚀 Cache the API key
@@ -261,30 +228,12 @@ export default function ChatNavigator() {
   // Fetch user token only if not pre-loaded
   useEffect(() => {
     const fetchToken = async () => {
-      console.log("🎫 ChatNavigator - fetchToken effect running:", {
-        chatUserToken: chatUserToken
-          ? `${chatUserToken.substring(0, 10)}...`
-          : null,
-        userId: userId ? `${userId.substring(0, 8)}...` : null,
-      });
-
       if (chatUserToken || !userId) {
-        console.log(
-          "🎫 ChatNavigator - Token already exists or no userId, skipping fetch"
-        );
         return;
       }
 
       try {
-        console.log(
-          "🎫 ChatNavigator - Generating token for userId:",
-          userId.substring(0, 8) + "..."
-        );
         const token = await ChatFunctions.generateToken(userId);
-        console.log(
-          "✅ ChatNavigator - Token generated successfully:",
-          token.substring(0, 10) + "..."
-        );
         setChatUserToken(token);
         setStreamUserToken(token); // Store in context for future use
         cacheStreamUserToken(token, 24); // 🚀 Cache the token for 24 hours
@@ -320,26 +269,14 @@ export default function ChatNavigator() {
 
   // Create a memoized user object using cached profile
   const user = useMemo(() => {
-    console.log("👤 ChatNavigator - Creating user object:", {
-      userProfile: userProfile
-        ? `${userProfile.firstName} (${userProfile.uid?.substring(0, 8)}...)`
-        : null,
-      userId: userId ? `${userId.substring(0, 8)}...` : null,
-    });
-
     if (!userProfile || !userId) {
-      console.log(
-        "👤 ChatNavigator - Missing userProfile or userId, returning null"
-      );
       return null;
     }
 
-    const userObj = {
+    return {
       id: userId,
       name: userProfile.firstName || "User",
     };
-    console.log("✅ ChatNavigator - User object created:", userObj);
-    return userObj;
   }, [userProfile, userId]);
 
   // 💡 Centralized client creation and connection logic
@@ -347,66 +284,35 @@ export default function ChatNavigator() {
   const isInitializingRef = useRef(false);
 
   useEffect(() => {
-    console.log("🚀 ChatNavigator - Client initialization effect running");
     let isMounted = true;
     let clientInstance: StreamChat | null = null;
 
     const initializeClient = async () => {
-      console.log("🚀 ChatNavigator - initializeClient function called");
       // Check for essential prerequisites
       if (!chatApiKey || !chatUserToken || !userId || !user) {
-        console.log("🔴 ChatNavigator - Missing prerequisites:", {
-          chatApiKey: !!chatApiKey,
-          chatUserToken: !!chatUserToken,
-          userId: !!userId,
-          user: !!user,
-        });
         return;
       }
 
       // 💡 CRITICAL: Prevent multiple client creation attempts
       if (clientInstance || chatClient || isInitializingRef.current) {
-        console.log(
-          "⚠️ ChatNavigator - Client already exists or initializing, skipping",
-          {
-            clientInstance: !!clientInstance,
-            chatClient: !!chatClient,
-            isInitializingRef: isInitializingRef.current,
-          }
-        );
         return;
       }
 
       // Set the flag to prevent duplicate initialization
-      console.log("🔒 ChatNavigator - Setting isInitializingRef to true");
       isInitializingRef.current = true;
 
       // Only create a new client if one doesn't exist
       // This prevents consecutive connectUser calls
       if (chatClient) {
-        console.log(
-          "🔄 ChatNavigator - Client already exists, skipping initialization"
-        );
         return;
       }
 
       try {
-        console.log("🚀 ChatNavigator - Initializing Stream client with:", {
-          apiKey: chatApiKey?.substring(0, 10) + "...",
-          token: chatUserToken?.substring(0, 10) + "...",
-          userId,
-          userName: user.name,
-        });
-
         // 1. Create client instance
         clientInstance = StreamChat.getInstance(chatApiKey);
 
         // 2. Set notification device BEFORE connecting (required by Stream Chat)
         if (notificationToken) {
-          console.log(
-            "🔔 ChatNavigator - Setting notification device before connection:",
-            notificationToken.substring(0, 10) + "..."
-          );
           clientInstance.setLocalDevice({
             id: notificationToken,
             push_provider: "firebase",
@@ -415,9 +321,7 @@ export default function ChatNavigator() {
         }
 
         // 3. Connect the user
-        console.log("🚀 ChatNavigator - Connecting user to Stream...");
         await clientInstance.connectUser(user, chatUserToken);
-        console.log("✅ ChatNavigator - Successfully connected to Stream");
 
         if (isMounted) {
           setChatClient(clientInstance);
@@ -428,7 +332,6 @@ export default function ChatNavigator() {
           setError("Failed to create chat client");
         }
       } finally {
-        console.log("🔓 ChatNavigator - Resetting isInitializingRef to false");
         isInitializingRef.current = false;
       }
     };
@@ -436,12 +339,10 @@ export default function ChatNavigator() {
     initializeClient();
 
     return () => {
-      console.log("🧹 ChatNavigator - Cleanup function called");
       isMounted = false;
       isInitializingRef.current = false;
       // Clean up the client on unmount to prevent memory leaks
       if (clientInstance) {
-        console.log("🧹 ChatNavigator - Disconnecting client on cleanup");
         clientInstance.disconnectUser();
       }
     };
@@ -599,20 +500,6 @@ export default function ChatNavigator() {
   // 5. Chat client must be fully initialized and connected
   // 6. User object must be properly constructed
 
-  const loadingConditions = {
-    userProfile: !!userProfile,
-    chatApiKey: !!chatApiKey,
-    chatUserToken: !!chatUserToken,
-    userId: !!userId,
-    user: !!user,
-    chatClient: !!chatClient,
-  };
-
-  console.log(
-    "🔍 ChatNavigator - Loading conditions check:",
-    loadingConditions
-  );
-
   if (
     !userProfile ||
     !chatApiKey ||
@@ -621,13 +508,8 @@ export default function ChatNavigator() {
     !user ||
     !chatClient
   ) {
-    console.log("⏳ ChatNavigator - Still loading, showing loading screen");
     return <LoadingScreen loadingText="Connecting to chat..." />;
   }
-
-  console.log(
-    "✅ ChatNavigator - All conditions met, rendering chat interface"
-  );
 
   // 💡 SAFE RENDERING POINT: All prerequisites are now met
   // The Chat component will only render with a fully initialized and connected client
