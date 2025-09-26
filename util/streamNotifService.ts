@@ -32,15 +32,25 @@ export class StreamNotificationService {
    */
   async requestPermission(): Promise<boolean> {
     try {
+      console.log("🔔 StreamNotificationService - requestPermission() called");
       // Register device for remote messages first (essential for iOS)
       await messaging().registerDeviceForRemoteMessages();
 
+      console.log(
+        "🔔 StreamNotificationService - About to call messaging().requestPermission()"
+      );
       const authStatus = await messaging().requestPermission();
+      console.log(
+        "🔔 StreamNotificationService - messaging().requestPermission() result:",
+        authStatus
+      );
       const enabled = authStatus === 1 || authStatus === 2; // AUTHORIZED || PROVISIONAL
 
       if (enabled) {
+        console.log("🔔 StreamNotificationService - Permission granted");
         return true;
       }
+      console.log("🔔 StreamNotificationService - Permission denied");
       return false;
     } catch (error) {
       console.error("🔔 Error requesting notification permission:", error);
