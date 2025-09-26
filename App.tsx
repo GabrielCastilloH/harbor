@@ -133,6 +133,9 @@ async function registerForPushNotificationsAsync() {
       // Failed to save Expo push token to Firestore
     }
   } else {
+    console.log(
+      "🚨 ALERT SHOWN: Must use physical device for Push Notifications"
+    );
     alert("Must use physical device for Push Notifications");
   }
 
@@ -238,7 +241,7 @@ function AppContent() {
   const BannedStack = createNativeStackNavigator();
 
   if (!isInitialized) {
-    return <LoadingScreen loadingText="Signing you in..." />;
+    return <LoadingScreen loadingText="Loading..." />;
   }
 
   // Check if user is banned and authenticated
