@@ -17,7 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "app.tryharbor",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "buildNumber": "13",
+      "buildNumber": "10",
       "entitlements": {
         "aps-environment": "production"
       },

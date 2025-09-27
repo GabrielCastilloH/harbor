@@ -71,11 +71,16 @@ export const getRecommendations = functions.https.onCall(
         return { recommendations: [] };
       }
 
-      // Check if user is currently in a match (isAvailable defaults to true if not set)
+      // 🛑 CRITICAL CHECK: Return empty if the current user is in an active match
+      // The `isAvailable` field should be set to `false` by a Match creation/update trigger.
       const isAvailable = currentUserData?.isAvailable !== false;
       if (!isAvailable) {
+        console.log(
+          `User ${userId} is not available (in match). Returning empty recommendations.`
+        );
         return { recommendations: [] };
       }
+      // 🛑 END CRITICAL CHECK
 
       // NEW: determine today's swipe count from counters subdoc and compute target limit
       const countersRef = db
@@ -141,15 +146,16 @@ export const getRecommendations = functions.https.onCall(
           const swipedUsersSnapshot = await db
             .collection("users")
             .where(admin.firestore.FieldPath.documentId(), "in", limitedIds)
+            // 💡 SCALABILITY FIX: Filter users who are not available (in a match)
+            .where("isAvailable", "==", true)
             .get();
 
           swipedUsers = swipedUsersSnapshot.docs
             .filter((doc) => {
               const userData = doc.data();
-              // Filter by isActive and isAvailable (defaults to true if not set)
+              // Filter by isActive (isAvailable is already filtered by the query)
               const isActive = userData?.isActive !== false;
-              const isAvailable = userData?.isAvailable !== false;
-              return isActive && isAvailable;
+              return isActive;
             })
             .map((doc) => {
               const userData = doc.data();
@@ -164,12 +170,12 @@ export const getRecommendations = functions.https.onCall(
       let availabilityUsers: any[] = [];
       const userAvailability = currentUserData?.availability ?? -1;
       const useAvailabilityMatching = userAvailability !== -1;
+      const compatibilityData = getCompatibilityQuery(currentUserData);
 
       if (useAvailabilityMatching) {
         const availabilityValue = userAvailability % 1;
         const lowerBound = availabilityValue - 0.15;
         const upperBound = availabilityValue + 0.15;
-        const compatibilityData = getCompatibilityQuery(currentUserData);
         if (
           compatibilityData.orientation.length > 0 &&
           compatibilityData.gender.length > 0
@@ -182,6 +188,8 @@ export const getRecommendations = functions.https.onCall(
               .where("availability", "<=", upperBound)
               .where("sexualOrientation", "in", compatibilityData.orientation)
               .where("gender", "in", compatibilityData.gender)
+              // 💡 SCALABILITY FIX: Filter users who are not available (in a match)
+              .where("isAvailable", "==", true)
               .limit(100)
               .get();
 
@@ -189,10 +197,9 @@ export const getRecommendations = functions.https.onCall(
               .filter((doc) => {
                 if (matchedUserIds.has(doc.id)) return false;
                 const userData = doc.data();
-                // Filter by isActive and isAvailable (defaults to true if not set)
+                // Filter by isActive (isAvailable is already filtered by the query)
                 const isActive = userData?.isActive !== false;
-                const isAvailable = userData?.isAvailable !== false;
-                return isActive && isAvailable;
+                return isActive;
               })
               .map((doc) => {
                 const userData = doc.data();
@@ -209,7 +216,6 @@ export const getRecommendations = functions.https.onCall(
       }
 
       // Step 4: Fetch general users as fallback (lowest priority)
-      const compatibilityData = getCompatibilityQuery(currentUserData);
       let generalUsers: any[] = [];
       if (
         compatibilityData.orientation.length > 0 &&
@@ -220,6 +226,8 @@ export const getRecommendations = functions.https.onCall(
             .collection("users")
             .where("sexualOrientation", "in", compatibilityData.orientation)
             .where("gender", "in", compatibilityData.gender)
+            // 💡 SCALABILITY FIX: Filter users who are not available (in a match)
+            .where("isAvailable", "==", true)
             .limit(100)
             .get();
 
@@ -227,10 +235,9 @@ export const getRecommendations = functions.https.onCall(
             .filter((doc) => {
               if (matchedUserIds.has(doc.id)) return false;
               const userData = doc.data();
-              // Filter by isActive and isAvailable (defaults to true if not set)
+              // Filter by isActive (isAvailable is already filtered by the query)
               const isActive = userData?.isActive !== false;
-              const isAvailable = userData?.isAvailable !== false;
-              return isActive && isAvailable;
+              return isActive;
             })
             .map((doc) => {
               const userData = doc.data();
