@@ -148,8 +148,8 @@ const FeedScreen = () => {
             <Text style={styles.emptyTitle}>No More Available</Text>
             <Text style={styles.emptyTitle}>Connections</Text>
             <Text style={styles.emptySubtitle}>
-              You have no more connections left for today. Come back tomorrow
-              for more.
+              You have no more connections left for today OR are in an active
+              match. Come back tomorrow for more.
             </Text>
           </View>
         )}
