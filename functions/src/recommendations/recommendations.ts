@@ -119,10 +119,26 @@ export const getRecommendations = functions.https.onCall(
         );
       }
 
-      // Create filter set for users to exclude (swiped users + current user)
+      // Step 1.5: Preload blocked users for filtering
+      let blockedUserIds = new Set<string>();
+      try {
+        const blockedSnapshot = await db
+          .collection("users")
+          .doc(userId)
+          .collection("blocked")
+          .get();
+        blockedUserIds = new Set(blockedSnapshot.docs.map((d) => d.id));
+      } catch (error) {
+        console.error("Error loading blocked users:", error);
+      }
+
+      // Create filter set for users to exclude (swiped + blocked + current user)
       const matchedUserIds = new Set<string>();
       matchedUserIds.add(userId); // Add current user to avoid self-match
       for (const id of swipedUserIds) {
+        matchedUserIds.add(id);
+      }
+      for (const id of blockedUserIds) {
         matchedUserIds.add(id);
       }
 
@@ -414,6 +430,126 @@ function getCompatibilityQuery(currentUserData: any) {
   return { gender: compatibleGenders, orientation: compatibleOrientations };
 }
 
+/**
+ * Blocks a user by adding them to the current user's blocked subcollection
+ */
+export const blockUser = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ blockedUserId: string }>) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const userId = request.auth.uid;
+      const { blockedUserId } = request.data;
+
+      if (!blockedUserId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "blockedUserId is required"
+        );
+      }
+
+      if (userId === blockedUserId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Cannot block yourself"
+        );
+      }
+
+      // Add to blocked subcollection
+      await db
+        .collection("users")
+        .doc(userId)
+        .collection("blocked")
+        .doc(blockedUserId)
+        .set({
+          blockedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true, message: "User blocked successfully" };
+    } catch (error: any) {
+      console.error("Error blocking user:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError("internal", "Failed to block user");
+    }
+  }
+);
+
+/**
+ * Unblocks a user by removing them from the current user's blocked subcollection
+ */
+export const unblockUser = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ blockedUserId: string }>) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const userId = request.auth.uid;
+      const { blockedUserId } = request.data;
+
+      if (!blockedUserId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "blockedUserId is required"
+        );
+      }
+
+      // Remove from blocked subcollection
+      await db
+        .collection("users")
+        .doc(userId)
+        .collection("blocked")
+        .doc(blockedUserId)
+        .delete();
+
+      return { success: true, message: "User unblocked successfully" };
+    } catch (error: any) {
+      console.error("Error unblocking user:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to unblock user"
+      );
+    }
+  }
+);
+
 export const recommendationsFunctions = {
   getRecommendations,
+  blockUser,
+  unblockUser,
 };
