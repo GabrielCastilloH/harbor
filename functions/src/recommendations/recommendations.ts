@@ -166,11 +166,57 @@ export const getRecommendations = functions.https.onCall(
         }
       }
 
-      // Step 3: Fetch availability-based users (medium priority)
+      // Step 3: Fetch users with similar age/year (medium priority)
+      let ageYearUsers: any[] = [];
+      const userAge = currentUserData?.age ?? -1;
+      const userYear = currentUserData?.year ?? null;
+      const compatibilityData = getCompatibilityQuery(currentUserData);
+
+      if (
+        userAge !== -1 &&
+        userYear &&
+        compatibilityData.orientation.length > 0 &&
+        compatibilityData.gender.length > 0
+      ) {
+        try {
+          const ageLower = userAge - 2;
+          const ageUpper = userAge + 2;
+
+          const ageYearSnapshot = await db
+            .collection("users")
+            .where("age", ">=", ageLower)
+            .where("age", "<=", ageUpper)
+            .where("year", "==", userYear)
+            .where("sexualOrientation", "in", compatibilityData.orientation)
+            .where("gender", "in", compatibilityData.gender)
+            .where("isAvailable", "==", true)
+            .limit(100)
+            .get();
+
+          ageYearUsers = ageYearSnapshot.docs
+            .filter((doc) => {
+              if (matchedUserIds.has(doc.id)) return false;
+              const userData = doc.data();
+              const isActive = userData?.isActive !== false;
+              return isActive;
+            })
+            .map((doc) => {
+              const userData = doc.data();
+              const { images, email, ...userDataWithoutSensitiveInfo } =
+                userData;
+              return { uid: doc.id, ...userDataWithoutSensitiveInfo };
+            })
+            .slice(0, 50);
+        } catch (error) {
+          console.error("Error fetching age/year users:", error);
+          ageYearUsers = [];
+        }
+      }
+
+      // Step 4: Fetch availability-based users (medium priority)
       let availabilityUsers: any[] = [];
       const userAvailability = currentUserData?.availability ?? -1;
       const useAvailabilityMatching = userAvailability !== -1;
-      const compatibilityData = getCompatibilityQuery(currentUserData);
 
       if (useAvailabilityMatching) {
         const availabilityValue = userAvailability % 1;
@@ -215,7 +261,7 @@ export const getRecommendations = functions.https.onCall(
         }
       }
 
-      // Step 4: Fetch general users as fallback (lowest priority)
+      // Step 5: Fetch general users as fallback (lowest priority)
       let generalUsers: any[] = [];
       if (
         compatibilityData.orientation.length > 0 &&
@@ -252,8 +298,9 @@ export const getRecommendations = functions.https.onCall(
         }
       }
 
-      // Step 5: Merge results in priority order
+      // Step 6: Merge results in priority order
       shuffleArray(swipedUsers);
+      shuffleArray(ageYearUsers);
       shuffleArray(availabilityUsers);
       shuffleArray(generalUsers);
 
@@ -273,8 +320,10 @@ export const getRecommendations = functions.https.onCall(
       };
 
       if (!pushUnique(swipedUsers)) {
-        if (!pushUnique(availabilityUsers)) {
-          pushUnique(generalUsers);
+        if (!pushUnique(ageYearUsers)) {
+          if (!pushUnique(availabilityUsers)) {
+            pushUnique(generalUsers);
+          }
         }
       }
 
