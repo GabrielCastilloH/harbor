@@ -2,7 +2,7 @@
   "expo": {
     "name": "harbor",
     "slug": "harbor",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,6 @@
       "supportsTablet": false,
       "bundleIdentifier": "app.tryharbor",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "buildNumber": "13",
       "entitlements": {
         "aps-environment": "production"
       },
