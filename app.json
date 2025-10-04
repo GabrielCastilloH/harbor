@@ -27,7 +27,7 @@
         "NSMicrophoneUsageDescription": "Harbor needs access to your microphone for voice messages in chat.",
         "CFBundleDisplayName": "Harbor",
         "CFBundleName": "Harbor",
-        "CFBundleShortVersionString": "1.0.0"
+        "CFBundleShortVersionString": "1.0.1"
       },
       "appleTeamId": "V45GUPHT93"
     },
