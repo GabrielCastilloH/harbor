@@ -12,6 +12,7 @@ import { recommendationsFunctions } from "./recommendations/recommendations";
 import { reportFunctions } from "./reports/reports";
 import { superwallFunctions } from "./superwall/superwall";
 import { swipeFunctions } from "./swipes/swipes";
+export { resetDailySwipes } from "./swipes/swipes";
 import { userFunctions } from "./users/users";
 
 export {

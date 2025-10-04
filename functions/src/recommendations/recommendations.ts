@@ -16,6 +16,8 @@ function shuffleArray(array: any[]) {
 
 /**
  * Gets user recommendations for swiping, prioritizing users who have swiped on you.
+ * SCALABILITY IMPROVEMENT: This function now relies on an 'isAvailable: boolean'
+ * field on the user document for efficient filtering of users currently in a match.
  */
 export const getRecommendations = functions.https.onCall(
   {
@@ -47,27 +49,9 @@ export const getRecommendations = functions.https.onCall(
         );
       }
 
-      // Check for active matches first - if user has an active match, return empty recommendations
-      const [activeMatchesSnapshot1, activeMatchesSnapshot2] =
-        await Promise.all([
-          db
-            .collection("matches")
-            .where("isActive", "==", true)
-            .where("user1Id", "==", userId)
-            .get(),
-          db
-            .collection("matches")
-            .where("isActive", "==", true)
-            .where("user2Id", "==", userId)
-            .get(),
-        ]);
-
-      if (
-        activeMatchesSnapshot1.docs.length > 0 ||
-        activeMatchesSnapshot2.docs.length > 0
-      ) {
-        return { recommendations: [] };
-      }
+      // Daily limits and dynamic recommendation sizing
+      const MAX_SWIPES_PER_DAY = 5;
+      const MAX_RECS_TO_FETCH = 10;
 
       const userDoc = await db.collection("users").doc(userId).get();
       if (!userDoc.exists) {
@@ -75,36 +59,98 @@ export const getRecommendations = functions.https.onCall(
       }
 
       const currentUserData = userDoc.data();
+      if (!currentUserData) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "User data not found"
+        );
+      }
+
+      // Check if user account is active
       if (currentUserData?.isActive === false) {
         return { recommendations: [] };
       }
 
-      // Step 1: Preload swipes to filter out irrelevant users early
-      const mySwipesSnapshot = await db
-        .collection("swipes")
-        .where("swiperId", "==", userId)
-        .get();
-      const swipedUserIds = new Set(
-        mySwipesSnapshot.docs.map((doc) => doc.data().swipedId)
-      );
+      // 🛑 CRITICAL CHECK: Return empty if the current user is in an active match
+      // The `isAvailable` field should be set to `false` by a Match creation/update trigger.
+      const isAvailable = currentUserData?.isAvailable !== false;
+      if (!isAvailable) {
+        console.log(
+          `User ${userId} is not available (in match). Returning empty recommendations.`
+        );
+        return { recommendations: [] };
+      }
+      // 🛑 END CRITICAL CHECK
 
-      // Create filter set for users to exclude (swiped users + current user)
+      // NEW: determine today's swipe count from counters subdoc and compute target limit
+      const countersRef = db
+        .collection("users")
+        .doc(userId)
+        .collection("counters")
+        .doc("swipes");
+      const countersSnap = await countersRef.get();
+      const cData = countersSnap.exists ? (countersSnap.data() as any) : {};
+      const swipesMadeToday = Number(cData?.count || 0);
+
+      const remainingSwipes = Math.max(0, MAX_SWIPES_PER_DAY - swipesMadeToday);
+      if (remainingSwipes === 0) {
+        return { recommendations: [] };
+      }
+
+      const finalRecsLimit = Math.max(0, MAX_RECS_TO_FETCH - swipesMadeToday);
+
+      // Step 1: Preload swipes to filter out irrelevant users early
+      // Prefer per-user subcollection; fallback to flat collection
+      let swipedUserIds = new Set<string>();
+      try {
+        const outgoing = await db
+          .collection("swipes")
+          .doc(userId)
+          .collection("outgoing")
+          .get();
+        swipedUserIds = new Set(outgoing.docs.map((d) => d.id));
+      } catch (_e) {
+        const mySwipesSnapshot = await db
+          .collection("swipes")
+          .where("swiperId", "==", userId)
+          .get();
+        swipedUserIds = new Set(
+          mySwipesSnapshot.docs.map((doc) => doc.data().swipedId)
+        );
+      }
+
+      // Step 1.5: Preload blocked users for filtering
+      let blockedUserIds = new Set<string>();
+      try {
+        const blockedSnapshot = await db
+          .collection("users")
+          .doc(userId)
+          .collection("blocked")
+          .get();
+        blockedUserIds = new Set(blockedSnapshot.docs.map((d) => d.id));
+      } catch (error) {
+        console.error("Error loading blocked users:", error);
+      }
+
+      // Create filter set for users to exclude (swiped + blocked + current user)
       const matchedUserIds = new Set<string>();
       matchedUserIds.add(userId); // Add current user to avoid self-match
       for (const id of swipedUserIds) {
         matchedUserIds.add(id);
       }
+      for (const id of blockedUserIds) {
+        matchedUserIds.add(id);
+      }
 
       // Step 2: Get users who swiped on you (highest priority)
-      const inboundSwipesSnapshot = await db
+      let whoSwipedOnYouIds: string[] = [];
+      const incomingSnapshot = await db
         .collection("swipes")
-        .where("swipedId", "==", userId)
+        .doc(userId)
+        .collection("incoming")
         .where("direction", "==", "right")
         .get();
-
-      const whoSwipedOnYouIds = inboundSwipesSnapshot.docs.map(
-        (doc) => doc.data().swiperId
-      );
+      whoSwipedOnYouIds = incomingSnapshot.docs.map((d) => d.id);
 
       let swipedUsers: any[] = [];
       if (whoSwipedOnYouIds.length > 0) {
@@ -116,17 +162,74 @@ export const getRecommendations = functions.https.onCall(
           const swipedUsersSnapshot = await db
             .collection("users")
             .where(admin.firestore.FieldPath.documentId(), "in", limitedIds)
+            // 💡 SCALABILITY FIX: Filter users who are not available (in a match)
+            .where("isAvailable", "==", true)
             .get();
 
-          swipedUsers = swipedUsersSnapshot.docs.map((doc) => {
-            const userData = doc.data();
-            const { images, email, ...userDataWithoutSensitiveInfo } = userData;
-            return { uid: doc.id, ...userDataWithoutSensitiveInfo };
-          });
+          swipedUsers = swipedUsersSnapshot.docs
+            .filter((doc) => {
+              const userData = doc.data();
+              // Filter by isActive (isAvailable is already filtered by the query)
+              const isActive = userData?.isActive !== false;
+              return isActive;
+            })
+            .map((doc) => {
+              const userData = doc.data();
+              const { images, email, ...userDataWithoutSensitiveInfo } =
+                userData;
+              return { uid: doc.id, ...userDataWithoutSensitiveInfo };
+            });
         }
       }
 
-      // Step 3: Fetch availability-based users (medium priority)
+      // Step 3: Fetch users with similar age/year (medium priority)
+      let ageYearUsers: any[] = [];
+      const userAge = currentUserData?.age ?? -1;
+      const userYear = currentUserData?.year ?? null;
+      const compatibilityData = getCompatibilityQuery(currentUserData);
+
+      if (
+        userAge !== -1 &&
+        userYear &&
+        compatibilityData.orientation.length > 0 &&
+        compatibilityData.gender.length > 0
+      ) {
+        try {
+          const ageLower = userAge - 2;
+          const ageUpper = userAge + 2;
+
+          const ageYearSnapshot = await db
+            .collection("users")
+            .where("age", ">=", ageLower)
+            .where("age", "<=", ageUpper)
+            .where("year", "==", userYear)
+            .where("sexualOrientation", "in", compatibilityData.orientation)
+            .where("gender", "in", compatibilityData.gender)
+            .where("isAvailable", "==", true)
+            .limit(100)
+            .get();
+
+          ageYearUsers = ageYearSnapshot.docs
+            .filter((doc) => {
+              if (matchedUserIds.has(doc.id)) return false;
+              const userData = doc.data();
+              const isActive = userData?.isActive !== false;
+              return isActive;
+            })
+            .map((doc) => {
+              const userData = doc.data();
+              const { images, email, ...userDataWithoutSensitiveInfo } =
+                userData;
+              return { uid: doc.id, ...userDataWithoutSensitiveInfo };
+            })
+            .slice(0, 50);
+        } catch (error) {
+          console.error("Error fetching age/year users:", error);
+          ageYearUsers = [];
+        }
+      }
+
+      // Step 4: Fetch availability-based users (medium priority)
       let availabilityUsers: any[] = [];
       const userAvailability = currentUserData?.availability ?? -1;
       const useAvailabilityMatching = userAvailability !== -1;
@@ -135,23 +238,69 @@ export const getRecommendations = functions.https.onCall(
         const availabilityValue = userAvailability % 1;
         const lowerBound = availabilityValue - 0.15;
         const upperBound = availabilityValue + 0.15;
-        const compatibilityData = getCompatibilityQuery(currentUserData);
         if (
           compatibilityData.orientation.length > 0 &&
           compatibilityData.gender.length > 0
         ) {
-          // Fetch a wider pool, filter out excluded users in memory
-          const availabilitySnapshot = await db
+          try {
+            // Fetch a wider pool, filter out excluded users in memory
+            const availabilitySnapshot = await db
+              .collection("users")
+              .where("availability", ">=", lowerBound)
+              .where("availability", "<=", upperBound)
+              .where("sexualOrientation", "in", compatibilityData.orientation)
+              .where("gender", "in", compatibilityData.gender)
+              // 💡 SCALABILITY FIX: Filter users who are not available (in a match)
+              .where("isAvailable", "==", true)
+              .limit(100)
+              .get();
+
+            availabilityUsers = availabilitySnapshot.docs
+              .filter((doc) => {
+                if (matchedUserIds.has(doc.id)) return false;
+                const userData = doc.data();
+                // Filter by isActive (isAvailable is already filtered by the query)
+                const isActive = userData?.isActive !== false;
+                return isActive;
+              })
+              .map((doc) => {
+                const userData = doc.data();
+                const { images, email, ...userDataWithoutSensitiveInfo } =
+                  userData;
+                return { uid: doc.id, ...userDataWithoutSensitiveInfo };
+              })
+              .slice(0, 50);
+          } catch (error) {
+            console.error("Error fetching availability users:", error);
+            availabilityUsers = [];
+          }
+        }
+      }
+
+      // Step 5: Fetch general users as fallback (lowest priority)
+      let generalUsers: any[] = [];
+      if (
+        compatibilityData.orientation.length > 0 &&
+        compatibilityData.gender.length > 0
+      ) {
+        try {
+          const generalSnapshot = await db
             .collection("users")
-            .where("availability", ">=", lowerBound)
-            .where("availability", "<=", upperBound)
             .where("sexualOrientation", "in", compatibilityData.orientation)
             .where("gender", "in", compatibilityData.gender)
+            // 💡 SCALABILITY FIX: Filter users who are not available (in a match)
+            .where("isAvailable", "==", true)
             .limit(100)
             .get();
 
-          availabilityUsers = availabilitySnapshot.docs
-            .filter((doc) => !matchedUserIds.has(doc.id))
+          generalUsers = generalSnapshot.docs
+            .filter((doc) => {
+              if (matchedUserIds.has(doc.id)) return false;
+              const userData = doc.data();
+              // Filter by isActive (isAvailable is already filtered by the query)
+              const isActive = userData?.isActive !== false;
+              return isActive;
+            })
             .map((doc) => {
               const userData = doc.data();
               const { images, email, ...userDataWithoutSensitiveInfo } =
@@ -159,46 +308,44 @@ export const getRecommendations = functions.https.onCall(
               return { uid: doc.id, ...userDataWithoutSensitiveInfo };
             })
             .slice(0, 50);
+        } catch (error) {
+          console.error("Error fetching general users:", error);
+          generalUsers = [];
         }
       }
 
-      // Step 4: Fetch general users as fallback (lowest priority)
-      const compatibilityData = getCompatibilityQuery(currentUserData);
-      let generalUsers: any[] = [];
-      if (
-        compatibilityData.orientation.length > 0 &&
-        compatibilityData.gender.length > 0
-      ) {
-        const generalSnapshot = await db
-          .collection("users")
-          .where("sexualOrientation", "in", compatibilityData.orientation)
-          .where("gender", "in", compatibilityData.gender)
-          .limit(100)
-          .get();
-
-        generalUsers = generalSnapshot.docs
-          .filter((doc) => !matchedUserIds.has(doc.id))
-          .map((doc) => {
-            const userData = doc.data();
-            const { images, email, ...userDataWithoutSensitiveInfo } = userData;
-            return { uid: doc.id, ...userDataWithoutSensitiveInfo };
-          })
-          .slice(0, 50);
-      }
-
-      // Step 5: Merge results in priority order
+      // Step 6: Merge results in priority order
       shuffleArray(swipedUsers);
+      shuffleArray(ageYearUsers);
       shuffleArray(availabilityUsers);
       shuffleArray(generalUsers);
 
-      const recommendations = [
-        ...swipedUsers,
-        ...availabilityUsers,
-        ...generalUsers,
-      ];
+      // Merge with de-dup and cap by finalRecsLimit
+      const seen = new Set<string>();
+      const merged: any[] = [];
+      const pushUnique = (arr: any[]) => {
+        for (const u of arr) {
+          const id = u.uid;
+          if (!seen.has(id)) {
+            seen.add(id);
+            merged.push(u);
+            if (merged.length >= finalRecsLimit) return true;
+          }
+        }
+        return false;
+      };
 
-      return { recommendations };
+      if (!pushUnique(swipedUsers)) {
+        if (!pushUnique(ageYearUsers)) {
+          if (!pushUnique(availabilityUsers)) {
+            pushUnique(generalUsers);
+          }
+        }
+      }
+
+      return { recommendations: merged };
     } catch (error: any) {
+      console.error("Recommendations function error:", error);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
@@ -283,6 +430,126 @@ function getCompatibilityQuery(currentUserData: any) {
   return { gender: compatibleGenders, orientation: compatibleOrientations };
 }
 
+/**
+ * Blocks a user by adding them to the current user's blocked subcollection
+ */
+export const blockUser = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ blockedUserId: string }>) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const userId = request.auth.uid;
+      const { blockedUserId } = request.data;
+
+      if (!blockedUserId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "blockedUserId is required"
+        );
+      }
+
+      if (userId === blockedUserId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Cannot block yourself"
+        );
+      }
+
+      // Add to blocked subcollection
+      await db
+        .collection("users")
+        .doc(userId)
+        .collection("blocked")
+        .doc(blockedUserId)
+        .set({
+          blockedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      return { success: true, message: "User blocked successfully" };
+    } catch (error: any) {
+      console.error("Error blocking user:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError("internal", "Failed to block user");
+    }
+  }
+);
+
+/**
+ * Unblocks a user by removing them from the current user's blocked subcollection
+ */
+export const unblockUser = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: CallableRequest<{ blockedUserId: string }>) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const userId = request.auth.uid;
+      const { blockedUserId } = request.data;
+
+      if (!blockedUserId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "blockedUserId is required"
+        );
+      }
+
+      // Remove from blocked subcollection
+      await db
+        .collection("users")
+        .doc(userId)
+        .collection("blocked")
+        .doc(blockedUserId)
+        .delete();
+
+      return { success: true, message: "User unblocked successfully" };
+    } catch (error: any) {
+      console.error("Error unblocking user:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to unblock user"
+      );
+    }
+  }
+);
+
 export const recommendationsFunctions = {
   getRecommendations,
+  blockUser,
+  unblockUser,
 };

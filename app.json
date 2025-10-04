@@ -2,7 +2,7 @@
   "expo": {
     "name": "harbor",
     "slug": "harbor",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,6 @@
       "supportsTablet": false,
       "bundleIdentifier": "app.tryharbor",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "buildNumber": "1",
       "entitlements": {
         "aps-environment": "production"
       },
@@ -28,7 +27,7 @@
         "NSMicrophoneUsageDescription": "Harbor needs access to your microphone for voice messages in chat.",
         "CFBundleDisplayName": "Harbor",
         "CFBundleName": "Harbor",
-        "CFBundleShortVersionString": "1.0.0"
+        "CFBundleShortVersionString": "1.0.1"
       },
       "appleTeamId": "V45GUPHT93"
     },

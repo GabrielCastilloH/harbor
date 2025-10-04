@@ -70,7 +70,7 @@ export default function ReportScreen() {
   const handleBlockUser = async () => {
     Alert.alert(
       "Block User",
-      "Are you sure you want to block this user? This will also unmatch you.",
+      "Are you sure you want to block this user? This will also disconnect you.",
       [
         {
           text: "Cancel",

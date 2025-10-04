@@ -310,7 +310,7 @@ export default function SettingsScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Made with ❤️ by Gabriel Castillo and Zain Bilal.
+            Made with ❤️ by Gabriel Castillo & Co.
           </Text>
         </View>
       </ScrollView>
