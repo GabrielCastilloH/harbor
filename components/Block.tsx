@@ -5,6 +5,7 @@ import {
   View,
   TouchableOpacity,
   Alert,
+  ScrollView,
 } from "react-native";
 import {
   PanGestureHandler,
@@ -19,6 +20,7 @@ import Animated, {
 } from "react-native-reanimated";
 import BasicInfoView from "./BasicInfoView";
 import PersonalView from "./PersonalView";
+import MatchModal from "./MatchModal";
 import { Profile } from "../types/App";
 import Colors from "../constants/Colors";
 import { FontAwesome, Octicons } from "@expo/vector-icons";
@@ -27,31 +29,39 @@ import { SwipeService } from "../networking/SwipeService";
 
 const { width: screenWidth } = Dimensions.get("window");
 const SWIPE_THRESHOLD = screenWidth * 0.15; // 15% of screen width - more sensitive
-const SWIPE_SENSITIVITY = screenWidth * 0.25; // 25% threshold for switching views
+const SWIPE_SENSITIVITY = screenWidth * 0.12; // Lower threshold for easier switching
 
-// Define a smoother spring configuration
+// Define a spring configuration with reduced bounce/overshoot
 const SMOOTH_SPRING_CONFIG = {
-  damping: 20, // Lower damping for more responsive feel
-  stiffness: 300, // Higher stiffness for snappier animations
-  mass: 0.8, // Lower mass for lighter feel
+  damping: 26,
+  stiffness: 240,
+  mass: 0.9,
+  overshootClamping: true,
+  restDisplacementThreshold: 0.5,
+  restSpeedThreshold: 0.5,
 };
+
+// Require stronger horizontal intent before activating page swipe
+const VERTICAL_SCROLL_PRIORITY_SLOP = 20;
 
 interface PostProps {
   profile: Profile;
 }
 
 const Post = ({ profile }: PostProps) => {
-  const { userId } = useAppContext();
+  const { userId, profile: currentUserProfile } = useAppContext();
   const translateX = useSharedValue(0);
   const opacity = useSharedValue(1);
 
   const [isLiked, setIsLiked] = useState(false);
   const [isDisliked, setIsDisliked] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showMatchModal, setShowMatchModal] = useState(false);
+  const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
+  const [matchId, setMatchId] = useState<string | null>(null);
 
   const gestureHandler = useAnimatedGestureHandler({
     onStart: (_, context: any) => {
-      // Prevent swiping if a choice has already been made or is processing
       if (isLiked || isDisliked || isProcessing) {
         return;
       }
@@ -61,24 +71,32 @@ const Post = ({ profile }: PostProps) => {
       if (isLiked || isDisliked || isProcessing) {
         return;
       }
-      const nextTranslateX = context.startX + event.translationX;
-      translateX.value = nextTranslateX;
+      const proposed = context.startX + event.translationX;
+      // Clamp between 0 (BasicInfoView) and -screenWidth (PersonalView)
+      const clamped = Math.max(-screenWidth, Math.min(0, proposed));
+      translateX.value = clamped;
     },
     onEnd: (event) => {
-      // Logic for swiping between views (card snapping) - much more sensitive
       const velocity = event.velocityX;
       const currentPosition = translateX.value;
 
-      // Consider both position and velocity for more natural swiping
-      const shouldSwitchToPersonal =
-        currentPosition < -SWIPE_SENSITIVITY ||
-        (currentPosition < -screenWidth * 0.1 && velocity < -500);
+      const fastLeft = velocity < -300;
+      const fastRight = velocity > 300;
 
-      if (shouldSwitchToPersonal) {
-        // Snap to the "PersonalView" - only need to swipe 25% of screen width or fast swipe
+      if (fastLeft) {
+        translateX.value = withSpring(-screenWidth, SMOOTH_SPRING_CONFIG);
+        return;
+      }
+      if (fastRight) {
+        translateX.value = withSpring(0, SMOOTH_SPRING_CONFIG);
+        return;
+      }
+
+      // Snap to whichever view we're closer to
+      const halfwayPoint = -screenWidth / 2;
+      if (currentPosition < halfwayPoint) {
         translateX.value = withSpring(-screenWidth, SMOOTH_SPRING_CONFIG);
       } else {
-        // Snap back to the "BasicInfoView"
         translateX.value = withSpring(0, SMOOTH_SPRING_CONFIG);
       }
     },
@@ -123,7 +141,9 @@ const Post = ({ profile }: PostProps) => {
 
         // Handle match result if there's a match
         if (result.match) {
-          // You could show a match notification here
+          setMatchedProfile(profile);
+          setMatchId(result.matchId || null);
+          setShowMatchModal(true);
         }
       } catch (error: any) {
         console.error("Error creating like swipe:", error);
@@ -190,17 +210,20 @@ const Post = ({ profile }: PostProps) => {
     <GestureHandlerRootView>
       <PanGestureHandler
         onGestureEvent={gestureHandler}
-        activeOffsetX={[-5, 5]} // More sensitive horizontal detection
-        activeOffsetY={[-15, 15]} // Slightly more sensitive vertical detection
+        // Prioritize vertical scroll by requiring stronger horizontal movement
+        activeOffsetX={[
+          -VERTICAL_SCROLL_PRIORITY_SLOP,
+          VERTICAL_SCROLL_PRIORITY_SLOP,
+        ]}
         enabled={!isLiked && !isDisliked && !isProcessing}
       >
         <Animated.View style={[styles.container, animatedStyle]}>
-          <View style={styles.viewContainer}>
+          <ScrollView style={styles.viewContainer}>
             <BasicInfoView profile={profile} />
-          </View>
-          <View style={styles.viewContainer}>
+          </ScrollView>
+          <ScrollView style={styles.viewContainer}>
             <PersonalView profile={profile} />
-          </View>
+          </ScrollView>
         </Animated.View>
       </PanGestureHandler>
 
@@ -232,6 +255,14 @@ const Post = ({ profile }: PostProps) => {
           color={isProcessing ? Colors.secondary500 : Colors.primary500}
         />
       </TouchableOpacity>
+
+      <MatchModal
+        visible={showMatchModal}
+        onClose={() => setShowMatchModal(false)}
+        matchedProfile={matchedProfile}
+        currentProfile={currentUserProfile}
+        matchId={matchId || undefined}
+      />
     </GestureHandlerRootView>
   );
 };

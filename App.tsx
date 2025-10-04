@@ -238,7 +238,7 @@ function AppContent() {
   const BannedStack = createNativeStackNavigator();
 
   if (!isInitialized) {
-    return <LoadingScreen loadingText="Signing you in..." />;
+    return <LoadingScreen loadingText="Loading..." />;
   }
 
   // Check if user is banned and authenticated
