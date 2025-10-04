@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { TouchableOpacity, Text, View, AppState, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -173,10 +173,11 @@ export default function ChatNavigator() {
     setStreamApiKey,
     setStreamUserToken,
     setUnreadCount,
+    userProfile, // 🚀 Use cached profile from AppContext
+    cacheStreamApiKey,
+    cacheStreamUserToken,
   } = useAppContext();
 
-  const [profile, setProfile] = useState<any>(null);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Use pre-loaded credentials from context, fallback to fetching if not available
@@ -214,6 +215,7 @@ export default function ChatNavigator() {
         const apiKey = await ChatFunctions.getStreamApiKey();
         setChatApiKey(apiKey);
         setStreamApiKey(apiKey); // Store in context for future use
+        cacheStreamApiKey(apiKey); // 🚀 Cache the API key
       } catch (error) {
         console.error("🔴 ChatNavigator - Failed to fetch API key:", error);
         setError("Failed to fetch API key");
@@ -221,7 +223,7 @@ export default function ChatNavigator() {
     };
 
     fetchApiKey();
-  }, [chatApiKey, setStreamApiKey]);
+  }, [chatApiKey, setStreamApiKey, cacheStreamApiKey]);
 
   // Fetch user token only if not pre-loaded
   useEffect(() => {
@@ -234,6 +236,7 @@ export default function ChatNavigator() {
         const token = await ChatFunctions.generateToken(userId);
         setChatUserToken(token);
         setStreamUserToken(token); // Store in context for future use
+        cacheStreamUserToken(token, 24); // 🚀 Cache the token for 24 hours
       } catch (error) {
         console.error("🔴 ChatNavigator - Failed to fetch chat token:", error);
         setError("Failed to fetch chat token");
@@ -241,7 +244,7 @@ export default function ChatNavigator() {
     };
 
     fetchToken();
-  }, [chatUserToken, userId, setStreamUserToken]);
+  }, [chatUserToken, userId, setStreamUserToken, cacheStreamUserToken]);
 
   // 💡 CRITICAL: This useEffect must run and set the notificationToken state
   // Get notification token from AsyncStorage (set during AccountSetupScreen)
@@ -264,19 +267,21 @@ export default function ChatNavigator() {
     getStoredNotificationToken();
   }, []);
 
-  // Create a memoized user object
+  // Create a memoized user object using cached profile
   const user = useMemo(() => {
-    if (!profile || !userId) {
+    if (!userProfile || !userId) {
       return null;
     }
+
     return {
       id: userId,
-      name: profile.firstName || "User",
+      name: userProfile.firstName || "User",
     };
-  }, [profile, userId]);
+  }, [userProfile, userId]);
 
   // 💡 Centralized client creation and connection logic
   const [chatClient, setChatClient] = useState<StreamChat | null>(null);
+  const isInitializingRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -288,38 +293,17 @@ export default function ChatNavigator() {
         return;
       }
 
-      // 💡 Add this line for an extra check to prevent multiple client creation
-      if (clientInstance || chatClient) {
-        // Client already exists or is being created
+      // 💡 CRITICAL: Prevent multiple client creation attempts
+      if (clientInstance || chatClient || isInitializingRef.current) {
         return;
       }
+
+      // Set the flag to prevent duplicate initialization
+      isInitializingRef.current = true;
 
       // Only create a new client if one doesn't exist
       // This prevents consecutive connectUser calls
       if (chatClient) {
-        // If a client exists, and a new notification token comes in, update the device.
-        // This is the correct place to handle this.
-        if (notificationToken) {
-          try {
-            // Set device for notifications
-            (chatClient as StreamChat).setLocalDevice({
-              id: notificationToken,
-              push_provider: "firebase",
-              push_provider_name: "HarborFirebasePush",
-            });
-            await (chatClient as StreamChat).addDevice(
-              notificationToken,
-              "firebase",
-              userId,
-              "HarborFirebasePush"
-            );
-          } catch (deviceError) {
-            console.error(
-              "🔔 [NOTIFICATION] Failed to register device with Stream:",
-              deviceError
-            );
-          }
-        }
         return;
       }
 
@@ -327,7 +311,7 @@ export default function ChatNavigator() {
         // 1. Create client instance
         clientInstance = StreamChat.getInstance(chatApiKey);
 
-        // 2. Conditionally set device BEFORE connecting the user
+        // 2. Set notification device BEFORE connecting (required by Stream Chat)
         if (notificationToken) {
           clientInstance.setLocalDevice({
             id: notificationToken,
@@ -339,17 +323,6 @@ export default function ChatNavigator() {
         // 3. Connect the user
         await clientInstance.connectUser(user, chatUserToken);
 
-        // 4. Register the device with Stream servers *after* connecting
-        // This is a crucial step to handle cases where token is available initially.
-        if (notificationToken) {
-          await clientInstance.addDevice(
-            notificationToken,
-            "firebase",
-            userId,
-            "HarborFirebasePush"
-          );
-        }
-
         if (isMounted) {
           setChatClient(clientInstance);
         }
@@ -358,6 +331,8 @@ export default function ChatNavigator() {
         if (isMounted) {
           setError("Failed to create chat client");
         }
+      } finally {
+        isInitializingRef.current = false;
       }
     };
 
@@ -365,12 +340,16 @@ export default function ChatNavigator() {
 
     return () => {
       isMounted = false;
+      isInitializingRef.current = false;
       // Clean up the client on unmount to prevent memory leaks
       if (clientInstance) {
         clientInstance.disconnectUser();
       }
     };
-  }, [chatApiKey, chatUserToken, userId, user, notificationToken]);
+  }, [chatApiKey, chatUserToken, userId, user]);
+
+  // 💡 Note: Notification device is now set during client initialization (before connection)
+  // This prevents the "you can only set device before opening a websocket connection" error
 
   // 💡 Enhanced token refresh listener with better error handling
   useEffect(() => {
@@ -501,32 +480,7 @@ export default function ChatNavigator() {
     };
   }, [chatClient]);
 
-  // Fetch user profile data
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!userId) return;
-      setIsLoadingProfile(true);
-      try {
-        const response = await UserService.getUserById(userId);
-        let profileData = response?.user || response;
-        if (profileData?.firstName) {
-          setProfile(profileData);
-        } else {
-          console.error("🔴 ChatNavigator - Invalid profile data:", response);
-          setError("Invalid profile data format");
-        }
-      } catch (error) {
-        console.error(
-          "🔴 ChatNavigator - Failed to fetch user profile:",
-          error
-        );
-        setError("Failed to fetch user profile");
-      } finally {
-        setIsLoadingProfile(false);
-      }
-    };
-    fetchUserProfile();
-  }, [userId]);
+  // 🚀 REMOVED: User profile fetching - now using cached profile from AppContext
 
   // Show error if there's an issue
   if (error) {
@@ -539,15 +493,15 @@ export default function ChatNavigator() {
 
   // 💡 CRITICAL FIX: Comprehensive loading condition to prevent partial renders
   // This ensures the Chat component is NEVER rendered until ALL prerequisites are met:
-  // 1. Profile must be loaded (not loading and not null)
+  // 1. User profile must be available from cache
   // 2. Chat API key must be fetched from backend
   // 3. Chat user token must be generated
   // 4. User ID must be available from context
   // 5. Chat client must be fully initialized and connected
   // 6. User object must be properly constructed
+
   if (
-    isLoadingProfile ||
-    !profile ||
+    !userProfile ||
     !chatApiKey ||
     !chatUserToken ||
     !userId ||

@@ -1,7 +1,6 @@
 import * as ImageManipulator from "expo-image-manipulator";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getFirestore, doc, updateDoc, arrayUnion } from "firebase/firestore";
-import { v4 as uuidv4 } from "uuid";
 import app from "../firebaseConfig";
 
 const storage = getStorage(app);
@@ -57,19 +56,25 @@ export async function uploadImageViaCloudFunction(
   );
 
   try {
+    // Convert blob to base64 for the cloud function
+    const arrayBuffer = await blob.arrayBuffer();
+    const base64Data = Buffer.from(arrayBuffer).toString("base64");
+
     const result = await generateBlurred({
+      imageData: base64Data,
       userId: userId,
       filename: filename,
     });
 
-    // Construct blurred URL
-    const blurredUrl = originalUrl.replace("_original.jpg", "_blurred.jpg");
+    // Use the blurred URL from the cloud function response
+    const blurredUrl = result.data.blurredUrl;
 
     return { filename, originalUrl, blurredUrl };
   } catch (error) {
     console.error("❌ Failed to generate blurred version:", error);
-    // Return original URL as fallback
-    return { filename, originalUrl, blurredUrl: originalUrl };
+    // NEVER expose original as fallback - return empty string instead
+    // This ensures privacy is maintained even if blurring fails
+    return { filename, originalUrl, blurredUrl: "" };
   }
 }
 

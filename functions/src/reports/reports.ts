@@ -618,10 +618,139 @@ export const blockUser = functions.https.onCall(
   }
 );
 
+/**
+ * Creates a report and blocks a user from the feed (without a match)
+ */
+export const reportAndBlock = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    minInstances: 0,
+    maxInstances: 10,
+    concurrency: 80,
+    cpu: 1,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (
+    request: CallableRequest<{
+      reportedUserId: string;
+      reportedUserEmail?: string;
+      reportedUserName?: string;
+      reason: string;
+      explanation: string;
+    }>
+  ) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const {
+        reportedUserId,
+        reportedUserEmail,
+        reportedUserName,
+        reason,
+        explanation,
+      } = request.data;
+
+      const reporterId = request.auth.uid;
+
+      if (!reportedUserId || !reason || !explanation) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Missing required fields: reportedUserId, reason, or explanation"
+        );
+      }
+
+      // Prevent self-reporting
+      if (reporterId === reportedUserId) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Cannot report yourself"
+        );
+      }
+
+      // Get reporter's email
+      const reporterUser = await admin.auth().getUser(reporterId);
+      const reporterEmail = reporterUser.email;
+
+      // Get reported user's email if not provided
+      let finalReportedUserEmail = reportedUserEmail;
+      if (!finalReportedUserEmail) {
+        try {
+          const reportedUser = await admin.auth().getUser(reportedUserId);
+          finalReportedUserEmail = reportedUser.email;
+        } catch (error) {
+          console.error("Could not get reported user email:", error);
+        }
+      }
+
+      // Use transaction for atomic report + block operations
+      const reportRef = db.collection("reports").doc();
+      await db.runTransaction(async (transaction) => {
+        // 1. Create the report
+        const reportData = {
+          reporterId,
+          reporterEmail,
+          reportedUserId,
+          reportedUserEmail: finalReportedUserEmail,
+          reportedUserName,
+          reason,
+          explanation,
+          status: "pending",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        transaction.set(reportRef, reportData);
+
+        // 2. Add the reported user to the reporter's 'blockedUsers' array
+        const reporterRef = db.collection("users").doc(reporterId);
+        const reporterDoc = await transaction.get(reporterRef);
+
+        if (!reporterDoc.exists) {
+          throw new functions.https.HttpsError(
+            "not-found",
+            "Reporter user not found"
+          );
+        }
+
+        transaction.update(reporterRef, {
+          blockedUsers: admin.firestore.FieldValue.arrayUnion(reportedUserId),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      });
+
+      return {
+        message: "Report submitted and user blocked successfully",
+        reportId: reportRef.id,
+        blockedUserId: reportedUserId,
+      };
+    } catch (error: any) {
+      console.error("Error in reportAndBlock:", error);
+
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to report and block user"
+      );
+    }
+  }
+);
+
 export const reportFunctions = {
   createReport,
   getReports,
   updateReportStatus,
   reportAndUnmatch,
   blockUser,
+  reportAndBlock,
 };

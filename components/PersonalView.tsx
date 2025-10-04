@@ -1,12 +1,79 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { CardViewProps } from "../types/App";
+import { useAppContext } from "../context/AppContext";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { useNavigation } from "@react-navigation/native";
 
 export default function PersonalView({ profile }: CardViewProps) {
+  const { userId } = useAppContext();
+  const navigation = useNavigation();
+
+  const handleReportUser = () => {
+    Alert.alert(
+      "Report User",
+      "Are you sure you want to report this user? This will block them and submit a report to our team.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Report",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const functions = getFunctions();
+              const reportAndBlock = httpsCallable(
+                functions,
+                "reportFunctions-reportAndBlock"
+              );
+
+              await reportAndBlock({
+                reportedUserId: profile.uid,
+                reportedUserEmail: profile.email,
+                reportedUserName: profile.firstName,
+                reason: "Inappropriate profile",
+                explanation:
+                  "User reported inappropriate profile content from feed",
+              });
+
+              Alert.alert(
+                "User Reported",
+                "This user has been reported and blocked. Thank you for helping keep our community safe.",
+                [
+                  {
+                    text: "OK",
+                    onPress: () => {
+                      // The user will be removed from recommendations automatically
+                    },
+                  },
+                ]
+              );
+            } catch (error) {
+              console.error("Error reporting user:", error);
+              Alert.alert(
+                "Error",
+                "Failed to report user. Please try again later."
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.contentContainer}>
+      <TouchableOpacity
+        style={styles.flagButton}
+        onPress={handleReportUser}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="flag-outline" size={24} color={Colors.primary500} />
+      </TouchableOpacity>
       <View style={styles.content}>
         <View style={styles.sectionsContainer}>
           <View style={[styles.section, { flex: 1 }]}>
@@ -40,6 +107,15 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     minHeight: 400,
+  },
+  flagButton: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    zIndex: 10,
+    backgroundColor: Colors.secondary100,
+    borderRadius: 16,
+    padding: 6,
   },
   sectionHeader: {
     flexDirection: "row",

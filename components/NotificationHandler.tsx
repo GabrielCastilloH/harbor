@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import messaging from "@react-native-firebase/messaging";
-import notifee, { EventType } from "@notifee/react-native";
+import notifee, { EventType, AndroidImportance } from "@notifee/react-native";
 import { NavigationContainerRef } from "@react-navigation/native";
 
 interface NotificationHandlerProps {
@@ -18,18 +18,8 @@ export default function NotificationHandler({
     // Handle notification opened app from background state (iOS)
     const unsubscribeOnNotificationOpen = messaging().onNotificationOpenedApp(
       (remoteMessage) => {
-        // Navigate to relevant channel screen for Stream Chat messages
-        if (
-          remoteMessage.data?.type === "message.new" &&
-          remoteMessage.data?.channel_id
-        ) {
-          const channelId = remoteMessage.data.channel_id;
-
-          navigationRef.current?.navigate("ChatsTab", {
-            screen: "ChatScreen",
-            params: { channelId },
-          });
-        }
+        // Only open the app, do not navigate anywhere
+        // This prevents the "failed to fetch user profile" error
       }
     );
 
@@ -59,13 +49,8 @@ export default function NotificationHandler({
     const unsubscribeBackgroundEvent = notifee.onBackgroundEvent(
       async ({ detail, type }) => {
         if (type === EventType.PRESS) {
-          const channelId = detail.notification?.data?.channel_id;
-          if (channelId) {
-            navigationRef.current?.navigate("ChatsTab", {
-              screen: "ChatScreen",
-              params: { channelId },
-            });
-          }
+          // Only open the app, do not navigate anywhere
+          // This prevents the "failed to fetch user profile" error
           await Promise.resolve();
         }
       }
@@ -79,13 +64,8 @@ export default function NotificationHandler({
     const unsubscribeForegroundEvent = notifee.onForegroundEvent(
       ({ detail, type }) => {
         if (type === EventType.PRESS) {
-          const channelId = detail.notification?.data?.channel_id;
-          if (channelId) {
-            navigationRef.current?.navigate("ChatsTab", {
-              screen: "ChatScreen",
-              params: { channelId },
-            });
-          }
+          // Only open the app, do not navigate anywhere
+          // This prevents the "failed to fetch user profile" error
         }
       }
     );
@@ -93,46 +73,7 @@ export default function NotificationHandler({
     return unsubscribeForegroundEvent;
   }, [navigationRef]);
 
-  useEffect(() => {
-    // Handle foreground messages for Stream Chat notifications
-    const unsubscribeOnMessage = messaging().onMessage(
-      async (remoteMessage) => {
-        // Only handle Stream Chat message notifications
-        if (
-          remoteMessage.data?.type === "message.new" &&
-          remoteMessage.data?.sender === "stream.chat"
-        ) {
-          try {
-            // Create the android channel to send the notification to
-            const channelId = await notifee.createChannel({
-              id: "chat-messages",
-              name: "Chat Messages",
-            });
-
-            // Display the notification in foreground (optional - most chat apps don't show this)
-            // Uncomment if you want to show notifications even when app is open
-            /*
-          await notifee.displayNotification({
-            title: "New message",
-            body: remoteMessage.data?.message || "You have a new message",
-            data: remoteMessage.data,
-            android: {
-              channelId,
-              pressAction: {
-                id: "default",
-              },
-            },
-          });
-          */
-          } catch (error) {
-            console.error("🔔 Error handling foreground message:", error);
-          }
-        }
-      }
-    );
-
-    return unsubscribeOnMessage;
-  }, []);
+  // Foreground notification logic removed - match modal now handles this
 
   // This component doesn't render anything
   return null;

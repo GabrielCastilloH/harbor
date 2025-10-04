@@ -1,11 +1,12 @@
 import * as functions from "firebase-functions/v2";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
 import { CallableRequest } from "firebase-functions/v2/https";
 
 const db = admin.firestore();
 
 /**
- * Helper function to check if a group can be formed based on swipes
+ * Checks if a group can be formed based on swipes
  */
 async function checkForGroupFormation(
   swiperId: string,
@@ -13,11 +14,9 @@ async function checkForGroupFormation(
   groupSize: number
 ): Promise<{ canFormGroup: boolean; memberIds: string[] }> {
   if (groupSize === 2) {
-    // For group size 2, use the existing individual matching logic
     return { canFormGroup: false, memberIds: [] };
   }
 
-  // Get all users with the same group size preference
   const usersWithSameGroupSize = await db
     .collection("users")
     .where("groupSize", "==", groupSize)
@@ -28,62 +27,50 @@ async function checkForGroupFormation(
     .map((doc) => doc.id)
     .filter((id) => id !== swiperId && id !== swipedId);
 
-  // Get all right swipes involving the swiper and swiped user
-  const swiperSwipes = await db
-    .collection("swipes")
-    .where("swiperId", "==", swiperId)
-    .where("direction", "==", "right")
-    .get();
-
-  const swipedSwipes = await db
-    .collection("swipes")
-    .where("swiperId", "==", swipedId)
-    .where("direction", "==", "right")
-    .get();
-
-  // Create sets of who each user has swiped right on
+  const [swiperOutgoing, swipedOutgoing] = await Promise.all([
+    db.collection("swipes").doc(swiperId).collection("outgoing").get(),
+    db.collection("swipes").doc(swipedId).collection("outgoing").get(),
+  ]);
   const swiperLikes = new Set(
-    swiperSwipes.docs.map((doc) => doc.data().swipedId)
+    swiperOutgoing.docs
+      .filter((d) => (d.data() as any).direction === "right")
+      .map((d) => d.id)
   );
   const swipedLikes = new Set(
-    swipedSwipes.docs.map((doc) => doc.data().swipedId)
+    swipedOutgoing.docs
+      .filter((d) => (d.data() as any).direction === "right")
+      .map((d) => d.id)
   );
 
-  // Check if swiper and swiped have mutual interest
   if (!swiperLikes.has(swipedId) || !swipedLikes.has(swiperId)) {
     return { canFormGroup: false, memberIds: [] };
   }
 
-  // For groups larger than 2, find other users who have swiped on enough members
   if (groupSize > 2) {
     const potentialMembers = [swiperId, swipedId];
 
-    // Find additional members who have swiped on at least 2 of the current members
     for (const candidateId of candidateUserIds) {
-      const candidateSwipes = await db
+      const candidateOutgoing = await db
         .collection("swipes")
-        .where("swiperId", "==", candidateId)
-        .where("direction", "==", "right")
+        .doc(candidateId)
+        .collection("outgoing")
         .get();
-
       const candidateLikes = new Set(
-        candidateSwipes.docs.map((doc) => doc.data().swipedId)
+        candidateOutgoing.docs
+          .filter((d) => (d.data() as any).direction === "right")
+          .map((d) => d.id)
       );
 
-      // Count how many current members this candidate has swiped on
       const mutualLikes = potentialMembers.filter((memberId) =>
         candidateLikes.has(memberId)
       );
 
-      // Also check if current members have swiped on this candidate
       const reverseLikes = potentialMembers.filter((memberId) => {
         if (memberId === swiperId) return swiperLikes.has(candidateId);
         if (memberId === swipedId) return swipedLikes.has(candidateId);
         return false;
       });
 
-      // For a group of 3, we need at least 2 mutual connections
-      // For a group of 4, we need at least 2 mutual connections
       const minConnections = Math.max(2, Math.floor(groupSize / 2));
 
       if (
@@ -102,8 +89,6 @@ async function checkForGroupFormation(
   return { canFormGroup: false, memberIds: [] };
 }
 
-// A single constant that tracks the max swipes per day for all users.
-// We've forgotten about the 'isPremium' thing for now.
 const MAX_SWIPES_PER_DAY = 5;
 
 /**
@@ -145,51 +130,27 @@ export const createSwipe = functions.https.onCall(
         );
       }
 
-      // Check for active matches before allowing any swipe
-      const [
-        swiperActiveMatches1,
-        swiperActiveMatches2,
-        swipedActiveMatches1,
-        swipedActiveMatches2,
-      ] = await Promise.all([
+      const [swiperActiveMatches, swipedActiveMatches] = await Promise.all([
         db
           .collection("matches")
           .where("isActive", "==", true)
-          .where("user1Id", "==", swiperId)
+          .where("participantIds", "array-contains", swiperId)
           .get(),
         db
           .collection("matches")
           .where("isActive", "==", true)
-          .where("user2Id", "==", swiperId)
-          .get(),
-        db
-          .collection("matches")
-          .where("isActive", "==", true)
-          .where("user1Id", "==", swipedId)
-          .get(),
-        db
-          .collection("matches")
-          .where("isActive", "==", true)
-          .where("user2Id", "==", swipedId)
+          .where("participantIds", "array-contains", swipedId)
           .get(),
       ]);
 
-      // Check if swiper has an active match
-      if (
-        swiperActiveMatches1.docs.length > 0 ||
-        swiperActiveMatches2.docs.length > 0
-      ) {
+      if (swiperActiveMatches.docs.length > 0) {
         throw new functions.https.HttpsError(
           "permission-denied",
           "Cannot swipe while you have an active match"
         );
       }
 
-      // Check if swiped user has an active match
-      if (
-        swipedActiveMatches1.docs.length > 0 ||
-        swipedActiveMatches2.docs.length > 0
-      ) {
+      if (swipedActiveMatches.docs.length > 0) {
         throw new functions.https.HttpsError(
           "permission-denied",
           "Cannot swipe on a user who has an active match"
@@ -213,56 +174,38 @@ export const createSwipe = functions.https.onCall(
 
         const swiperUser = swiperUserDoc.data();
 
-        // 1. Check for swipe limits based on the unified system
         const today = new Date().toISOString().split("T")[0];
-        let swipesToday = swiperUser?.swipesToday ?? 0;
-        const resetDate = swiperUser?.resetDate ?? today;
-
-        if (resetDate !== today) {
-          swipesToday = 0;
+        const counterRef = db
+          .collection("users")
+          .doc(swiperId)
+          .collection("counters")
+          .doc("swipes");
+        const counterSnap = await transaction.get(counterRef);
+        const counterData = counterSnap.exists
+          ? (counterSnap.data() as any)
+          : {};
+        const counterResetDate = counterData.resetDate ?? today;
+        let currentCount = Number(counterData.count || 0);
+        if (counterResetDate !== today) {
+          currentCount = 0;
         }
-
-        if (swipesToday >= MAX_SWIPES_PER_DAY) {
+        if (currentCount >= MAX_SWIPES_PER_DAY) {
           throw new functions.https.HttpsError(
             "resource-exhausted",
             "Daily swipe limit reached"
           );
         }
 
-        // 2. Check if users have unmatched before
-        const unmatchedCheck = await db
-          .collection("matches")
-          .where("user1Id", "in", [swiperId, swipedId])
-          .where("user2Id", "in", [swiperId, swipedId])
-          .where("isActive", "==", false)
-          .limit(1)
-          .get();
+        const existingSwipeDoc = await transaction.get(
+          db
+            .collection("swipes")
+            .doc(swiperId)
+            .collection("outgoing")
+            .doc(swipedId)
+        );
 
-        if (!unmatchedCheck.empty) {
-          return {
-            message: "Users have unmatched before, cannot match again",
-            swipe: null,
-            match: false,
-          };
-        }
-
-        // Active match checks are now done before the transaction for better performance
-
-        // 4. Check if swipe already exists
-        const existingSwipe = await db
-          .collection("swipes")
-          .where("swiperId", "==", swiperId)
-          .where("swipedId", "==", swipedId)
-          .where("direction", "==", direction)
-          .limit(1)
-          .get();
-
-        if (!existingSwipe.empty) {
-          return {
-            message: "Swipe already exists",
-            swipe: existingSwipe.docs[0].data(),
-            match: false,
-          };
+        if (existingSwipeDoc.exists) {
+          return { message: "Swipe already exists", swipe: null, match: false };
         }
 
         const swipeData = {
@@ -272,40 +215,38 @@ export const createSwipe = functions.https.onCall(
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
         };
 
-        // 5. Check for mutual swipe and create a match if it exists
         let match = false;
         let matchId = null;
         let isGroupMatch = false;
 
         if (direction === "right") {
-          // Get the group size preference of the swiper
           const swiperGroupSize = swiperUser?.groupSize || 2;
 
-          // STRICT GROUP SIZE MATCHING: Only match users in groups of their selected size
           if (swiperGroupSize === 2) {
-            // For group size 2, only create individual matches
-            const mutualSwipe = await db
+            const otherOutgoingRef = db
               .collection("swipes")
-              .where("swiperId", "==", swipedId)
-              .where("swipedId", "==", swiperId)
-              .where("direction", "==", "right")
-              .limit(1)
-              .get();
+              .doc(swipedId)
+              .collection("outgoing")
+              .doc(swiperId);
+            const otherOutgoingSnap = await otherOutgoingRef.get();
 
-            if (!mutualSwipe.empty) {
+            const otherOutgoing = otherOutgoingSnap.exists
+              ? (otherOutgoingSnap.data() as any)
+              : null;
+
+            if (otherOutgoing && otherOutgoing.direction === "right") {
               match = true;
               const matchRef = db.collection("matches").doc();
               matchId = matchRef.id;
 
               const matchData = {
                 type: "individual",
-                user1Id: swiperId,
-                user2Id: swipedId,
+                participantIds: [swiperId, swipedId],
                 matchDate: admin.firestore.FieldValue.serverTimestamp(),
                 isActive: true,
                 messageCount: 0,
-                bothConsented: false,
-                bothViewed: false,
+                participantConsent: { [swiperId]: false, [swipedId]: false },
+                participantViewed: { [swiperId]: false, [swipedId]: false },
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               };
@@ -319,7 +260,6 @@ export const createSwipe = functions.https.onCall(
               });
             }
           } else {
-            // For group sizes 3 and 4, only create group matches
             const groupFormation = await checkForGroupFormation(
               swiperId,
               swipedId,
@@ -330,7 +270,6 @@ export const createSwipe = functions.https.onCall(
               groupFormation.canFormGroup &&
               groupFormation.memberIds.length === swiperGroupSize
             ) {
-              // Create a group match
               match = true;
               const matchRef = db.collection("matches").doc();
               matchId = matchRef.id;
@@ -343,17 +282,14 @@ export const createSwipe = functions.https.onCall(
                 matchDate: admin.firestore.FieldValue.serverTimestamp(),
                 isActive: true,
                 messageCount: 0,
-                // Track consent for each member (all must consent for group blur to work)
                 memberConsent: groupFormation.memberIds.reduce((acc, id) => {
                   acc[id] = false;
                   return acc;
                 }, {} as Record<string, boolean>),
-                // Track view status for each member
                 memberViewed: groupFormation.memberIds.reduce((acc, id) => {
-                  acc[id] = id === swiperId; // Only the swiper has viewed it initially
+                  acc[id] = id === swiperId;
                   return acc;
                 }, {} as Record<string, boolean>),
-                // Group-specific blur logic: all members must consent for real unblur
                 allMembersConsented: false,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -361,7 +297,6 @@ export const createSwipe = functions.https.onCall(
 
               transaction.set(matchRef, matchData);
 
-              // Update all member users to include this match in their currentMatches
               for (const memberId of groupFormation.memberIds) {
                 const memberRef = db.collection("users").doc(memberId);
                 transaction.update(memberRef, {
@@ -370,18 +305,38 @@ export const createSwipe = functions.https.onCall(
                 });
               }
             }
-            // If group formation fails, no match is created (strict group size enforcement)
           }
         }
 
-        // 6. Record the swipe and update the swipe count
-        const swipeRef = db.collection("swipes").doc();
-        transaction.set(swipeRef, swipeData);
-        transaction.update(swiperUserRef, {
-          swipesToday: admin.firestore.FieldValue.increment(1),
-          resetDate: today,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        const outgoingRef = db
+          .collection("swipes")
+          .doc(swiperId)
+          .collection("outgoing")
+          .doc(swipedId);
+        transaction.set(outgoingRef, {
+          direction,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+
+        const incomingRef = db
+          .collection("swipes")
+          .doc(swipedId)
+          .collection("incoming")
+          .doc(swiperId);
+        transaction.set(incomingRef, {
+          direction,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        transaction.set(
+          counterRef,
+          {
+            count: admin.firestore.FieldValue.increment(1),
+            resetDate: today,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
 
         const result = {
           message: "Swipe recorded",
@@ -395,7 +350,6 @@ export const createSwipe = functions.https.onCall(
         return result;
       });
 
-      // Create chat channel after transaction if there's a match
       if (result.match && "matchId" in result && result.matchId) {
         try {
           const { StreamChat } = await import("stream-chat");
@@ -422,14 +376,11 @@ export const createSwipe = functions.https.onCall(
           if (apiKey && apiSecret) {
             const serverClient = StreamChat.getInstance(apiKey, apiSecret);
 
-            // Create channel ID based on match type
             let channelId: string;
             let channelMembers: string[];
 
             if ("isGroupMatch" in result && result.isGroupMatch) {
-              // For group matches, use match ID
               channelId = `group-${result.matchId}`;
-              // Get member IDs from the match document
               const matchDoc = await db
                 .collection("matches")
                 .doc(result.matchId)
@@ -437,12 +388,10 @@ export const createSwipe = functions.https.onCall(
               const matchData = matchDoc.data();
               channelMembers = matchData?.memberIds || [];
             } else {
-              // For individual matches, use sorted user IDs
               channelId = [swiperId, swipedId].sort().join("-");
               channelMembers = [swiperId, swipedId];
             }
 
-            // Create or get the channel
             const channel = serverClient.channel("messaging", channelId, {
               members: channelMembers,
               created_by_id: swiperId,
@@ -452,40 +401,31 @@ export const createSwipe = functions.https.onCall(
               await channel.create();
             } catch (err: any) {
               if (err && err.code === 16) {
-                // Channel already exists, just use it
                 await channel.watch();
               } else {
                 throw err;
               }
             }
 
-            // Update channel with matchId
             try {
               await channel.update({
-                // @ts-ignore - Adding custom field to channel data
                 matchId: result.matchId,
-              });
+              } as any);
 
-              // Send system message for new matches
               try {
                 await channel.sendMessage({
-                  text: "You've matched! Start chatting now.",
+                  text: "You've connected! Start chatting now.",
                   user_id: "system",
                 });
 
-                // Mark that intro message has been sent in the match document
                 if ("matchId" in result && result.matchId) {
                   await db.collection("matches").doc(result.matchId).update({
                     introMessageSent: true,
                     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                   });
                 }
-              } catch (messageErr) {
-                // Don't fail the channel creation if system message fails
-              }
-            } catch (updateErr) {
-              // Don't fail the match creation if channel update fails
-            }
+              } catch (messageErr) {}
+            } catch (updateErr) {}
           } else {
             console.error("❌ [SWIPES] Missing Stream API credentials");
           }
@@ -494,7 +434,6 @@ export const createSwipe = functions.https.onCall(
             "Backend Error: Failed to create chat channel:",
             chatError
           );
-          // Don't throw here, as we still want the match to be created
         }
       }
 
@@ -520,7 +459,7 @@ export const createSwipe = functions.https.onCall(
 );
 
 /**
- * Counts a user's swipes from their user document.
+ * Gets a user's swipe count
  */
 export const countRecentSwipes = functions.https.onCall(
   {
@@ -551,32 +490,24 @@ export const countRecentSwipes = functions.https.onCall(
         );
       }
 
-      const userDoc = await db.collection("users").doc(id).get();
-      if (!userDoc.exists) {
-        throw new functions.https.HttpsError("not-found", "User not found");
-      }
-
-      const userData = userDoc.data();
-      if (!userData) {
-        throw new functions.https.HttpsError(
-          "not-found",
-          "User data not found"
-        );
-      }
-
       const today = new Date().toISOString().split("T")[0];
-      const resetDate = userData.resetDate ?? today;
-      let swipesToday = userData.swipesToday ?? 0;
-
-      // Check if we need to reset the count for the day
+      const counterRef = db
+        .collection("users")
+        .doc(id)
+        .collection("counters")
+        .doc("swipes");
+      const counterSnap = await counterRef.get();
+      const data = counterSnap.exists ? (counterSnap.data() as any) : {};
+      const resetDate = data.resetDate ?? today;
+      let count = Number(data.count || 0);
       if (resetDate !== today) {
-        swipesToday = 0;
+        count = 0;
       }
 
       return {
-        swipeCount: swipesToday,
+        swipeCount: count,
         dailyLimit: MAX_SWIPES_PER_DAY,
-        canSwipe: swipesToday < MAX_SWIPES_PER_DAY,
+        canSwipe: count < MAX_SWIPES_PER_DAY,
       };
     } catch (error: any) {
       if (error instanceof functions.https.HttpsError) {
@@ -655,7 +586,7 @@ export const getSwipesByUser = functions.https.onCall(
 );
 
 /**
- * Saves the Expo push token to the user's Firestore document
+ * Saves Expo push token
  */
 export const savePushToken = functions.https.onCall(
   {
@@ -721,3 +652,84 @@ export const swipeFunctions = {
   getSwipesByUser,
   savePushToken,
 };
+
+/**
+ * Resets daily swipe counters and notifies active users
+ */
+export const resetDailySwipes = onSchedule(
+  {
+    schedule: "0 10 * * *",
+    timeZone: "America/New_York",
+    region: "us-central1",
+  },
+  async () => {
+    const pageSize = 400;
+    let lastDoc: FirebaseFirestore.DocumentSnapshot | null = null;
+    let processed = 0;
+
+    while (true) {
+      let query = db
+        .collection("users")
+        .orderBy(admin.firestore.FieldPath.documentId())
+        .limit(pageSize);
+      if (lastDoc) {
+        query = query.startAfter(lastDoc.id);
+      }
+
+      const usersSnap = await query.get();
+      if (usersSnap.empty) break;
+
+      const batch = db.batch();
+      const notifyTasks: Array<Promise<void>> = [];
+
+      for (const userDoc of usersSnap.docs) {
+        const userId = userDoc.id;
+        const countersRef = db
+          .collection("users")
+          .doc(userId)
+          .collection("counters")
+          .doc("swipes");
+        const countersSnap = await countersRef.get();
+        if (!countersSnap.exists) continue;
+
+        const data = countersSnap.data() as { count?: number } | undefined;
+        const count = Number(data?.count || 0);
+
+        batch.update(countersRef, {
+          count: 0,
+          resetDate: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        if (count >= 3) {
+          const fcmToken =
+            (userDoc.get("fcmToken") as string | undefined) || undefined;
+          if (fcmToken) {
+            notifyTasks.push(
+              admin
+                .messaging()
+                .send({
+                  token: fcmToken,
+                  notification: {
+                    title: "Daily Swipe Reset",
+                    body: "Your swipes have been reset! Keep connecting 🚀",
+                  },
+                })
+                .then(() => {})
+                .catch(() => {})
+            );
+          }
+        }
+      }
+
+      await batch.commit();
+      await Promise.allSettled(notifyTasks);
+
+      processed += usersSnap.size;
+      lastDoc = usersSnap.docs[usersSnap.docs.length - 1];
+      if (usersSnap.size < pageSize) break;
+    }
+
+    return;
+  }
+);
