@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
-import { uploadImageViaCloudFunction } from "../util/imageUtils";
+import { uploadImage } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 import Colors from "../constants/Colors";
 import { UserService, getPersonalImages } from "../networking";
@@ -36,6 +36,7 @@ const emptyProfile: Profile = {
   q2: "",
   q3: "",
   availability: -1,
+  groupSize: 2,
 };
 
 function isProfileDirty(current: Profile, initial: Profile): boolean {
@@ -175,10 +176,7 @@ export default function EditProfileScreen() {
         if (img.startsWith("file:") || img.startsWith("data:")) {
           // This is a new, local image that needs to be uploaded.
           try {
-            const uploadResult = await uploadImageViaCloudFunction(
-              currentUser.uid,
-              img
-            );
+            const uploadResult = await uploadImage(currentUser.uid, img);
             processedImages.push(uploadResult.filename);
             hasChanges = true;
           } catch (error) {

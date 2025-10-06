@@ -381,7 +381,7 @@ export const getImages = functions.https.onCall(
         let url = null;
 
         if (typeof img === "string") {
-          // The data in Firestore is now filenames from uploadImageViaCloudFunction
+          // The data in Firestore is now filenames from the uploadImage Cloud Function
           const filename = img;
 
           // Generate signed URLs based on consent

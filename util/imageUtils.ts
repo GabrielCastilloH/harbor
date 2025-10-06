@@ -1,12 +1,15 @@
 import * as ImageManipulator from "expo-image-manipulator";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getFirestore, doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import app from "../firebaseConfig";
 
-const storage = getStorage(app);
 const db = getFirestore(app);
+const functions = getFunctions(app);
 
-export async function uploadImageViaCloudFunction(
+/**
+ * Uploads an image using the Cloud Function that handles both upload and blurring atomically
+ */
+export async function uploadImage(
   userId: string,
   imageUri: string
 ): Promise<{ filename: string; originalUrl: string; blurredUrl: string }> {
@@ -17,64 +20,43 @@ export async function uploadImageViaCloudFunction(
     { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
   );
 
-  // Convert to blob for Firebase Storage
+  // Convert to blob for base64 conversion
   const response = await fetch(compressed.uri);
   const blob = await response.blob();
+  const arrayBuffer = await blob.arrayBuffer();
+  const base64Data = Buffer.from(arrayBuffer).toString("base64");
 
-  // Generate filename with _original suffix
-  const timestamp = Date.now();
-  const randomId = Math.random().toString(36).substring(2, 8);
-  const filename = `${timestamp}-${randomId}_original.jpg`;
-  const filePath = `users/${userId}/images/${filename}`;
-
-  // Upload to Firebase Storage directly
-  const storageRef = ref(storage, filePath);
-  await uploadBytes(storageRef, blob, {
-    contentType: "image/jpeg",
-  });
-
-  // Get the download URL
-  const originalUrl = await getDownloadURL(storageRef);
-
-  // Store filename in Firestore (only if user document exists)
-  try {
-    const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, {
-      images: arrayUnion(filename),
-    });
-  } catch (error) {
-    // User document doesn't exist yet, skipping Firestore update
-    // The filename will be stored when the profile is created
-  }
-
-  // Call Cloud Function to generate blurred version
-  const { getFunctions, httpsCallable } = require("firebase/functions");
-  const functions = getFunctions();
-  const generateBlurred = httpsCallable(
+  // Call the uploadImage Cloud Function which handles BOTH upload AND blurring atomically
+  const uploadImageFunction = httpsCallable(
     functions,
-    "imageFunctions-generateBlurred"
+    "imageFunctions-uploadImage"
   );
 
   try {
-    // Convert blob to base64 for the cloud function
-    const arrayBuffer = await blob.arrayBuffer();
-    const base64Data = Buffer.from(arrayBuffer).toString("base64");
-
-    const result = await generateBlurred({
+    const result = await uploadImageFunction({
       imageData: base64Data,
       userId: userId,
-      filename: filename,
     });
 
-    // Use the blurred URL from the cloud function response
-    const blurredUrl = result.data.blurredUrl;
+    const { filename, originalUrl, blurredUrl } = result.data;
+
+    // Store filename in Firestore (only if user document exists)
+    try {
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, {
+        images: arrayUnion(filename),
+      });
+    } catch (error) {
+      // User document doesn't exist yet, skipping Firestore update
+      // The filename will be stored when the profile is created
+    }
 
     return { filename, originalUrl, blurredUrl };
   } catch (error) {
-    console.error("❌ Failed to generate blurred version:", error);
-    // NEVER expose original as fallback - return empty string instead
-    // This ensures privacy is maintained even if blurring fails
-    return { filename, originalUrl, blurredUrl: "" };
+    console.error("❌ Failed to upload image with blurring:", error);
+    // NEVER expose original as fallback - return empty strings instead
+    // This ensures privacy is maintained even if upload fails
+    return { filename: "", originalUrl: "", blurredUrl: "" };
   }
 }
 

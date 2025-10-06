@@ -678,14 +678,35 @@ export const updateUser = functions.https.onCall(
               ? oldImages
               : existingImages.filter((image) => !newImages.includes(image));
 
-          // Step 3: Delete old images from Firebase Storage
+          // Step 3: Delete old images from Firebase Storage (both original and blurred)
           if (imagesToDelete.length > 0) {
-            const deletePromises = imagesToDelete.map((fileName) => {
-              const fileRef = bucket.file(`images/${id}/${fileName}`);
-              return fileRef.delete().catch((err) => {
-                // Log the error but don't re-throw to allow other deletions to proceed
-                console.error(`Failed to delete file: ${fileName}`, err);
-              });
+            const deletePromises = imagesToDelete.flatMap((fileName) => {
+              const originalPath = `users/${id}/images/${fileName}`;
+              const blurredPath = `users/${id}/images/${fileName.replace(
+                "_original.jpg",
+                "_blurred.jpg"
+              )}`;
+
+              return [
+                bucket
+                  .file(originalPath)
+                  .delete()
+                  .catch((err) => {
+                    console.error(
+                      `Failed to delete original file: ${fileName}`,
+                      err
+                    );
+                  }),
+                bucket
+                  .file(blurredPath)
+                  .delete()
+                  .catch((err) => {
+                    console.error(
+                      `Failed to delete blurred file: ${fileName}`,
+                      err
+                    );
+                  }),
+              ];
             });
             await Promise.all(deletePromises);
           }
