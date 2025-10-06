@@ -7,6 +7,7 @@ initializeApp();
 import { authFunctions } from "./auth/auth";
 import { chatFunctions } from "./chat/chat";
 import { imageFunctions } from "./images/images";
+import { autoGenerateBlurred } from "./images/autoBlur";
 import { matchFunctions } from "./matches/matches";
 import { recommendationsFunctions } from "./recommendations/recommendations";
 import { reportFunctions } from "./reports/reports";
@@ -19,6 +20,7 @@ export {
   authFunctions,
   chatFunctions,
   imageFunctions,
+  autoGenerateBlurred,
   matchFunctions,
   recommendationsFunctions,
   reportFunctions,

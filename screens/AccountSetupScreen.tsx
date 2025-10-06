@@ -5,7 +5,7 @@ import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
 import { auth } from "../firebaseConfig";
 import { createUserProfile } from "../util/userBackend";
-import { uploadImageViaCloudFunction } from "../util/imageUtils";
+import { uploadImage } from "../util/imageUtils";
 import ProfileForm from "../components/ProfileForm";
 import LoadingScreen from "../components/LoadingScreen";
 import { signOut } from "firebase/auth";
@@ -36,6 +36,7 @@ export default function AccountSetupScreen({
     q2: "",
     q3: "",
     availability: -1,
+    groupSize: 2,
     email: "",
   });
   const [loading, setLoading] = useState(false);
@@ -159,7 +160,7 @@ export default function AccountSetupScreen({
             updateProgress(imageProgress);
 
             // Upload one image at a time
-            const singleResult = await uploadImageViaCloudFunction(
+            const singleResult = await uploadImage(
               firebaseUid,
               imagesToUpload[i]
             );
