@@ -7,7 +7,10 @@ import { useAppContext } from "../context/AppContext";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { useNavigation } from "@react-navigation/native";
 
-export default function PersonalView({ profile }: CardViewProps) {
+export default function PersonalView({
+  profile,
+  showFlag = true,
+}: CardViewProps) {
   const { userId } = useAppContext();
   const navigation = useNavigation();
 
@@ -67,13 +70,15 @@ export default function PersonalView({ profile }: CardViewProps) {
 
   return (
     <View style={styles.contentContainer}>
-      <TouchableOpacity
-        style={styles.flagButton}
-        onPress={handleReportUser}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="flag-outline" size={24} color={Colors.primary500} />
-      </TouchableOpacity>
+      {showFlag && (
+        <TouchableOpacity
+          style={styles.flagButton}
+          onPress={handleReportUser}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="flag-outline" size={24} color={Colors.primary500} />
+        </TouchableOpacity>
+      )}
       <View style={styles.content}>
         <View style={styles.sectionsContainer}>
           <View style={[styles.section, { flex: 1 }]}>
