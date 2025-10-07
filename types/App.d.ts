@@ -24,4 +24,5 @@ export type Profile = {
 
 export interface CardViewProps {
   profile: Profile;
+  showFlag?: boolean;
 }

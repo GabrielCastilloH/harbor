@@ -222,7 +222,7 @@ const Post = ({ profile }: PostProps) => {
             <BasicInfoView profile={profile} />
           </ScrollView>
           <ScrollView style={styles.viewContainer}>
-            <PersonalView profile={profile} />
+            <PersonalView profile={profile} showFlag={true} />
           </ScrollView>
         </Animated.View>
       </PanGestureHandler>

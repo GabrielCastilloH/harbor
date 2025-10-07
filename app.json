@@ -17,6 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "app.tryharbor",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "appStoreUrl": "https://apps.apple.com/app/id6752791663",
       "entitlements": {
         "aps-environment": "production"
       },
@@ -44,6 +45,7 @@
         "android.permission.WAKE_LOCK"
       ],
       "package": "app.tryharbor",
+      "playStoreUrl": "https://play.google.com/store/apps/details?id=app.tryharbor",
       "googleServicesFile": "./google-services.json"
     },
     "web": {
