@@ -2,7 +2,7 @@
   "expo": {
     "name": "harbor",
     "slug": "harbor",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -28,7 +28,7 @@
         "NSMicrophoneUsageDescription": "Harbor needs access to your microphone for voice messages in chat.",
         "CFBundleDisplayName": "Harbor",
         "CFBundleName": "Harbor",
-        "CFBundleShortVersionString": "1.0.1"
+        "CFBundleShortVersionString": "1.0.2"
       },
       "appleTeamId": "V45GUPHT93"
     },
