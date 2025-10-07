@@ -444,7 +444,7 @@ export default function ProfileScreen() {
         </Modal>
 
         <View style={{ paddingHorizontal: 24 }}>
-          <PersonalView profile={profile} />
+          <PersonalView profile={profile} showFlag={false} />
         </View>
 
         {/* Unmatch Button at the bottom */}

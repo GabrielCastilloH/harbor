@@ -148,7 +148,7 @@ export default function SelfProfileScreen() {
         {/* Profile Content */}
         <View style={styles.contentContainer}>
           <BasicInfoView profile={profile} />
-          <PersonalView profile={profile} />
+          <PersonalView profile={profile} showFlag={false} />
         </View>
       </ScrollView>
 
