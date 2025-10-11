@@ -28,7 +28,6 @@ export default function SignIn() {
     isAuthenticated,
     currentUser,
     userId,
-    setIsAuthenticated,
     setUserId,
     setProfile,
     setStreamApiKey,
@@ -62,7 +61,6 @@ export default function SignIn() {
           // Clear app context state
           setUserId(null);
           setProfile(null);
-          setIsAuthenticated(false);
           setStreamApiKey(null);
           setStreamUserToken(null);
 
@@ -82,7 +80,6 @@ export default function SignIn() {
     isAuthenticated,
     setUserId,
     setProfile,
-    setIsAuthenticated,
     setStreamApiKey,
     setStreamUserToken,
   ]);
