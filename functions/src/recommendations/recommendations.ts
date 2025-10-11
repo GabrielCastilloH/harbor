@@ -185,7 +185,7 @@ export const getRecommendations = functions.https.onCall(
       // Step 3: Fetch users with similar age/year (medium priority)
       let ageYearUsers: any[] = [];
       const userAge = currentUserData?.age ?? -1;
-      const userYear = currentUserData?.year ?? null;
+      const userYear = currentUserData?.yearLevel ?? null;
       const compatibilityData = getCompatibilityQuery(currentUserData);
 
       if (
@@ -202,7 +202,7 @@ export const getRecommendations = functions.https.onCall(
             .collection("users")
             .where("age", ">=", ageLower)
             .where("age", "<=", ageUpper)
-            .where("year", "==", userYear)
+            .where("yearLevel", "==", userYear)
             .where("sexualOrientation", "in", compatibilityData.orientation)
             .where("gender", "in", compatibilityData.gender)
             .where("isAvailable", "==", true)
