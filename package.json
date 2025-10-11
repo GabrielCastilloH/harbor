@@ -17,6 +17,7 @@
     "@react-native-community/netinfo": "^11.1.0",
     "@react-native-firebase/app": "^22.0.0",
     "@react-native-firebase/messaging": "^22.0.0",
+    "@react-native-google-signin/google-signin": "^16.0.0",
     "@react-native-picker/picker": "2.11.1",
     "@react-navigation/bottom-tabs": "^7.4.6",
     "@react-navigation/native": "^7.1.17",
