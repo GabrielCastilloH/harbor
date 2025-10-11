@@ -77,11 +77,6 @@ export default function DeletedAccountScreen() {
         >
           <Text style={styles.backButtonText}>Back to Sign In</Text>
         </TouchableOpacity>
-
-        {/* Harbor Logo/Branding */}
-        <View style={styles.brandingContainer}>
-          <Text style={styles.brandingText}>Harbor</Text>
-        </View>
       </View>
     </SafeAreaView>
   );
