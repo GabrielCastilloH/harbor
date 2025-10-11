@@ -32,6 +32,7 @@ interface AppContextType {
   setProfileExists: (exists: boolean) => void;
   refreshAuthState: (user: User) => void;
   isBanned: boolean;
+  isDeleted: boolean;
   // 🚀 NEW: Centralized user data state
   userProfile: Profile | null;
   swipeLimit: {
@@ -70,6 +71,7 @@ const defaultValue: AppContextType = {
   setProfileExists: () => {},
   refreshAuthState: () => {},
   isBanned: false,
+  isDeleted: false,
   // 🚀 NEW: Default values for centralized user data
   userProfile: null,
   swipeLimit: null,
@@ -104,6 +106,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     profileExists: false,
     isInitialized: false,
     isBanned: false, // 💡 Unified state management
+    isDeleted: false, // 💡 Unified state management
   });
 
   // 🚀 NEW: Centralized user data state
@@ -128,6 +131,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     profile,
     currentUser,
     isBanned,
+    isDeleted,
   } = appState;
 
   // The core function to check user and profile status.
@@ -167,6 +171,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             profileExists: false,
             isInitialized: true,
             isBanned: false, // 💡 Reset ban status on logout
+            isDeleted: false, // 💡 Reset deleted status on logout
           }));
 
           // 🚀 NEW: Clear centralized user data on logout
@@ -183,13 +188,31 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
         // 🚀 OPTIMIZATION: Use Promise.all to fetch data in parallel
         const { UserService } = require("../networking");
-        const [idToken, firestoreResponse, banStatus] = await Promise.all([
-          user.getIdToken(true),
-          UserService.getUserById(user.uid),
-          UserService.checkBannedStatus(user.uid),
-        ]);
+        const [idToken, firestoreResponse, banStatus, deletedStatus] =
+          await Promise.all([
+            user.getIdToken(true),
+            UserService.getUserById(user.uid),
+            UserService.checkBannedStatus(user.uid),
+            UserService.checkDeletedAccount(user.email || ""),
+          ]);
 
-        // Check if user is banned first
+        // Check if user is deleted first
+        if (deletedStatus.isDeleted) {
+          setAppState((prevState) => ({
+            ...prevState,
+            isAuthenticated: true,
+            userId: user.uid,
+            profile: null,
+            currentUser: user,
+            profileExists: false,
+            isInitialized: true,
+            isBanned: false,
+            isDeleted: true, // 💡 Atomic state update
+          }));
+          return;
+        }
+
+        // Check if user is banned second
         if (banStatus.isBanned) {
           setAppState((prevState) => ({
             ...prevState,
@@ -200,6 +223,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             profileExists: false,
             isInitialized: true,
             isBanned: true, // 💡 Atomic state update
+            isDeleted: false,
           }));
           return;
         }
@@ -214,6 +238,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             profileExists: false,
             isInitialized: true,
             isBanned: false, // 💡 User not banned, just unverified
+            isDeleted: false, // 💡 User not deleted, just unverified
           }));
           return;
         }
@@ -235,6 +260,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             profileExists: true,
             isInitialized: true,
             isBanned: false, // 💡 User has profile, not banned
+            isDeleted: false, // 💡 User has profile, not deleted
           }));
 
           // 🚀 NEW: Fetch centralized user data after successful auth
@@ -249,6 +275,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             profileExists: false,
             isInitialized: true,
             isBanned: false, // 💡 User exists but no profile, not banned
+            isDeleted: false, // 💡 User exists but no profile, not deleted
           }));
         }
       } catch (error: any) {
@@ -262,6 +289,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           profileExists: false,
           isInitialized: true,
           isBanned: false, // 💡 Default to not banned on error
+          isDeleted: false, // 💡 Default to not deleted on error
         }));
       } finally {
         isProcessingAuthRef.current = false;
@@ -566,6 +594,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setProfileExists: setProfileExistsCallback,
       refreshAuthState,
       isBanned,
+      isDeleted,
       // 🚀 NEW: Centralized user data
       userProfile,
       swipeLimit,
@@ -591,6 +620,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       isInitialized,
       profileExists,
       isBanned,
+      isDeleted,
       userProfile,
       swipeLimit,
       isLoadingUserData,
