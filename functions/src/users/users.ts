@@ -1115,15 +1115,72 @@ export const deleteUser = functions.https.onCall(
 
       // --- STEP 4: CLEAN UP EXTERNAL SERVICES IN PARALLEL ---
       await Promise.all([
-        // Delete Stream Chat user
+        // Delete Stream Chat user and handle chat channels
         (async () => {
           try {
             const client = await getStreamClient();
+
+            // First, handle all chat channels the user was part of
+            for (const matchId of currentMatches) {
+              const matchData = matchDataMap.get(matchId);
+              if (matchData) {
+                try {
+                  // Get other user IDs in this match
+                  let otherUserIds: string[] = [];
+                  if (matchData.type === "individual") {
+                    const participantIds = matchData.participantIds || [];
+                    otherUserIds = participantIds.filter(
+                      (id: string) => id !== userId
+                    );
+                  } else if (matchData.type === "group") {
+                    const participantIds = matchData.participantIds || [];
+                    otherUserIds = participantIds.filter(
+                      (id: string) => id !== userId
+                    );
+                  } else {
+                    // Legacy individual match format
+                    const otherUserId =
+                      matchData.user1Id === userId
+                        ? matchData.user2Id
+                        : matchData.user1Id;
+                    if (otherUserId) otherUserIds = [otherUserId];
+                  }
+
+                  // For each other user, create a channel ID and freeze the chat
+                  for (const otherUserId of otherUserIds) {
+                    try {
+                      const channelId = [userId, otherUserId].sort().join("-");
+                      const channel = client.channel("messaging", channelId);
+
+                      // Freeze the channel and send a system message
+                      await channel.update({ frozen: true });
+                      await channel.sendMessage({
+                        text: "This chat has been frozen because one of the users deleted their account.",
+                        user_id: "system",
+                      });
+                    } catch (channelError) {
+                      console.error(
+                        `Error handling channel for match ${matchId}:`,
+                        channelError
+                      );
+                    }
+                  }
+                } catch (matchError) {
+                  console.error(
+                    `Error processing match ${matchId}:`,
+                    matchError
+                  );
+                }
+              }
+            }
+
+            // Finally, delete the Stream Chat user
             await client.deleteUser(userId, {
               mark_messages_deleted: true,
               hard_delete: true,
             });
           } catch (streamError) {
+            console.error("Error in Stream Chat cleanup:", streamError);
             // Don't fail the entire operation if Stream Chat deletion fails
           }
         })(),
