@@ -232,13 +232,33 @@ function MainNavigator() {
 }
 
 function AppContent() {
-  const { isInitialized, isAuthenticated, currentUser, isBanned } =
+  const { isInitialized, isAuthenticated, currentUser, isBanned, isDeleted } =
     useAppContext();
   const navigationRef = useRef<NavigationContainerRef<any> | null>(null);
   const BannedStack = createNativeStackNavigator();
+  const DeletedStack = createNativeStackNavigator();
 
   if (!isInitialized) {
     return <LoadingScreen loadingText="Loading..." />;
+  }
+
+  // Check if user is deleted and authenticated
+  if (isAuthenticated && isDeleted) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer ref={navigationRef}>
+          <StatusBar style="dark" />
+          <DeletedStack.Navigator screenOptions={{ headerShown: false }}>
+            <DeletedStack.Screen
+              name="DeletedAccount"
+              component={DeletedAccountScreen}
+            />
+          </DeletedStack.Navigator>
+          <NotificationHandler navigationRef={navigationRef} />
+          <ExpoNotificationSetup />
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    );
   }
 
   // Check if user is banned and authenticated
