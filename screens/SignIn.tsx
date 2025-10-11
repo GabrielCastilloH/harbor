@@ -121,7 +121,7 @@ export default function SignIn() {
       return;
     }
 
-    // Handle new user - navigate to setup/onboarding
+    // Handle new user - the AppContext will detect the new user and navigate to account setup
     // Don't pre-load chat credentials for new users since they need to complete setup first
     setSignInSuccessful(true);
     setIsNewUser(true);
