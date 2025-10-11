@@ -74,14 +74,6 @@ export default function BannedAccountScreen() {
         >
           <Text style={styles.backButtonText}>Back to Sign In</Text>
         </TouchableOpacity>
-
-        {/* Harbor Logo/Branding */}
-        <View style={styles.brandingContainer}>
-          <Text style={styles.brandingText}>Harbor</Text>
-          <Text style={styles.brandingSubtext}>
-            Community Guidelines Matter
-          </Text>
-        </View>
       </View>
     </SafeAreaView>
   );
