@@ -18,7 +18,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
-import { useNotification } from "../context/NotificationContext";
+import { streamNotificationService } from "../util/streamNotifService";
 import InAppReview from "react-native-in-app-review";
 // import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
 // PREMIUM DISABLED: Superwall imports commented out
@@ -38,17 +38,24 @@ export default function SettingsScreen() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [currentGroupSize, setCurrentGroupSize] = useState<number>(2);
-  const {
-    isNotificationsEnabled,
-    isLoading,
-    enableNotifications,
-    disableNotifications,
-    error,
-  } = useNotification();
+  const [notificationPermissionStatus, setNotificationPermissionStatus] =
+    useState<boolean | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [locationServices, setLocationServices] = useState(true);
   // PREMIUM DISABLED: useUser commented out
   // const { user } = useUser();
+
+  // Check notification permission status
+  const checkNotificationPermission = React.useCallback(async () => {
+    try {
+      const hasPermission =
+        await streamNotificationService.areNotificationsEnabled();
+      setNotificationPermissionStatus(hasPermission);
+    } catch (error) {
+      console.error("Error checking notification permission:", error);
+      setNotificationPermissionStatus(false);
+    }
+  }, []);
 
   // Fetch user profile to get isActive status and group size
   const fetchUserProfile = React.useCallback(async () => {
@@ -69,16 +76,18 @@ export default function SettingsScreen() {
     }
   }, [userId]);
 
-  // Fetch profile on mount
+  // Fetch profile and check notification permission on mount
   React.useEffect(() => {
     fetchUserProfile();
-  }, [fetchUserProfile]);
+    checkNotificationPermission();
+  }, [fetchUserProfile, checkNotificationPermission]);
 
-  // Refresh profile data when screen comes into focus (e.g., returning from GroupSizeScreen)
+  // Refresh profile data and notification status when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       fetchUserProfile();
-    }, [fetchUserProfile])
+      checkNotificationPermission();
+    }, [fetchUserProfile, checkNotificationPermission])
   );
 
   // Track page view for TelemetryDeck
@@ -87,23 +96,48 @@ export default function SettingsScreen() {
     // signal("pageview", { screen: "Settings" });
   }, []);
 
-  // Show alert when there's a notification error
-  React.useEffect(() => {
-    if (error) {
-      Alert.alert("Notification Settings", error.message, [
-        {
-          text: "OK",
-          onPress: () => {
-            // Clear the error after showing the alert
-            // The error will be cleared by the NotificationContext
-          },
-        },
-      ]);
-    }
-  }, [error]);
-
   const handleAccountStatusChange = (isActive: boolean) => {
     setUserProfile((prev: any) => ({ ...prev, isActive }));
+  };
+
+  const handleNotificationSettingsTap = () => {
+    if (notificationPermissionStatus === false) {
+      Alert.alert(
+        "Enable Notifications",
+        "To receive notifications, please enable them in your device settings.\n\nGo to Settings > Notifications > Harbor and turn on Allow Notifications.",
+        [
+          {
+            text: "Open Settings",
+            onPress: () => {
+              if (Platform.OS === "ios") {
+                Linking.openURL("app-settings:");
+              } else {
+                Linking.openSettings();
+              }
+            },
+          },
+          { text: "Cancel", style: "cancel" },
+        ]
+      );
+    } else {
+      Alert.alert(
+        "Notifications Enabled",
+        "You're currently receiving notifications. To change this, go to your device settings.",
+        [
+          {
+            text: "Open Settings",
+            onPress: () => {
+              if (Platform.OS === "ios") {
+                Linking.openURL("app-settings:");
+              } else {
+                Linking.openSettings();
+              }
+            },
+          },
+          { text: "OK", style: "cancel" },
+        ]
+      );
+    }
   };
 
   // PREMIUM DISABLED: Superwall paywall placement commented out
@@ -278,16 +312,20 @@ export default function SettingsScreen() {
           <SettingsButton
             icon="notifications-outline"
             text="Notifications"
-            switchProps={{
-              value: isNotificationsEnabled,
-              onValueChange: async (enabled: boolean) => {
-                if (enabled) {
-                  await enableNotifications();
-                } else {
-                  await disableNotifications();
-                }
-              },
-              disabled: isLoading,
+            onPress={handleNotificationSettingsTap}
+            status={{
+              text:
+                notificationPermissionStatus === null
+                  ? "Checking..."
+                  : notificationPermissionStatus
+                  ? "Enabled"
+                  : "Disabled",
+              color:
+                notificationPermissionStatus === null
+                  ? Colors.secondary500
+                  : notificationPermissionStatus
+                  ? Colors.green
+                  : Colors.red,
             }}
           />
 

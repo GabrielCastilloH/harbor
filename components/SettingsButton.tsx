@@ -19,6 +19,10 @@ interface SettingsButtonProps {
     onValueChange: (value: boolean) => void;
     disabled?: boolean;
   };
+  status?: {
+    text: string;
+    color: string;
+  };
   iconColor?: string;
   textColor?: string;
   backgroundColor?: string;
@@ -32,6 +36,7 @@ export default function SettingsButton({
   text,
   onPress,
   switchProps,
+  status,
   iconColor = Colors.primary500,
   textColor = Colors.primary500,
   backgroundColor = Colors.secondary200,
@@ -85,6 +90,11 @@ export default function SettingsButton({
       >
         {isLoading ? "Signing out..." : text}
       </Text>
+      {status && (
+        <Text style={[styles.statusText, { color: status.color }]}>
+          {status.text}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -109,6 +119,11 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   switch: {
+    marginLeft: "auto",
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: "500",
     marginLeft: "auto",
   },
 });
