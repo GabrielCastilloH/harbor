@@ -6,6 +6,7 @@ import React, {
   useRef,
   ReactNode,
 } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { streamNotificationService } from "../util/streamNotifService";
 import { StreamChat } from "stream-chat";
 
@@ -38,22 +39,39 @@ interface NotificationProviderProps {
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   children,
 }) => {
-  const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false);
+  // Default to true - this represents user preference, not system permission
+  const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // Check notification status on mount
+  // Check if we have a saved preference on mount
   useEffect(() => {
-    checkNotificationStatus();
+    loadNotificationPreference();
   }, []);
 
-  const checkNotificationStatus = async () => {
+  const loadNotificationPreference = async () => {
     try {
-      const enabled = await streamNotificationService.areNotificationsEnabled();
-      setIsNotificationsEnabled(enabled);
+      // Load user's notification preference from AsyncStorage
+      const savedPreference = await AsyncStorage.getItem(
+        "@notification_preference"
+      );
+      if (savedPreference !== null) {
+        setIsNotificationsEnabled(JSON.parse(savedPreference));
+      }
+      // If no saved preference, keep default (true)
     } catch (error) {
-      console.error("🔔 Error checking notification status:", error);
-      setError(error as Error);
+      console.error("🔔 Error loading notification preference:", error);
+    }
+  };
+
+  const saveNotificationPreference = async (enabled: boolean) => {
+    try {
+      await AsyncStorage.setItem(
+        "@notification_preference",
+        JSON.stringify(enabled)
+      );
+    } catch (error) {
+      console.error("🔔 Error saving notification preference:", error);
     }
   };
 
@@ -62,12 +80,28 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     setError(null);
 
     try {
-      const granted = await streamNotificationService.requestPermission();
-      setIsNotificationsEnabled(granted);
+      // First check if we already have system permission
+      const hasPermission =
+        await streamNotificationService.areNotificationsEnabled();
 
-      if (!granted) {
-        throw new Error("Notification permission denied");
+      if (!hasPermission) {
+        // No system permission, request it
+        const granted = await streamNotificationService.requestPermission();
+
+        if (!granted) {
+          // User denied system permission, but we still save their preference as ON
+          // They'll get an alert that they need to allow notifications in system settings
+          setIsNotificationsEnabled(true);
+          await saveNotificationPreference(true);
+          throw new Error(
+            "Please allow notifications in your device settings to receive notifications."
+          );
+        }
       }
+
+      // Either we had permission or just got it - enable notifications
+      setIsNotificationsEnabled(true);
+      await saveNotificationPreference(true);
     } catch (error) {
       console.error("🔔 Error enabling notifications:", error);
       setError(error as Error);
@@ -83,6 +117,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     try {
       await streamNotificationService.unregisterDevice();
       setIsNotificationsEnabled(false);
+      await saveNotificationPreference(false);
     } catch (error) {
       console.error("🔔 Error disabling notifications:", error);
       setError(error as Error);
