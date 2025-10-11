@@ -15,7 +15,6 @@ import DeletedAccountScreen from "./screens/DeletedAccountScreen";
 import BannedAccountScreen from "./screens/BannedAccountScreen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
-import { NotificationProvider } from "./context/NotificationContext";
 import NotificationHandler from "./components/NotificationHandler";
 // import TelemetryDeck from "@telemetrydeck/sdk";
 // import { TelemetryDeckProvider } from "@typedigital/telemetrydeck-react";
@@ -322,11 +321,9 @@ export default function App() {
     <SafeAreaProvider>
       {/* <TelemetryDeckProvider telemetryDeck={td}> */}
       <AppProvider>
-        <NotificationProvider>
-          <ErrorBoundary>
-            <AppContent />
-          </ErrorBoundary>
-        </NotificationProvider>
+        <ErrorBoundary>
+          <AppContent />
+        </ErrorBoundary>
       </AppProvider>
       {/* </TelemetryDeckProvider> */}
     </SafeAreaProvider>
