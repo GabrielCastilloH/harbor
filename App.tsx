@@ -8,7 +8,6 @@ import {
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import TabNavigator from "./navigation/TabNavigator";
 import SignIn from "./screens/SignIn";
-import CreateAccountScreen from "./screens/CreateAccountScreen";
 import EmailVerificationScreen from "./screens/EmailVerificationScreen";
 import AccountSetupScreen from "./screens/AccountSetupScreen";
 import DeletedAccountScreen from "./screens/DeletedAccountScreen";
@@ -172,7 +171,7 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// AuthNavigator remains the same, but it's only for unauthenticated users.
+// AuthNavigator for unauthenticated users - only Google Sign-In now
 function AuthNavigator() {
   return (
     <AuthStack.Navigator
@@ -180,7 +179,6 @@ function AuthNavigator() {
       initialRouteName="SignIn"
     >
       <AuthStack.Screen name="SignIn" component={SignIn} />
-      <AuthStack.Screen name="CreateAccount" component={CreateAccountScreen} />
       <AuthStack.Screen
         name="EmailVerification"
         component={EmailVerificationScreen}
@@ -203,7 +201,9 @@ function MainNavigator() {
     return null; // This should not happen if isAuthenticated is true
   }
 
-  if (!currentUser.emailVerified) {
+  // Only require email verification for non-Google auth users
+  // Google Sign-In users are already verified
+  if (!currentUser.emailVerified && !currentUser.providerData.some(provider => provider.providerId === 'google.com')) {
     return (
       <AppStack.Navigator screenOptions={{ headerShown: false }}>
         <AppStack.Screen
