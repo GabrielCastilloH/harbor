@@ -43,6 +43,7 @@ export default function SettingsScreen() {
     isLoading,
     enableNotifications,
     disableNotifications,
+    error,
   } = useNotification();
   const [darkMode, setDarkMode] = useState(false);
   const [locationServices, setLocationServices] = useState(true);
@@ -85,6 +86,21 @@ export default function SettingsScreen() {
     // Send a signal whenever this screen is viewed
     // signal("pageview", { screen: "Settings" });
   }, []);
+
+  // Show alert when there's a notification error
+  React.useEffect(() => {
+    if (error) {
+      Alert.alert("Notification Settings", error.message, [
+        {
+          text: "OK",
+          onPress: () => {
+            // Clear the error after showing the alert
+            // The error will be cleared by the NotificationContext
+          },
+        },
+      ]);
+    }
+  }, [error]);
 
   const handleAccountStatusChange = (isActive: boolean) => {
     setUserProfile((prev: any) => ({ ...prev, isActive }));
