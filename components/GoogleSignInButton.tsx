@@ -1,25 +1,24 @@
-import React, { useEffect } from "react";
-import {
-  TouchableOpacity,
-  Text,
-  View,
-  StyleSheet,
-  Image,
-  Alert,
-} from "react-native";
+import React from "react";
+import { View, Text, Pressable, Alert, StyleSheet, Image } from "react-native";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
-import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
-import { auth } from "../firebaseConfig";
-import { UserService } from "../networking/UserService";
-import { logToNtfy } from "../util/userBackend";
+import {
+  getAuth,
+  signInWithCredential,
+  GoogleAuthProvider,
+  signOut,
+} from "firebase/auth";
+import { auth, db } from "../firebaseConfig";
+import NetInfo from "@react-native-community/netinfo";
+import { doc, getDoc } from "firebase/firestore";
+import { checkUserExists } from "../util/userBackend";
 import Colors from "../constants/Colors";
 
 interface GoogleSignInButtonProps {
-  onUserExists?: (userData: any) => void;
-  onNewUser?: (user: any) => void;
-  onError?: (error: any) => void;
-  onSignInStart?: () => void;
-  onSignInComplete?: () => void;
+  onUserExists: (userData: any) => void; // Callback for existing users
+  onNewUser: (user: any) => void; // Callback for new users
+  onError: (error: any) => void; // Error callback
+  onSignInStart?: () => void; // Callback when sign-in starts
+  onSignInComplete?: () => void; // Callback when sign-in completes
   buttonText?: string;
   buttonStyle?: any;
   textStyle?: any;
@@ -37,117 +36,169 @@ export default function GoogleSignInButton({
   textStyle,
   showCornellLogo = false,
 }: GoogleSignInButtonProps) {
-  useEffect(() => {
-    // Configure Google Sign-In
-    GoogleSignin.configure({
-      webClientId: "838717009645-YOUR_WEB_CLIENT_ID.apps.googleusercontent.com", // This needs to be set from Firebase Console
-      offlineAccess: true,
-    });
+  // Add ref to track if component is mounted
+  const isMountedRef = React.useRef(true);
+
+  // Track component lifecycle
+  React.useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   const handleGoogleSignIn = async () => {
     try {
+      // Call onSignInStart if provided
       onSignInStart?.();
 
-      // Check if your device supports Google Play
-      await GoogleSignin.hasPlayServices();
+      // 1. Check network connectivity
+      const netInfo = await NetInfo.fetch();
+      if (!netInfo.isConnected) {
+        Alert.alert(
+          "No Internet Connection",
+          "Please check your internet connection and try again."
+        );
+        onSignInComplete?.();
+        return;
+      }
 
-      // Get the users ID token
-      const { idToken, user } = await GoogleSignin.signIn();
+      // 2. Check Google Play Services (Android only)
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
 
-      // Create a Google credential with the token
-      const googleCredential = GoogleAuthProvider.credential(idToken);
+      // 3. Sign in with Google
+      await GoogleSignin.signIn();
 
-      // Sign-in the user with the credential
-      const result = await signInWithCredential(auth, googleCredential);
-      const firebaseUser = result.user;
-
-      // Check if this is a new user or existing user
-      const isNewUser = result.additionalUserInfo?.isNewUser;
-
-      if (isNewUser) {
-        // New user - don't create profile yet, let account setup handle it
-        // Just pass the user info to the callback
-        onNewUser?.(firebaseUser);
-      } else {
-        // Existing user - check if they have a profile
-        try {
-          const userData = await UserService.getUser(firebaseUser.uid);
-          onUserExists?.(userData);
-        } catch (error) {
-          console.error("Error fetching existing user:", error);
-          // If user doesn't exist in Firestore, treat as new user
-          onNewUser?.(firebaseUser);
+      // Get tokens - handle cancellation gracefully
+      let accessToken;
+      try {
+        const tokens = await GoogleSignin.getTokens();
+        accessToken = tokens.accessToken;
+      } catch (tokenError: any) {
+        console.error("❌ [GOOGLE SIGN IN] Token error:", tokenError);
+        // If user cancelled or there's a token issue, handle gracefully
+        if (
+          tokenError.message?.includes(
+            "getTokens requires a user to be signed in"
+          ) ||
+          tokenError.code === "SIGN_IN_CANCELLED"
+        ) {
+          try {
+            await GoogleSignin.signOut();
+            await signOut(auth);
+          } catch (signOutError) {
+            // Ignore sign out errors
+          }
+          onSignInComplete?.();
+          return;
         }
+        throw tokenError;
       }
 
-      onSignInComplete?.();
-    } catch (error: any) {
-      console.error("Google Sign-In Error:", error);
-      
-      if (error.code === "auth/account-exists-with-different-credential") {
-        Alert.alert(
-          "Account Already Exists",
-          "An account already exists with this email address using a different sign-in method. Please use the original sign-in method or contact support."
-        );
-      } else if (error.code === "auth/invalid-credential") {
-        Alert.alert(
-          "Sign-In Failed",
-          "The sign-in credentials are invalid. Please try again."
-        );
-      } else {
-        Alert.alert(
-          "Sign-In Error",
-          error.message || "Failed to sign in with Google. Please try again."
-        );
+      if (!accessToken) {
+        console.error("❌ [GOOGLE SIGN IN] No access token found");
+        throw new Error("No access token found");
       }
-      
-      onError?.(error);
+
+      // 4. Create Firebase credential
+      const googleCredential = GoogleAuthProvider.credential(null, accessToken);
+
+      // 5. Sign in to Firebase
+      const userCredential = await signInWithCredential(auth, googleCredential);
+
+      // 6. Check if user exists in your database - wait for definitive answer
+      const userExists = await checkUserExists(userCredential.user.uid);
+
+      if (userExists) {
+        // 7a. Existing user - get user data and call callback
+        const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+
+          // Check if component is still mounted before calling callback
+          if (!isMountedRef.current) {
+            return;
+          }
+
+          onUserExists(userData);
+        } else {
+          // User exists in auth but not in Firestore - treat as new user
+
+          // Check if component is still mounted before calling callback
+          if (!isMountedRef.current) {
+            return;
+          }
+
+          onNewUser(userCredential.user);
+        }
+      } else {
+        // 7b. New user - call new user callback
+
+        // Check if component is still mounted before calling callback
+        if (!isMountedRef.current) {
+          return;
+        }
+
+        onNewUser(userCredential.user);
+      }
+    } catch (error: any) {
+      console.error("❌ [GOOGLE SIGN IN] Error during sign-in process:", error);
+      console.error("❌ [GOOGLE SIGN IN] Error details:", {
+        message: error.message,
+        code: error.code,
+        stack: error.stack,
+      });
+
+      // Call onSignInComplete to stop loading
+      onSignInComplete?.();
+
+      // Call onError with the error
+      onError(error);
     }
   };
 
   return (
-    <TouchableOpacity
-      style={[styles.button, buttonStyle]}
-      onPress={handleGoogleSignIn}
-    >
-      <View style={styles.buttonContent}>
+    <View style={styles.container}>
+      <Pressable
+        onPress={handleGoogleSignIn}
+        style={[styles.button, buttonStyle]}
+      >
         {showCornellLogo && (
           <Image
             source={require("../assets/images/cornell-logo.png")}
-            style={styles.cornellLogo}
+            style={[styles.cornellLogo, { tintColor: Colors.primary500 }]}
             resizeMode="contain"
           />
         )}
         <Text style={[styles.buttonText, textStyle]}>{buttonText}</Text>
-      </View>
-    </TouchableOpacity>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    width: "100%",
+  },
   button: {
-    flexDirection: "row",
-    backgroundColor: Colors.primary100,
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
+    backgroundColor: "#4285F4",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-  },
-  buttonContent: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cornellLogo: {
-    width: 24,
-    height: 24,
-    marginRight: 12,
   },
   buttonText: {
-    color: Colors.primary500,
-    fontWeight: "500",
-    fontSize: 20,
+    color: "white",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  cornellLogo: {
+    width: 32,
+    height: 32,
+    marginRight: 12,
   },
 });
