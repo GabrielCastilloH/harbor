@@ -66,36 +66,18 @@ export default function GoogleSignInButton({
       const isNewUser = result.additionalUserInfo?.isNewUser;
 
       if (isNewUser) {
-        // New user - create profile in Firestore
-        try {
-          const userData = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            firstName: user.givenName || "",
-            lastName: user.familyName || "",
-            profilePicture: user.photo || "",
-            createdAt: new Date(),
-            isActive: true,
-          };
-
-          await UserService.createUser(userData);
-          logToNtfy("New user created via Google Sign-In", userData.email);
-
-          onNewUser?.(firebaseUser);
-        } catch (error) {
-          console.error("Error creating new user:", error);
-          onError?.(error);
-          return;
-        }
+        // New user - don't create profile yet, let account setup handle it
+        // Just pass the user info to the callback
+        onNewUser?.(firebaseUser);
       } else {
-        // Existing user
+        // Existing user - check if they have a profile
         try {
           const userData = await UserService.getUser(firebaseUser.uid);
           onUserExists?.(userData);
         } catch (error) {
           console.error("Error fetching existing user:", error);
-          onError?.(error);
-          return;
+          // If user doesn't exist in Firestore, treat as new user
+          onNewUser?.(firebaseUser);
         }
       }
 
