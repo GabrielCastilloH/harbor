@@ -275,11 +275,14 @@ export default function SettingsScreen() {
             }}
           />
 
+          {/** Group Size hidden per request **/}
+          {/**
           <SettingsButton
             icon="people-outline"
             text={`Group Size: ${currentGroupSize}`}
             onPress={handleGroupSize}
           />
+          **/}
         </View>
 
         {/* Profile Section */}

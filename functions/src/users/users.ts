@@ -308,6 +308,13 @@ export const createUser = functions.https.onCall(
               existingData?.isActive !== undefined
                 ? existingData.isActive
                 : true,
+            // Preserve existing isAvailable if present; default to true
+            isAvailable:
+              existingData?.isAvailable !== undefined
+                ? existingData.isAvailable
+                : true,
+            // Preserve existing currentMatches if present; default to empty array
+            currentMatches: existingData?.currentMatches || [],
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };
 
@@ -340,6 +347,10 @@ export const createUser = functions.https.onCall(
             groupSize: userData.groupSize || 2,
             // Explicit active flag for consistency
             isActive: true,
+            // Match availability (defaults to true)
+            isAvailable: true,
+            // Initialize current matches array
+            currentMatches: [],
           };
 
           transaction.set(db.collection("users").doc(firebaseUid), newUserDoc);
@@ -921,21 +932,44 @@ export const deleteUser = functions.https.onCall(
 
             // Also read the other user's data upfront
             if (!matchData) continue;
-            const otherUserId =
-              matchData.user1Id === userId
-                ? matchData.user2Id
-                : matchData.user1Id;
-            if (!otherUserDataMap.has(otherUserId)) {
-              try {
-                const otherUserDoc = await db
-                  .collection("users")
-                  .doc(otherUserId)
-                  .get();
-                if (otherUserDoc.exists) {
-                  otherUserDataMap.set(otherUserId, otherUserDoc.data());
-                } else {
+
+            // Handle both individual and group matches
+            let otherUserIds: string[] = [];
+            if (matchData.type === "individual") {
+              // Individual match: find the other participant
+              const participantIds = matchData.participantIds || [];
+              otherUserIds = participantIds.filter(
+                (id: string) => id !== userId
+              );
+            } else if (matchData.type === "group") {
+              // Group match: get all other participants
+              const participantIds = matchData.participantIds || [];
+              otherUserIds = participantIds.filter(
+                (id: string) => id !== userId
+              );
+            } else {
+              // Legacy individual match format
+              const otherUserId =
+                matchData.user1Id === userId
+                  ? matchData.user2Id
+                  : matchData.user1Id;
+              if (otherUserId) otherUserIds = [otherUserId];
+            }
+            // Read data for all other users in the match
+            for (const otherUserId of otherUserIds) {
+              if (!otherUserDataMap.has(otherUserId)) {
+                try {
+                  const otherUserDoc = await db
+                    .collection("users")
+                    .doc(otherUserId)
+                    .get();
+                  if (otherUserDoc.exists) {
+                    otherUserDataMap.set(otherUserId, otherUserDoc.data());
+                  }
+                } catch (error) {
+                  console.error(`Error reading user ${otherUserId}:`, error);
                 }
-              } catch (error) {}
+              }
             }
           } else {
           }
@@ -960,25 +994,42 @@ export const deleteUser = functions.https.onCall(
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
-            // Remove match from the other user's currentMatches array
-            const otherUserId =
-              matchData.user1Id === userId
-                ? matchData.user2Id
-                : matchData.user1Id;
-
-            const otherUserRef = db.collection("users").doc(otherUserId);
-            const otherUserData = otherUserDataMap.get(otherUserId);
-
-            if (otherUserData) {
-              const updatedMatches = (
-                otherUserData.currentMatches || []
-              ).filter((id: string) => id !== matchId);
-
-              transaction.update(otherUserRef, {
-                currentMatches: updatedMatches,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-              });
+            // Remove match from all other users' currentMatches arrays
+            let otherUserIds: string[] = [];
+            if (matchData.type === "individual") {
+              const participantIds = matchData.participantIds || [];
+              otherUserIds = participantIds.filter(
+                (id: string) => id !== userId
+              );
+            } else if (matchData.type === "group") {
+              const participantIds = matchData.participantIds || [];
+              otherUserIds = participantIds.filter(
+                (id: string) => id !== userId
+              );
             } else {
+              // Legacy individual match format
+              const otherUserId =
+                matchData.user1Id === userId
+                  ? matchData.user2Id
+                  : matchData.user1Id;
+              if (otherUserId) otherUserIds = [otherUserId];
+            }
+
+            for (const otherUserId of otherUserIds) {
+              const otherUserRef = db.collection("users").doc(otherUserId);
+              const otherUserData = otherUserDataMap.get(otherUserId);
+
+              if (otherUserData) {
+                const updatedMatches = (
+                  otherUserData.currentMatches || []
+                ).filter((id: string) => id !== matchId);
+
+                transaction.update(otherUserRef, {
+                  currentMatches: updatedMatches,
+                  isAvailable: true, // Set user as available again
+                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+              }
             }
           } else {
           }
@@ -991,25 +1042,39 @@ export const deleteUser = functions.https.onCall(
       let batchCount = 0;
 
       try {
-        // Delete swipes by this user
-        const swipesByUserQuery = db
+        // Delete outgoing swipes (swipes made by this user)
+        const outgoingSwipesRef = db
           .collection("swipes")
-          .where("userId", "==", userId);
-        const swipesByUserSnapshot = await swipesByUserQuery.get();
-        swipesByUserSnapshot.docs.forEach((doc) => {
+          .doc(userId)
+          .collection("outgoing");
+        const outgoingSwipesSnapshot = await outgoingSwipesRef.get();
+        outgoingSwipesSnapshot.docs.forEach((doc) => {
           batch.delete(doc.ref);
           batchCount++;
         });
 
-        // Delete swipes targeting this user
-        const swipesOnUserQuery = db
+        // Delete incoming swipes (swipes targeting this user)
+        const incomingSwipesRef = db
           .collection("swipes")
-          .where("targetUserId", "==", userId);
-        const swipesOnUserSnapshot = await swipesOnUserQuery.get();
-        swipesOnUserSnapshot.docs.forEach((doc) => {
+          .doc(userId)
+          .collection("incoming");
+        const incomingSwipesSnapshot = await incomingSwipesRef.get();
+        incomingSwipesSnapshot.docs.forEach((doc) => {
           batch.delete(doc.ref);
           batchCount++;
         });
+
+        // Delete swipe counters
+        const swipeCountersRef = db
+          .collection("users")
+          .doc(userId)
+          .collection("counters")
+          .doc("swipes");
+        const swipeCountersDoc = await swipeCountersRef.get();
+        if (swipeCountersDoc.exists) {
+          batch.delete(swipeCountersRef);
+          batchCount++;
+        }
 
         // Delete reports by this user
         const reportsByUserQuery = db

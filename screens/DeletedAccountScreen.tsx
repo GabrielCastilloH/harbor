@@ -9,18 +9,43 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, CommonActions } from "@react-navigation/native";
+import { signOut } from "firebase/auth";
+import { auth } from "../firebaseConfig";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
 
 export default function DeletedAccountScreen() {
   const navigation = useNavigation();
+  const { setUserId, setProfile, setStreamApiKey, setStreamUserToken } =
+    useAppContext();
 
-  const handleBackToSignIn = () => {
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: "SignIn" }],
-      })
-    );
+  const handleBackToSignIn = async () => {
+    try {
+      // Sign out from Firebase Auth and clear all app state
+      await Promise.all([
+        signOut(auth),
+        AsyncStorage.multiRemove([
+          "@user",
+          "@authToken",
+          "@streamApiKey",
+          "@streamUserToken",
+        ]),
+      ]);
+
+      // Clear app context state
+      setUserId(null);
+      setProfile(null);
+      setStreamApiKey(null);
+      setStreamUserToken(null);
+    } catch (error) {
+      console.error("Error signing out:", error);
+      // Even if sign out fails, clear local state
+      setUserId(null);
+      setProfile(null);
+      setStreamApiKey(null);
+      setStreamUserToken(null);
+    }
   };
 
   return (
