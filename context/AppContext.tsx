@@ -181,21 +181,23 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         const { UserService } = require("../networking");
 
         try {
-          const [idToken, firestoreResponse, banStatus, deletedStatus] =
-            await Promise.all([
-              user.getIdToken(true),
-              UserService.getUserById(user.uid),
-              UserService.checkBannedStatus(user.uid),
-              UserService.checkDeletedAccount(user.email || ""),
-            ]);
+          // First, check if user is deleted or banned (these don't require user data)
+          const [deletedStatus, banStatus] = await Promise.all([
+            UserService.checkDeletedAccount(user.email || ""),
+            UserService.checkBannedStatus(user.uid),
+          ]);
 
           console.log("🔍 [AUTH DEBUG] User email:", user.email);
           console.log("🔍 [AUTH DEBUG] Deleted status:", deletedStatus);
+          console.log(
+            "🔍 [AUTH DEBUG] Deleted status isDeleted:",
+            deletedStatus.isDeleted
+          );
           console.log("🔍 [AUTH DEBUG] Ban status:", banStatus);
-          console.log("🔍 [AUTH DEBUG] Firestore response:", firestoreResponse);
 
           // 🚫 Deleted account
           if (deletedStatus.isDeleted) {
+            console.log("🚫 [AUTH] User is deleted, setting isDeleted: true");
             setAppState((prevState) => ({
               ...prevState,
               isAuthenticated: true,
@@ -212,6 +214,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
           // 🚫 Banned account
           if (banStatus.isBanned) {
+            console.log("🚫 [AUTH] User is banned, setting isBanned: true");
             setAppState((prevState) => ({
               ...prevState,
               isAuthenticated: true,
@@ -225,6 +228,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             }));
             return;
           }
+
+          // If not deleted or banned, then get user data
+          const [idToken, firestoreResponse] = await Promise.all([
+            user.getIdToken(true),
+            UserService.getUserById(user.uid),
+          ]);
+
+          console.log("🔍 [AUTH DEBUG] Firestore response:", firestoreResponse);
 
           // 🚫 Unverified email
           if (!user.emailVerified) {

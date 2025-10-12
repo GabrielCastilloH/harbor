@@ -1349,6 +1349,8 @@ export const checkDeletedAccount = functions.https.onCall(
     try {
       const { email } = request.data;
 
+      console.log("🔍 [CHECK DELETED] Checking email:", email);
+
       if (!email) {
         throw new functions.https.HttpsError(
           "invalid-argument",
@@ -1360,6 +1362,15 @@ export const checkDeletedAccount = functions.https.onCall(
         .collection("deletedAccounts")
         .where("email", "==", email.toLowerCase());
       const deletedAccountsSnapshot = await deletedAccountsQuery.get();
+
+      console.log("🔍 [CHECK DELETED] Query results:", {
+        email: email.toLowerCase(),
+        docsFound: deletedAccountsSnapshot.docs.length,
+        docs: deletedAccountsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          data: doc.data(),
+        })),
+      });
 
       const isDeleted = !deletedAccountsSnapshot.empty;
 
