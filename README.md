@@ -902,6 +902,93 @@ export const getFeatureConfig = (isPremium: boolean): FeatureConfig => {
 - **Ban enforcement**: Comprehensive blocking of banned users
 - **Consent system**: Progressive photo reveal requires explicit user consent
 
+## ⚠️ Potential Security Breaches
+
+### Critical Security Concerns
+
+#### 1. **Original Image Access Without Consent**
+
+- **Risk**: Users could potentially access `_original.jpg` images without proper consent validation
+- **Location**: `functions/src/images/images.ts` - `getImages` function
+- **Mitigation**: Function properly validates match existence and consent status before serving original images
+- **Status**: ✅ **SECURE** - Consent validation is enforced server-side
+
+#### 2. **Email Address Exposure in Matches**
+
+- **Risk**: User emails could be exposed to matched users, allowing identity discovery
+- **Location**: `functions/src/users/users.ts` - `getUserById` function
+- **Mitigation**: Email addresses are explicitly filtered out from user data responses
+- **Code**: `const { images, email, ...userDataWithoutSensitiveInfo } = userData;`
+- **Status**: ✅ **SECURE** - Emails are never returned in user lookups
+
+#### 3. **Unauthorized User Data Access**
+
+- **Risk**: Users could access other users' profile data without proper authorization
+- **Location**: Multiple functions including `getUserById`, `getRecommendations`
+- **Mitigation**: All functions require authentication and validate user permissions
+- **Status**: ✅ **SECURE** - Authentication required for all data access
+
+#### 4. **Image Bypass Through Direct Storage Access**
+
+- **Risk**: Users could potentially access images directly through Firebase Storage URLs
+- **Location**: `storage.rules` and image serving functions
+- **Mitigation**: Images are served through signed URLs with expiration, not direct access
+- **Status**: ✅ **SECURE** - All image access goes through Cloud Functions with consent validation
+
+#### 5. **Match Data Manipulation**
+
+- **Risk**: Users could potentially manipulate match consent or view status
+- **Location**: `functions/src/matches/matches.ts` - consent and view functions
+- **Mitigation**: Firestore security rules restrict updates to only consent/view fields for authenticated users
+- **Status**: ✅ **SECURE** - Limited update permissions enforced
+
+#### 6. **Recommendation Data Leakage**
+
+- **Risk**: Sensitive user data could be exposed in recommendation responses
+- **Location**: `functions/src/recommendations/recommendations.ts`
+- **Mitigation**: Email addresses and images are filtered out from recommendation responses
+- **Code**: `const { images, email, ...userDataWithoutSensitiveInfo } = userData;`
+- **Status**: ✅ **SECURE** - Sensitive data filtered from recommendations
+
+#### 7. **Report System Abuse**
+
+- **Risk**: Users could potentially access reported user emails or sensitive data
+- **Location**: `functions/src/reports/reports.ts`
+- **Mitigation**: Reports only store necessary data, emails are fetched securely from Firebase Auth
+- **Status**: ✅ **SECURE** - Limited data exposure in reports
+
+#### 8. **Authentication Bypass**
+
+- **Risk**: Unauthenticated users could access protected functions
+- **Location**: All Cloud Functions
+- **Mitigation**: Every function checks `request.auth` and throws `unauthenticated` error if missing
+- **Status**: ✅ **SECURE** - Authentication required for all functions
+
+#### 9. **Account Status Bypass**
+
+- **Risk**: Banned or deleted users could access the app
+- **Location**: `App.tsx` authentication flow and Firestore security rules
+- **Mitigation**: Multiple layers of protection including client-side checks and server-side rules
+- **Status**: ✅ **SECURE** - Account status enforced at multiple levels
+
+#### 10. **Cross-User Data Access**
+
+- **Risk**: Users could access data from users they're not matched with
+- **Location**: `functions/src/images/images.ts` - `getImages` function
+- **Mitigation**: Function validates active match existence before serving any user data
+- **Code**: `if (!hasValidMatch) { throw new functions.https.HttpsError("permission-denied", "No active match found between users"); }`
+- **Status**: ✅ **SECURE** - Match validation enforced
+
+### Security Architecture Strengths
+
+- **Multi-layer validation**: Authentication, authorization, and data filtering at multiple levels
+- **Server-side enforcement**: All security checks happen in Cloud Functions, not client-side
+- **Firestore security rules**: Additional layer of protection at database level
+- **Consent-based access**: Progressive photo reveal requires explicit user consent
+- **Data minimization**: Only necessary data is exposed in API responses
+- **Signed URL system**: Images served through time-limited signed URLs
+- **Comprehensive logging**: All security events are logged for monitoring
+
 ## 🚀 Getting Started
 
 ### Prerequisites
