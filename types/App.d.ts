@@ -20,6 +20,7 @@ export type Profile = {
   updatedAt?: Timestamp;
   availability: number;
   groupSize: number; // Preferred group size for matching (2, 3, or 4)
+  isActive?: boolean; // Account activation status
 };
 
 export interface CardViewProps {

@@ -72,7 +72,7 @@ const DUMMY_PROFILES: Profile[] = [
 ];
 
 const FeedScreen = () => {
-  const { currentUser, userId } = useAppContext();
+  const { currentUser, userId, profile } = useAppContext();
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -152,16 +152,33 @@ const FeedScreen = () => {
         )}
         showsVerticalScrollIndicator={false}
         // Add an empty list component for when there's no data
-        ListEmptyComponent={() => (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>No More Available</Text>
-            <Text style={styles.emptyTitle}>Matches</Text>
-            <Text style={styles.emptySubtitle}>
-              You have no more matches left for today OR are in an active match.
-              Come back tomorrow for more.
-            </Text>
-          </View>
-        )}
+        ListEmptyComponent={() => {
+          // Check if user's account is deactivated
+          const isAccountDeactivated = profile?.isActive === false;
+
+          return (
+            <View style={styles.emptyContainer}>
+              {isAccountDeactivated ? (
+                <>
+                  <Text style={styles.emptyTitle}>Account Deactivated</Text>
+                  <Text style={styles.emptySubtitle}>
+                    Your account has been deactivated. You can reactivate it in
+                    settings.
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.emptyTitle}>No More Available</Text>
+                  <Text style={styles.emptyTitle}>Matches</Text>
+                  <Text style={styles.emptySubtitle}>
+                    You have no more matches left for today OR are in an active
+                    match. Come back tomorrow for more.
+                  </Text>
+                </>
+              )}
+            </View>
+          );
+        }}
       />
     </SafeAreaView>
   );
