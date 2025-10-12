@@ -138,11 +138,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // This is now the single source of truth for handling auth state changes.
   const checkAndSetAuthState = useCallback(
     async (user: User | null) => {
-      // 🚦 Do not proceed if another process is already running
-      if (isProcessingAuthRef.current) {
-        return;
-      }
-
+      // 🚦 Prevent duplicate calls
+      if (isProcessingAuthRef.current) return;
       isProcessingAuthRef.current = true;
 
       try {
@@ -158,10 +155,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             // Silent fail for data clearing
           }
 
-          // Clear the user when they log out
-          // Note: TelemetryDeck user ID will be reset on next app restart (DISABLED)
-
-          // 🏆 Atomic state update - using functional update to avoid stale state
           setAppState((prevState) => ({
             ...prevState,
             isAuthenticated: false,
@@ -170,133 +163,142 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             currentUser: null,
             profileExists: false,
             isInitialized: true,
-            isBanned: false, // 💡 Reset ban status on logout
-            isDeleted: false, // 💡 Reset deleted status on logout
+            isBanned: false,
+            isDeleted: false,
           }));
 
-          // 🚀 NEW: Clear centralized user data on logout
           setUserProfile(null);
           setSwipeLimit(null);
           setIsLoadingUserData(false);
 
-          // Clear cached data for the user
           if (appState.userId) {
             await clearAllCache(appState.userId);
           }
           return;
         }
 
-        // 🚀 OPTIMIZATION: Use Promise.all to fetch data in parallel
+        // 🚀 Fetch data in parallel
         const { UserService } = require("../networking");
-        const [idToken, firestoreResponse, banStatus, deletedStatus] =
-          await Promise.all([
-            user.getIdToken(true),
-            UserService.getUserById(user.uid),
-            UserService.checkBannedStatus(user.uid),
-            UserService.checkDeletedAccount(user.email || ""),
-          ]);
 
-        // Check if user is deleted first
-        if (deletedStatus.isDeleted) {
+        try {
+          const [idToken, firestoreResponse, banStatus, deletedStatus] =
+            await Promise.all([
+              user.getIdToken(true),
+              UserService.getUserById(user.uid),
+              UserService.checkBannedStatus(user.uid),
+              UserService.checkDeletedAccount(user.email || ""),
+            ]);
+
+          console.log("🔍 [AUTH DEBUG] User email:", user.email);
+          console.log("🔍 [AUTH DEBUG] Deleted status:", deletedStatus);
+          console.log("🔍 [AUTH DEBUG] Ban status:", banStatus);
+          console.log("🔍 [AUTH DEBUG] Firestore response:", firestoreResponse);
+
+          // 🚫 Deleted account
+          if (deletedStatus.isDeleted) {
+            setAppState((prevState) => ({
+              ...prevState,
+              isAuthenticated: true,
+              userId: user.uid,
+              profile: null,
+              currentUser: user,
+              profileExists: false,
+              isInitialized: true,
+              isBanned: false,
+              isDeleted: true,
+            }));
+            return;
+          }
+
+          // 🚫 Banned account
+          if (banStatus.isBanned) {
+            setAppState((prevState) => ({
+              ...prevState,
+              isAuthenticated: true,
+              userId: user.uid,
+              profile: null,
+              currentUser: user,
+              profileExists: false,
+              isInitialized: true,
+              isBanned: true,
+              isDeleted: false,
+            }));
+            return;
+          }
+
+          // 🚫 Unverified email
+          if (!user.emailVerified) {
+            setAppState((prevState) => ({
+              ...prevState,
+              isAuthenticated: true,
+              userId: null,
+              profile: null,
+              currentUser: user,
+              profileExists: false,
+              isInitialized: true,
+              isBanned: false,
+              isDeleted: false,
+            }));
+            return;
+          }
+
+          // ✅ Valid, verified user
+          const response = firestoreResponse;
+          if (response && response.user) {
+            await loadStreamCredentials();
+
+            setAppState((prevState) => ({
+              ...prevState,
+              isAuthenticated: true,
+              userId: user.uid,
+              profile: response.user,
+              currentUser: user,
+              profileExists: true,
+              isInitialized: true,
+              isBanned: false,
+              isDeleted: false,
+            }));
+
+            // Fetch centralized data
+            fetchUserData(user.uid);
+          } else {
+            setAppState((prevState) => ({
+              ...prevState,
+              isAuthenticated: true,
+              userId: user.uid,
+              profile: null,
+              currentUser: user,
+              profileExists: false,
+              isInitialized: true,
+              isBanned: false,
+              isDeleted: false,
+            }));
+          }
+        } catch (error: any) {
+          console.error("❌ [AUTH DEBUG] Error in authentication flow:", error);
           setAppState((prevState) => ({
             ...prevState,
             isAuthenticated: true,
-            userId: user.uid,
+            userId: user?.uid || null,
             profile: null,
             currentUser: user,
             profileExists: false,
             isInitialized: true,
             isBanned: false,
-            isDeleted: true, // 💡 Atomic state update
-          }));
-          return;
-        }
-
-        // Check if user is banned second
-        if (banStatus.isBanned) {
-          setAppState((prevState) => ({
-            ...prevState,
-            isAuthenticated: true,
-            userId: user.uid,
-            profile: null,
-            currentUser: user,
-            profileExists: false,
-            isInitialized: true,
-            isBanned: true, // 💡 Atomic state update
             isDeleted: false,
           }));
-          return;
         }
-
-        if (!user.emailVerified) {
-          setAppState((prevState) => ({
-            ...prevState,
-            isAuthenticated: true,
-            userId: null,
-            profile: null,
-            currentUser: user,
-            profileExists: false,
-            isInitialized: true,
-            isBanned: false, // 💡 User not banned, just unverified
-            isDeleted: false, // 💡 User not deleted, just unverified
-          }));
-          return;
-        }
-
-        const response = firestoreResponse; // Use the result from Promise.all
-
-        if (response && response.user) {
-          await loadStreamCredentials();
-
-          // 🏆 Note: TelemetryDeck user ID is set in App.tsx and will be updated on next app restart (DISABLED)
-          // For now, we'll track user activity with the current anonymous user
-
-          setAppState((prevState) => ({
-            ...prevState,
-            isAuthenticated: true,
-            userId: user.uid,
-            profile: response.user,
-            currentUser: user,
-            profileExists: true,
-            isInitialized: true,
-            isBanned: false, // 💡 User has profile, not banned
-            isDeleted: false, // 💡 User has profile, not deleted
-          }));
-
-          // 🚀 NEW: Fetch centralized user data after successful auth
-          fetchUserData(user.uid);
-        } else {
-          setAppState((prevState) => ({
-            ...prevState,
-            isAuthenticated: true,
-            userId: user.uid,
-            profile: null,
-            currentUser: user,
-            profileExists: false,
-            isInitialized: true,
-            isBanned: false, // 💡 User exists but no profile, not banned
-            isDeleted: false, // 💡 User exists but no profile, not deleted
-          }));
-        }
-      } catch (error: any) {
-        // Silent fail for auth state check
-        setAppState((prevState) => ({
-          ...prevState,
-          isAuthenticated: true,
-          userId: user?.uid || null,
-          profile: null,
-          currentUser: user,
-          profileExists: false,
-          isInitialized: true,
-          isBanned: false, // 💡 Default to not banned on error
-          isDeleted: false, // 💡 Default to not deleted on error
-        }));
+      } catch (outerError: any) {
+        console.error(
+          "❌ [AUTH DEBUG] Outer error in auth handler:",
+          outerError
+        );
       } finally {
         isProcessingAuthRef.current = false;
       }
     },
     [appState.userId]
-  ); // Dependency on userId to clear correct cache on logout
+  );
 
   const loadStreamCredentials = async () => {
     try {
@@ -305,7 +307,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         AsyncStorage.getItem("@streamUserToken"),
       ]);
 
-      // Load API key (cache for 7 days)
+      // Load API key (cache for 7 days)`
       if (storedStreamApiKey) {
         try {
           const apiKeyData = JSON.parse(storedStreamApiKey);

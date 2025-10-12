@@ -7,20 +7,36 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/bannedAccounts/$(userId));
     }
 
+    // Helper function to check if a user is deleted
+    function isDeleted(userId) {
+      return exists(/databases/$(database)/documents/deletedAccounts/$(userId));
+    }
+
+    // Helper function to check if user is banned or deleted
+    function isBannedOrDeleted(userId) {
+      return isBanned(userId) || isDeleted(userId);
+    }
+
     // --- Banned Accounts ---
     match /bannedAccounts/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if false;
     }
 
+    // --- Deleted Accounts ---
+    match /deletedAccounts/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
     // --- Users and subcollections ---
     match /users/{userId} {
-      // Only the authenticated user can read/create/update/delete their own user doc (unless banned)
-      allow read, create, update, delete: if request.auth != null && request.auth.uid == userId && !isBanned(request.auth.uid);
+      // Only the authenticated user can read/create/update/delete their own user doc (unless banned or deleted)
+      allow read, create, update, delete: if request.auth != null && request.auth.uid == userId && !isBannedOrDeleted(request.auth.uid);
 
       // Subcollection: counters (e.g., swipes)
       match /counters/{counterId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId && !isBanned(request.auth.uid);
+        allow read, write: if request.auth != null && request.auth.uid == userId && !isBannedOrDeleted(request.auth.uid);
       }
     }
 
@@ -30,13 +46,13 @@ service cloud.firestore {
 
       match /outgoing/{swipedUserId} {
         // user can create/read their own outgoing swipe docs; immutable after create
-        allow read, create: if request.auth != null && request.auth.uid == userId && !isBanned(userId);
+        allow read, create: if request.auth != null && request.auth.uid == userId && !isBannedOrDeleted(userId);
         allow update, delete: if false;
       }
 
       match /incoming/{swiperUserId} {
         // user can read who swiped them; writes are server-managed only
-        allow read: if request.auth != null && request.auth.uid == userId && !isBanned(userId);
+        allow read: if request.auth != null && request.auth.uid == userId && !isBannedOrDeleted(userId);
         allow write: if false;
       }
     }
@@ -49,13 +65,13 @@ service cloud.firestore {
     // --- Matches (unified) ---
     match /matches/{matchId} {
       // Read if the requester is a participant
-      allow read: if request.auth != null && !isBanned(request.auth.uid) && request.auth.uid in resource.data.participantIds;
+      allow read: if request.auth != null && !isBannedOrDeleted(request.auth.uid) && request.auth.uid in resource.data.participantIds;
 
       // Create if requester is one of the participants
-      allow create: if request.auth != null && !isBanned(request.auth.uid) && request.auth.uid in request.resource.data.participantIds;
+      allow create: if request.auth != null && !isBannedOrDeleted(request.auth.uid) && request.auth.uid in request.resource.data.participantIds;
 
       // Users can only update their own consent/view flags (unified only)
-      allow update: if request.auth != null && !isBanned(request.auth.uid) && request.auth.uid in resource.data.participantIds && (
+      allow update: if request.auth != null && !isBannedOrDeleted(request.auth.uid) && request.auth.uid in resource.data.participantIds && (
         request.resource.data.participantConsent[request.auth.uid] != resource.data.participantConsent[request.auth.uid] ||
         request.resource.data.participantViewed[request.auth.uid] != resource.data.participantViewed[request.auth.uid]
       );
@@ -63,7 +79,7 @@ service cloud.firestore {
 
     // --- Reports ---
     match /reports/{reportId} {
-      allow create: if request.auth != null && !isBanned(request.auth.uid);
+      allow create: if request.auth != null && !isBannedOrDeleted(request.auth.uid);
       allow read: if request.auth != null && request.auth.uid == resource.data.reporterId;
       allow update, delete: if false;
     }
@@ -71,7 +87,7 @@ service cloud.firestore {
     // --- Chats (generalized to participantIds array) ---
     match /chats/{chatId} {
       allow read: if request.auth != null && request.auth.uid in resource.data.participantIds;
-      allow create: if request.auth != null && !isBanned(request.auth.uid) && request.auth.uid in request.resource.data.participantIds;
+      allow create: if request.auth != null && !isBannedOrDeleted(request.auth.uid) && request.auth.uid in request.resource.data.participantIds;
 
       match /messages/{messageId} {
         allow read: if request.auth != null && request.auth.uid in resource.data.participantIds;

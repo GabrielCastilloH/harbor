@@ -237,12 +237,22 @@ function AppContent() {
   const BannedStack = createNativeStackNavigator();
   const DeletedStack = createNativeStackNavigator();
 
+  // Debug logging for navigation decisions
+  console.log("🧭 [NAV DEBUG] App state:", {
+    isInitialized,
+    isAuthenticated,
+    currentUser: currentUser?.uid,
+    isBanned,
+    isDeleted,
+  });
+
   if (!isInitialized) {
     return <LoadingScreen loadingText="Loading..." />;
   }
 
   // Check if user is deleted and authenticated
   if (isAuthenticated && isDeleted) {
+    console.log("🧭 [NAV] Showing DeletedAccountScreen");
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer ref={navigationRef}>
@@ -262,6 +272,7 @@ function AppContent() {
 
   // Check if user is banned and authenticated
   if (isAuthenticated && isBanned) {
+    console.log("🧭 [NAV] Showing BannedAccountScreen");
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer ref={navigationRef}>
