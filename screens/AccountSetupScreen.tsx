@@ -211,18 +211,33 @@ export default function AccountSetupScreen({
       };
 
       try {
-        updateProgress(0.5);
+        // Start profile creation with gradual progress
+        updateProgress(0.45);
+
+        // Simulate gradual progress during the Cloud Function call
+        const progressInterval = setInterval(() => {
+          setTargetProgress((prev) => {
+            if (prev < 0.75) {
+              return Math.min(prev + 0.02, 0.75);
+            }
+            return prev;
+          });
+        }, 100);
+
         const result = await createUserProfileWithImages(
           userData,
           imagesToUpload
         );
+
+        // Clear the interval and set final progress
+        clearInterval(progressInterval);
         updateProgress(0.8);
 
         // Extract image filenames from the result
         const imageFilenames = result.result?.user?.images || [];
 
         // STEP 3: Load Stream Chat credentials (this MUST happen AFTER profile is created)
-        updateProgress(0.9);
+        updateProgress(0.85);
         try {
           const { apiKey, userToken } = await preloadChatCredentials(
             firebaseUid
@@ -240,7 +255,7 @@ export default function AccountSetupScreen({
         }
 
         // STEP 4: Request notification permission and save token (this is optional)
-        updateProgress(0.95);
+        updateProgress(0.92);
         try {
           await streamNotificationService.requestAndSaveNotificationToken(
             firebaseUid
@@ -257,7 +272,12 @@ export default function AccountSetupScreen({
           }
         }
 
-        // Complete the process
+        // Complete the process with gradual final progress
+        updateProgress(0.98);
+
+        // Small delay to show near-completion
+        await new Promise((resolve) => setTimeout(resolve, 200));
+
         updateProgress(1);
 
         // Small delay to show 100% completion
