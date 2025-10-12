@@ -151,6 +151,220 @@ await db.runTransaction(async (transaction) => {
 });
 ```
 
+## 🗄️ Database Schema
+
+Harbor uses **Firebase Firestore** as its primary database with a well-structured collection hierarchy designed for scalability and efficient querying.
+
+### Main Collections
+
+#### 📊 **users** Collection
+
+**Primary user profile data and account management**
+
+```typescript
+// Document: /users/{userId}
+{
+  // Profile Information
+  firstName: string;           // 1-11 characters
+  email: string;              // Cornell email only
+  age: number;                // 18+ years old
+  yearLevel: string;          // Freshman, Sophomore, Junior, Senior
+  major: string;              // 85+ major options
+  gender: string;             // Male, Female, Non-Binary
+  sexualOrientation: string;  // Heterosexual, Homosexual, Bisexual, Pansexual
+
+  // Profile Content
+  images: string[];           // Array of image filenames (3-6 images)
+  aboutMe: string;            // 5-180 characters
+  q1: string;                 // "Together we could" (5-100 chars)
+  q2: string;                 // "Favorite book, movie or song" (5-100 chars)
+  q3: string;                 // "Some of my hobbies are" (5-100 chars)
+
+  // Account Status
+  isActive: boolean;          // Account enabled/disabled (default: true)
+  isAvailable: boolean;       // Match availability (default: true, false when in active match)
+  currentMatches: string[];   // Array of active match IDs
+
+  // System Fields
+  paywallSeen: boolean;       // Premium feature tracking (disabled)
+  fcmToken?: string;          // Firebase Cloud Messaging token
+  expoPushToken?: string;     // Expo push notification token
+  availability: number;       // For matching algorithm (-1 default)
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+#### 🔄 **matches** Collection
+
+**Individual match records between users**
+
+```typescript
+// Document: /matches/{matchId}
+{
+  type: "individual";                           // Match type
+  participantIds: string[];                     // Array of participant user IDs
+  participantConsent: Record<string, boolean>;  // Consent tracking per user
+  participantViewed: Record<string, boolean>;   // View tracking per user
+  messageCount: number;                         // Total messages in chat
+  isActive: boolean;                            // Match status
+  matchDate: Timestamp;                         // When match was created
+  consentMessageSent?: boolean;                 // Consent notification sent
+  introMessageSent?: boolean;                   // Intro message sent
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+#### 👆 **swipes** Collection
+
+**Swipe tracking with subcollections for efficient querying**
+
+```typescript
+// Document: /swipes/{userId}/outgoing/{swipedUserId}
+{
+  direction: "left" | "right"; // Swipe direction
+  createdAt: Timestamp; // When swipe occurred
+}
+
+// Document: /swipes/{userId}/incoming/{swiperId}
+{
+  direction: "left" | "right"; // Swipe direction
+  createdAt: Timestamp; // When swipe occurred
+}
+```
+
+#### 📝 **reports** Collection
+
+**User reports for moderation**
+
+```typescript
+// Document: /reports/{reportId}
+{
+  reporterId: string; // ID of user making report
+  reporterEmail: string; // Email of reporter
+  reportedUserId: string; // ID of reported user
+  reportedUserEmail: string; // Email of reported user
+  reportedUserName: string; // Name of reported user
+  reason: string; // Report category
+  explanation: string; // Detailed explanation
+  status: "pending" | "resolved" | "dismissed";
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+#### 🚫 **bannedAccounts** Collection
+
+**Banned user records**
+
+```typescript
+// Document: /bannedAccounts/{userId}
+{
+  bannedByEmail: string; // User's email at time of ban
+  unbanDate: Timestamp | null; // Ban expiration (null for permanent)
+  reason: string; // Internal ban reason
+  createdAt: Timestamp; // When ban was created
+}
+```
+
+#### 🗑️ **deletedAccounts** Collection
+
+**Deleted user tracking**
+
+```typescript
+// Document: /deletedAccounts/{userId}
+{
+  email: string; // User's email at time of deletion
+  deletedAt: Timestamp; // When account was deleted
+  deletedBy: string; // User ID who deleted account
+  firstName: string; // User's first name
+  lastName: string; // User's last name
+}
+```
+
+#### ✉️ **verificationCodes** Collection
+
+**Email verification codes**
+
+```typescript
+// Document: /verificationCodes/{userId}
+{
+  code: string; // 6-digit verification code
+  email: string; // Email being verified
+  expiresAt: number; // Expiration timestamp (10 minutes)
+  createdAt: Timestamp; // When code was created
+}
+```
+
+### Subcollections
+
+#### 📊 **users/{userId}/counters** Subcollection
+
+**Daily swipe count tracking**
+
+```typescript
+// Document: /users/{userId}/counters/swipes
+{
+  count: number; // Current day's swipe count
+  resetDate: Timestamp; // Last reset timestamp
+  updatedAt: Timestamp; // Last update timestamp
+}
+```
+
+#### 🚫 **users/{userId}/blocked** Subcollection
+
+**User blocking system**
+
+```typescript
+// Document: /users/{userId}/blocked/{blockedUserId}
+{
+  blockedUserId: string;        // ID of blocked user
+  blockedAt: Timestamp;         // When user was blocked
+  reason: string;               // "manual_block" | "report_block"
+  matchId?: string;             // Optional match ID if blocking from match
+  reportId?: string;            // Optional report ID if blocking from report
+}
+```
+
+### Database Design Principles
+
+#### 🚀 **Performance Optimizations**
+
+- **Subcollection Architecture**: Swipes stored in `/swipes/{userId}/outgoing/` and `/swipes/{userId}/incoming/` for efficient querying
+- **Counter-based Limits**: Daily swipe counts tracked in `/users/{userId}/counters/swipes` subcollection
+- **Index-based Filtering**: Availability status prevents recommending users in active matches
+- **Atomic Operations**: All critical operations use Firestore transactions
+
+#### 🔒 **Data Consistency**
+
+- **Transaction Safety**: Swipe count increments and limit checks happen atomically
+- **No Race Conditions**: Prevents users from exceeding limits during rapid swiping
+- **Automatic Reset**: Daily swipe counts reset automatically via scheduled function
+- **Match Prevention**: Users with active matches cannot swipe until match is resolved
+
+#### 🏗️ **Scalability Features**
+
+- **Efficient Querying**: Subcollections allow for fast retrieval of user's swipe history
+- **Availability Tracking**: Index-based filtering prevents recommending users who are already in matches
+- **Future-Proof**: Framework ready for premium tiers and advanced features
+- **Composite Indexes**: Support efficient multi-field queries (orientation + gender + availability)
+
+#### 🎯 **User Availability System**
+
+Harbor implements a scalable **availability tracking system** that prevents users currently in matches from being recommended to others:
+
+- **`isActive`**: Controls account status (enabled/disabled)
+- **`isAvailable`**: Controls match availability (defaults to `true` if not set)
+  - `true`: User is available for new matches
+  - `false`: User is currently in an active match
+
+**Automatic State Management**:
+
+- **Match Creation**: When users match, both/all participants are set to `isAvailable: false`
+- **Match Deletion**: When users unmatch, all participants are set to `isAvailable: true`
+- **Recommendation Filtering**: Only users with `isActive !== false` and `isAvailable !== false` are recommended
+
 ## 🏗️ Technical Architecture
 
 ### Frontend Stack
@@ -675,7 +889,6 @@ export function getClientBlurLevel({
     return percentageToBlurRadius(blurPercent);
   }
 }
-
 ```
 
 ### Consent State Management
