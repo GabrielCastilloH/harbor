@@ -138,12 +138,21 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // This is now the single source of truth for handling auth state changes.
   const checkAndSetAuthState = useCallback(
     async (user: User | null) => {
+      // ADD THIS LOG - the absolute source of truth
+      console.log(
+        "🔥 [AUTH STATE LISTENER] onAuthStateChanged fired. User:",
+        user ? user.uid : "null"
+      );
+
       // 🚦 Prevent duplicate calls
       if (isProcessingAuthRef.current) return;
       isProcessingAuthRef.current = true;
 
       try {
         if (!user) {
+          console.log(
+            "🔥 [AUTH STATE LISTENER] User is null, clearing context state."
+          );
           setStreamApiKey(null);
           setStreamUserToken(null);
           try {
