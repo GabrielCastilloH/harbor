@@ -40,45 +40,38 @@ export const createUserProfileWithImages = async (
   }
 
   try {
-    // Compress and convert images to base64
-    const compressedImages: Array<{ imageData: string; index: number }> = [];
-
-    for (let i = 0; i < imageUris.length; i++) {
-      try {
-        // Compress image
+    // Process all images in parallel. If one fails, this will throw an error.
+    const compressedImages = await Promise.all(
+      imageUris.map(async (uri, index) => {
         const compressed = await ImageManipulator.manipulateAsync(
-          imageUris[i],
-          [{ resize: { width: 500 } }], // Smaller for faster upload
+          uri,
+          [{ resize: { width: 500 } }],
           { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
         );
 
-        // Convert to base64
         const base64Data = await FileSystem.readAsStringAsync(compressed.uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
 
-        compressedImages.push({
-          imageData: base64Data,
-          index: i,
-        });
-      } catch (error) {
-        console.error(`Failed to compress image ${i + 1}:`, error);
-        // Continue with other images
-      }
-    }
+        return { imageData: base64Data, index: index };
+      })
+    );
 
-    const atomicUserData = {
+    // Prepare the payload for the atomic Cloud Function
+    const payload = {
       ...userData,
       images: compressedImages,
     };
 
-    const result = await UserService.createUserWithImages(atomicUserData);
+    // Call the atomic Cloud Function
+    const result = await UserService.createUserWithImages(payload);
     return { success: true, result };
   } catch (error) {
     console.error(
-      "createUserProfileWithImages - Error creating user profile:",
+      "createUserProfileWithImages - Error preparing data or calling function:",
       error
     );
+    // The entire operation failed, either during image processing or the cloud call
     throw error;
   }
 };
@@ -106,18 +99,16 @@ export const updateUserProfileWithImages = async (
   try {
     let compressedImages: Array<{ imageData: string; index: number }> = [];
 
-    // Compress new images if provided
+    // Process all new images in parallel. If one fails, this will throw an error.
     if (newImageUris && newImageUris.length > 0) {
-      for (let i = 0; i < newImageUris.length; i++) {
-        try {
-          // Compress image
+      compressedImages = await Promise.all(
+        newImageUris.map(async (uri, index) => {
           const compressed = await ImageManipulator.manipulateAsync(
-            newImageUris[i],
-            [{ resize: { width: 500 } }], // Smaller for faster upload
+            uri,
+            [{ resize: { width: 500 } }],
             { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
           );
 
-          // Convert to base64
           const base64Data = await FileSystem.readAsStringAsync(
             compressed.uri,
             {
@@ -125,17 +116,12 @@ export const updateUserProfileWithImages = async (
             }
           );
 
-          compressedImages.push({
-            imageData: base64Data,
-            index: i,
-          });
-        } catch (error) {
-          console.error(`Failed to compress image ${i + 1}:`, error);
-          // Continue with other images
-        }
-      }
+          return { imageData: base64Data, index: index };
+        })
+      );
     }
 
+    // Call the atomic Cloud Function
     const result = await UserService.updateUserWithImages(
       userData,
       compressedImages.length > 0 ? compressedImages : undefined,
@@ -144,9 +130,10 @@ export const updateUserProfileWithImages = async (
     return { success: true, result };
   } catch (error) {
     console.error(
-      "updateUserProfileWithImages - Error updating user profile:",
+      "updateUserProfileWithImages - Error preparing data or calling function:",
       error
     );
+    // The entire operation failed, either during image processing or the cloud call
     throw error;
   }
 };

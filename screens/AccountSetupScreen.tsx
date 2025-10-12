@@ -12,6 +12,7 @@ import { signOut } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { preloadChatCredentials } from "../util/chatPreloader";
 import { streamNotificationService } from "../util/streamNotifService";
+import { SmoothProgress } from "../util/smoothProgress";
 
 export default function AccountSetupScreen({
   showProgressBar = true,
@@ -41,29 +42,17 @@ export default function AccountSetupScreen({
   });
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0); // 0 to 1
-  const [targetProgress, setTargetProgress] = useState(0); // Target progress for smooth animation
+  const smoothProgressRef = useRef<SmoothProgress | null>(null);
 
   // Use a ref to track if the alert has been shown
   const hasAlertBeenShown = useRef(false);
 
-  // Animate progress smoothly
+  // Cleanup smooth progress on unmount
   useEffect(() => {
-    if (targetProgress > progress) {
-      const interval = setInterval(() => {
-        setProgress((prev) => {
-          const increment = 0.02; // Small increments for smooth animation
-          const newProgress = Math.min(prev + increment, targetProgress);
-          return newProgress;
-        });
-      }, 50); // Update every 50ms for smooth animation
-
-      return () => clearInterval(interval);
-    }
-  }, [targetProgress, progress]);
-
-  const updateProgress = (newTarget: number) => {
-    setTargetProgress(newTarget);
-  };
+    return () => {
+      smoothProgressRef.current?.stop();
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -109,7 +98,17 @@ export default function AccountSetupScreen({
   const handleSave = async (images?: string[]) => {
     setLoading(true);
     setProgress(0);
-    setTargetProgress(0);
+
+    // Start smooth progress animation
+    smoothProgressRef.current = new SmoothProgress({
+      duration: 10000, // 10 seconds total
+      onProgress: (progressValue) => {
+        setProgress(progressValue);
+      },
+      onComplete: () => {
+        // Progress animation completed
+      },
+    });
 
     try {
       const currentUser = auth.currentUser;
@@ -119,6 +118,7 @@ export default function AccountSetupScreen({
           "No authenticated user found. Please sign in again."
         );
         setLoading(false);
+        smoothProgressRef.current?.stop();
         return;
       }
       const firebaseUid = currentUser.uid;
@@ -151,21 +151,15 @@ export default function AccountSetupScreen({
       if (validationErrors.length > 0) {
         Alert.alert("Validation Error", validationErrors.join("\n"));
         setLoading(false);
+        smoothProgressRef.current?.stop();
         return;
       }
-
-      // Start progress
-      updateProgress(0.1);
 
       // Convert images to base64 for atomic upload
       const imageDataArray: Array<{ imageData: string; index: number }> = [];
 
       for (let i = 0; i < imagesToUpload.length; i++) {
         try {
-          // Update progress for each image conversion
-          const conversionProgress = 0.1 + (i / imagesToUpload.length) * 0.3; // 10% to 40%
-          updateProgress(conversionProgress);
-
           const imageUri = imagesToUpload[i];
 
           // Convert image to base64 using expo-file-system
@@ -177,9 +171,6 @@ export default function AccountSetupScreen({
             imageData: base64Data,
             index: i,
           });
-
-          // Small delay to let progress animation catch up
-          await new Promise((resolve) => setTimeout(resolve, 50));
         } catch (conversionError) {
           console.error(`Failed to convert image ${i + 1}:`, conversionError);
           Alert.alert(
@@ -187,12 +178,10 @@ export default function AccountSetupScreen({
             `Failed to process image ${i + 1}. Please try again.`
           );
           setLoading(false);
+          smoothProgressRef.current?.stop();
           return;
         }
       }
-
-      // Move to atomic upload phase
-      updateProgress(0.4);
 
       // ATOMIC: Create user profile with images in a single transaction
       const userData = {
@@ -211,18 +200,15 @@ export default function AccountSetupScreen({
       };
 
       try {
-        updateProgress(0.5);
         const result = await createUserProfileWithImages(
           userData,
           imagesToUpload
         );
-        updateProgress(0.8);
 
         // Extract image filenames from the result
         const imageFilenames = result.result?.user?.images || [];
 
         // STEP 3: Load Stream Chat credentials (this MUST happen AFTER profile is created)
-        updateProgress(0.9);
         try {
           const { apiKey, userToken } = await preloadChatCredentials(
             firebaseUid
@@ -240,7 +226,6 @@ export default function AccountSetupScreen({
         }
 
         // STEP 4: Request notification permission and save token (this is optional)
-        updateProgress(0.95);
         try {
           await streamNotificationService.requestAndSaveNotificationToken(
             firebaseUid
@@ -257,10 +242,19 @@ export default function AccountSetupScreen({
           }
         }
 
-        // Complete the process
-        updateProgress(1);
+        // Wait for progress animation to complete (or finish early if it's done)
+        const maxWaitTime = 2000; // 2 seconds max wait
+        const startWait = Date.now();
 
-        // Small delay to show 100% completion
+        while (
+          smoothProgressRef.current?.getCurrentProgress() < 0.95 &&
+          Date.now() - startWait < maxWaitTime
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+
+        // Ensure we show 100% completion
+        setProgress(1);
         await new Promise((resolve) => setTimeout(resolve, 500));
 
         setUserId(firebaseUid);
@@ -280,6 +274,7 @@ export default function AccountSetupScreen({
           "Failed to create your profile. Please try again."
         );
         setLoading(false);
+        smoothProgressRef.current?.stop();
         return;
       }
     } catch (error) {
@@ -287,6 +282,7 @@ export default function AccountSetupScreen({
       Alert.alert("Error", "Failed to create profile. Please try again.");
     } finally {
       setLoading(false);
+      smoothProgressRef.current?.stop();
     }
   };
 
