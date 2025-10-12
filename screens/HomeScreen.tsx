@@ -155,6 +155,8 @@ const FeedScreen = () => {
         ListEmptyComponent={() => {
           // Check if user's account is deactivated
           const isAccountDeactivated = profile?.isActive === false;
+          // Check if user is in an active match (not available for new matches)
+          const isInActiveMatch = profile?.isAvailable === false;
 
           return (
             <View style={styles.emptyContainer}>
@@ -166,13 +168,21 @@ const FeedScreen = () => {
                     settings.
                   </Text>
                 </>
+              ) : isInActiveMatch ? (
+                <>
+                  <Text style={styles.emptyTitle}>In Active Match</Text>
+                  <Text style={styles.emptySubtitle}>
+                    You're currently in an active match. Check your chats to
+                    continue the conversation.
+                  </Text>
+                </>
               ) : (
                 <>
                   <Text style={styles.emptyTitle}>No More Available</Text>
                   <Text style={styles.emptyTitle}>Matches</Text>
                   <Text style={styles.emptySubtitle}>
-                    You have no more matches left for today OR are in an active
-                    match. Come back tomorrow for more.
+                    You have no more matches left for today. Come back tomorrow
+                    for more.
                   </Text>
                 </>
               )}
