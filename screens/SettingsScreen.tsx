@@ -255,7 +255,7 @@ export default function SettingsScreen() {
       if (isAvailable) {
         InAppReview.RequestInAppReview()
           .then((hasFlowFinishedSuccessfully) => {
-            console.log("InAppReview completed:", hasFlowFinishedSuccessfully);
+            // InAppReview completed
           })
           .catch((error) => {
             console.error("InAppReview error:", error);

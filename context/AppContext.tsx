@@ -138,21 +138,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // This is now the single source of truth for handling auth state changes.
   const checkAndSetAuthState = useCallback(
     async (user: User | null) => {
-      // ADD THIS LOG - the absolute source of truth
-      console.log(
-        "🔥 [AUTH STATE LISTENER] onAuthStateChanged fired. User:",
-        user ? user.uid : "null"
-      );
-
       // 🚦 Prevent duplicate calls
       if (isProcessingAuthRef.current) return;
       isProcessingAuthRef.current = true;
 
       try {
         if (!user) {
-          console.log(
-            "🔥 [AUTH STATE LISTENER] User is null, clearing context state."
-          );
           setStreamApiKey(null);
           setStreamUserToken(null);
           try {
@@ -196,17 +187,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             UserService.checkBannedStatus(user.uid),
           ]);
 
-          console.log("🔍 [AUTH DEBUG] User email:", user.email);
-          console.log("🔍 [AUTH DEBUG] Deleted status:", deletedStatus);
-          console.log(
-            "🔍 [AUTH DEBUG] Deleted status isDeleted:",
-            deletedStatus.isDeleted
-          );
-          console.log("🔍 [AUTH DEBUG] Ban status:", banStatus);
-
           // 🚫 Deleted account
           if (deletedStatus.isDeleted) {
-            console.log("🚫 [AUTH] User is deleted, setting isDeleted: true");
             setAppState((prevState) => ({
               ...prevState,
               isAuthenticated: true,
@@ -223,7 +205,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
           // 🚫 Banned account
           if (banStatus.isBanned) {
-            console.log("🚫 [AUTH] User is banned, setting isBanned: true");
             setAppState((prevState) => ({
               ...prevState,
               isAuthenticated: true,
@@ -243,8 +224,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             user.getIdToken(true),
             UserService.getUserById(user.uid),
           ]);
-
-          console.log("🔍 [AUTH DEBUG] Firestore response:", firestoreResponse);
 
           // 🚫 Unverified email
           if (!user.emailVerified) {

@@ -14,8 +14,6 @@ import Colors from "../constants/Colors";
 
 export default function BannedAccountScreen() {
   const handleBackToSignIn = async () => {
-    console.log("🔄 [BANNED SCREEN] Starting sign-out process...");
-
     try {
       // Use the EXACT same logic as SettingsScreen
       await Promise.all([
@@ -29,10 +27,6 @@ export default function BannedAccountScreen() {
           "@streamUserToken",
         ]),
       ]);
-
-      console.log(
-        "✅ [BANNED SCREEN] Sign-out successful. App will now navigate automatically."
-      );
     } catch (error) {
       console.error("❌ [BANNED SCREEN] Error during sign out:", error);
     }
