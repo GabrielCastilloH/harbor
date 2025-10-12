@@ -106,6 +106,13 @@ const FeedScreen = () => {
     fetchRecommendations();
   }, [userId]);
 
+  // Handle removing a user from recommendations (e.g., after reporting)
+  const handleUserRemoved = (removedUserId: string) => {
+    setRecommendations((prevRecommendations) =>
+      prevRecommendations.filter((profile) => profile.uid !== removedUserId)
+    );
+  };
+
   // Conditionally select the data source
   const profilesToDisplay = (() => {
     // For Zain (zb98@cornell.edu), only show dummy profiles if no recommendations are returned
@@ -140,7 +147,9 @@ const FeedScreen = () => {
       <FlatList
         data={profilesToDisplay}
         keyExtractor={(item) => item.uid || `profile-${Math.random()}`}
-        renderItem={({ item }) => <Post profile={item} />}
+        renderItem={({ item }) => (
+          <Post profile={item} onUserRemoved={handleUserRemoved} />
+        )}
         showsVerticalScrollIndicator={false}
         // Add an empty list component for when there's no data
         ListEmptyComponent={() => (
