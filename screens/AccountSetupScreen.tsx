@@ -285,11 +285,16 @@ export default function AccountSetupScreen({
 
         // Track account creation in PostHog
         console.log("PostHog: Tracking account creation", firebaseUid);
-        posthog.capture("account_created", {
-          user_id: firebaseUid,
-          email: currentUser.email,
-          name: profileData.firstName,
-        });
+        try {
+          posthog.capture("account_created", {
+            user_id: firebaseUid,
+            email: currentUser.email,
+            name: profileData.firstName,
+          });
+          console.log("PostHog: Account creation event sent successfully");
+        } catch (error) {
+          console.error("PostHog: Error tracking account creation", error);
+        }
       } catch (profileError) {
         console.error(
           "Failed to create user profile atomically:",
