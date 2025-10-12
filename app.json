@@ -93,7 +93,8 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.838717009645-na9797ln0flr27gjcgcul6jue999r8eh"
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "extra": {
       "eas": {

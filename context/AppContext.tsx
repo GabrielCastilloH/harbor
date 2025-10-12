@@ -11,6 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { auth } from "../firebaseConfig";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { UserService, SwipeService } from "../networking";
+import { usePostHog } from "posthog-react-native";
 
 // Add logging utility
 const logToNtfy = (message: string) => {
@@ -101,6 +102,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [thread, setThread] = useState<any>(null);
   const [streamApiKey, setStreamApiKey] = useState<string | null>(null);
   const [streamUserToken, setStreamUserToken] = useState<string | null>(null);
+  const posthog = usePostHog();
 
   // 🏆 The Fix: Single atomic state object to prevent race conditions
   const [appState, setAppState] = useState({
@@ -262,6 +264,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
               isBanned: false,
               isDeleted: false,
             }));
+
+            // Identify user in PostHog for DAU tracking
+            console.log("PostHog: Identifying user for DAU tracking", user.uid);
+            posthog.identify(user.uid, {
+              email: user.email,
+              name: response.user.firstName,
+            });
 
             // Fetch centralized data
             fetchUserData(user.uid);
