@@ -20,31 +20,6 @@ export const checkUserExists = async (uid: string): Promise<boolean> => {
 };
 
 /**
- * Create new user profile (simple version)
- * @param userData User data to create
- * @returns Promise<{success: boolean}>
- */
-export const createUserProfile = async (userData: {
-  firstName: string;
-  email: string;
-  [key: string]: any;
-}) => {
-  const currentUser = auth.currentUser;
-
-  if (!currentUser) {
-    throw new Error("No authenticated user found");
-  }
-
-  try {
-    const result = await UserService.createUser(userData);
-    return { success: true };
-  } catch (error) {
-    console.error("createUserProfile - Error creating user profile:", error);
-    throw error;
-  }
-};
-
-/**
  * Create new user profile with images atomically (compressed)
  * @param userData User data to create
  * @param imageUris Array of image URIs
@@ -104,27 +79,6 @@ export const createUserProfileWithImages = async (
       "createUserProfileWithImages - Error creating user profile:",
       error
     );
-    throw error;
-  }
-};
-
-/**
- * Update user profile
- * @param uid User ID
- * @param updates Updates to apply
- */
-export const updateUserProfile = async (uid: string, updates: any) => {
-  try {
-    await setDoc(
-      doc(db, "users", uid),
-      {
-        ...updates,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-  } catch (error) {
-    console.error("Error updating user profile:", error);
     throw error;
   }
 };
