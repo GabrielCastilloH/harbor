@@ -13,15 +13,8 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { UserService, SwipeService } from "../networking";
 
 // Add logging utility
-const logToNtfy = async (message: string) => {
-  try {
-    await fetch("https://ntfy.sh/harbor-debug-randomr", {
-      method: "POST",
-      body: message,
-    });
-  } catch (error) {
-    console.log("Failed to send ntfy notification:", error);
-  }
+const logToNtfy = (message: string) => {
+  console.log(message);
 };
 
 interface AppContextType {
@@ -273,7 +266,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             // Fetch centralized data
             fetchUserData(user.uid);
           } else {
-            logToNtfy(`[APP CONTEXT DEBUG] No user profile found in response, but user is authenticated - userId: ${user.uid}`);
+            logToNtfy(
+              `[APP CONTEXT DEBUG] No user profile found in response, but user is authenticated - userId: ${user.uid}`
+            );
             setAppState((prevState) => ({
               ...prevState,
               isAuthenticated: true,
@@ -287,7 +282,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             }));
 
             // For new accounts, still try to fetch user data in case it exists
-            logToNtfy(`[APP CONTEXT DEBUG] Attempting to fetch user data for new account`);
+            logToNtfy(
+              `[APP CONTEXT DEBUG] Attempting to fetch user data for new account`
+            );
             fetchUserData(user.uid);
           }
         } catch (error: any) {
@@ -369,7 +366,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     userId: string,
     forceRefresh: boolean = false
   ) => {
-    logToNtfy(`[APP CONTEXT DEBUG] fetchUserData called - userId: ${userId}, forceRefresh: ${forceRefresh}`);
+    logToNtfy(
+      `[APP CONTEXT DEBUG] fetchUserData called - userId: ${userId}, forceRefresh: ${forceRefresh}`
+    );
     setIsLoadingUserData(true);
 
     try {
@@ -381,7 +380,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           loadCachedSwipeLimit(userId),
         ]);
 
-        logToNtfy(`[APP CONTEXT DEBUG] Cache results - profile: ${cachedProfile ? 'exists' : 'null'}, swipeLimit: ${cachedSwipeLimit ? 'exists' : 'null'}`);
+        logToNtfy(
+          `[APP CONTEXT DEBUG] Cache results - profile: ${
+            cachedProfile ? "exists" : "null"
+          }, swipeLimit: ${cachedSwipeLimit ? "exists" : "null"}`
+        );
 
         // If we have cached data, use it immediately
         if (cachedProfile) {
@@ -396,7 +399,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         // If we have both cached, we can return early for instant loading
         if (cachedProfile && cachedSwipeLimit) {
           setIsLoadingUserData(false);
-          logToNtfy(`[APP CONTEXT DEBUG] Both cached, fetching fresh data in background`);
+          logToNtfy(
+            `[APP CONTEXT DEBUG] Both cached, fetching fresh data in background`
+          );
           // Still fetch fresh data in background
           fetchFreshUserData(userId);
           return;
@@ -418,29 +423,43 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // Helper function to fetch fresh data and cache it
   const fetchFreshUserData = async (userId: string) => {
     try {
-      logToNtfy(`[APP CONTEXT DEBUG] fetchFreshUserData - fetching for userId: ${userId}`);
+      logToNtfy(
+        `[APP CONTEXT DEBUG] fetchFreshUserData - fetching for userId: ${userId}`
+      );
       const [profileResponse, swipeLimitResponse] = await Promise.all([
         UserService.getUserById(userId).catch((error) => {
-          logToNtfy(`[APP CONTEXT DEBUG] Error fetching user profile: ${error.message}`);
+          logToNtfy(
+            `[APP CONTEXT DEBUG] Error fetching user profile: ${error.message}`
+          );
           return null;
         }),
         SwipeService.countRecentSwipes(userId).catch((error) => {
-          logToNtfy(`[APP CONTEXT DEBUG] Error fetching swipe limit: ${error.message}`);
+          logToNtfy(
+            `[APP CONTEXT DEBUG] Error fetching swipe limit: ${error.message}`
+          );
           return null;
         }),
       ]);
 
-      logToNtfy(`[APP CONTEXT DEBUG] Fresh data results - profile: ${profileResponse ? 'success' : 'null'}, swipeLimit: ${swipeLimitResponse ? 'success' : 'null'}`);
+      logToNtfy(
+        `[APP CONTEXT DEBUG] Fresh data results - profile: ${
+          profileResponse ? "success" : "null"
+        }, swipeLimit: ${swipeLimitResponse ? "success" : "null"}`
+      );
 
       // Cache and set user profile
       if (profileResponse && profileResponse.user) {
         await cacheUserProfile(userId, profileResponse.user);
         setUserProfile(profileResponse.user);
-        logToNtfy(`[APP CONTEXT DEBUG] Set userProfile from fresh data (with .user)`);
+        logToNtfy(
+          `[APP CONTEXT DEBUG] Set userProfile from fresh data (with .user)`
+        );
       } else if (profileResponse) {
         await cacheUserProfile(userId, profileResponse);
         setUserProfile(profileResponse);
-        logToNtfy(`[APP CONTEXT DEBUG] Set userProfile from fresh data (direct)`);
+        logToNtfy(
+          `[APP CONTEXT DEBUG] Set userProfile from fresh data (direct)`
+        );
       }
 
       // Cache and set swipe limit
@@ -455,7 +474,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         logToNtfy(`[APP CONTEXT DEBUG] Set swipeLimit from fresh data`);
       }
     } catch (error: any) {
-      logToNtfy(`[APP CONTEXT DEBUG] Error in fetchFreshUserData: ${error.message}`);
+      logToNtfy(
+        `[APP CONTEXT DEBUG] Error in fetchFreshUserData: ${error.message}`
+      );
       console.error("Error fetching fresh user data:", error);
     }
   };

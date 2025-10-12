@@ -32,15 +32,8 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import MainHeading from "../components/MainHeading";
 
 // Add logging utility
-const logToNtfy = async (message: string) => {
-  try {
-    await fetch("https://ntfy.sh/harbor-debug-randomr", {
-      method: "POST",
-      body: message,
-    });
-  } catch (error) {
-    console.log("Failed to send ntfy notification:", error);
-  }
+const logToNtfy = (message: string) => {
+  console.log(message);
 };
 
 type NavigationProps = NavigationProp<RootStackParamList>;
@@ -200,11 +193,25 @@ export default function ChatNavigator() {
 
   // Add comprehensive logging for debugging
   useEffect(() => {
-    logToNtfy(`[CHAT NAV DEBUG] ChatNavigator mounted - userId: ${userId}, userProfile: ${userProfile ? 'exists' : 'null'}, streamApiKey: ${streamApiKey ? 'exists' : 'null'}, streamUserToken: ${streamUserToken ? 'exists' : 'null'}`);
+    logToNtfy(
+      `[CHAT NAV DEBUG] ChatNavigator mounted - userId: ${userId}, userProfile: ${
+        userProfile ? "exists" : "null"
+      }, streamApiKey: ${streamApiKey ? "exists" : "null"}, streamUserToken: ${
+        streamUserToken ? "exists" : "null"
+      }`
+    );
   }, []);
 
   useEffect(() => {
-    logToNtfy(`[CHAT NAV DEBUG] Prerequisites check - userProfile: ${userProfile ? 'exists' : 'null'}, chatApiKey: ${chatApiKey ? 'exists' : 'null'}, chatUserToken: ${chatUserToken ? 'exists' : 'null'}, userId: ${userId}, user: ${user ? 'exists' : 'null'}, chatClient: ${chatClient ? 'exists' : 'null'}`);
+    logToNtfy(
+      `[CHAT NAV DEBUG] Prerequisites check - userProfile: ${
+        userProfile ? "exists" : "null"
+      }, chatApiKey: ${chatApiKey ? "exists" : "null"}, chatUserToken: ${
+        chatUserToken ? "exists" : "null"
+      }, userId: ${userId}, user: ${user ? "exists" : "null"}, chatClient: ${
+        chatClient ? "exists" : "null"
+      }`
+    );
   }, [userProfile, chatApiKey, chatUserToken, userId, user, chatClient]);
 
   // 💡 NEW STATE for notification token
@@ -254,7 +261,11 @@ export default function ChatNavigator() {
   useEffect(() => {
     const fetchToken = async () => {
       if (chatUserToken || !userId) {
-        logToNtfy(`[CHAT NAV DEBUG] Token fetch skipped - chatUserToken: ${chatUserToken ? 'exists' : 'null'}, userId: ${userId}`);
+        logToNtfy(
+          `[CHAT NAV DEBUG] Token fetch skipped - chatUserToken: ${
+            chatUserToken ? "exists" : "null"
+          }, userId: ${userId}`
+        );
         return;
       }
 
@@ -266,7 +277,9 @@ export default function ChatNavigator() {
         setStreamUserToken(token); // Store in context for future use
         cacheStreamUserToken(token, 24); // 🚀 Cache the token for 24 hours
       } catch (error) {
-        logToNtfy(`[CHAT NAV DEBUG] Failed to fetch chat token: ${error.message}`);
+        logToNtfy(
+          `[CHAT NAV DEBUG] Failed to fetch chat token: ${error.message}`
+        );
         console.error("🔴 ChatNavigator - Failed to fetch chat token:", error);
         setError("Failed to fetch chat token");
       }
@@ -305,7 +318,9 @@ export default function ChatNavigator() {
 
     // For new accounts, userProfile might not be loaded yet, so we create a fallback user object
     if (!userProfile) {
-      logToNtfy(`[CHAT NAV DEBUG] No userProfile, creating fallback user object for new account`);
+      logToNtfy(
+        `[CHAT NAV DEBUG] No userProfile, creating fallback user object for new account`
+      );
       const fallbackUserObj = {
         id: userId,
         name: "User", // Fallback name for new accounts
@@ -317,7 +332,9 @@ export default function ChatNavigator() {
       id: userId,
       name: userProfile.firstName || "User",
     };
-    logToNtfy(`[CHAT NAV DEBUG] User object created: ${JSON.stringify(userObj)}`);
+    logToNtfy(
+      `[CHAT NAV DEBUG] User object created: ${JSON.stringify(userObj)}`
+    );
     return userObj;
   }, [userProfile, userId]);
 
@@ -332,13 +349,21 @@ export default function ChatNavigator() {
     const initializeClient = async () => {
       // Check for essential prerequisites
       if (!chatApiKey || !chatUserToken || !userId || !user) {
-        logToNtfy(`[CHAT NAV DEBUG] Client initialization skipped - chatApiKey: ${chatApiKey ? 'exists' : 'null'}, chatUserToken: ${chatUserToken ? 'exists' : 'null'}, userId: ${userId}, user: ${user ? 'exists' : 'null'}`);
+        logToNtfy(
+          `[CHAT NAV DEBUG] Client initialization skipped - chatApiKey: ${
+            chatApiKey ? "exists" : "null"
+          }, chatUserToken: ${
+            chatUserToken ? "exists" : "null"
+          }, userId: ${userId}, user: ${user ? "exists" : "null"}`
+        );
         return;
       }
 
       // 💡 CRITICAL: Prevent multiple client creation attempts
       if (clientInstance || chatClient || isInitializingRef.current) {
-        logToNtfy(`[CHAT NAV DEBUG] Client initialization skipped - already exists or initializing`);
+        logToNtfy(
+          `[CHAT NAV DEBUG] Client initialization skipped - already exists or initializing`
+        );
         return;
       }
 
@@ -377,7 +402,9 @@ export default function ChatNavigator() {
           logToNtfy(`[CHAT NAV DEBUG] Chat client set in state`);
         }
       } catch (error) {
-        logToNtfy(`[CHAT NAV DEBUG] Error creating chat client: ${error.message}`);
+        logToNtfy(
+          `[CHAT NAV DEBUG] Error creating chat client: ${error.message}`
+        );
         console.error("🔴 Error creating chat client:", error);
         if (isMounted) {
           setError("Failed to create chat client");
@@ -551,14 +578,16 @@ export default function ChatNavigator() {
   // 5. User object must be properly constructed
   // Note: userProfile is now optional for new accounts (fallback user object is created)
 
-  if (
-    !chatApiKey ||
-    !chatUserToken ||
-    !userId ||
-    !user ||
-    !chatClient
-  ) {
-    logToNtfy(`[CHAT NAV DEBUG] Still loading - chatApiKey: ${chatApiKey ? 'exists' : 'null'}, chatUserToken: ${chatUserToken ? 'exists' : 'null'}, userId: ${userId}, user: ${user ? 'exists' : 'null'}, chatClient: ${chatClient ? 'exists' : 'null'}`);
+  if (!chatApiKey || !chatUserToken || !userId || !user || !chatClient) {
+    logToNtfy(
+      `[CHAT NAV DEBUG] Still loading - chatApiKey: ${
+        chatApiKey ? "exists" : "null"
+      }, chatUserToken: ${
+        chatUserToken ? "exists" : "null"
+      }, userId: ${userId}, user: ${user ? "exists" : "null"}, chatClient: ${
+        chatClient ? "exists" : "null"
+      }`
+    );
     return <LoadingScreen loadingText="Connecting to chat..." />;
   }
 
