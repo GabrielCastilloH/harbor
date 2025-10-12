@@ -17,6 +17,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import NotificationHandler from "./components/NotificationHandler";
 import { PostHogProvider } from "posthog-react-native";
+import { logToNtfy } from "./util/ntfyLogger";
 
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
@@ -293,9 +294,31 @@ function AppContent() {
 }
 
 export default function App() {
+  console.log("🔥 App component rendering");
+
   // Check PostHog environment variables
   const posthogApiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
   const posthogHost = process.env.EXPO_PUBLIC_POSTHOG_HOST;
+
+  // Log PostHog key status on app startup
+  useEffect(() => {
+    console.log("🔍 App.tsx useEffect triggered");
+    console.log("🔍 posthogApiKey:", posthogApiKey ? "exists" : "missing");
+    console.log("🔍 posthogHost:", posthogHost ? "exists" : "missing");
+
+    logToNtfy("App loaded - PostHog key status", {
+      hasApiKey: !!posthogApiKey,
+      hasHost: !!posthogHost,
+      apiKeyPreview: posthogApiKey
+        ? posthogApiKey.substring(0, 5) + "..."
+        : "missing",
+      hostPreview: posthogHost
+        ? posthogHost.substring(0, 5) + "..."
+        : "missing",
+    });
+
+    console.log("🔍 logToNtfy called");
+  }, []);
 
   // PREMIUM DISABLED: Superwall configuration commented out
   // const apiKeys = SUPERWALL_CONFIG.apiKeys;
