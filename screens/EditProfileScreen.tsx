@@ -165,11 +165,6 @@ export default function EditProfileScreen() {
         return;
       }
 
-      console.log(
-        "🔄 [EDIT PROFILE] Starting atomic profile update for user:",
-        currentUser.uid
-      );
-
       const updatedImages = images || profileData.images;
       const currentImages = contextProfile?.images || [];
 
