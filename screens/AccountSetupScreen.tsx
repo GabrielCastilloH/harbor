@@ -4,8 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
 import { auth } from "../firebaseConfig";
-import { createUserProfile } from "../util/userBackend";
-import { uploadImage } from "../util/imageUtils";
+import { createUserProfileWithImages } from "../util/userBackend";
+import * as FileSystem from "expo-file-system";
 import ProfileForm from "../components/ProfileForm";
 import LoadingScreen from "../components/LoadingScreen";
 import { signOut } from "firebase/auth";
@@ -92,7 +92,7 @@ export default function AccountSetupScreen({
             // Split display name and take first part as firstName
             firstName = currentUser.displayName.split(" ")[0];
           }
-          
+
           setProfileData((prev) => ({
             ...prev,
             firstName: firstName,
@@ -124,7 +124,7 @@ export default function AccountSetupScreen({
       const firebaseUid = currentUser.uid;
       const imagesToUpload = images || profileData.images;
 
-      // Validate profile data first before uploading images
+      // Validate profile data first
       const validationErrors = [];
       if (imagesToUpload.length < 3) {
         validationErrors.push("Please add at least 3 images");
@@ -154,49 +154,47 @@ export default function AccountSetupScreen({
         return;
       }
 
-      // Start with initial progress
+      // Start progress
       updateProgress(0.1);
 
-      // Upload all images at once, sequentially, with smooth progress
-      let uploadResults: any[] = [];
-      if (imagesToUpload.length > 0) {
-        for (let i = 0; i < imagesToUpload.length; i++) {
-          try {
-            // Update progress smoothly for each image
-            const imageProgress = 0.1 + (i / imagesToUpload.length) * 0.6; // 10% to 70%
-            updateProgress(imageProgress);
+      // Convert images to base64 for atomic upload
+      const imageDataArray: Array<{ imageData: string; index: number }> = [];
 
-            // Upload one image at a time
-            const singleResult = await uploadImage(
-              firebaseUid,
-              imagesToUpload[i]
-            );
-            uploadResults.push(singleResult);
+      for (let i = 0; i < imagesToUpload.length; i++) {
+        try {
+          // Update progress for each image conversion
+          const conversionProgress = 0.1 + (i / imagesToUpload.length) * 0.3; // 10% to 40%
+          updateProgress(conversionProgress);
 
-            // Small delay to let progress animation catch up
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          } catch (uploadError) {
-            console.error(`Failed to upload image ${i + 1}:`, uploadError);
-            Alert.alert(
-              "Upload Error",
-              `Failed to upload image ${i + 1}. Please try again.`
-            );
-            setLoading(false);
-            return;
-          }
+          const imageUri = imagesToUpload[i];
+
+          // Convert image to base64 using expo-file-system
+          const base64Data = await FileSystem.readAsStringAsync(imageUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+
+          imageDataArray.push({
+            imageData: base64Data,
+            index: i,
+          });
+
+          // Small delay to let progress animation catch up
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        } catch (conversionError) {
+          console.error(`Failed to convert image ${i + 1}:`, conversionError);
+          Alert.alert(
+            "Image Processing Error",
+            `Failed to process image ${i + 1}. Please try again.`
+          );
+          setLoading(false);
+          return;
         }
-      } else {
-        // If no images, move to profile creation
-        updateProgress(0.3);
       }
 
-      // Extract filenames from Cloud Function results
-      const imageFilenames = uploadResults.map((r) => r.filename);
+      // Move to atomic upload phase
+      updateProgress(0.4);
 
-      // Move to profile creation phase
-      updateProgress(0.7);
-
-      // STEP 2: Create the user profile in Firestore with transaction
+      // ATOMIC: Create user profile with images in a single transaction
       const userData = {
         firstName: profileData.firstName,
         email: currentUser.email || "",
@@ -209,14 +207,74 @@ export default function AccountSetupScreen({
         q1: profileData.q1,
         q2: profileData.q2,
         q3: profileData.q3,
-        images: imageFilenames, // Send the filenames as strings, not URLs
+        groupSize: profileData.groupSize || 2,
       };
 
       try {
-        await createUserProfile(userData);
-        updateProgress(0.85);
+        updateProgress(0.5);
+        const result = await createUserProfileWithImages(
+          userData,
+          imagesToUpload
+        );
+        updateProgress(0.8);
+
+        // Extract image filenames from the result
+        const imageFilenames = result.result?.user?.images || [];
+
+        // STEP 3: Load Stream Chat credentials (this MUST happen AFTER profile is created)
+        updateProgress(0.9);
+        try {
+          const { apiKey, userToken } = await preloadChatCredentials(
+            firebaseUid
+          );
+          setStreamApiKey(apiKey);
+          setStreamUserToken(userToken);
+        } catch (error) {
+          console.error(
+            "AccountSetupScreen - Error pre-loading chat credentials:",
+            error
+          );
+          // The key fix: DO NOT RETURN HERE. Allow the process to continue.
+          // The chat UI will simply not have a user token and can't connect,
+          // but the app won't crash.
+        }
+
+        // STEP 4: Request notification permission and save token (this is optional)
+        updateProgress(0.95);
+        try {
+          await streamNotificationService.requestAndSaveNotificationToken(
+            firebaseUid
+          );
+        } catch (error) {
+          console.error("AccountSetupScreen - Error saving FCM token:", error);
+          if (!hasAlertBeenShown.current) {
+            Alert.alert(
+              "Notifications Disabled",
+              "We need permission to send you notifications for new matches and messages. You can enable them later in your phone's settings.",
+              [{ text: "OK" }]
+            );
+            hasAlertBeenShown.current = true;
+          }
+        }
+
+        // Complete the process
+        updateProgress(1);
+
+        // Small delay to show 100% completion
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        setUserId(firebaseUid);
+        setProfile({
+          ...profileData,
+          email: currentUser.email || "",
+          images: imageFilenames,
+        });
+        setProfileExists(true);
       } catch (profileError) {
-        console.error("Failed to create user profile:", profileError);
+        console.error(
+          "Failed to create user profile atomically:",
+          profileError
+        );
         Alert.alert(
           "Profile Creation Error",
           "Failed to create your profile. Please try again."
@@ -224,54 +282,6 @@ export default function AccountSetupScreen({
         setLoading(false);
         return;
       }
-
-      // STEP 3: Load Stream Chat credentials (this MUST happen AFTER profile is created)
-      updateProgress(0.9);
-      try {
-        const { apiKey, userToken } = await preloadChatCredentials(firebaseUid);
-        setStreamApiKey(apiKey);
-        setStreamUserToken(userToken);
-      } catch (error) {
-        console.error(
-          "AccountSetupScreen - Error pre-loading chat credentials:",
-          error
-        );
-        // The key fix: DO NOT RETURN HERE. Allow the process to continue.
-        // The chat UI will simply not have a user token and can't connect,
-        // but the app won't crash.
-      }
-
-      // STEP 4: Request notification permission and save token (this is optional)
-      updateProgress(0.95);
-      try {
-        await streamNotificationService.requestAndSaveNotificationToken(
-          firebaseUid
-        );
-      } catch (error) {
-        console.error("AccountSetupScreen - Error saving FCM token:", error);
-        if (!hasAlertBeenShown.current) {
-          Alert.alert(
-            "Notifications Disabled",
-            "We need permission to send you notifications for new matches and messages. You can enable them later in your phone's settings.",
-            [{ text: "OK" }]
-          );
-          hasAlertBeenShown.current = true;
-        }
-      }
-
-      // Complete the process
-      updateProgress(1);
-
-      // Small delay to show 100% completion
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      setUserId(firebaseUid);
-      setProfile({
-        ...profileData,
-        email: currentUser.email || "",
-        images: imageFilenames,
-      });
-      setProfileExists(true);
     } catch (error) {
       console.error("Error creating profile:", error);
       Alert.alert("Error", "Failed to create profile. Please try again.");
