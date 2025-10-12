@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "react-native";
+import { Image, AppState, AppStateStatus } from "react-native";
 import { useAppContext } from "../context/AppContext";
 import { streamNotificationService } from "../util/streamNotifService";
 import HomeStack from "./HomeStack";
@@ -25,7 +25,8 @@ export default function TabNavigator() {
         // Request permission for Stream Chat notifications
         const granted = await streamNotificationService.requestPermission();
         if (granted) {
-          // Note: Device registration with Stream happens in ChatNavigator when client is ready
+          // CRITICAL: Save the token to AsyncStorage so ChatNavigator can use it
+          await streamNotificationService.saveUserToken(currentUser.uid);
         }
       } catch (error) {
         console.error(
@@ -38,6 +39,34 @@ export default function TabNavigator() {
     };
 
     initializeStreamNotifications();
+  }, [currentUser]);
+
+  // Re-check and save notification token when app comes to foreground
+  // This handles the case where user enables notifications in system settings
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+
+    const subscription = AppState.addEventListener(
+      "change",
+      async (nextAppState: AppStateStatus) => {
+        if (nextAppState === "active") {
+          // App has come to foreground - check if notifications are now enabled
+          try {
+            const hasPermission = await streamNotificationService.areNotificationsEnabled();
+            if (hasPermission) {
+              // Permission is granted - save the token if we don't have it yet
+              await streamNotificationService.saveUserToken(currentUser.uid);
+            }
+          } catch (error) {
+            // Silent fail - don't interrupt user experience
+          }
+        }
+      }
+    );
+
+    return () => {
+      subscription.remove();
+    };
   }, [currentUser]);
 
   return (
