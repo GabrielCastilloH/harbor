@@ -33,7 +33,7 @@ export default function DeleteAccountButton({
 
     Alert.alert(
       "Delete Account",
-      "Are you sure you want to delete your account? Your profile data will be removed, but your login will remain active.",
+      "Are you sure you want to delete your account? Your profile data will be removed, and you will not be able to create a new account with the same email address.",
       [
         {
           text: "Cancel",
