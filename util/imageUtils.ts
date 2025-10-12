@@ -1,4 +1,5 @@
 import * as ImageManipulator from "expo-image-manipulator";
+import * as FileSystem from "expo-file-system";
 import { getFirestore, doc, updateDoc, arrayUnion } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import app from "../firebaseConfig";
@@ -20,11 +21,10 @@ export async function uploadImage(
     { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
   );
 
-  // Convert to blob for base64 conversion
-  const response = await fetch(compressed.uri);
-  const blob = await response.blob();
-  const arrayBuffer = await blob.arrayBuffer();
-  const base64Data = Buffer.from(arrayBuffer).toString("base64");
+  // Convert to base64 using expo-file-system
+  const base64Data = await FileSystem.readAsStringAsync(compressed.uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
 
   // Call the uploadImage Cloud Function which handles BOTH upload AND blurring atomically
   const uploadImageFunction = httpsCallable(

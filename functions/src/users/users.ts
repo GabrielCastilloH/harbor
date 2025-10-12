@@ -2,9 +2,13 @@ import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { StreamChat } from "stream-chat";
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
+import { Storage } from "@google-cloud/storage";
+import * as sharp from "sharp";
 
 const db = admin.firestore();
 const secretManager = new SecretManagerServiceClient();
+const storage = new Storage();
+const bucket = storage.bucket("harbor-ch.appspot.com");
 
 async function getStreamClient(): Promise<StreamChat> {
   try {
