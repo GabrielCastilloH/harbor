@@ -83,14 +83,8 @@ const FeedScreen = () => {
   // Fetch recommendations from backend for all users
   useEffect(() => {
     const fetchRecommendations = async () => {
-      console.log("🔥 HomeScreen: Starting recommendation fetch");
-      console.log("🔥 HomeScreen: userId =", userId);
-      console.log("🔥 HomeScreen: currentUser =", currentUser);
-      console.log("🔥 HomeScreen: currentUserEmail =", currentUserEmail);
-
       // Skip fetching if no userId
       if (!userId) {
-        console.log("🔥 HomeScreen: No userId, skipping fetch");
         return;
       }
 
@@ -98,59 +92,14 @@ const FeedScreen = () => {
       setError(null);
 
       try {
-        console.log(
-          "🔥 HomeScreen: Calling RecommendationService.getRecommendations with userId:",
-          userId
-        );
-        console.log("🔥 HomeScreen: Current user context:", {
-          userId,
-          currentUser,
-          currentUserEmail,
-        });
-
         const response = await RecommendationService.getRecommendations(userId);
-        console.log(
-          "🔥 HomeScreen: Got response from RecommendationService:",
-          response
-        );
-        console.log(
-          "🔥 HomeScreen: Recommendations array length:",
-          response.recommendations?.length || 0
-        );
-        console.log(
-          "🔥 HomeScreen: Full recommendations data:",
-          response.recommendations
-        );
-
-        // Additional debugging
-        if (response.recommendations?.length === 0) {
-          console.log(
-            "🔥 HomeScreen: ⚠️ NO RECOMMENDATIONS RETURNED - This could be due to:"
-          );
-          console.log(
-            "🔥 HomeScreen: 1. User is in an active match (isAvailable = false)"
-          );
-          console.log("🔥 HomeScreen: 2. Daily swipe limit reached");
-          console.log("🔥 HomeScreen: 3. User account is inactive");
-          console.log(
-            "🔥 HomeScreen: 4. No compatible users found in database"
-          );
-          console.log(
-            "🔥 HomeScreen: 5. All potential matches have been swiped on or blocked"
-          );
-        }
-
         setRecommendations(response.recommendations || []);
       } catch (err: any) {
-        console.error("🔥 HomeScreen: Error fetching recommendations:", err);
-        console.error("🔥 HomeScreen: Error details:", err.message, err.code);
+        console.error("Error fetching recommendations:", err);
         setError("Failed to load recommendations");
         setRecommendations([]);
       } finally {
         setLoading(false);
-        console.log(
-          "🔥 HomeScreen: Finished recommendation fetch, loading set to false"
-        );
       }
     };
 
@@ -159,30 +108,12 @@ const FeedScreen = () => {
 
   // Conditionally select the data source
   const profilesToDisplay = (() => {
-    console.log("🔥 HomeScreen: Determining profiles to display");
-    console.log("🔥 HomeScreen: currentUserEmail =", currentUserEmail);
-    console.log(
-      "🔥 HomeScreen: recommendations.length =",
-      recommendations.length
-    );
-    console.log("🔥 HomeScreen: recommendations =", recommendations);
-
     // For Zain (zb98@cornell.edu), only show dummy profiles if no recommendations are returned
     if (currentUserEmail === "zb98@cornell.edu") {
       const hasRecommendations = recommendations.length > 0;
-      console.log(
-        "🔥 HomeScreen: Zain's account - hasRecommendations =",
-        hasRecommendations
-      );
-      const result = hasRecommendations ? recommendations : DUMMY_PROFILES;
-      console.log("🔥 HomeScreen: Zain's profiles to display:", result);
-      return result;
+      return hasRecommendations ? recommendations : DUMMY_PROFILES;
     }
     // For all other users, always use backend recommendations
-    console.log(
-      "🔥 HomeScreen: Regular user - using backend recommendations:",
-      recommendations
-    );
     return recommendations;
   })();
 
