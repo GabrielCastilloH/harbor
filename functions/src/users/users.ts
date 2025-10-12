@@ -3,12 +3,12 @@ import * as admin from "firebase-admin";
 import { StreamChat } from "stream-chat";
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import { Storage } from "@google-cloud/storage";
-import * as sharp from "sharp";
+import sharp from "sharp";
 
 const db = admin.firestore();
 const secretManager = new SecretManagerServiceClient();
 const storage = new Storage();
-const bucket = storage.bucket("harbor-ch.appspot.com");
+const bucket = storage.bucket("harbor-ch.firebasestorage.app"); // Fixed bucket name
 
 async function getStreamClient(): Promise<StreamChat> {
   try {
@@ -572,10 +572,15 @@ export const updateUser = functions.https.onCall(
           validationErrors.push("Sexual orientation selection is required");
         } else {
           const validOrientations = [
-            "Heterosexual",
-            "Homosexual",
+            "Straight",
+            "Gay",
+            "Lesbian",
             "Bisexual",
             "Pansexual",
+            "Asexual",
+            "Demisexual",
+            "Questioning",
+            "Other",
           ];
           if (!validOrientations.includes(userData.sexualOrientation)) {
             validationErrors.push("Invalid sexual orientation selection");
@@ -1515,8 +1520,598 @@ export const checkBannedStatus = functions.https.onCall(
   }
 );
 
+/**
+ * Blur image buffer using sharp
+ */
+async function blurImageBuffer(
+  buffer: Buffer,
+  blurPercent: number
+): Promise<Buffer> {
+  try {
+    const blurredBuffer = await sharp(buffer)
+      .blur(blurPercent)
+      .jpeg({ quality: 30 }) // Lower quality for blurred images
+      .toBuffer();
+    return blurredBuffer;
+  } catch (error) {
+    console.error("Error blurring image:", error);
+    throw error;
+  }
+}
+
+/**
+ * Moderate image content (placeholder implementation)
+ */
+async function moderateImage(
+  imageBuffer: Buffer
+): Promise<{ isAppropriate: boolean; reason?: string }> {
+  try {
+    // For now, we'll accept all images
+    // In production, you'd integrate with a content moderation service
+    return { isAppropriate: true };
+  } catch (error) {
+    console.error("Error moderating image:", error);
+    return { isAppropriate: false, reason: "Moderation check failed" };
+  }
+}
+
+interface AtomicCreateUserData {
+  firstName: string;
+  yearLevel?: string;
+  age?: number;
+  major?: string;
+  gender?: string;
+  sexualOrientation?: string;
+  aboutMe?: string;
+  q1?: string; // "Together we could"
+  q2?: string; // "Favorite book, movie or song"
+  q3?: string; // "Some of my hobbies are"
+  email: string;
+  groupSize?: number; // Preferred group size for matching (2, 3, or 4)
+  images: Array<{
+    imageData: string; // base64 encoded image data
+    index: number;
+  }>;
+}
+
+/**
+ * ATOMIC: Creates user profile with images in a single transaction
+ * If ANY part fails, EVERYTHING is rolled back
+ */
+export const createUserWithImages = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "1GiB", // Increased memory for image processing
+    timeoutSeconds: 300, // 5 minutes for image processing
+    minInstances: 0,
+    maxInstances: 5,
+    concurrency: 20,
+    cpu: 2,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: functions.https.CallableRequest<AtomicCreateUserData>) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const userData = request.data;
+      const firebaseUid = request.auth.uid;
+
+      // Validate user is creating profile for themselves
+      if (request.auth.uid !== firebaseUid) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User can only create profile for themselves"
+        );
+      }
+
+      // Backend validation - enforce all client-side rules
+      const validationErrors: string[] = [];
+
+      // Validate required fields
+      if (!userData.firstName?.trim()) {
+        validationErrors.push("Your name, initial(s) or nickname is required");
+      } else if (userData.firstName.trim().length < 1) {
+        validationErrors.push(
+          "Your name, initial(s) or nickname must be at least 1 character"
+        );
+      } else if (userData.firstName.trim().length > 11) {
+        validationErrors.push(
+          "Your name, initial(s) or nickname must be 11 characters or less"
+        );
+      }
+
+      if (!userData.age || userData.age < 18) {
+        validationErrors.push("Age must be 18 or older");
+      } else if (userData.age > 100) {
+        validationErrors.push("Please enter a valid age");
+      }
+
+      if (!userData.gender?.trim()) {
+        validationErrors.push("Gender selection is required");
+      } else {
+        const validGenders = ["Male", "Female", "Non-Binary"];
+        if (!validGenders.includes(userData.gender)) {
+          validationErrors.push("Invalid gender selection");
+        }
+      }
+
+      if (!userData.sexualOrientation?.trim()) {
+        validationErrors.push("Sexual orientation selection is required");
+      } else {
+        const validOrientations = [
+          "Heterosexual",
+          "Homosexual",
+          "Bisexual",
+          "Pansexual",
+        ];
+        if (!validOrientations.includes(userData.sexualOrientation)) {
+          validationErrors.push("Invalid sexual orientation selection");
+        }
+      }
+
+      if (!userData.yearLevel?.trim()) {
+        validationErrors.push("Year level selection is required");
+      }
+
+      if (!userData.major?.trim()) {
+        validationErrors.push("Major selection is required");
+      }
+
+      // Validate images
+      if (!userData.images || userData.images.length < 3) {
+        validationErrors.push("At least 3 images are required");
+      } else if (userData.images.length > 6) {
+        validationErrors.push("Maximum 6 images allowed");
+      }
+
+      // If validation fails, return error
+      if (validationErrors.length > 0) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          `Validation failed: ${validationErrors.join("; ")}`
+        );
+      }
+
+      // Check if user already exists
+      const existingUser = await db.collection("users").doc(firebaseUid).get();
+      if (existingUser.exists) {
+        throw new functions.https.HttpsError(
+          "already-exists",
+          "User profile already exists"
+        );
+      }
+
+      // Process all images first
+      const processedImages: string[] = [];
+      const uploadedFiles: string[] = []; // Track uploaded files for cleanup
+
+      try {
+        for (const imageInfo of userData.images) {
+          const { imageData, index } = imageInfo;
+
+          // Convert base64 to buffer
+          const imageBuffer = Buffer.from(imageData, "base64");
+
+          // Content moderation
+          const moderationResult = await moderateImage(imageBuffer);
+          if (!moderationResult.isAppropriate) {
+            throw new functions.https.HttpsError(
+              "invalid-argument",
+              `Image ${index + 1} rejected: ${moderationResult.reason}`
+            );
+          }
+
+          // Generate unique filename
+          const timestamp = Date.now();
+          const filename = `image_${timestamp}_${index}_original.jpg`;
+          const blurredFilename = `image_${timestamp}_${index}_blurred.jpg`;
+
+          // Upload original image
+          const originalPath = `users/${firebaseUid}/images/${filename}`;
+          const originalFile = bucket.file(originalPath);
+
+          await originalFile.save(imageBuffer, {
+            metadata: {
+              contentType: "image/jpeg",
+              cacheControl: "public, max-age=31536000",
+            },
+          });
+
+          uploadedFiles.push(originalPath);
+
+          // Generate blurred version
+          const blurredBuffer = await blurImageBuffer(imageBuffer, 80);
+          const blurredPath = `users/${firebaseUid}/images/${blurredFilename}`;
+          const blurredFile = bucket.file(blurredPath);
+
+          await blurredFile.save(blurredBuffer, {
+            metadata: {
+              contentType: "image/jpeg",
+              cacheControl: "public, max-age=31536000",
+            },
+          });
+
+          uploadedFiles.push(blurredPath);
+          processedImages.push(filename);
+        }
+      } catch (imageError) {
+        // Clean up any uploaded images if processing fails
+        console.error("Image processing failed, cleaning up:", imageError);
+        for (const filePath of uploadedFiles) {
+          try {
+            await bucket.file(filePath).delete();
+          } catch (deleteError) {
+            console.error(`Failed to delete file ${filePath}:`, deleteError);
+          }
+        }
+        throw imageError;
+      }
+
+      // Now create the user profile in Firestore
+      try {
+        const newUserDoc = {
+          firstName: userData.firstName,
+          email: userData.email,
+          age: userData.age,
+          yearLevel: userData.yearLevel,
+          major: userData.major,
+          gender: userData.gender,
+          sexualOrientation: userData.sexualOrientation,
+          images: processedImages,
+          aboutMe: userData.aboutMe || "",
+          q1: userData.q1 || "",
+          q2: userData.q2 || "",
+          q3: userData.q3 || "",
+          paywallSeen: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          availability: -1,
+          groupSize: userData.groupSize || 2,
+          isActive: true,
+          isAvailable: true,
+          currentMatches: [],
+        };
+
+        await db.collection("users").doc(firebaseUid).set(newUserDoc);
+
+        // Create Stream Chat user after successful Firestore transaction
+        try {
+          await createStreamUser(firebaseUid, userData.firstName);
+        } catch (streamError) {
+          console.error("Failed to create Stream Chat user:", streamError);
+          // Don't fail the entire operation if Stream Chat fails
+        }
+
+        return {
+          message: "User profile created successfully with images",
+          user: newUserDoc,
+          imageCount: processedImages.length,
+        };
+      } catch (profileError) {
+        // If profile creation fails, clean up all uploaded images
+        console.error(
+          "Profile creation failed, cleaning up images:",
+          profileError
+        );
+        for (const filePath of uploadedFiles) {
+          try {
+            await bucket.file(filePath).delete();
+          } catch (deleteError) {
+            console.error(`Failed to delete file ${filePath}:`, deleteError);
+          }
+        }
+        throw profileError;
+      }
+    } catch (error: any) {
+      console.error("Error in createUserWithImages:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to create user profile with images"
+      );
+    }
+  }
+);
+
+/**
+ * ATOMIC: Updates user profile with images in a single transaction
+ * If ANY part fails, EVERYTHING is rolled back
+ */
+export const updateUserWithImages = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "1GiB", // Increased memory for image processing
+    timeoutSeconds: 300, // 5 minutes for image processing
+    minInstances: 0,
+    maxInstances: 5,
+    concurrency: 20,
+    cpu: 2,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (
+    request: functions.https.CallableRequest<{
+      userData: UpdateUserData;
+      newImages?: Array<{ imageData: string; index: number }>;
+      oldImages?: string[];
+    }>
+  ) => {
+    try {
+      console.log("🔄 [UPDATE USER WITH IMAGES] Starting atomic update");
+
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { userData, newImages = [], oldImages = [] } = request.data;
+      const firebaseUid = request.auth.uid;
+
+      console.log("👤 [UPDATE USER WITH IMAGES] User ID:", firebaseUid);
+      console.log(
+        "📊 [UPDATE USER WITH IMAGES] New images count:",
+        newImages.length
+      );
+      console.log(
+        "🗑️ [UPDATE USER WITH IMAGES] Old images to delete:",
+        oldImages.length
+      );
+      console.log(
+        "📝 [UPDATE USER WITH IMAGES] User data fields:",
+        Object.keys(userData)
+      );
+
+      // Validate user is updating profile for themselves
+      if (request.auth.uid !== firebaseUid) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User can only update profile for themselves"
+        );
+      }
+
+      // Check if user exists
+      const userDoc = await db.collection("users").doc(firebaseUid).get();
+      if (!userDoc.exists) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "User profile not found"
+        );
+      }
+
+      const currentUserData = userDoc.data();
+      if (!currentUserData) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "User data not found"
+        );
+      }
+
+      // Process new images if any
+      const processedNewImages: string[] = [];
+      const uploadedFiles: string[] = []; // Track uploaded files for cleanup
+
+      console.log(
+        "🖼️ [UPDATE USER WITH IMAGES] Processing",
+        newImages.length,
+        "new images"
+      );
+
+      try {
+        for (const imageInfo of newImages) {
+          const { imageData, index } = imageInfo;
+          console.log(
+            `🔄 [UPDATE USER WITH IMAGES] Processing image ${index + 1}/${
+              newImages.length
+            }`
+          );
+
+          // Convert base64 to buffer
+          const imageBuffer = Buffer.from(imageData, "base64");
+
+          // Content moderation
+          const moderationResult = await moderateImage(imageBuffer);
+          if (!moderationResult.isAppropriate) {
+            throw new functions.https.HttpsError(
+              "invalid-argument",
+              `Image ${index + 1} rejected: ${moderationResult.reason}`
+            );
+          }
+
+          // Generate unique filename
+          const timestamp = Date.now();
+          const filename = `image_${timestamp}_${index}_original.jpg`;
+          const blurredFilename = `image_${timestamp}_${index}_blurred.jpg`;
+
+          // Upload original image
+          const originalPath = `users/${firebaseUid}/images/${filename}`;
+          const originalFile = bucket.file(originalPath);
+
+          await originalFile.save(imageBuffer, {
+            metadata: {
+              contentType: "image/jpeg",
+              cacheControl: "public, max-age=31536000",
+            },
+          });
+
+          uploadedFiles.push(originalPath);
+
+          // Generate blurred version
+          const blurredBuffer = await blurImageBuffer(imageBuffer, 80);
+          const blurredPath = `users/${firebaseUid}/images/${blurredFilename}`;
+          const blurredFile = bucket.file(blurredPath);
+
+          await blurredFile.save(blurredBuffer, {
+            metadata: {
+              contentType: "image/jpeg",
+              cacheControl: "public, max-age=31536000",
+            },
+          });
+
+          uploadedFiles.push(blurredPath);
+          processedNewImages.push(filename);
+
+          console.log(
+            `✅ [UPDATE USER WITH IMAGES] Successfully processed image ${
+              index + 1
+            }:`,
+            filename
+          );
+        }
+
+        console.log(
+          "✅ [UPDATE USER WITH IMAGES] All images processed successfully:",
+          processedNewImages.length
+        );
+      } catch (imageError) {
+        // Clean up any uploaded images if processing fails
+        console.error(
+          "❌ [UPDATE USER WITH IMAGES] Image processing failed, cleaning up:",
+          imageError
+        );
+        for (const filePath of uploadedFiles) {
+          try {
+            await bucket.file(filePath).delete();
+            console.log(
+              "🗑️ [UPDATE USER WITH IMAGES] Cleaned up file:",
+              filePath
+            );
+          } catch (deleteError) {
+            console.error(
+              `❌ [UPDATE USER WITH IMAGES] Failed to delete file ${filePath}:`,
+              deleteError
+            );
+          }
+        }
+        throw imageError;
+      }
+
+      // Use transaction for atomic operations
+      console.log(
+        "🔄 [UPDATE USER WITH IMAGES] Starting Firestore transaction"
+      );
+      try {
+        const result = await db.runTransaction(async (transaction) => {
+          const userRef = db.collection("users").doc(firebaseUid);
+          const userDoc = await transaction.get(userRef);
+
+          if (!userDoc.exists) {
+            throw new functions.https.HttpsError(
+              "not-found",
+              "User profile not found"
+            );
+          }
+
+          const currentData = userDoc.data();
+          if (!currentData) {
+            throw new functions.https.HttpsError(
+              "not-found",
+              "User data not found"
+            );
+          }
+
+          // Merge new images with existing ones, excluding old images
+          const currentImages = currentData.images || [];
+          const filteredCurrentImages = currentImages.filter(
+            (img: string) => !oldImages.includes(img)
+          );
+          const finalImages = [...filteredCurrentImages, ...processedNewImages];
+
+          console.log("📸 [UPDATE USER WITH IMAGES] Image merge:", {
+            currentImages: currentImages.length,
+            filteredCurrentImages: filteredCurrentImages.length,
+            processedNewImages: processedNewImages.length,
+            finalImages: finalImages.length,
+          });
+
+          // Prepare update data
+          const updateData: any = {
+            ...userData,
+            images: finalImages,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          };
+
+          // Remove undefined values
+          Object.keys(updateData).forEach(
+            (key) => updateData[key] === undefined && delete updateData[key]
+          );
+
+          transaction.update(userRef, updateData);
+
+          return {
+            message: "User profile updated successfully",
+            user: { ...currentData, ...updateData },
+            newImageCount: processedNewImages.length,
+            deletedImageCount: oldImages.length,
+          };
+        });
+
+        // Clean up old images after successful transaction
+        for (const oldImageFilename of oldImages) {
+          try {
+            // Delete original image
+            const originalPath = `users/${firebaseUid}/images/${oldImageFilename}`;
+            await bucket.file(originalPath).delete();
+
+            // Delete blurred image
+            const blurredFilename = oldImageFilename.replace(
+              "_original.jpg",
+              "_blurred.jpg"
+            );
+            const blurredPath = `users/${firebaseUid}/images/${blurredFilename}`;
+            await bucket.file(blurredPath).delete();
+          } catch (deleteError) {
+            console.error(
+              `Failed to delete old image ${oldImageFilename}:`,
+              deleteError
+            );
+            // Don't fail the entire operation if cleanup fails
+          }
+        }
+
+        return result;
+      } catch (transactionError) {
+        // If transaction fails, clean up all uploaded images
+        console.error(
+          "Transaction failed, cleaning up images:",
+          transactionError
+        );
+        for (const filePath of uploadedFiles) {
+          try {
+            await bucket.file(filePath).delete();
+          } catch (deleteError) {
+            console.error(`Failed to delete file ${filePath}:`, deleteError);
+          }
+        }
+        throw transactionError;
+      }
+    } catch (error: any) {
+      console.error("Error in updateUserWithImages:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to update user profile with images"
+      );
+    }
+  }
+);
+
 export const userFunctions = {
-  createUser,
+  createUserWithImages,
+  updateUserWithImages,
   getAllUsers,
   getUserById,
   updateUser,

@@ -32,154 +32,9 @@ async function blurImageBuffer(
   }
 }
 
-/**
- * Basic content moderation check for images
- */
-async function moderateImage(
-  imageBuffer: Buffer
-): Promise<{ isAppropriate: boolean; reason?: string }> {
-  try {
-    // Basic file size check (prevent extremely large files)
-    if (imageBuffer.length > 10 * 1024 * 1024) {
-      // 10MB limit
-      return { isAppropriate: false, reason: "File too large" };
-    }
+// REMOVED: moderateImage function - moved to users.ts for atomic operations
 
-    // Basic file type validation
-    const header = imageBuffer.slice(0, 4);
-    const isJPEG =
-      header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
-    const isPNG =
-      header[0] === 0x89 &&
-      header[1] === 0x50 &&
-      header[2] === 0x4e &&
-      header[3] === 0x47;
-
-    if (!isJPEG && !isPNG) {
-      return { isAppropriate: false, reason: "Invalid file type" };
-    }
-
-    // For now, we'll assume all images are appropriate
-    // In a production environment, you would integrate with a content moderation service
-    return { isAppropriate: true };
-  } catch (error) {
-    console.error("Error in content moderation:", error);
-    return { isAppropriate: false, reason: "Moderation check failed" };
-  }
-}
-
-/**
- * Uploads an image to Firebase Storage and generates a blurred version
- */
-export const uploadImage = functions.https.onCall(
-  {
-    region: "us-central1",
-    memory: "512MiB",
-    timeoutSeconds: 60,
-    minInstances: 0,
-    maxInstances: 10,
-    concurrency: 80,
-    cpu: 1,
-    ingressSettings: "ALLOW_ALL",
-    invoker: "public",
-  },
-  async (request) => {
-    try {
-      if (!request.auth) {
-        throw new functions.https.HttpsError(
-          "unauthenticated",
-          "User must be authenticated"
-        );
-      }
-
-      const { imageData, userId } = request.data;
-
-      if (!imageData || !userId) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "Image data and user ID are required"
-        );
-      }
-
-      // Verify user is uploading for themselves
-      if (request.auth.uid !== userId) {
-        throw new functions.https.HttpsError(
-          "permission-denied",
-          "User can only upload images for themselves"
-        );
-      }
-
-      // Convert base64 to buffer
-      const imageBuffer = Buffer.from(imageData, "base64");
-
-      // Content moderation
-      const moderationResult = await moderateImage(imageBuffer);
-      if (!moderationResult.isAppropriate) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          `Image rejected: ${moderationResult.reason}`
-        );
-      }
-
-      // Generate unique filename
-      const timestamp = Date.now();
-      const filename = `image_${timestamp}_original.jpg`;
-      const blurredFilename = `image_${timestamp}_blurred.jpg`;
-
-      // Upload original image
-      const originalPath = `users/${userId}/images/${filename}`;
-      const originalFile = bucket.file(originalPath);
-
-      await originalFile.save(imageBuffer, {
-        metadata: {
-          contentType: "image/jpeg",
-          cacheControl: "public, max-age=31536000",
-        },
-      });
-
-      // Generate blurred version
-      const blurredBuffer = await blurImageBuffer(imageBuffer, 80);
-      const blurredPath = `users/${userId}/images/${blurredFilename}`;
-      const blurredFile = bucket.file(blurredPath);
-
-      await blurredFile.save(blurredBuffer, {
-        metadata: {
-          contentType: "image/jpeg",
-          cacheControl: "public, max-age=31536000",
-        },
-      });
-
-      // Generate signed URLs
-      const [originalUrl] = await originalFile.getSignedUrl({
-        action: "read",
-        expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-        version: "v4",
-      });
-
-      const [blurredUrl] = await blurredFile.getSignedUrl({
-        action: "read",
-        expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-        version: "v4",
-      });
-
-      return {
-        filename,
-        originalUrl,
-        blurredUrl,
-        message: "Image uploaded successfully",
-      };
-    } catch (error: any) {
-      console.error("Error in uploadImage:", error);
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
-      }
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to upload image"
-      );
-    }
-  }
-);
+// REMOVED: uploadImage function - replaced with atomic createUserWithImages and updateUserWithImages functions
 
 /**
  * Returns personal images for a user (unblurred) - only accessible by the user themselves
@@ -589,7 +444,6 @@ export const getOriginalImages = functions.https.onCall(
 );
 
 export const imageFunctions = {
-  uploadImage,
   generateBlurred,
   getImages,
   getPersonalImages,

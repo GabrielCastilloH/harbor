@@ -4,15 +4,44 @@ import app from "../firebaseConfig";
 const functions = getFunctions(app, "us-central1");
 
 export class UserService {
-  static async createUser(userData: any) {
+  // REMOVED: createUser function - replaced with atomic createUserWithImages function
+
+  static async createUserWithImages(userData: any) {
     try {
-      const createUser = httpsCallable(functions, "userFunctions-createUser");
-      const result = await createUser(userData);
+      const createUserWithImages = httpsCallable(
+        functions,
+        "userFunctions-createUserWithImages"
+      );
+      const result = await createUserWithImages(userData);
       const data = result.data as any;
 
       return data;
     } catch (error) {
-      console.error("UserService - Error creating user:", error);
+      console.error("UserService - Error creating user with images:", error);
+      throw error;
+    }
+  }
+
+  static async updateUserWithImages(
+    userData: any,
+    newImages?: Array<{ imageData: string; index: number }>,
+    oldImages?: string[]
+  ) {
+    try {
+      const updateUserWithImages = httpsCallable(
+        functions,
+        "userFunctions-updateUserWithImages"
+      );
+      const result = await updateUserWithImages({
+        userData,
+        newImages,
+        oldImages,
+      });
+      const data = result.data as any;
+
+      return data;
+    } catch (error) {
+      console.error("UserService - Error updating user with images:", error);
       throw error;
     }
   }
