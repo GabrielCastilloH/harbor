@@ -1271,7 +1271,7 @@ export const deactivateAccount = functions.https.onCall(
 
       return { success: true, message: "Account deactivated successfully" };
     } catch (error: any) {
-      console.error("❌ DEACTIVATE: Error deactivating account:", error);
+      console.error("Error deactivating account:", error);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -1320,7 +1320,7 @@ export const reactivateAccount = functions.https.onCall(
 
       return { success: true, message: "Account reactivated successfully" };
     } catch (error: any) {
-      console.error("❌ REACTIVATE: Error reactivating account:", error);
+      console.error("Error reactivating account:", error);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -1374,7 +1374,7 @@ export const checkDeletedAccount = functions.https.onCall(
           : null,
       };
     } catch (error: any) {
-      console.error("❌ CHECK DELETED: Error checking deleted account:", error);
+      console.error("Error checking deleted account:", error);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -1841,8 +1841,6 @@ export const updateUserWithImages = functions.https.onCall(
     }>
   ) => {
     try {
-      console.log("🔄 [UPDATE USER WITH IMAGES] Starting atomic update");
-
       if (!request.auth) {
         throw new functions.https.HttpsError(
           "unauthenticated",
@@ -1852,20 +1850,6 @@ export const updateUserWithImages = functions.https.onCall(
 
       const { userData, newImages = [], oldImages = [] } = request.data;
       const firebaseUid = request.auth.uid;
-
-      console.log("👤 [UPDATE USER WITH IMAGES] User ID:", firebaseUid);
-      console.log(
-        "📊 [UPDATE USER WITH IMAGES] New images count:",
-        newImages?.length || 0
-      );
-      console.log(
-        "🗑️ [UPDATE USER WITH IMAGES] Old images to delete:",
-        oldImages?.length || 0
-      );
-      console.log(
-        "📝 [UPDATE USER WITH IMAGES] User data fields:",
-        Object.keys(userData)
-      );
 
       // Validate user is updating profile for themselves
       if (request.auth.uid !== firebaseUid) {
@@ -1896,20 +1880,9 @@ export const updateUserWithImages = functions.https.onCall(
       const processedNewImages: string[] = [];
       const uploadedFiles: string[] = []; // Track uploaded files for cleanup
 
-      console.log(
-        "🖼️ [UPDATE USER WITH IMAGES] Processing",
-        newImages?.length || 0,
-        "new images"
-      );
-
       try {
         for (const imageInfo of newImages || []) {
           const { imageData, index } = imageInfo;
-          console.log(
-            `🔄 [UPDATE USER WITH IMAGES] Processing image ${index + 1}/${
-              newImages?.length || 0
-            }`
-          );
 
           // Convert base64 to buffer
           const imageBuffer = Buffer.from(imageData, "base64");
@@ -1955,19 +1928,7 @@ export const updateUserWithImages = functions.https.onCall(
 
           uploadedFiles.push(blurredPath);
           processedNewImages.push(filename);
-
-          console.log(
-            `✅ [UPDATE USER WITH IMAGES] Successfully processed image ${
-              index + 1
-            }:`,
-            filename
-          );
         }
-
-        console.log(
-          "✅ [UPDATE USER WITH IMAGES] All images processed successfully:",
-          processedNewImages.length
-        );
       } catch (imageError) {
         // Clean up any uploaded images if processing fails
         console.error(
@@ -1977,10 +1938,6 @@ export const updateUserWithImages = functions.https.onCall(
         for (const filePath of uploadedFiles) {
           try {
             await bucket.file(filePath).delete();
-            console.log(
-              "🗑️ [UPDATE USER WITH IMAGES] Cleaned up file:",
-              filePath
-            );
           } catch (deleteError) {
             console.error(
               `❌ [UPDATE USER WITH IMAGES] Failed to delete file ${filePath}:`,
@@ -1992,9 +1949,6 @@ export const updateUserWithImages = functions.https.onCall(
       }
 
       // Use transaction for atomic operations
-      console.log(
-        "🔄 [UPDATE USER WITH IMAGES] Starting Firestore transaction"
-      );
       try {
         const result = await db.runTransaction(async (transaction) => {
           const userRef = db.collection("users").doc(firebaseUid);
@@ -2015,84 +1969,13 @@ export const updateUserWithImages = functions.https.onCall(
             );
           }
 
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Current user data keys:",
-            Object.keys(currentData)
-          );
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Current images type:",
-            typeof currentData.images
-          );
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Current images value:",
-            currentData.images
-          );
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Old images type:",
-            typeof oldImages
-          );
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Old images value:",
-            oldImages
-          );
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Processed new images type:",
-            typeof processedNewImages
-          );
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Processed new images value:",
-            processedNewImages
-          );
-
           // Merge new images with existing ones, excluding old images
           const currentImages = currentData.images || [];
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Current images array:",
-            currentImages
-          );
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Current images length:",
-            currentImages.length
-          );
-
           const oldImagesArray = oldImages || [];
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Old images array:",
-            oldImagesArray
-          );
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Old images length:",
-            oldImagesArray.length
-          );
-
           const filteredCurrentImages = currentImages.filter(
             (img: string) => !oldImagesArray.includes(img)
           );
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Filtered current images:",
-            filteredCurrentImages
-          );
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Filtered current images length:",
-            filteredCurrentImages.length
-          );
-
           const finalImages = [...filteredCurrentImages, ...processedNewImages];
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Final images:",
-            finalImages
-          );
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Final images length:",
-            finalImages.length
-          );
-
-          console.log("📸 [UPDATE USER WITH IMAGES] Image merge:", {
-            currentImages: currentImages.length,
-            filteredCurrentImages: filteredCurrentImages.length,
-            processedNewImages: processedNewImages.length,
-            finalImages: finalImages.length,
-          });
 
           // Prepare update data
           const updateData: any = {
@@ -2101,39 +1984,14 @@ export const updateUserWithImages = functions.https.onCall(
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };
 
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Update data before cleanup:",
-            updateData
-          );
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Update data keys:",
-            Object.keys(updateData)
-          );
-
           // Remove undefined values
           Object.keys(updateData).forEach((key) => {
             if (updateData[key] === undefined) {
-              console.log(
-                "🔍 [UPDATE USER WITH IMAGES] Removing undefined key:",
-                key
-              );
               delete updateData[key];
             }
           });
 
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Update data after cleanup:",
-            updateData
-          );
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Update data keys after cleanup:",
-            Object.keys(updateData)
-          );
-
           transaction.update(userRef, updateData);
-          console.log(
-            "🔍 [UPDATE USER WITH IMAGES] Transaction update called successfully"
-          );
 
           return {
             message: "User profile updated successfully",
