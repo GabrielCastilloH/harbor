@@ -10,7 +10,8 @@ import { useNavigation } from "@react-navigation/native";
 export default function PersonalView({
   profile,
   showFlag = true,
-}: CardViewProps) {
+  onUserRemoved,
+}: CardViewProps & { onUserRemoved?: (userId: string) => void }) {
   const { userId } = useAppContext();
   const navigation = useNavigation();
 
@@ -50,7 +51,10 @@ export default function PersonalView({
                   {
                     text: "OK",
                     onPress: () => {
-                      // The user will be removed from recommendations automatically
+                      // Remove the user from recommendations immediately
+                      if (onUserRemoved && profile.uid) {
+                        onUserRemoved(profile.uid);
+                      }
                     },
                   },
                 ]
