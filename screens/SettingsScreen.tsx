@@ -396,6 +396,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#788a87",
     textAlign: "center",
-    fontStyle: "italic",
   },
 });
