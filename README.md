@@ -108,8 +108,8 @@ Harbor implements a scalable **availability tracking system** that prevents user
 // Swipe counter in /users/{userId}/counters/swipes
 {
   count: 3,                 // Current day's swipe count
-  resetDate: timestamp,     // Last reset timestamp
-  updatedAt: timestamp,     // Last update timestamp
+  resetDate: Timestamp,     // Last reset timestamp (Firestore Timestamp)
+  updatedAt: Timestamp,     // Last update timestamp (Firestore Timestamp)
 }
 
 // Outgoing swipes in /swipes/{userId}/outgoing/{swipedUserId}
@@ -307,8 +307,8 @@ Harbor uses **Firebase Firestore** as its primary database with a well-structure
 // Document: /users/{userId}/counters/swipes
 {
   count: number; // Current day's swipe count
-  resetDate: Timestamp; // Last reset timestamp
-  updatedAt: Timestamp; // Last update timestamp
+  resetDate: Timestamp; // Last reset timestamp (Firestore Timestamp)
+  updatedAt: Timestamp; // Last update timestamp (Firestore Timestamp)
 }
 ```
 

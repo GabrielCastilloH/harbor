@@ -5,7 +5,6 @@ import { CallableRequest } from "firebase-functions/v2/https";
 
 const db = admin.firestore();
 
-
 const MAX_SWIPES_PER_DAY = 5;
 
 /**
@@ -89,8 +88,12 @@ export const createSwipe = functions.https.onCall(
           );
         }
 
-
-        const today = new Date().toISOString().split("T")[0];
+        const today = new Date();
+        const todayStart = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate()
+        );
         const counterRef = db
           .collection("users")
           .doc(swiperId)
@@ -100,9 +103,10 @@ export const createSwipe = functions.https.onCall(
         const counterData = counterSnap.exists
           ? (counterSnap.data() as any)
           : {};
-        const counterResetDate = counterData.resetDate ?? today;
+        const counterResetDate =
+          counterData.resetDate?.toDate?.() ?? todayStart;
         let currentCount = Number(counterData.count || 0);
-        if (counterResetDate !== today) {
+        if (counterResetDate < todayStart) {
           currentCount = 0;
         }
         if (currentCount >= MAX_SWIPES_PER_DAY) {
@@ -197,7 +201,7 @@ export const createSwipe = functions.https.onCall(
           counterRef,
           {
             count: admin.firestore.FieldValue.increment(1),
-            resetDate: today,
+            resetDate: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           },
           { merge: true }
@@ -340,7 +344,12 @@ export const countRecentSwipes = functions.https.onCall(
         );
       }
 
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date();
+      const todayStart = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+      );
       const counterRef = db
         .collection("users")
         .doc(id)
@@ -348,9 +357,9 @@ export const countRecentSwipes = functions.https.onCall(
         .doc("swipes");
       const counterSnap = await counterRef.get();
       const data = counterSnap.exists ? (counterSnap.data() as any) : {};
-      const resetDate = data.resetDate ?? today;
+      const resetDate = data.resetDate?.toDate?.() ?? todayStart;
       let count = Number(data.count || 0);
-      if (resetDate !== today) {
+      if (resetDate < todayStart) {
         count = 0;
       }
 
