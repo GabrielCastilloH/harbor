@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -111,7 +111,6 @@ export default function ReportScreen() {
                 ]
               );
             } catch (error) {
-              console.error("Error blocking user:", error);
               Alert.alert(
                 "Error",
                 "Failed to block user. Please try again later."
@@ -192,7 +191,6 @@ export default function ReportScreen() {
         ]
       );
     } catch (error: any) {
-      console.error("Error submitting report:", error);
       Alert.alert("Error", "Failed to submit report. Please try again later.");
     } finally {
       setIsSubmitting(false);

@@ -321,23 +321,6 @@ export const getRecommendations = functions.https.onCall(
       }
 
       // Step 6: Merge results in priority order
-      console.log("🔥 Backend getRecommendations: Step 6 - Merging results");
-      console.log(
-        "🔥 Backend getRecommendations: swipedUsers count:",
-        swipedUsers.length
-      );
-      console.log(
-        "🔥 Backend getRecommendations: ageYearUsers count:",
-        ageYearUsers.length
-      );
-      console.log(
-        "🔥 Backend getRecommendations: availabilityUsers count:",
-        availabilityUsers.length
-      );
-      console.log(
-        "🔥 Backend getRecommendations: generalUsers count:",
-        generalUsers.length
-      );
 
       shuffleArray(swipedUsers);
       shuffleArray(ageYearUsers);

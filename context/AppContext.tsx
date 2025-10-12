@@ -13,11 +13,6 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { UserService, SwipeService } from "../networking";
 import { usePostHog } from "posthog-react-native";
 
-// Add logging utility
-const logToNtfy = (message: string) => {
-  console.log(message);
-};
-
 interface AppContextType {
   channel: any;
   setChannel: (channel: any) => void;
@@ -266,23 +261,20 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             }));
 
             // Identify user in PostHog for DAU tracking
-            console.log("PostHog: Identifying user for DAU tracking", user.uid);
-            try {
-              posthog.identify(user.uid, {
-                email: user.email,
-                name: response.user.firstName,
-              });
-              console.log("PostHog: User identification sent successfully");
-            } catch (error) {
-              console.error("PostHog: Error identifying user", error);
+            if (posthog) {
+              try {
+                posthog.identify(user.uid, {
+                  email: user.email,
+                  name: response.user.firstName,
+                });
+              } catch (error) {
+                // PostHog error identifying user
+              }
             }
 
             // Fetch centralized data
             fetchUserData(user.uid);
           } else {
-            logToNtfy(
-              `[APP CONTEXT DEBUG] No user profile found in response, but user is authenticated - userId: ${user.uid}`
-            );
             setAppState((prevState) => ({
               ...prevState,
               isAuthenticated: true,
@@ -296,13 +288,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             }));
 
             // For new accounts, still try to fetch user data in case it exists
-            logToNtfy(
-              `[APP CONTEXT DEBUG] Attempting to fetch user data for new account`
-            );
             fetchUserData(user.uid);
           }
         } catch (error: any) {
-          console.error("❌ [AUTH DEBUG] Error in authentication flow:", error);
           setAppState((prevState) => ({
             ...prevState,
             isAuthenticated: true,
@@ -316,10 +304,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           }));
         }
       } catch (outerError: any) {
-        console.error(
-          "❌ [AUTH DEBUG] Outer error in auth handler:",
-          outerError
-        );
+        // Outer error in auth handler
       } finally {
         isProcessingAuthRef.current = false;
       }
@@ -371,7 +356,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         }
       }
     } catch (error) {
-      console.error("🔴 AppContext - Error loading Stream credentials:", error);
+      // Error loading Stream credentials
     }
   };
 
@@ -380,42 +365,27 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     userId: string,
     forceRefresh: boolean = false
   ) => {
-    logToNtfy(
-      `[APP CONTEXT DEBUG] fetchUserData called - userId: ${userId}, forceRefresh: ${forceRefresh}`
-    );
     setIsLoadingUserData(true);
 
     try {
       // Try to load from cache first (unless force refresh)
       if (!forceRefresh) {
-        logToNtfy(`[APP CONTEXT DEBUG] Loading from cache...`);
         const [cachedProfile, cachedSwipeLimit] = await Promise.all([
           loadCachedUserProfile(userId),
           loadCachedSwipeLimit(userId),
         ]);
 
-        logToNtfy(
-          `[APP CONTEXT DEBUG] Cache results - profile: ${
-            cachedProfile ? "exists" : "null"
-          }, swipeLimit: ${cachedSwipeLimit ? "exists" : "null"}`
-        );
-
         // If we have cached data, use it immediately
         if (cachedProfile) {
           setUserProfile(cachedProfile);
-          logToNtfy(`[APP CONTEXT DEBUG] Set userProfile from cache`);
         }
         if (cachedSwipeLimit) {
           setSwipeLimit(cachedSwipeLimit);
-          logToNtfy(`[APP CONTEXT DEBUG] Set swipeLimit from cache`);
         }
 
         // If we have both cached, we can return early for instant loading
         if (cachedProfile && cachedSwipeLimit) {
           setIsLoadingUserData(false);
-          logToNtfy(
-            `[APP CONTEXT DEBUG] Both cached, fetching fresh data in background`
-          );
           // Still fetch fresh data in background
           fetchFreshUserData(userId);
           return;
@@ -423,57 +393,33 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       }
 
       // Fetch fresh data (either no cache or force refresh)
-      logToNtfy(`[APP CONTEXT DEBUG] Fetching fresh user data...`);
       await fetchFreshUserData(userId);
     } catch (error: any) {
-      logToNtfy(`[APP CONTEXT DEBUG] Error in fetchUserData: ${error.message}`);
-      console.error("Error fetching user data:", error);
+      // Error fetching user data
     } finally {
       setIsLoadingUserData(false);
-      logToNtfy(`[APP CONTEXT DEBUG] fetchUserData completed`);
     }
   };
 
   // Helper function to fetch fresh data and cache it
   const fetchFreshUserData = async (userId: string) => {
     try {
-      logToNtfy(
-        `[APP CONTEXT DEBUG] fetchFreshUserData - fetching for userId: ${userId}`
-      );
       const [profileResponse, swipeLimitResponse] = await Promise.all([
         UserService.getUserById(userId).catch((error) => {
-          logToNtfy(
-            `[APP CONTEXT DEBUG] Error fetching user profile: ${error.message}`
-          );
           return null;
         }),
         SwipeService.countRecentSwipes(userId).catch((error) => {
-          logToNtfy(
-            `[APP CONTEXT DEBUG] Error fetching swipe limit: ${error.message}`
-          );
           return null;
         }),
       ]);
-
-      logToNtfy(
-        `[APP CONTEXT DEBUG] Fresh data results - profile: ${
-          profileResponse ? "success" : "null"
-        }, swipeLimit: ${swipeLimitResponse ? "success" : "null"}`
-      );
 
       // Cache and set user profile
       if (profileResponse && profileResponse.user) {
         await cacheUserProfile(userId, profileResponse.user);
         setUserProfile(profileResponse.user);
-        logToNtfy(
-          `[APP CONTEXT DEBUG] Set userProfile from fresh data (with .user)`
-        );
       } else if (profileResponse) {
         await cacheUserProfile(userId, profileResponse);
         setUserProfile(profileResponse);
-        logToNtfy(
-          `[APP CONTEXT DEBUG] Set userProfile from fresh data (direct)`
-        );
       }
 
       // Cache and set swipe limit
@@ -485,13 +431,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         };
         await cacheSwipeLimit(userId, swipeLimitData);
         setSwipeLimit(swipeLimitData);
-        logToNtfy(`[APP CONTEXT DEBUG] Set swipeLimit from fresh data`);
       }
     } catch (error: any) {
-      logToNtfy(
-        `[APP CONTEXT DEBUG] Error in fetchFreshUserData: ${error.message}`
-      );
-      console.error("Error fetching fresh user data:", error);
+      // Error fetching fresh user data
     }
   };
 
@@ -508,7 +450,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         JSON.stringify(cacheData)
       );
     } catch (error) {
-      console.error("Error caching user profile:", error);
+      // Error caching user profile
     }
   };
 
@@ -523,7 +465,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       return isExpired ? null : profile;
     } catch (error) {
-      console.error("Error loading cached user profile:", error);
       return null;
     }
   };
@@ -541,7 +482,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         JSON.stringify(cacheData)
       );
     } catch (error) {
-      console.error("Error caching swipe limit:", error);
+      // Error caching swipe limit
     }
   };
 
@@ -556,7 +497,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
       return isExpired ? null : swipeLimit;
     } catch (error) {
-      console.error("Error loading cached swipe limit:", error);
       return null;
     }
   };
@@ -570,7 +510,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       };
       await AsyncStorage.setItem("@streamApiKey", JSON.stringify(cacheData));
     } catch (error) {
-      console.error("Error caching Stream API key:", error);
+      // Error caching Stream API key
     }
   };
 
@@ -586,7 +526,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       };
       await AsyncStorage.setItem("@streamUserToken", JSON.stringify(cacheData));
     } catch (error) {
-      console.error("Error caching Stream user token:", error);
+      // Error caching Stream user token
     }
   };
 
@@ -600,7 +540,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         AsyncStorage.removeItem("@streamUserToken"),
       ]);
     } catch (error) {
-      console.error("Error clearing cache:", error);
+      // Error clearing cache
     }
   };
 

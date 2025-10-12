@@ -11,7 +11,6 @@ export const requestInAppReview = async (): Promise<boolean> => {
     const isAvailable = InAppReview.isAvailable();
 
     if (!isAvailable) {
-      console.log("In-app review not available on this device");
       Alert.alert(
         "Review Not Available",
         "In-app review is not available on this device. Please visit the app store to leave a review.",
@@ -26,17 +25,12 @@ export const requestInAppReview = async (): Promise<boolean> => {
     if (hasFlowFinishedSuccessfully) {
       // On Android: user completed or closed the review flow
       // On iOS: review flow launched successfully
-      console.log("In-app review flow completed successfully");
       return true;
     } else {
       // Flow was not shown (user may have already reviewed recently)
-      console.log(
-        "In-app review flow was not shown (quota reached or other reason)"
-      );
       return false;
     }
   } catch (error) {
-    console.error("Error requesting app review:", error);
     Alert.alert(
       "Review Error",
       "Unable to open the review dialog. Please try again later.",

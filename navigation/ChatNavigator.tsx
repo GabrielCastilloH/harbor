@@ -30,11 +30,6 @@ import { RootStackParamList } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import MainHeading from "../components/MainHeading";
 
-// Add logging utility
-const logToNtfy = (message: string) => {
-  console.log(message);
-};
-
 type NavigationProps = NavigationProp<RootStackParamList>;
 
 interface HeaderRightButtonProps {
@@ -77,10 +72,6 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
             userId: otherUserId,
             matchId: null, // Will be fetched in ProfileScreen
           });
-        } else {
-          console.error(
-            `[PROFILE ICON] Navigation failed: otherUserId or userId missing. otherUserId=${otherUserId}, userId=${userId}`
-          );
         }
       }}
       style={{ padding: 8 }}
@@ -111,7 +102,6 @@ function HeaderTitleButton({ navigation }: HeaderTitleButtonProps) {
             setMatchedUserName(userData.firstName || "User");
           }
         } catch (error) {
-          console.error("Error fetching matched user name:", error);
           setMatchedUserName("User");
         }
       }
@@ -190,29 +180,6 @@ export default function ChatNavigator() {
   );
   const [chatApiKey, setChatApiKey] = useState<string | null>(streamApiKey);
 
-  // Add comprehensive logging for debugging
-  useEffect(() => {
-    logToNtfy(
-      `[CHAT NAV DEBUG] ChatNavigator mounted - userId: ${userId}, userProfile: ${
-        userProfile ? "exists" : "null"
-      }, streamApiKey: ${streamApiKey ? "exists" : "null"}, streamUserToken: ${
-        streamUserToken ? "exists" : "null"
-      }`
-    );
-  }, []);
-
-  useEffect(() => {
-    logToNtfy(
-      `[CHAT NAV DEBUG] Prerequisites check - userProfile: ${
-        userProfile ? "exists" : "null"
-      }, chatApiKey: ${chatApiKey ? "exists" : "null"}, chatUserToken: ${
-        chatUserToken ? "exists" : "null"
-      }, userId: ${userId}, user: ${user ? "exists" : "null"}, chatClient: ${
-        chatClient ? "exists" : "null"
-      }`
-    );
-  }, [userProfile, chatApiKey, chatUserToken, userId, user, chatClient]);
-
   // 💡 NEW STATE for notification token
   const [notificationToken, setNotificationToken] = useState<string | null>(
     null
@@ -235,20 +202,15 @@ export default function ChatNavigator() {
   useEffect(() => {
     const fetchApiKey = async () => {
       if (chatApiKey) {
-        logToNtfy(`[CHAT NAV DEBUG] API key already exists, skipping fetch`);
         return;
       }
 
       try {
-        logToNtfy(`[CHAT NAV DEBUG] Fetching Stream API key...`);
         const apiKey = await ChatFunctions.getStreamApiKey();
-        logToNtfy(`[CHAT NAV DEBUG] API key fetched successfully`);
         setChatApiKey(apiKey);
         setStreamApiKey(apiKey); // Store in context for future use
         cacheStreamApiKey(apiKey); // 🚀 Cache the API key
       } catch (error) {
-        logToNtfy(`[CHAT NAV DEBUG] Failed to fetch API key: ${error.message}`);
-        console.error("🔴 ChatNavigator - Failed to fetch API key:", error);
         setError("Failed to fetch API key");
       }
     };
@@ -260,26 +222,15 @@ export default function ChatNavigator() {
   useEffect(() => {
     const fetchToken = async () => {
       if (chatUserToken || !userId) {
-        logToNtfy(
-          `[CHAT NAV DEBUG] Token fetch skipped - chatUserToken: ${
-            chatUserToken ? "exists" : "null"
-          }, userId: ${userId}`
-        );
         return;
       }
 
       try {
-        logToNtfy(`[CHAT NAV DEBUG] Fetching user token for userId: ${userId}`);
         const token = await ChatFunctions.generateToken(userId);
-        logToNtfy(`[CHAT NAV DEBUG] User token fetched successfully`);
         setChatUserToken(token);
         setStreamUserToken(token); // Store in context for future use
         cacheStreamUserToken(token, 24); // 🚀 Cache the token for 24 hours
       } catch (error) {
-        logToNtfy(
-          `[CHAT NAV DEBUG] Failed to fetch chat token: ${error.message}`
-        );
-        console.error("🔴 ChatNavigator - Failed to fetch chat token:", error);
         setError("Failed to fetch chat token");
       }
     };
@@ -295,14 +246,9 @@ export default function ChatNavigator() {
         const token = await AsyncStorage.getItem("@current_push_token");
         if (token) {
           setNotificationToken(token);
-        } else {
-          console.warn("🟡 No stored FCM token available.");
         }
       } catch (err) {
-        console.error(
-          "🔴 ChatNavigator - Failed to get stored notification token:",
-          err
-        );
+        // Failed to get stored notification token
       }
     };
     getStoredNotificationToken();
@@ -311,15 +257,11 @@ export default function ChatNavigator() {
   // Create a memoized user object using cached profile
   const user = useMemo(() => {
     if (!userId) {
-      logToNtfy(`[CHAT NAV DEBUG] User object creation skipped - no userId`);
       return null;
     }
 
     // For new accounts, userProfile might not be loaded yet, so we create a fallback user object
     if (!userProfile) {
-      logToNtfy(
-        `[CHAT NAV DEBUG] No userProfile, creating fallback user object for new account`
-      );
       const fallbackUserObj = {
         id: userId,
         name: "User", // Fallback name for new accounts
@@ -331,9 +273,6 @@ export default function ChatNavigator() {
       id: userId,
       name: userProfile.firstName || "User",
     };
-    logToNtfy(
-      `[CHAT NAV DEBUG] User object created: ${JSON.stringify(userObj)}`
-    );
     return userObj;
   }, [userProfile, userId]);
 
@@ -348,21 +287,11 @@ export default function ChatNavigator() {
     const initializeClient = async () => {
       // Check for essential prerequisites
       if (!chatApiKey || !chatUserToken || !userId || !user) {
-        logToNtfy(
-          `[CHAT NAV DEBUG] Client initialization skipped - chatApiKey: ${
-            chatApiKey ? "exists" : "null"
-          }, chatUserToken: ${
-            chatUserToken ? "exists" : "null"
-          }, userId: ${userId}, user: ${user ? "exists" : "null"}`
-        );
         return;
       }
 
       // 💡 CRITICAL: Prevent multiple client creation attempts
       if (clientInstance || chatClient || isInitializingRef.current) {
-        logToNtfy(
-          `[CHAT NAV DEBUG] Client initialization skipped - already exists or initializing`
-        );
         return;
       }
 
@@ -372,18 +301,15 @@ export default function ChatNavigator() {
       // Only create a new client if one doesn't exist
       // This prevents consecutive connectUser calls
       if (chatClient) {
-        logToNtfy(`[CHAT NAV DEBUG] Client already exists, skipping creation`);
         return;
       }
 
       try {
-        logToNtfy(`[CHAT NAV DEBUG] Starting client initialization...`);
         // 1. Create client instance
         clientInstance = StreamChat.getInstance(chatApiKey);
 
         // 2. Set notification device BEFORE connecting (required by Stream Chat)
         if (notificationToken) {
-          logToNtfy(`[CHAT NAV DEBUG] Setting notification device`);
           clientInstance.setLocalDevice({
             id: notificationToken,
             push_provider: "firebase",
@@ -392,19 +318,12 @@ export default function ChatNavigator() {
         }
 
         // 3. Connect the user
-        logToNtfy(`[CHAT NAV DEBUG] Connecting user to Stream Chat...`);
         await clientInstance.connectUser(user, chatUserToken);
-        logToNtfy(`[CHAT NAV DEBUG] User connected successfully`);
 
         if (isMounted) {
           setChatClient(clientInstance);
-          logToNtfy(`[CHAT NAV DEBUG] Chat client set in state`);
         }
       } catch (error) {
-        logToNtfy(
-          `[CHAT NAV DEBUG] Error creating chat client: ${error.message}`
-        );
-        console.error("🔴 Error creating chat client:", error);
         if (isMounted) {
           setError("Failed to create chat client");
         }
@@ -448,10 +367,6 @@ export default function ChatNavigator() {
             try {
               await chatClient.removeDevice(oldToken);
             } catch (removeError) {
-              console.warn(
-                "🔔 [TOKEN REFRESH] Failed to remove old device (may not exist):",
-                removeError
-              );
               // Continue with registration even if removal fails
             }
           }
@@ -475,16 +390,9 @@ export default function ChatNavigator() {
             // Update stored token only after successful registration
             await AsyncStorage.setItem(PUSH_TOKEN_KEY, newToken);
           } catch (deviceError) {
-            console.error(
-              "🔔 [TOKEN REFRESH] Failed to register new device, keeping old token:",
-              deviceError
-            );
+            // Failed to register new device, keeping old token
           }
         } catch (error) {
-          console.error(
-            "🔴 [TOKEN REFRESH] Error handling token refresh:",
-            error
-          );
           // Don't update AsyncStorage if registration failed
         }
       });
@@ -524,7 +432,7 @@ export default function ChatNavigator() {
           // You would need a separate library or a different approach for Android
         }
       } catch (error) {
-        console.error("🔴 Failed to get unread count or set badge:", error);
+        // Failed to get unread count or set badge
       }
     };
 
@@ -578,19 +486,8 @@ export default function ChatNavigator() {
   // Note: userProfile is now optional for new accounts (fallback user object is created)
 
   if (!chatApiKey || !chatUserToken || !userId || !user || !chatClient) {
-    logToNtfy(
-      `[CHAT NAV DEBUG] Still loading - chatApiKey: ${
-        chatApiKey ? "exists" : "null"
-      }, chatUserToken: ${
-        chatUserToken ? "exists" : "null"
-      }, userId: ${userId}, user: ${user ? "exists" : "null"}, chatClient: ${
-        chatClient ? "exists" : "null"
-      }`
-    );
     return <LoadingScreen loadingText="Connecting to chat..." />;
   }
-
-  logToNtfy(`[CHAT NAV DEBUG] All prerequisites met, rendering Chat component`);
 
   // 💡 SAFE RENDERING POINT: All prerequisites are now met
   // The Chat component will only render with a fully initialized and connected client
