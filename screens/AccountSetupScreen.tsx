@@ -86,16 +86,8 @@ export default function AccountSetupScreen({
       try {
         const currentUser = auth.currentUser;
         if (currentUser) {
-          // For Google auth users, extract first name from displayName
-          let firstName = "";
-          if (currentUser.displayName) {
-            // Split display name and take first part as firstName
-            firstName = currentUser.displayName.split(" ")[0];
-          }
-
           setProfileData((prev) => ({
             ...prev,
-            firstName: firstName,
             email: currentUser.email || "",
           }));
         }
