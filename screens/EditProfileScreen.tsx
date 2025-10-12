@@ -174,9 +174,6 @@ export default function EditProfileScreen() {
       const updatedImages = images || profileData.images;
       const currentImages = contextProfile?.images || [];
 
-      console.log("📸 [EDIT PROFILE] Updated images:", updatedImages.length);
-      console.log("📸 [EDIT PROFILE] Current images:", currentImages.length);
-
       // Helper function to extract filename from URL
       const extractFilename = (img: string): string => {
         if (img.includes("storage.googleapis.com")) {
@@ -228,19 +225,6 @@ export default function EditProfileScreen() {
         }
       }
 
-      console.log(
-        "🆕 [EDIT PROFILE] New images to upload:",
-        newImageUris.length
-      );
-      console.log(
-        "📁 [EDIT PROFILE] Existing images to keep:",
-        existingImages.length
-      );
-      console.log(
-        "🗑️ [EDIT PROFILE] Old images to delete:",
-        oldImagesToDelete.length
-      );
-
       // Images will be compressed in the atomic function
 
       // Prepare user data for update (exclude images as they're handled separately)
@@ -258,13 +242,6 @@ export default function EditProfileScreen() {
         groupSize: profileData.groupSize,
       };
 
-      console.log(
-        "🚀 [EDIT PROFILE] Calling atomic updateUserProfileWithImages..."
-      );
-      console.log("📊 [EDIT PROFILE] User data:", userDataToUpdate);
-      console.log("📊 [EDIT PROFILE] New images count:", newImageUris.length);
-      console.log("📊 [EDIT PROFILE] Old images to delete:", oldImagesToDelete);
-
       // ATOMIC: Update user profile with images in a single transaction
       const response = await updateUserProfileWithImages(
         userDataToUpdate,
@@ -272,14 +249,9 @@ export default function EditProfileScreen() {
         oldImagesToDelete.length > 0 ? oldImagesToDelete : undefined
       );
 
-      console.log("📥 [EDIT PROFILE] Atomic update response:", response);
-
       if (response.success) {
         // Extract final images from the result
         const finalImages = response.result?.user?.images || existingImages;
-
-        console.log("✅ [EDIT PROFILE] Profile update successful!");
-        console.log("📸 [EDIT PROFILE] Final images:", finalImages.length);
 
         // Store the updated full user profile in context
         setProfile({
@@ -287,7 +259,7 @@ export default function EditProfileScreen() {
           images: finalImages,
         });
 
-        // 🏆 The Fix: Reset the initial profile state after a successful save.
+        // Reset the initial profile state after a successful save
         initialProfileRef.current = {
           ...profileData,
           images: finalImages,
@@ -312,7 +284,6 @@ export default function EditProfileScreen() {
       }
       Alert.alert("Error", errorMessage);
     } finally {
-      console.log("🏁 [EDIT PROFILE] Profile update process completed");
       setLoading(false);
     }
   };
