@@ -31,15 +31,11 @@ import { getUnifiedClarityPercent } from "../constants/blurConfig";
 import ClarityBar from "../components/ClarityBar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// Add logging utility
-const logToNtfy = (message: string) => {
-  console.log(message);
-};
-
 export default function ChatScreen() {
   const { channel, userId } = useAppContext();
   const navigation = useNavigation();
   const [showConsentModal, setShowConsentModal] = useState(false);
+
   const [isChatFrozen, setIsChatFrozen] = useState(false);
   const [userConsented, setUserConsented] = useState(false);
   const [matchedUserName, setMatchedUserName] = useState<string>("Loading...");
@@ -60,30 +56,6 @@ export default function ChatScreen() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const insets = useSafeAreaInsets();
-
-  // Add comprehensive logging for debugging
-  useEffect(() => {
-    logToNtfy(
-      `[CHAT DEBUG] ChatScreen mounted - userId: ${userId}, channel: ${
-        channel ? "exists" : "null"
-      }`
-    );
-  }, []);
-
-  useEffect(() => {
-    logToNtfy(
-      `[CHAT DEBUG] Channel changed - channel: ${
-        channel ? "exists" : "null"
-      }, userId: ${userId}`
-    );
-  }, [channel, userId]);
-
-  useEffect(() => {
-    logToNtfy(
-      `[CHAT DEBUG] isLayoutReady: ${isLayoutReady}, matchedUserName: ${matchedUserName}`
-    );
-  }, [isLayoutReady, matchedUserName]);
-
 
   // Update the header title logic
   const headerTitle = useMemo(() => {
@@ -190,64 +162,37 @@ export default function ChatScreen() {
   useEffect(() => {
     const fetchChatData = async () => {
       if (!channel || !userId) {
-        logToNtfy(
-          `[CHAT DEBUG] fetchChatData skipped - channel: ${
-            channel ? "exists" : "null"
-          }, userId: ${userId}`
-        );
         return;
       }
       const otherMembers = channel?.state?.members || {};
       const otherUserId = Object.keys(otherMembers).find(
         (key) => key !== userId
       );
-      logToNtfy(
-        `[CHAT DEBUG] fetchChatData - otherUserId: ${otherUserId}, activeMatchId: ${activeMatchId}`
-      );
 
       if (otherUserId) {
         setMatchedUserId(otherUserId);
         setHasMatchedUser(true);
         try {
-          logToNtfy(
-            `[CHAT DEBUG] Fetching user data for otherUserId: ${otherUserId}`
-          );
           const [matchedProfileResponse, consentStatusResponse] =
             await Promise.all([
               UserService.getUserById(otherUserId).catch((error) => {
-                logToNtfy(
-                  `[CHAT DEBUG] Error fetching user profile: ${error.message}`
-                );
                 return null;
               }),
               activeMatchId
                 ? ConsentService.getConsentStatus(activeMatchId).catch(
                     (error) => {
-                      logToNtfy(
-                        `[CHAT DEBUG] Error fetching consent status: ${error.message}`
-                      );
                       return null;
                     }
                   )
                 : Promise.resolve(null),
             ]);
 
-          logToNtfy(
-            `[CHAT DEBUG] Profile response: ${
-              matchedProfileResponse ? "success" : "null"
-            }, Consent response: ${consentStatusResponse ? "success" : "null"}`
-          );
-
           if (matchedProfileResponse) {
             const userData =
               (matchedProfileResponse as any).user || matchedProfileResponse;
             const firstName = userData.firstName || "User";
-            logToNtfy(`[CHAT DEBUG] Setting matchedUserName to: ${firstName}`);
             setMatchedUserName(firstName);
           } else {
-            logToNtfy(
-              `[CHAT DEBUG] No profile response, setting matchedUserName to: User`
-            );
             setMatchedUserName("User");
           }
           if (consentStatusResponse && activeMatchId) {
@@ -274,14 +219,9 @@ export default function ChatScreen() {
             setUserConsented(currentUserConsented);
           }
         } catch (error) {
-          logToNtfy(`[CHAT DEBUG] Error in fetchChatData: ${error.message}`);
-          console.error("Error fetching chat data:", error);
           setMatchedUserName("User");
         }
       } else {
-        logToNtfy(
-          `[CHAT DEBUG] No otherUserId found, setting hasMatchedUser to false`
-        );
         setHasMatchedUser(false);
       }
     };
@@ -290,9 +230,6 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (matchedUserName !== "Loading...") {
-      logToNtfy(
-        `[CHAT DEBUG] Setting isLayoutReady to true - matchedUserName: ${matchedUserName}`
-      );
       setIsLayoutReady(true);
     }
   }, [matchedUserName]);
@@ -301,7 +238,6 @@ export default function ChatScreen() {
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (!isLayoutReady) {
-        logToNtfy(`[CHAT DEBUG] Timeout reached, forcing layout ready`);
         setMatchedUserName("User"); // Fallback name
         setIsLayoutReady(true);
       }

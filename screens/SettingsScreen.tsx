@@ -34,6 +34,7 @@ export default function SettingsScreen() {
   const { setUserId, userId } = useAppContext();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [notificationPermissionStatus, setNotificationPermissionStatus] =
     useState<boolean | null>(null);

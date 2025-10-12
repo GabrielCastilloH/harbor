@@ -3,9 +3,11 @@ import { ChannelSort } from "stream-chat";
 import { View, Text } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
+import { useEffect } from "react";
 
 export default function ChatList() {
   const navigation = useNavigation();
+
   const { setChannel, userId } = useAppContext();
 
   const filters = {
