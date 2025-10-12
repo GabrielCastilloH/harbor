@@ -177,6 +177,21 @@ export default function EditProfileScreen() {
       console.log("📸 [EDIT PROFILE] Updated images:", updatedImages.length);
       console.log("📸 [EDIT PROFILE] Current images:", currentImages.length);
 
+      // Helper function to extract filename from URL
+      const extractFilename = (img: string): string => {
+        if (img.includes("storage.googleapis.com")) {
+          const lastSlashIndex = img.lastIndexOf("/");
+          if (lastSlashIndex !== -1) {
+            const filenameWithQuery = img.substring(lastSlashIndex + 1);
+            const questionMarkIndex = filenameWithQuery.indexOf("?");
+            return questionMarkIndex !== -1
+              ? filenameWithQuery.substring(0, questionMarkIndex)
+              : filenameWithQuery;
+          }
+        }
+        return img;
+      };
+
       // Separate new images (file: or data:) from existing images
       const newImageUris: string[] = [];
       const existingImages: string[] = [];
@@ -190,18 +205,10 @@ export default function EditProfileScreen() {
           newImageUris.push(img);
         } else if (img.includes("storage.googleapis.com")) {
           // This is a temporary signed URL. Extract the filename
-          const lastSlashIndex = img.lastIndexOf("/");
-          if (lastSlashIndex !== -1) {
-            const filenameWithQuery = img.substring(lastSlashIndex + 1);
-            const questionMarkIndex = filenameWithQuery.indexOf("?");
-            const filename =
-              questionMarkIndex !== -1
-                ? filenameWithQuery.substring(0, questionMarkIndex)
-                : filenameWithQuery;
+          const filename = extractFilename(img);
 
-            if (filename && filename.includes("_original.jpg")) {
-              existingImages.push(filename);
-            }
+          if (filename && filename.includes("_original.jpg")) {
+            existingImages.push(filename);
           }
         } else if (img.includes("_original.jpg")) {
           // This is already a filename
@@ -214,8 +221,10 @@ export default function EditProfileScreen() {
 
       // Find which old images are no longer in the updated list
       for (const oldImg of currentImages) {
-        if (!existingImages.includes(oldImg)) {
-          oldImagesToDelete.push(oldImg);
+        const filename = extractFilename(oldImg);
+
+        if (!existingImages.includes(filename)) {
+          oldImagesToDelete.push(filename);
         }
       }
 
