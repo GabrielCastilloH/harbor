@@ -293,6 +293,10 @@ function AppContent() {
 }
 
 export default function App() {
+  // Check PostHog environment variables
+  const posthogApiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
+  const posthogHost = process.env.EXPO_PUBLIC_POSTHOG_HOST;
+
   // PREMIUM DISABLED: Superwall configuration commented out
   // const apiKeys = SUPERWALL_CONFIG.apiKeys;
   // const [superwallApiKeys, setSuperwallApiKeys] = useState<{
@@ -309,12 +313,25 @@ export default function App() {
   // }
 
   // PREMIUM DISABLED: Superwall provider removed, using simple provider structure
+  // If PostHog is not configured, render without it to prevent crashes
+  if (!posthogApiKey || !posthogHost) {
+    return (
+      <SafeAreaProvider>
+        <AppProvider>
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
+        </AppProvider>
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <PostHogProvider
-        apiKey={process.env.EXPO_PUBLIC_POSTHOG_API_KEY!}
+        apiKey={posthogApiKey}
         options={{
-          host: process.env.EXPO_PUBLIC_POSTHOG_HOST!,
+          host: posthogHost,
           disabled: false,
         }}
         autocapture={false}
