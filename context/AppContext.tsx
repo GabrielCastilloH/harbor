@@ -267,10 +267,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
             // Identify user in PostHog for DAU tracking
             console.log("PostHog: Identifying user for DAU tracking", user.uid);
-            posthog.identify(user.uid, {
-              email: user.email,
-              name: response.user.firstName,
-            });
+            try {
+              posthog.identify(user.uid, {
+                email: user.email,
+                name: response.user.firstName,
+              });
+              console.log("PostHog: User identification sent successfully");
+            } catch (error) {
+              console.error("PostHog: Error identifying user", error);
+            }
 
             // Fetch centralized data
             fetchUserData(user.uid);
