@@ -20,7 +20,6 @@ import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 import { streamNotificationService } from "../util/streamNotifService";
 import { requestInAppReview } from "../util/inAppReviewUtils";
-// import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
 // PREMIUM DISABLED: Superwall imports commented out
 // import { usePlacement, useUser } from "expo-superwall";
 // import { useUser } from "expo-superwall"; // PREMIUM DISABLED
@@ -33,7 +32,6 @@ import { UserService } from "../networking/UserService";
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { setUserId, userId } = useAppContext();
-  // const { signal } = useTelemetryDeck();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
@@ -87,12 +85,6 @@ export default function SettingsScreen() {
       checkNotificationPermission();
     }, [fetchUserProfile, checkNotificationPermission])
   );
-
-  // Track page view for TelemetryDeck
-  React.useEffect(() => {
-    // Send a signal whenever this screen is viewed
-    // signal("pageview", { screen: "Settings" });
-  }, []);
 
   const handleAccountStatusChange = (isActive: boolean) => {
     setUserProfile((prev: any) => ({ ...prev, isActive }));
@@ -230,7 +222,6 @@ export default function SettingsScreen() {
     navigation.navigate("SelfProfile" as never);
   };
 
-
   const handlePrivacyPolicy = () => {
     Linking.openURL("https://www.tryharbor.app/privacy");
   };
@@ -278,7 +269,6 @@ export default function SettingsScreen() {
                   : Colors.red,
             }}
           />
-
         </View>
 
         {/* Profile Section */}
