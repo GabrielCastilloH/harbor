@@ -16,12 +16,13 @@ import BannedAccountScreen from "./screens/BannedAccountScreen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import NotificationHandler from "./components/NotificationHandler";
-import { PostHogProvider } from "posthog-react-native";
+import PostHogNavigationWrapper from "./components/PostHogNavigationWrapper";
 
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
 import LoadingScreen from "./components/LoadingScreen";
 import UnviewedMatchesHandler from "./components/UnviewedMatchesHandler";
+import NavigationErrorBoundary from "./components/NavigationErrorBoundary";
 // PREMIUM DISABLED: Superwall imports commented out
 // import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
 // import { SUPERWALL_CONFIG } from "./firebaseConfig";
@@ -41,6 +42,37 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
+
+// 🚀 NAVIGATION DEBUG: Global error handler for navigation errors
+const originalConsoleError = console.error;
+console.error = (...args) => {
+  const errorMessage = args.join(" ");
+  if (
+    errorMessage.includes("useNavigationState") ||
+    errorMessage.includes("navigation state") ||
+    errorMessage.includes("navigator")
+  ) {
+    console.log("[NAV DEBUG] Navigation error detected:", {
+      error: errorMessage,
+      timestamp: new Date().toISOString(),
+      stack: new Error().stack,
+    });
+
+    // 🚀 FIX: Suppress PostHog navigation errors to prevent console spam
+    if (
+      errorMessage.includes("PostHogNavigationHook") ||
+      errorMessage.includes("_useNavigationTracker") ||
+      errorMessage.includes("useNavigationState error") ||
+      errorMessage.includes("useNavigation error")
+    ) {
+      console.log(
+        "[NAV DEBUG] Suppressing PostHog navigation error to prevent spam"
+      );
+      return; // Don't call originalConsoleError for PostHog errors
+    }
+  }
+  originalConsoleError.apply(console, args);
+};
 
 // Define the Root Stack Navigator
 const RootStack = createNativeStackNavigator();
@@ -200,12 +232,24 @@ function MainNavigator() {
   const AppStack = createNativeStackNavigator();
   const { currentUser, isAuthenticated, profileExists } = useAppContext();
 
+  // 🚀 NAVIGATION DEBUG: Log MainNavigator state
+  useEffect(() => {
+    console.log("[NAV DEBUG] MainNavigator mounted/updated:", {
+      isAuthenticated,
+      hasCurrentUser: !!currentUser,
+      profileExists,
+      timestamp: new Date().toISOString(),
+    });
+  }, [isAuthenticated, currentUser, profileExists]);
+
   // Safety check: if not authenticated, don't render anything
   if (!isAuthenticated) {
+    console.log("[NAV DEBUG] MainNavigator: Not authenticated, returning null");
     return null;
   }
 
   if (!currentUser) {
+    console.log("[NAV DEBUG] MainNavigator: No current user, returning null");
     return null; // This should not happen if isAuthenticated is true
   }
 
@@ -217,6 +261,9 @@ function MainNavigator() {
       (provider) => provider.providerId === "google.com"
     )
   ) {
+    console.log(
+      "[NAV DEBUG] MainNavigator: Rendering EmailVerification screen"
+    );
     return (
       <AppStack.Navigator screenOptions={{ headerShown: false }}>
         <AppStack.Screen
@@ -228,6 +275,7 @@ function MainNavigator() {
   }
 
   if (!profileExists) {
+    console.log("[NAV DEBUG] MainNavigator: Rendering AccountSetup screen");
     return (
       <AppStack.Navigator screenOptions={{ headerShown: false }}>
         <AppStack.Screen name="AccountSetup" component={AccountSetupScreen} />
@@ -236,6 +284,7 @@ function MainNavigator() {
   }
 
   // User is fully authenticated and has a profile
+  console.log("[NAV DEBUG] MainNavigator: Rendering TabNavigator (main app)");
   return (
     <AppStack.Navigator screenOptions={{ headerShown: false }}>
       <AppStack.Screen name="Tab" component={TabNavigator} />
@@ -255,35 +304,125 @@ function AppContent() {
   const navigationRef = useNavigationContainerRef();
   const hasNavigatedRef = useRef(false);
 
+  // 🚀 NAVIGATION DEBUG: Add comprehensive logging
+  useEffect(() => {
+    console.log("[NAV DEBUG] AppContent state change:", {
+      isInitialized,
+      isAuthenticated,
+      hasCurrentUser: !!currentUser,
+      isBanned,
+      isDeleted,
+      profileExists,
+      timestamp: new Date().toISOString(),
+    });
+  }, [
+    isInitialized,
+    isAuthenticated,
+    currentUser,
+    isBanned,
+    isDeleted,
+    profileExists,
+  ]);
+
+  // 🚀 NAVIGATION DEBUG: Track navigation container state
+  useEffect(() => {
+    if (navigationRef.current) {
+      console.log("[NAV DEBUG] NavigationContainer ref available");
+
+      const unsubscribe = navigationRef.current.addListener("state", (e) => {
+        console.log("[NAV DEBUG] Navigation state changed:", {
+          state: e.data.state,
+          routeNames: e.data.state?.routeNames,
+          index: e.data.state?.index,
+          timestamp: new Date().toISOString(),
+        });
+      });
+
+      return unsubscribe;
+    } else {
+      console.log("[NAV DEBUG] NavigationContainer ref not available yet");
+    }
+  }, [navigationRef]);
+
+  // 🚀 NAVIGATION DEBUG: Track navigation container ready state
+  useEffect(() => {
+    if (navigationRef.current) {
+      const unsubscribe = navigationRef.current.addListener("ready", () => {
+        console.log("[NAV DEBUG] NavigationContainer is ready");
+      });
+
+      return unsubscribe;
+    }
+  }, [navigationRef]);
+
   if (!isInitialized) {
     return <LoadingScreen loadingText="Loading..." />;
   }
 
   // Render the appropriate screen based on app state
   const renderCurrentScreen = () => {
+    console.log("[NAV DEBUG] renderCurrentScreen called with state:", {
+      isAuthenticated,
+      isDeleted,
+      isBanned,
+      profileExists,
+      timestamp: new Date().toISOString(),
+    });
+
     if (!isAuthenticated) {
+      console.log("[NAV DEBUG] Rendering AuthNavigator");
       return <AuthNavigator />;
     } else if (isDeleted) {
+      console.log("[NAV DEBUG] Rendering DeletedAccountScreen");
       return <DeletedAccountScreen />;
     } else if (isBanned) {
+      console.log("[NAV DEBUG] Rendering BannedAccountScreen");
       return <BannedAccountScreen />;
     } else if (!profileExists) {
+      console.log("[NAV DEBUG] Rendering AccountSetupScreen");
       return <AccountSetupScreen />;
     } else {
+      console.log("[NAV DEBUG] Rendering MainNavigator");
       return <MainNavigator />;
     }
   };
 
+  // 🚀 NAVIGATION DEBUG: Log when NavigationContainer is about to render
+  console.log(
+    "[NAV DEBUG] AppContent rendering NavigationContainer with state:",
+    {
+      isInitialized,
+      isAuthenticated,
+      isBanned,
+      isDeleted,
+      profileExists,
+      timestamp: new Date().toISOString(),
+    }
+  );
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer ref={navigationRef}>
-        <StatusBar style="dark" />
-        {renderCurrentScreen()}
+      <NavigationErrorBoundary>
+        <NavigationContainer
+          ref={navigationRef}
+          onReady={() => {
+            console.log("[NAV DEBUG] NavigationContainer onReady called");
+          }}
+          onStateChange={(state) => {
+            console.log("[NAV DEBUG] NavigationContainer onStateChange:", {
+              state,
+              timestamp: new Date().toISOString(),
+            });
+          }}
+        >
+          <StatusBar style="dark" />
+          {renderCurrentScreen()}
 
-        {isAuthenticated && <UnviewedMatchesHandler />}
-        <NotificationHandler navigationRef={navigationRef} />
-        <ExpoNotificationSetup />
-      </NavigationContainer>
+          {isAuthenticated && <UnviewedMatchesHandler />}
+          <NotificationHandler navigationRef={navigationRef} />
+          <ExpoNotificationSetup />
+        </NavigationContainer>
+      </NavigationErrorBoundary>
     </GestureHandlerRootView>
   );
 }
@@ -307,11 +446,8 @@ export default function App() {
   // PREMIUM DISABLED: Superwall provider removed, using simple provider structure
   return (
     <SafeAreaProvider>
-      <PostHogProvider
-        apiKey={
-          process.env.EXPO_PUBLIC_POSTHOG_API_KEY ||
-          "phc_GM2nAzYhvvz8GifZBO2sYBADGM2BtVLuS16yK1bK0CO"
-        }
+      <PostHogNavigationWrapper
+        apiKey={process.env.EXPO_PUBLIC_POSTHOG_API_KEY || ""}
         options={{
           host:
             process.env.EXPO_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
@@ -323,7 +459,7 @@ export default function App() {
             <AppContent />
           </ErrorBoundary>
         </AppProvider>
-      </PostHogProvider>
+      </PostHogNavigationWrapper>
     </SafeAreaProvider>
   );
 
