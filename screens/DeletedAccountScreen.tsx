@@ -15,17 +15,7 @@ import { useEffect } from "react";
 import Colors from "../constants/Colors";
 
 export default function DeletedAccountScreen() {
-  // Lifecycle logging
-  useEffect(() => {
-    console.log("✅ [LIFECYCLE] DeletedAccountScreen MOUNTED");
-    return () => {
-      console.log("❌ [LIFECYCLE] DeletedAccountScreen UNMOUNTED");
-    };
-  }, []);
-
   const handleBackToSignIn = async () => {
-    console.log("🔄 [DELETED SCREEN] Starting sign-out process...");
-
     try {
       // Use the EXACT same logic as SettingsScreen
       await Promise.all([
@@ -39,10 +29,6 @@ export default function DeletedAccountScreen() {
           "@streamUserToken",
         ]),
       ]);
-
-      console.log(
-        "✅ [DELETED SCREEN] Sign-out successful. App will now navigate automatically."
-      );
     } catch (error) {
       console.error("❌ [DELETED SCREEN] Error during sign out:", error);
     }

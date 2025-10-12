@@ -135,7 +135,7 @@ async function registerForPushNotificationsAsync() {
       // Failed to save Expo push token to Firestore
     }
   } else {
-    alert("Must use physical device for Push Notifications");
+    // Running on simulator - push notifications not available
   }
 
   return token;
@@ -177,14 +177,6 @@ class ErrorBoundary extends React.Component<
 
 // AuthNavigator for unauthenticated users - only Google Sign-In now
 function AuthNavigator() {
-  // Lifecycle logging
-  useEffect(() => {
-    console.log("✅ [LIFECYCLE] AuthNavigator MOUNTED");
-    return () => {
-      console.log("❌ [LIFECYCLE] AuthNavigator UNMOUNTED");
-    };
-  }, []);
-
   return (
     <AuthStack.Navigator
       screenOptions={{ headerShown: false }}
@@ -209,28 +201,12 @@ function MainNavigator() {
   const AppStack = createNativeStackNavigator();
   const { currentUser, isAuthenticated, profileExists } = useAppContext();
 
-  // Lifecycle logging
-  useEffect(() => {
-    console.log("✅ [LIFECYCLE] MainNavigator MOUNTED");
-    return () => {
-      console.log("❌ [LIFECYCLE] MainNavigator UNMOUNTED");
-    };
-  }, []);
-
-  console.log("🧭 [MAIN NAV] MainNavigator called with state:", {
-    currentUser: currentUser?.uid,
-    isAuthenticated,
-    profileExists,
-  });
-
   // Safety check: if not authenticated, don't render anything
   if (!isAuthenticated) {
-    console.log("🧭 [MAIN NAV] Not authenticated, returning null");
     return null;
   }
 
   if (!currentUser) {
-    console.log("🧭 [MAIN NAV] No currentUser, returning null");
     return null; // This should not happen if isAuthenticated is true
   }
 
@@ -280,37 +256,10 @@ function AppContent() {
   const navigationRef = useNavigationContainerRef();
   const hasNavigatedRef = useRef(false);
 
-  // Debug logging for navigation decisions
-  console.log("🧭 [NAV DEBUG] App state:", {
-    isInitialized,
-    isAuthenticated,
-    currentUser: currentUser?.uid,
-    isBanned,
-    isDeleted,
-    profileExists,
-  });
-
-  // Log when authentication state changes
-  if (isAuthenticated) {
-    console.log("🔐 [AUTH STATE] User is authenticated");
-  } else {
-    console.log("🔐 [AUTH STATE] User is NOT authenticated");
-  }
-
   // This effect controls navigation based on state
   useEffect(() => {
     if (isInitialized && navigationRef.isReady()) {
       const currentRoute = navigationRef.getCurrentRoute()?.name;
-
-      // ADD A DETAILED "BEFORE" LOG
-      console.log("--- NAV DECISION START ---");
-      console.log(`Current Route: ${currentRoute}`);
-      console.log("State:", {
-        isAuthenticated,
-        isBanned,
-        isDeleted,
-        profileExists,
-      });
 
       let routeName: string | null = null;
       if (!isAuthenticated) {
@@ -325,26 +274,12 @@ function AppContent() {
         routeName = "MainApp";
       }
 
-      console.log(`Determined Target Route: ${routeName}`);
-
       if (routeName && routeName !== currentRoute) {
-        console.log(
-          `💣 [ROOT NAV] State change requires RESET. From: ${currentRoute}, To: ${routeName}`
-        );
-
-        if (routeName === "Auth") {
-          console.log("AUTH SCREEN SHOWN AUTH SCREEN SHOWN");
-        }
-
-        // Replace navigate with reset - this forcefully clears the navigation history
         navigationRef.reset({
           index: 0,
           routes: [{ name: routeName }],
         });
-      } else {
-        console.log("Decision: No navigation needed.");
       }
-      console.log("--- NAV DECISION END ---");
     }
   }, [
     isInitialized,

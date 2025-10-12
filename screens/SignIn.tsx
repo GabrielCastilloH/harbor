@@ -38,14 +38,6 @@ export default function SignIn() {
   const [isNewUser, setIsNewUser] = useState(false);
   const [signInSuccessful, setSignInSuccessful] = useState(false);
 
-  // Lifecycle logging
-  useEffect(() => {
-    console.log("✅ [LIFECYCLE] SignIn MOUNTED");
-    return () => {
-      console.log("❌ [LIFECYCLE] SignIn UNMOUNTED");
-    };
-  }, []);
-
   // Only clean up auth state if user is not already authenticated
   useEffect(() => {
     if (!isAuthenticated) {

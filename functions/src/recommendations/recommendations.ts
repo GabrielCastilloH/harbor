@@ -75,9 +75,6 @@ export const getRecommendations = functions.https.onCall(
       // The `isAvailable` field should be set to `false` by a Match creation/update trigger.
       const isAvailable = currentUserData?.isAvailable !== false;
       if (!isAvailable) {
-        console.log(
-          `User ${userId} is not available (in match). Returning empty recommendations.`
-        );
         return { recommendations: [] };
       }
       // 🛑 END CRITICAL CHECK
