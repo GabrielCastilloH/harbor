@@ -11,7 +11,6 @@ import LoadingScreen from "../components/LoadingScreen";
 import { signOut } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { preloadChatCredentials } from "../util/chatPreloader";
-import { streamNotificationService } from "../util/streamNotifService";
 import { usePostHog } from "posthog-react-native";
 
 export default function AccountSetupScreen({
@@ -241,22 +240,9 @@ export default function AccountSetupScreen({
           // but the app won't crash.
         }
 
-        // STEP 4: Request notification permission and save token (this is optional)
+        // STEP 4: Skip notification permission request during account setup
+        // Notifications will be requested when user reaches the main tab screens
         updateProgress(0.92);
-        try {
-          await streamNotificationService.requestAndSaveNotificationToken(
-            firebaseUid
-          );
-        } catch (error) {
-          if (!hasAlertBeenShown.current) {
-            Alert.alert(
-              "Notifications Disabled",
-              "We need permission to send you notifications for new matches and messages. You can enable them later in your phone's settings.",
-              [{ text: "OK" }]
-            );
-            hasAlertBeenShown.current = true;
-          }
-        }
 
         // Complete the process with gradual final progress
         updateProgress(0.98);
