@@ -24,6 +24,7 @@ import {
 } from "../util/chatPreloader";
 
 export default function SignIn() {
+  // --- ALL HOOKS MUST BE AT THE TOP ---
   const {
     isAuthenticated,
     currentUser,
@@ -37,15 +38,13 @@ export default function SignIn() {
   const [isNewUser, setIsNewUser] = useState(false);
   const [signInSuccessful, setSignInSuccessful] = useState(false);
 
-  // If user is already authenticated or has a current user, don't show SignIn screen
-  if (isAuthenticated || currentUser) {
-    return null;
-  }
-
-  // Additional check: if we have a userId in context, don't show SignIn screen
-  if (userId && userId.trim() !== "") {
-    return null;
-  }
+  // Lifecycle logging
+  useEffect(() => {
+    console.log("✅ [LIFECYCLE] SignIn MOUNTED");
+    return () => {
+      console.log("❌ [LIFECYCLE] SignIn UNMOUNTED");
+    };
+  }, []);
 
   // Only clean up auth state if user is not already authenticated
   useEffect(() => {
@@ -83,6 +82,17 @@ export default function SignIn() {
     setStreamApiKey,
     setStreamUserToken,
   ]);
+
+  // --- CONDITIONAL RETURNS AFTER ALL HOOKS ---
+  // If user is already authenticated or has a current user, don't show SignIn screen
+  if (isAuthenticated || currentUser) {
+    return null;
+  }
+
+  // Additional check: if we have a userId in context, don't show SignIn screen
+  if (userId && userId.trim() !== "") {
+    return null;
+  }
 
   const handleExistingUser = async (userData: any) => {
     // Guard against running this when user is already authenticated
