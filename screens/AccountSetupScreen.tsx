@@ -280,7 +280,6 @@ export default function AccountSetupScreen({
         // Track account creation in PostHog
         try {
           posthog.capture("account_created", {
-            user_id: firebaseUid,
             email: currentUser.email,
             name: profileData.firstName,
           });
