@@ -284,7 +284,8 @@ function AppContent() {
 
           {isAuthenticated && <UnviewedMatchesHandler />}
           <NotificationHandler navigationRef={navigationRef} />
-          <ExpoNotificationSetup />
+          {/* Only setup Expo notifications when user is authenticated and has a profile (on main tab screens) */}
+          {isAuthenticated && profileExists && <ExpoNotificationSetup />}
         </NavigationContainer>
       </NavigationErrorBoundary>
     </GestureHandlerRootView>
