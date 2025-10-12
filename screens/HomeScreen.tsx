@@ -18,7 +18,6 @@ const DUMMY_PROFILES: Profile[] = [
     major: "Computer Science",
     gender: "Male",
     sexualOrientation: "Heterosexual",
-    groupSize: 2, // Default group size for dummy profiles
     images: [
       "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop&crop=face",
     ],
@@ -38,7 +37,6 @@ const DUMMY_PROFILES: Profile[] = [
     major: "Biology",
     gender: "Female",
     sexualOrientation: "Heterosexual",
-    groupSize: 2, // Default group size for dummy profiles
     images: [
       "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=600&fit=crop&crop=face",
     ],
@@ -58,7 +56,6 @@ const DUMMY_PROFILES: Profile[] = [
     major: "Engineering",
     gender: "Male",
     sexualOrientation: "Bisexual",
-    groupSize: 2, // Default group size for dummy profiles
     images: [
       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=600&fit=crop&crop=face",
     ],

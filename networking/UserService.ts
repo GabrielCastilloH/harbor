@@ -260,25 +260,4 @@ export class UserService {
     }
   }
 
-  /**
-   * Updates the user's group size preference
-   */
-  static async updateGroupSize(
-    userId: string,
-    groupSize: number
-  ): Promise<{ success: boolean; message: string }> {
-    try {
-      const updateUser = httpsCallable(functions, "userFunctions-updateUser");
-      const result = await updateUser({
-        id: userId,
-        userData: { groupSize },
-      });
-      return result.data as { success: boolean; message: string };
-    } catch (error: any) {
-      console.error("❌ [UserService] Error updating group size:", error);
-      throw new Error(
-        error.message || "Failed to update group size. Please try again."
-      );
-    }
-  }
 }

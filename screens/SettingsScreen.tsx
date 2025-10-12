@@ -37,7 +37,6 @@ export default function SettingsScreen() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-  const [currentGroupSize, setCurrentGroupSize] = useState<number>(2);
   const [notificationPermissionStatus, setNotificationPermissionStatus] =
     useState<boolean | null>(null);
   const [darkMode, setDarkMode] = useState(false);
@@ -68,7 +67,6 @@ export default function SettingsScreen() {
       // Handle the nested structure returned by UserService
       const userData = profile.user || profile;
       setUserProfile(userData);
-      setCurrentGroupSize(userData.groupSize || 2);
     } catch (error) {
       console.error("Error fetching user profile:", error);
     } finally {
@@ -232,10 +230,6 @@ export default function SettingsScreen() {
     navigation.navigate("SelfProfile" as never);
   };
 
-  const handleGroupSize = () => {
-    // Navigate to group size selection screen
-    navigation.navigate("GroupSize" as never);
-  };
 
   const handlePrivacyPolicy = () => {
     Linking.openURL("https://www.tryharbor.app/privacy");
@@ -285,14 +279,6 @@ export default function SettingsScreen() {
             }}
           />
 
-          {/** Group Size hidden per request **/}
-          {/**
-          <SettingsButton
-            icon="people-outline"
-            text={`Group Size: ${currentGroupSize}`}
-            onPress={handleGroupSize}
-          />
-          **/}
         </View>
 
         {/* Profile Section */}

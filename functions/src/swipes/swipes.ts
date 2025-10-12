@@ -5,89 +5,6 @@ import { CallableRequest } from "firebase-functions/v2/https";
 
 const db = admin.firestore();
 
-/**
- * Checks if a group can be formed based on swipes
- */
-async function checkForGroupFormation(
-  swiperId: string,
-  swipedId: string,
-  groupSize: number
-): Promise<{ canFormGroup: boolean; memberIds: string[] }> {
-  if (groupSize === 2) {
-    return { canFormGroup: false, memberIds: [] };
-  }
-
-  const usersWithSameGroupSize = await db
-    .collection("users")
-    .where("groupSize", "==", groupSize)
-    .where("isActive", "!=", false)
-    .get();
-
-  const candidateUserIds = usersWithSameGroupSize.docs
-    .map((doc) => doc.id)
-    .filter((id) => id !== swiperId && id !== swipedId);
-
-  const [swiperOutgoing, swipedOutgoing] = await Promise.all([
-    db.collection("swipes").doc(swiperId).collection("outgoing").get(),
-    db.collection("swipes").doc(swipedId).collection("outgoing").get(),
-  ]);
-  const swiperLikes = new Set(
-    swiperOutgoing.docs
-      .filter((d) => (d.data() as any).direction === "right")
-      .map((d) => d.id)
-  );
-  const swipedLikes = new Set(
-    swipedOutgoing.docs
-      .filter((d) => (d.data() as any).direction === "right")
-      .map((d) => d.id)
-  );
-
-  if (!swiperLikes.has(swipedId) || !swipedLikes.has(swiperId)) {
-    return { canFormGroup: false, memberIds: [] };
-  }
-
-  if (groupSize > 2) {
-    const potentialMembers = [swiperId, swipedId];
-
-    for (const candidateId of candidateUserIds) {
-      const candidateOutgoing = await db
-        .collection("swipes")
-        .doc(candidateId)
-        .collection("outgoing")
-        .get();
-      const candidateLikes = new Set(
-        candidateOutgoing.docs
-          .filter((d) => (d.data() as any).direction === "right")
-          .map((d) => d.id)
-      );
-
-      const mutualLikes = potentialMembers.filter((memberId) =>
-        candidateLikes.has(memberId)
-      );
-
-      const reverseLikes = potentialMembers.filter((memberId) => {
-        if (memberId === swiperId) return swiperLikes.has(candidateId);
-        if (memberId === swipedId) return swipedLikes.has(candidateId);
-        return false;
-      });
-
-      const minConnections = Math.max(2, Math.floor(groupSize / 2));
-
-      if (
-        mutualLikes.length >= minConnections &&
-        reverseLikes.length >= minConnections
-      ) {
-        potentialMembers.push(candidateId);
-
-        if (potentialMembers.length === groupSize) {
-          return { canFormGroup: true, memberIds: potentialMembers };
-        }
-      }
-    }
-  }
-
-  return { canFormGroup: false, memberIds: [] };
-}
 
 const MAX_SWIPES_PER_DAY = 5;
 
@@ -172,7 +89,6 @@ export const createSwipe = functions.https.onCall(
           );
         }
 
-        const swiperUser = swiperUserDoc.data();
 
         const today = new Date().toISOString().split("T")[0];
         const counterRef = db
@@ -217,94 +133,43 @@ export const createSwipe = functions.https.onCall(
 
         let match = false;
         let matchId = null;
-        let isGroupMatch = false;
 
         if (direction === "right") {
-          const swiperGroupSize = swiperUser?.groupSize || 2;
+          const otherOutgoingRef = db
+            .collection("swipes")
+            .doc(swipedId)
+            .collection("outgoing")
+            .doc(swiperId);
+          const otherOutgoingSnap = await otherOutgoingRef.get();
 
-          if (swiperGroupSize === 2) {
-            const otherOutgoingRef = db
-              .collection("swipes")
-              .doc(swipedId)
-              .collection("outgoing")
-              .doc(swiperId);
-            const otherOutgoingSnap = await otherOutgoingRef.get();
+          const otherOutgoing = otherOutgoingSnap.exists
+            ? (otherOutgoingSnap.data() as any)
+            : null;
 
-            const otherOutgoing = otherOutgoingSnap.exists
-              ? (otherOutgoingSnap.data() as any)
-              : null;
+          if (otherOutgoing && otherOutgoing.direction === "right") {
+            match = true;
+            const matchRef = db.collection("matches").doc();
+            matchId = matchRef.id;
 
-            if (otherOutgoing && otherOutgoing.direction === "right") {
-              match = true;
-              const matchRef = db.collection("matches").doc();
-              matchId = matchRef.id;
+            const matchData = {
+              type: "individual",
+              participantIds: [swiperId, swipedId],
+              matchDate: admin.firestore.FieldValue.serverTimestamp(),
+              isActive: true,
+              messageCount: 0,
+              participantConsent: { [swiperId]: false, [swipedId]: false },
+              participantViewed: { [swiperId]: false, [swipedId]: false },
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
 
-              const matchData = {
-                type: "individual",
-                participantIds: [swiperId, swipedId],
-                matchDate: admin.firestore.FieldValue.serverTimestamp(),
-                isActive: true,
-                messageCount: 0,
-                participantConsent: { [swiperId]: false, [swipedId]: false },
-                participantViewed: { [swiperId]: false, [swipedId]: false },
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-              };
-
-              transaction.set(matchRef, matchData);
-              transaction.update(swiperUserRef, {
-                currentMatches: admin.firestore.FieldValue.arrayUnion(matchId),
-              });
-              transaction.update(swipedUserRef, {
-                currentMatches: admin.firestore.FieldValue.arrayUnion(matchId),
-              });
-            }
-          } else {
-            const groupFormation = await checkForGroupFormation(
-              swiperId,
-              swipedId,
-              swiperGroupSize
-            );
-
-            if (
-              groupFormation.canFormGroup &&
-              groupFormation.memberIds.length === swiperGroupSize
-            ) {
-              match = true;
-              const matchRef = db.collection("matches").doc();
-              matchId = matchRef.id;
-              isGroupMatch = true;
-
-              const matchData = {
-                type: "group",
-                memberIds: groupFormation.memberIds,
-                groupSize: swiperGroupSize,
-                matchDate: admin.firestore.FieldValue.serverTimestamp(),
-                isActive: true,
-                messageCount: 0,
-                memberConsent: groupFormation.memberIds.reduce((acc, id) => {
-                  acc[id] = false;
-                  return acc;
-                }, {} as Record<string, boolean>),
-                memberViewed: groupFormation.memberIds.reduce((acc, id) => {
-                  acc[id] = id === swiperId;
-                  return acc;
-                }, {} as Record<string, boolean>),
-                allMembersConsented: false,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-              };
-
-              transaction.set(matchRef, matchData);
-
-              for (const memberId of groupFormation.memberIds) {
-                const memberRef = db.collection("users").doc(memberId);
-                transaction.update(memberRef, {
-                  currentMatches:
-                    admin.firestore.FieldValue.arrayUnion(matchId),
-                });
-              }
-            }
+            transaction.set(matchRef, matchData);
+            transaction.update(swiperUserRef, {
+              currentMatches: admin.firestore.FieldValue.arrayUnion(matchId),
+            });
+            transaction.update(swipedUserRef, {
+              currentMatches: admin.firestore.FieldValue.arrayUnion(matchId),
+            });
           }
         }
 
@@ -343,8 +208,6 @@ export const createSwipe = functions.https.onCall(
           swipe: swipeData,
           match,
           matchId,
-          isGroupMatch,
-          groupSize: isGroupMatch ? swiperUser?.groupSize || 2 : 2,
         };
 
         return result;
@@ -376,21 +239,8 @@ export const createSwipe = functions.https.onCall(
           if (apiKey && apiSecret) {
             const serverClient = StreamChat.getInstance(apiKey, apiSecret);
 
-            let channelId: string;
-            let channelMembers: string[];
-
-            if ("isGroupMatch" in result && result.isGroupMatch) {
-              channelId = `group-${result.matchId}`;
-              const matchDoc = await db
-                .collection("matches")
-                .doc(result.matchId)
-                .get();
-              const matchData = matchDoc.data();
-              channelMembers = matchData?.memberIds || [];
-            } else {
-              channelId = [swiperId, swipedId].sort().join("-");
-              channelMembers = [swiperId, swipedId];
-            }
+            const channelId = [swiperId, swipedId].sort().join("-");
+            const channelMembers = [swiperId, swipedId];
 
             const channel = serverClient.channel("messaging", channelId, {
               members: channelMembers,
@@ -414,7 +264,7 @@ export const createSwipe = functions.https.onCall(
 
               try {
                 await channel.sendMessage({
-                  text: "You've connected! Start chatting now.",
+                  text: "You've matched! Start chatting now.",
                   user_id: "system",
                 });
 
@@ -712,7 +562,7 @@ export const resetDailySwipes = onSchedule(
                   token: fcmToken,
                   notification: {
                     title: "Daily Swipe Reset",
-                    body: "Your swipes have been reset! Keep connecting 🚀",
+                    body: "Your swipes have been reset! Keep matching 🚀",
                   },
                 })
                 .then(() => {})

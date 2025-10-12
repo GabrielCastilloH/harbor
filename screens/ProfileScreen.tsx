@@ -462,11 +462,11 @@ export default function ProfileScreen() {
                 <View style={styles.unmatchLoadingContainer}>
                   <ActivityIndicator size="small" color={Colors.secondary100} />
                   <Text style={styles.unmatchButtonTextFull}>
-                    Un-connecting...
+                    Unmatching...
                   </Text>
                 </View>
               ) : (
-                <Text style={styles.unmatchButtonTextFull}>Un-connect</Text>
+                <Text style={styles.unmatchButtonTextFull}>Unmatch</Text>
               )}
             </Pressable>
           </View>

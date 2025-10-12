@@ -336,7 +336,7 @@ export const createChatChannel = functions.https.onCall(
           if (!hasIntroMessage) {
             try {
               await channel.sendMessage({
-                text: "You've connected! Start chatting now.",
+                text: "You've matched! Start chatting now.",
                 user_id: "system",
               });
 

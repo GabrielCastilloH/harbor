@@ -19,7 +19,6 @@ export type Profile = {
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
   availability: number;
-  groupSize: number; // Preferred group size for matching (2, 3, or 4)
   isActive?: boolean; // Account activation status
   isAvailable?: boolean; // Match availability (true = available to match, false = currently in a match)
 };

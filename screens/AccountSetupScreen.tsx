@@ -36,7 +36,6 @@ export default function AccountSetupScreen({
     q2: "",
     q3: "",
     availability: -1,
-    groupSize: 2,
     email: "",
   });
   const [loading, setLoading] = useState(false);
@@ -199,7 +198,6 @@ export default function AccountSetupScreen({
         q1: profileData.q1,
         q2: profileData.q2,
         q3: profileData.q3,
-        groupSize: profileData.groupSize || 2,
       };
 
       try {

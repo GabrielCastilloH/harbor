@@ -12,7 +12,6 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 - **Consent-based transitions**: Users must consent to continue chatting after 30 messages to see clearer photos
 - **Server-side blur processing**: Secure image processing with 80% server-side blur for privacy
 - **Seamless client animations**: Smooth blur transitions create engaging user experience
-- **Group match support**: Unified blur system works for both individual and group matches
 
 ### 💫 Smart Matching & Swiping
 
@@ -20,7 +19,6 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 - **Unified swipe system**: **Efficient daily swipe tracking using subcollections for optimal performance**
 - **Daily swipe limits**: **5 swipes per day for all users (premium features currently disabled)**
 - **Instant match detection**: Real-time matching when two users swipe right on each other
-- **Group formation**: Automatic group match creation when multiple users with same group size preferences match
 - **Swipe gesture controls**: Smooth card-based swiping with visual feedback
 
 ### 💬 Real-time Chat System
@@ -29,7 +27,6 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 - **Progressive unlock system**: Chat becomes available after matching, photos unlock through conversation
 - **Consent modals**: Built-in consent flow ensures both users want to continue chatting
 - **Channel freezing**: Automatic chat freeze when users unmatch or report
-- **Group chat support**: Multi-user chat channels for group matches
 
 ### 🔐 Security & Privacy
 
@@ -48,7 +45,7 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 
 ## ⚡ Swipe System Architecture
 
-Harbor implements a **subcollection-based swipe tracking system** that provides efficient daily swipe management and group formation capabilities.
+Harbor implements a **subcollection-based swipe tracking system** that provides efficient daily swipe management.
 
 ### Current Implementation
 
@@ -57,7 +54,6 @@ Harbor implements a **subcollection-based swipe tracking system** that provides 
 - **Subcollection Organization**: Swipes stored in `/swipes/{userId}/outgoing/` and `/swipes/{userId}/incoming/` for efficient querying
 - **Counter-based Limits**: Daily swipe counts tracked in `/users/{userId}/counters/swipes` subcollection
 - **Atomic Operations**: All swipe data updates happen in transactions, preventing race conditions
-- **Group Formation**: Automatic group match creation when multiple users with same group size preferences match
 
 #### 🔒 Data Consistency
 
@@ -69,7 +65,6 @@ Harbor implements a **subcollection-based swipe tracking system** that provides 
 #### 🏗️ Scalability Advantages
 
 - **Efficient Querying**: Subcollections allow for fast retrieval of user's swipe history
-- **Group Support**: System supports both individual (2-person) and group (3-4 person) matches
 - **Availability Tracking**: Index-based filtering prevents recommending users who are already in matches
 - **Future-Proof**: Framework ready for premium tiers and advanced features
 
@@ -105,7 +100,6 @@ Harbor implements a scalable **availability tracking system** that prevents user
 // User document in /users/{userId}
 {
   // ... other user fields
-  groupSize: 2,             // Preferred group size (2, 3, or 4)
   isActive: true,           // Account status (account enabled/disabled)
   isAvailable: true,        // Match availability (true = available to match, false = currently in a match)
   currentMatches: [],       // Array of active match IDs
@@ -214,26 +208,22 @@ App.tsx (Main Navigator)
     │   ├── ChatScreen
     │   ├── ProfileScreen
     │   ├── ReportScreen
-    │   └── StudyGroupConnectionsScreen
     └── SettingsTab (SettingsStack)
         ├── SettingsScreen
         ├── EditProfile
         ├── SelfProfile
-        └── GroupSizeScreen
 ```
 
 ### Core Screens
 
-- **HomeScreen**: Card-based swiping interface with recommendations and group formation
+- **HomeScreen**: Card-based swiping interface with recommendations
 - **ChatList**: List of active matches and conversations with unread count badges
 - **ChatScreen**: Real-time messaging with progressive photo reveal and consent modals
 - **ProfileScreen**: View other users' profiles with blur effects and reporting options
 - **AccountSetupScreen**: Onboarding flow for new users with progress tracking
-- **SettingsScreen**: App preferences, account management, and group size selection
+- **SettingsScreen**: App preferences and account management
 - **BannedAccountScreen**: Screen shown to banned users with appeal contact
 - **DeletedAccountScreen**: Screen shown to deleted users
-- **StudyGroupConnectionsScreen**: Group match management and connections
-- **GroupSizeScreen**: Group size preference selection (2, 3, or 4 people)
 
 ### Component Architecture
 
@@ -275,7 +265,7 @@ App.tsx (Main Navigator)
 
 ### Swipe Functions (`swipeFunctions`)
 
-- **createSwipe**: Records swipes, detects mutual matches, and handles group formation
+- **createSwipe**: Records swipes and detects mutual matches
 - **countRecentSwipes**: Fetches a user's daily swipe count from counters subcollection
 - **getSwipesByUser**: Retrieves all swipes made by a specific user
 - **savePushToken**: Saves Expo push tokens for notifications
@@ -284,7 +274,6 @@ App.tsx (Main Navigator)
 ### Match Functions (`matchFunctions`)
 
 - **createMatch**: Creates individual match records between two users
-- **createGroupMatch**: Creates group match records between multiple users
 - **getUnviewedMatches**: Gets unviewed matches for showing match modals
 - **markMatchAsViewed**: Tracks when users view new matches
 - **unmatchUsers**: Deactivates matches and freezes chat channels
@@ -582,7 +571,6 @@ All fields must be completed before profile creation:
 - **Sexual Orientation**: Must select from dropdown (Heterosexual, Homosexual, Bisexual, Pansexual)
 - **Year Level**: Must select from dropdown (Freshman, Sophomore, Junior, Senior)
 - **Major**: Must select from dropdown (85+ options)
-- **Group Size**: Must select from dropdown (2, 3, or 4 people)
 
 #### Text Field Limits
 
@@ -611,7 +599,6 @@ export type Profile = {
   q1: string; // "Together we could:"
   q2: string; // "Favorite book, movie or song:"
   q3: string; // "Some of my hobbies are:"
-  groupSize: number; // 2, 3, or 4
   availability: number; // For matching algorithm
   currentMatches?: string[];
   paywallSeen?: boolean;
@@ -628,7 +615,7 @@ export type Profile = {
 
 ### Core Design Philosophy
 
-The app uses a **unified progressive blur system** that works for both individual and group matches, creating intrigue while maintaining privacy:
+The app uses a **progressive blur system** that creates intrigue while maintaining privacy:
 
 #### Phase 1: Pre-Consent (Theatrical Reveal)
 
@@ -689,16 +676,6 @@ export function getClientBlurLevel({
   }
 }
 
-// Group-specific blur calculation
-export function getGroupClientBlurLevel({
-  messageCount,
-  allMembersConsented,
-}: {
-  messageCount: number;
-  allMembersConsented: boolean;
-}): number {
-  // Similar logic but requires ALL group members to consent
-}
 ```
 
 ### Consent State Management
@@ -707,12 +684,10 @@ export function getGroupClientBlurLevel({
 
 ```typescript
 interface Match {
-  type: "individual" | "group";
-  participantIds: string[]; // Unified field for both individual and group matches
-  memberIds?: string[]; // For group matches only
-  groupSize?: number; // For group matches only
-  participantConsent: Record<string, boolean>; // Unified consent tracking
-  participantViewed: Record<string, boolean>; // Unified view tracking
+  type: "individual";
+  participantIds: string[]; // Array of participant user IDs
+  participantConsent: Record<string, boolean>; // Consent tracking
+  participantViewed: Record<string, boolean>; // View tracking
   messageCount: number;
   isActive: boolean;
   matchDate: Timestamp;
@@ -727,9 +702,9 @@ interface Match {
 
 The `matchFunctions-getConsentStatus` callable returns:
 
-- `participantIds` (unified for both individual and group matches)
-- `participantConsent` (unified consent map)
-- `bothConsented` (for individual) / `allMembersConsented` (for group)
+- `participantIds` (array of participant user IDs)
+- `participantConsent` (consent map)
+- `bothConsented` (true when both users have consented)
 - `messageCount`
 - `shouldShowConsentScreen` (true when `messageCount >= threshold` and not all consented)
 - `shouldShowConsentForUser` (per-user modal visibility)
@@ -741,7 +716,6 @@ The `matchFunctions-getConsentStatus` callable returns:
 2. **Consent Checking**: After each message, calls `getConsentStatus(matchId)`
 3. **Modal Display**: Shows consent modal only when user's `shouldShowConsentForUser` is true
 4. **Channel Management**: Freezes chat until all participants consent when threshold reached
-5. **Group Support**: For group matches, requires ALL members to consent before Phase 2 begins
 
 ## 🔔 Push Notifications System
 
@@ -1058,8 +1032,6 @@ export const getFeatureConfig = (isPremium: boolean): FeatureConfig => {
 - **Premium subscription system**: Reactivate Superwall integration for paid features
 - **Enhanced matching**: Ability to see profiles that swiped on you
 - **Advanced filters**: Additional matching criteria and preferences
-- **Social features**: Group activities and events for Cornell students
-- **Group match improvements**: Enhanced group formation algorithms
 - **Availability matching**: More sophisticated compatibility scoring
 
 ### Technical Improvements
@@ -1128,10 +1100,10 @@ harbor/
 │       ├── auth/          # Authentication functions
 │       ├── chat/          # Stream Chat integration
 │       ├── images/        # Image processing and moderation
-│       ├── matches/       # Match management (individual & group)
+│       ├── matches/       # Match management
 │       ├── recommendations/ # User recommendations with availability matching
 │       ├── reports/       # Reporting and blocking system
-│       ├── swipes/        # Swipe handling and group formation
+│       ├── swipes/        # Swipe handling
 │       ├── superwall/     # Premium features (disabled)
 │       └── users/         # User management and account operations
 ├── hooks/                 # Custom React hooks
@@ -1157,8 +1129,6 @@ harbor/
 │   ├── ProfileScreen.tsx  # View other users' profiles
 │   ├── AccountSetupScreen.tsx # Onboarding flow
 │   ├── SettingsScreen.tsx # App preferences and account management
-│   ├── GroupSizeScreen.tsx # Group size preference selection
-│   ├── StudyGroupConnectionsScreen.tsx # Group match management
 │   ├── BannedAccountScreen.tsx # Banned user screen
 │   ├── DeletedAccountScreen.tsx # Deleted user screen
 │   └── ReportScreen.tsx   # User reporting interface
