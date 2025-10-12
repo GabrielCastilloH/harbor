@@ -11,6 +11,10 @@ import { auth, db } from "../firebaseConfig";
 import NetInfo from "@react-native-community/netinfo";
 import { doc, getDoc } from "firebase/firestore";
 import { checkUserExists } from "../util/userBackend";
+import {
+  isEmailAllowed,
+  getEmailRestrictionMessage,
+} from "../util/emailValidation";
 import Colors from "../constants/Colors";
 
 interface GoogleSignInButtonProps {
@@ -107,6 +111,30 @@ export default function GoogleSignInButton({
 
       // 5. Sign in to Firebase
       const userCredential = await signInWithCredential(auth, googleCredential);
+
+      // 5.5. Check email domain - only allow @cornell.edu or matgabdropshipping@gmail.com
+      const userEmail = userCredential.user.email;
+
+      if (!isEmailAllowed(userEmail)) {
+        // Sign out the user immediately
+        try {
+          await GoogleSignin.signOut();
+          await signOut(auth);
+        } catch (signOutError) {
+          console.error(
+            "❌ [GOOGLE SIGN IN] Error signing out unauthorized user:",
+            signOutError
+          );
+        }
+
+        // Show alert and return
+        Alert.alert("Access Restricted", getEmailRestrictionMessage(), [
+          { text: "OK" },
+        ]);
+
+        onSignInComplete?.();
+        return;
+      }
 
       // 6. Check if user exists in your database - wait for definitive answer
       const userExists = await checkUserExists(userCredential.user.uid);
