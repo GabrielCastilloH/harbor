@@ -32,8 +32,21 @@ export const getRecommendations = functions.https.onCall(
     invoker: "public",
   },
   async (request: CallableRequest<{ userId: string }>) => {
+    console.log("🔥 Backend getRecommendations: Function called");
+    console.log("🔥 Backend getRecommendations: Request data:", request.data);
+    console.log("🔥 Backend getRecommendations: Request auth:", request.auth);
+
+    // Also use functions.logger for better visibility
+    functions.logger.info("🔥 Backend getRecommendations: Function called", {
+      requestData: request.data,
+      auth: request.auth,
+    });
+
     try {
       if (!request.auth) {
+        console.log(
+          "🔥 Backend getRecommendations: No auth, throwing unauthenticated error"
+        );
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -41,8 +54,12 @@ export const getRecommendations = functions.https.onCall(
       }
 
       const userId = request.auth.uid;
+      console.log("🔥 Backend getRecommendations: userId from auth =", userId);
 
       if (!userId) {
+        console.log(
+          "🔥 Backend getRecommendations: No userId, throwing invalid-argument error"
+        );
         throw new functions.https.HttpsError(
           "invalid-argument",
           "User ID is required"
@@ -52,14 +69,78 @@ export const getRecommendations = functions.https.onCall(
       // Daily limits and dynamic recommendation sizing
       const MAX_SWIPES_PER_DAY = 5;
       const MAX_RECS_TO_FETCH = 10;
+      console.log(
+        "🔥 Backend getRecommendations: Constants - MAX_SWIPES_PER_DAY =",
+        MAX_SWIPES_PER_DAY,
+        "MAX_RECS_TO_FETCH =",
+        MAX_RECS_TO_FETCH
+      );
 
+      console.log(
+        "🔥 Backend getRecommendations: Fetching user document for userId:",
+        userId
+      );
       const userDoc = await db.collection("users").doc(userId).get();
+      console.log(
+        "🔥 Backend getRecommendations: User document exists:",
+        userDoc.exists
+      );
+
       if (!userDoc.exists) {
+        console.log(
+          "🔥 Backend getRecommendations: User document not found, throwing error"
+        );
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
       const currentUserData = userDoc.data();
+      console.log(
+        "🔥 Backend getRecommendations: Current user data:",
+        currentUserData
+      );
+      console.log(
+        "🔥 Backend getRecommendations: User gender:",
+        currentUserData?.gender
+      );
+      console.log(
+        "🔥 Backend getRecommendations: User sexualOrientation:",
+        currentUserData?.sexualOrientation
+      );
+      console.log(
+        "🔥 Backend getRecommendations: User age:",
+        currentUserData?.age
+      );
+      console.log(
+        "🔥 Backend getRecommendations: User yearLevel:",
+        currentUserData?.yearLevel
+      );
+      console.log(
+        "🔥 Backend getRecommendations: User isActive:",
+        currentUserData?.isActive
+      );
+      console.log(
+        "🔥 Backend getRecommendations: User isAvailable:",
+        currentUserData?.isAvailable
+      );
+
+      // Also log with functions.logger
+      functions.logger.info(
+        "🔥 Backend getRecommendations: User data retrieved",
+        {
+          userId,
+          gender: currentUserData?.gender,
+          sexualOrientation: currentUserData?.sexualOrientation,
+          age: currentUserData?.age,
+          yearLevel: currentUserData?.yearLevel,
+          isActive: currentUserData?.isActive,
+          isAvailable: currentUserData?.isAvailable,
+        }
+      );
+
       if (!currentUserData) {
+        console.log(
+          "🔥 Backend getRecommendations: User data is null/undefined, throwing error"
+        );
         throw new functions.https.HttpsError(
           "not-found",
           "User data not found"
@@ -68,18 +149,51 @@ export const getRecommendations = functions.https.onCall(
 
       // Check if user account is active
       if (currentUserData?.isActive === false) {
+        console.log(
+          "🔥 Backend getRecommendations: User account is inactive, returning empty recommendations"
+        );
         return { recommendations: [] };
       }
 
       // 🛑 CRITICAL CHECK: Return empty if the current user is in an active match
       // The `isAvailable` field should be set to `false` by a Match creation/update trigger.
       const isAvailable = currentUserData?.isAvailable !== false;
+      console.log(
+        "🔥 Backend getRecommendations: User isAvailable check - isAvailable =",
+        isAvailable
+      );
+      console.log(
+        "🔥 Backend getRecommendations: User isAvailable field value =",
+        currentUserData?.isAvailable
+      );
+
       if (!isAvailable) {
+        console.log(
+          "🔥 Backend getRecommendations: User is in active match (isAvailable = false), returning empty recommendations"
+        );
+        functions.logger.warn(
+          "🔥 Backend getRecommendations: User is in active match",
+          {
+            userId,
+            isAvailable: currentUserData?.isAvailable,
+          }
+        );
         return { recommendations: [] };
       }
+      console.log(
+        "🔥 Backend getRecommendations: User is available for recommendations"
+      );
+      functions.logger.info(
+        "🔥 Backend getRecommendations: User is available for recommendations",
+        {
+          userId,
+          isAvailable: currentUserData?.isAvailable,
+        }
+      );
       // 🛑 END CRITICAL CHECK
 
       // NEW: determine today's swipe count from counters subdoc and compute target limit
+      console.log("🔥 Backend getRecommendations: Checking daily swipe limits");
       const countersRef = db
         .collection("users")
         .doc(userId)
@@ -88,25 +202,92 @@ export const getRecommendations = functions.https.onCall(
       const countersSnap = await countersRef.get();
       const cData = countersSnap.exists ? (countersSnap.data() as any) : {};
       const swipesMadeToday = Number(cData?.count || 0);
+      console.log("🔥 Backend getRecommendations: Counters data:", cData);
+      console.log(
+        "🔥 Backend getRecommendations: Swipes made today:",
+        swipesMadeToday
+      );
 
       const remainingSwipes = Math.max(0, MAX_SWIPES_PER_DAY - swipesMadeToday);
+      console.log(
+        "🔥 Backend getRecommendations: Remaining swipes:",
+        remainingSwipes
+      );
+
       if (remainingSwipes === 0) {
+        console.log(
+          "🔥 Backend getRecommendations: No remaining swipes for today, returning empty recommendations"
+        );
+        functions.logger.warn(
+          "🔥 Backend getRecommendations: No remaining swipes for today",
+          {
+            userId,
+            swipesMadeToday,
+            remainingSwipes,
+          }
+        );
         return { recommendations: [] };
       }
 
       const finalRecsLimit = Math.max(0, MAX_RECS_TO_FETCH - swipesMadeToday);
+      console.log(
+        "🔥 Backend getRecommendations: Final recommendations limit:",
+        finalRecsLimit
+      );
+
+      // Debug: Check what users exist in the database
+      console.log(
+        "🔥 Backend getRecommendations: Checking what users exist in database..."
+      );
+      const allUsersSnapshot = await db.collection("users").limit(10).get();
+      console.log(
+        "🔥 Backend getRecommendations: Total users in database:",
+        allUsersSnapshot.docs.length
+      );
+      if (allUsersSnapshot.docs.length > 0) {
+        console.log(
+          "🔥 Backend getRecommendations: Sample users:",
+          allUsersSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            gender: doc.data().gender,
+            age: doc.data().age,
+            yearLevel: doc.data().yearLevel,
+            sexualOrientation: doc.data().sexualOrientation,
+            isAvailable: doc.data().isAvailable,
+            isActive: doc.data().isActive,
+          }))
+        );
+      }
 
       // Step 1: Preload swipes to filter out irrelevant users early
       // Prefer per-user subcollection; fallback to flat collection
+      console.log(
+        "🔥 Backend getRecommendations: Step 1 - Loading user's swipes"
+      );
       let swipedUserIds = new Set<string>();
       try {
+        console.log(
+          "🔥 Backend getRecommendations: Trying to get outgoing swipes from subcollection"
+        );
         const outgoing = await db
           .collection("swipes")
           .doc(userId)
           .collection("outgoing")
           .get();
         swipedUserIds = new Set(outgoing.docs.map((d) => d.id));
+        console.log(
+          "🔥 Backend getRecommendations: Found",
+          outgoing.docs.length,
+          "outgoing swipes from subcollection"
+        );
+        console.log(
+          "🔥 Backend getRecommendations: Swiped user IDs:",
+          Array.from(swipedUserIds)
+        );
       } catch (_e) {
+        console.log(
+          "🔥 Backend getRecommendations: Subcollection failed, trying flat collection"
+        );
         const mySwipesSnapshot = await db
           .collection("swipes")
           .where("swiperId", "==", userId)
@@ -114,9 +295,21 @@ export const getRecommendations = functions.https.onCall(
         swipedUserIds = new Set(
           mySwipesSnapshot.docs.map((doc) => doc.data().swipedId)
         );
+        console.log(
+          "🔥 Backend getRecommendations: Found",
+          mySwipesSnapshot.docs.length,
+          "swipes from flat collection"
+        );
+        console.log(
+          "🔥 Backend getRecommendations: Swiped user IDs:",
+          Array.from(swipedUserIds)
+        );
       }
 
       // Step 1.5: Preload blocked users for filtering
+      console.log(
+        "🔥 Backend getRecommendations: Step 1.5 - Loading blocked users"
+      );
       let blockedUserIds = new Set<string>();
       try {
         const blockedSnapshot = await db
@@ -125,11 +318,26 @@ export const getRecommendations = functions.https.onCall(
           .collection("blocked")
           .get();
         blockedUserIds = new Set(blockedSnapshot.docs.map((d) => d.id));
+        console.log(
+          "🔥 Backend getRecommendations: Found",
+          blockedSnapshot.docs.length,
+          "blocked users"
+        );
+        console.log(
+          "🔥 Backend getRecommendations: Blocked user IDs:",
+          Array.from(blockedUserIds)
+        );
       } catch (error) {
-        console.error("Error loading blocked users:", error);
+        console.error(
+          "🔥 Backend getRecommendations: Error loading blocked users:",
+          error
+        );
       }
 
       // Create filter set for users to exclude (swiped + blocked + current user)
+      console.log(
+        "🔥 Backend getRecommendations: Creating exclusion filter set"
+      );
       const matchedUserIds = new Set<string>();
       matchedUserIds.add(userId); // Add current user to avoid self-match
       for (const id of swipedUserIds) {
@@ -138,8 +346,15 @@ export const getRecommendations = functions.https.onCall(
       for (const id of blockedUserIds) {
         matchedUserIds.add(id);
       }
+      console.log(
+        "🔥 Backend getRecommendations: Total excluded user IDs:",
+        Array.from(matchedUserIds)
+      );
 
       // Step 2: Get users who swiped on you (highest priority)
+      console.log(
+        "🔥 Backend getRecommendations: Step 2 - Getting users who swiped on you"
+      );
       let whoSwipedOnYouIds: string[] = [];
       const incomingSnapshot = await db
         .collection("swipes")
@@ -148,14 +363,36 @@ export const getRecommendations = functions.https.onCall(
         .where("direction", "==", "right")
         .get();
       whoSwipedOnYouIds = incomingSnapshot.docs.map((d) => d.id);
+      console.log(
+        "🔥 Backend getRecommendations: Found",
+        incomingSnapshot.docs.length,
+        "users who swiped right on you"
+      );
+      console.log(
+        "🔥 Backend getRecommendations: Who swiped on you IDs:",
+        whoSwipedOnYouIds
+      );
 
       let swipedUsers: any[] = [];
       if (whoSwipedOnYouIds.length > 0) {
+        console.log(
+          "🔥 Backend getRecommendations: Processing users who swiped on you"
+        );
         const uniqueInboundSwipes = whoSwipedOnYouIds.filter(
           (id) => !matchedUserIds.has(id)
         );
+        console.log(
+          "🔥 Backend getRecommendations: Unique inbound swipes after filtering:",
+          uniqueInboundSwipes
+        );
+
         if (uniqueInboundSwipes.length > 0) {
           const limitedIds = uniqueInboundSwipes.slice(0, 10);
+          console.log(
+            "🔥 Backend getRecommendations: Limited IDs for query:",
+            limitedIds
+          );
+
           const swipedUsersSnapshot = await db
             .collection("users")
             .where(admin.firestore.FieldPath.documentId(), "in", limitedIds)
@@ -163,11 +400,23 @@ export const getRecommendations = functions.https.onCall(
             .where("isAvailable", "==", true)
             .get();
 
+          console.log(
+            "🔥 Backend getRecommendations: Found",
+            swipedUsersSnapshot.docs.length,
+            "available users who swiped on you"
+          );
+
           swipedUsers = swipedUsersSnapshot.docs
             .filter((doc) => {
               const userData = doc.data();
               // Filter by isActive (isAvailable is already filtered by the query)
               const isActive = userData?.isActive !== false;
+              console.log(
+                "🔥 Backend getRecommendations: User",
+                doc.id,
+                "isActive =",
+                isActive
+              );
               return isActive;
             })
             .map((doc) => {
@@ -176,14 +425,39 @@ export const getRecommendations = functions.https.onCall(
                 userData;
               return { uid: doc.id, ...userDataWithoutSensitiveInfo };
             });
+
+          console.log(
+            "🔥 Backend getRecommendations: Final swiped users count:",
+            swipedUsers.length
+          );
+        } else {
+          console.log(
+            "🔥 Backend getRecommendations: No unique inbound swipes after filtering"
+          );
         }
+      } else {
+        console.log("🔥 Backend getRecommendations: No users swiped on you");
       }
 
       // Step 3: Fetch users with similar age/year (medium priority)
+      console.log(
+        "🔥 Backend getRecommendations: Step 3 - Fetching users with similar age/year"
+      );
       let ageYearUsers: any[] = [];
       const userAge = currentUserData?.age ?? -1;
       const userYear = currentUserData?.yearLevel ?? null;
+      console.log(
+        "🔥 Backend getRecommendations: User age:",
+        userAge,
+        "User year:",
+        userYear
+      );
+
       const compatibilityData = getCompatibilityQuery(currentUserData);
+      console.log(
+        "🔥 Backend getRecommendations: Compatibility data:",
+        compatibilityData
+      );
 
       if (
         userAge !== -1 &&
@@ -191,9 +465,18 @@ export const getRecommendations = functions.https.onCall(
         compatibilityData.orientation.length > 0 &&
         compatibilityData.gender.length > 0
       ) {
+        console.log(
+          "🔥 Backend getRecommendations: Age/year criteria met, fetching users"
+        );
         try {
           const ageLower = userAge - 2;
           const ageUpper = userAge + 2;
+          console.log(
+            "🔥 Backend getRecommendations: Age range:",
+            ageLower,
+            "to",
+            ageUpper
+          );
 
           const ageYearSnapshot = await db
             .collection("users")
@@ -206,11 +489,49 @@ export const getRecommendations = functions.https.onCall(
             .limit(100)
             .get();
 
+          console.log(
+            "🔥 Backend getRecommendations: Found",
+            ageYearSnapshot.docs.length,
+            "users matching age/year criteria"
+          );
+
+          // Debug: Log what users we found (without sensitive data)
+          if (ageYearSnapshot.docs.length > 0) {
+            console.log(
+              "🔥 Backend getRecommendations: Age/year users found:",
+              ageYearSnapshot.docs.map((doc) => ({
+                id: doc.id,
+                gender: doc.data().gender,
+                age: doc.data().age,
+                yearLevel: doc.data().yearLevel,
+                sexualOrientation: doc.data().sexualOrientation,
+                isAvailable: doc.data().isAvailable,
+              }))
+            );
+          } else {
+            console.log(
+              "🔥 Backend getRecommendations: No users found for age/year query"
+            );
+          }
+
           ageYearUsers = ageYearSnapshot.docs
             .filter((doc) => {
-              if (matchedUserIds.has(doc.id)) return false;
+              if (matchedUserIds.has(doc.id)) {
+                console.log(
+                  "🔥 Backend getRecommendations: Filtering out user",
+                  doc.id,
+                  "due to exclusion list"
+                );
+                return false;
+              }
               const userData = doc.data();
               const isActive = userData?.isActive !== false;
+              console.log(
+                "🔥 Backend getRecommendations: User",
+                doc.id,
+                "isActive =",
+                isActive
+              );
               return isActive;
             })
             .map((doc) => {
@@ -220,10 +541,35 @@ export const getRecommendations = functions.https.onCall(
               return { uid: doc.id, ...userDataWithoutSensitiveInfo };
             })
             .slice(0, 50);
+
+          console.log(
+            "🔥 Backend getRecommendations: Final age/year users count:",
+            ageYearUsers.length
+          );
         } catch (error) {
-          console.error("Error fetching age/year users:", error);
+          console.error(
+            "🔥 Backend getRecommendations: Error fetching age/year users:",
+            error
+          );
           ageYearUsers = [];
         }
+      } else {
+        console.log(
+          "🔥 Backend getRecommendations: Age/year criteria not met - skipping"
+        );
+        console.log(
+          "🔥 Backend getRecommendations: userAge !== -1:",
+          userAge !== -1
+        );
+        console.log("🔥 Backend getRecommendations: userYear:", userYear);
+        console.log(
+          "🔥 Backend getRecommendations: compatibilityData.orientation.length > 0:",
+          compatibilityData.orientation.length > 0
+        );
+        console.log(
+          "🔥 Backend getRecommendations: compatibilityData.gender.length > 0:",
+          compatibilityData.gender.length > 0
+        );
       }
 
       // Step 4: Fetch availability-based users (medium priority)
@@ -312,6 +658,24 @@ export const getRecommendations = functions.https.onCall(
       }
 
       // Step 6: Merge results in priority order
+      console.log("🔥 Backend getRecommendations: Step 6 - Merging results");
+      console.log(
+        "🔥 Backend getRecommendations: swipedUsers count:",
+        swipedUsers.length
+      );
+      console.log(
+        "🔥 Backend getRecommendations: ageYearUsers count:",
+        ageYearUsers.length
+      );
+      console.log(
+        "🔥 Backend getRecommendations: availabilityUsers count:",
+        availabilityUsers.length
+      );
+      console.log(
+        "🔥 Backend getRecommendations: generalUsers count:",
+        generalUsers.length
+      );
+
       shuffleArray(swipedUsers);
       shuffleArray(ageYearUsers);
       shuffleArray(availabilityUsers);
@@ -321,31 +685,94 @@ export const getRecommendations = functions.https.onCall(
       const seen = new Set<string>();
       const merged: any[] = [];
       const pushUnique = (arr: any[]) => {
+        console.log(
+          "🔥 Backend getRecommendations: Processing array with",
+          arr.length,
+          "users"
+        );
         for (const u of arr) {
           const id = u.uid;
           if (!seen.has(id)) {
             seen.add(id);
             merged.push(u);
-            if (merged.length >= finalRecsLimit) return true;
+            console.log(
+              "🔥 Backend getRecommendations: Added user",
+              id,
+              "to merged results. Total:",
+              merged.length
+            );
+            if (merged.length >= finalRecsLimit) {
+              console.log(
+                "🔥 Backend getRecommendations: Reached finalRecsLimit of",
+                finalRecsLimit
+              );
+              return true;
+            }
+          } else {
+            console.log(
+              "🔥 Backend getRecommendations: Skipping duplicate user",
+              id
+            );
           }
         }
         return false;
       };
 
+      console.log("🔥 Backend getRecommendations: Starting merge process");
       if (!pushUnique(swipedUsers)) {
+        console.log("🔥 Backend getRecommendations: Adding ageYearUsers");
         if (!pushUnique(ageYearUsers)) {
+          console.log(
+            "🔥 Backend getRecommendations: Adding availabilityUsers"
+          );
           if (!pushUnique(availabilityUsers)) {
+            console.log("🔥 Backend getRecommendations: Adding generalUsers");
             pushUnique(generalUsers);
           }
         }
       }
 
+      console.log(
+        "🔥 Backend getRecommendations: Final merged recommendations count:",
+        merged.length
+      );
+      console.log(
+        "🔥 Backend getRecommendations: Final recommendations:",
+        merged.map((u) => ({
+          uid: u.uid,
+          firstName: u.firstName,
+          gender: u.gender,
+          sexualOrientation: u.sexualOrientation,
+        }))
+      );
+
+      functions.logger.info("🔥 Backend getRecommendations: Final results", {
+        userId,
+        recommendationsCount: merged.length,
+        recommendations: merged.map((u) => ({
+          uid: u.uid,
+          firstName: u.firstName,
+          gender: u.gender,
+          sexualOrientation: u.sexualOrientation,
+        })),
+      });
+
       return { recommendations: merged };
     } catch (error: any) {
-      console.error("Recommendations function error:", error);
+      console.error(
+        "🔥 Backend getRecommendations: Function error occurred:",
+        error
+      );
+      console.error(
+        "🔥 Backend getRecommendations: Error message:",
+        error.message
+      );
+      console.error("🔥 Backend getRecommendations: Error stack:", error.stack);
       if (error instanceof functions.https.HttpsError) {
+        console.log("🔥 Backend getRecommendations: Re-throwing HttpsError");
         throw error;
       }
+      console.log("🔥 Backend getRecommendations: Throwing new internal error");
       throw new functions.https.HttpsError(
         "internal",
         "Failed to get recommendations"
@@ -359,11 +786,17 @@ export const getRecommendations = functions.https.onCall(
  * This helper function makes the main function more readable and performant.
  */
 function getCompatibilityQuery(currentUserData: any) {
+  console.log("🔥 getCompatibilityQuery: Starting compatibility calculation");
   const userGender = currentUserData?.gender;
   const userOrientation = currentUserData?.sexualOrientation;
+  console.log("🔥 getCompatibilityQuery: User gender:", userGender);
+  console.log("🔥 getCompatibilityQuery: User orientation:", userOrientation);
 
   // Guard: if missing data, return empty arrays so callers can skip invalid 'in' queries
   if (!userGender || !userOrientation) {
+    console.log(
+      "🔥 getCompatibilityQuery: Missing gender or orientation data, returning empty arrays"
+    );
     return { gender: [], orientation: [] };
   }
   let compatibleGenders: string[] = [];
@@ -371,26 +804,45 @@ function getCompatibilityQuery(currentUserData: any) {
 
   switch (userOrientation) {
     case "Heterosexual":
+      console.log(
+        "🔥 getCompatibilityQuery: Processing Heterosexual orientation"
+      );
       if (userGender === "Male") {
         compatibleGenders.push("Female");
         compatibleOrientations.push("Heterosexual", "Bisexual", "Pansexual");
+        console.log(
+          "🔥 getCompatibilityQuery: Male heterosexual - looking for females with any orientation"
+        );
       } else if (userGender === "Female") {
         compatibleGenders.push("Male");
         compatibleOrientations.push("Heterosexual", "Bisexual", "Pansexual");
+        console.log(
+          "🔥 getCompatibilityQuery: Female heterosexual - looking for males with any orientation"
+        );
       }
       break;
 
     case "Homosexual":
+      console.log(
+        "🔥 getCompatibilityQuery: Processing Homosexual orientation"
+      );
       if (userGender === "Male") {
         compatibleGenders.push("Male");
         compatibleOrientations.push("Homosexual", "Bisexual", "Pansexual");
+        console.log(
+          "🔥 getCompatibilityQuery: Male homosexual - looking for males with compatible orientations"
+        );
       } else if (userGender === "Female") {
         compatibleGenders.push("Female");
         compatibleOrientations.push("Homosexual", "Bisexual", "Pansexual");
+        console.log(
+          "🔥 getCompatibilityQuery: Female homosexual - looking for females with compatible orientations"
+        );
       }
       break;
 
     case "Bisexual":
+      console.log("🔥 getCompatibilityQuery: Processing Bisexual orientation");
       if (userGender === "Male" || userGender === "Female") {
         compatibleGenders.push("Male", "Female");
         compatibleOrientations.push(
@@ -399,10 +851,14 @@ function getCompatibilityQuery(currentUserData: any) {
           "Heterosexual",
           "Homosexual"
         );
+        console.log(
+          "🔥 getCompatibilityQuery: Bisexual - looking for any gender with any orientation"
+        );
       }
       break;
 
     case "Pansexual":
+      console.log("🔥 getCompatibilityQuery: Processing Pansexual orientation");
       compatibleGenders.push("Male", "Female", "Non-Binary");
       compatibleOrientations.push(
         "Bisexual",
@@ -410,9 +866,17 @@ function getCompatibilityQuery(currentUserData: any) {
         "Heterosexual",
         "Homosexual"
       );
+      console.log(
+        "🔥 getCompatibilityQuery: Pansexual - looking for any gender with any orientation"
+      );
       break;
 
     default:
+      console.log(
+        "🔥 getCompatibilityQuery: Unknown orientation:",
+        userOrientation,
+        "- using fallback"
+      );
       // Fallback for unknown orientations: narrow to user's own values
       compatibleGenders.push(userGender);
       compatibleOrientations.push(userOrientation);
@@ -420,10 +884,21 @@ function getCompatibilityQuery(currentUserData: any) {
   }
 
   if (compatibleGenders.length === 0) {
+    console.log(
+      "🔥 getCompatibilityQuery: No compatible genders found, returning empty arrays"
+    );
     // As a final safeguard, return empty arrays so callers skip querying
     return { gender: [], orientation: [] };
   }
 
+  console.log(
+    "🔥 getCompatibilityQuery: Final compatible genders:",
+    compatibleGenders
+  );
+  console.log(
+    "🔥 getCompatibilityQuery: Final compatible orientations:",
+    compatibleOrientations
+  );
   return { gender: compatibleGenders, orientation: compatibleOrientations };
 }
 
