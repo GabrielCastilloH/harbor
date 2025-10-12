@@ -1,4 +1,11 @@
-export const yearLevels = ["Freshman", "Sophomore", "Junior", "Senior"];
+export const yearLevels = [
+  "Freshman",
+  "Sophomore",
+  "Junior",
+  "Senior",
+  "Masters",
+  "PhD",
+];
 
 export const majors = [
   "Accounting",
