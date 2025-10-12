@@ -84,53 +84,30 @@ export default function ChatScreen() {
     );
   }, [isLayoutReady, matchedUserName]);
 
-  // Study group detection
-  const isStudyGroup = useMemo(() => {
-    if (!channel) return false;
-    const members = channel.state?.members || {};
-    const memberCount = Object.keys(members).length;
-    return memberCount > 2;
-  }, [channel]);
 
   // Update the header title logic
   const headerTitle = useMemo(() => {
-    if (isStudyGroup) {
-      return "Study Group";
-    }
     return matchedUserName;
-  }, [isStudyGroup, matchedUserName]);
+  }, [matchedUserName]);
 
   // Update the header right icon and title press logic
   const handleHeaderPress = useCallback(() => {
     if (!channel) return;
-    const memberIds = Object.keys(channel.state?.members || {});
 
-    if (isStudyGroup) {
-      (navigation as any).navigate("StudyGroupConnections", {
-        channelId: channel.id,
-        memberIds: memberIds,
-      });
-    } else if (matchedUserId) {
+    if (matchedUserId) {
       (navigation as any).navigate("ProfileScreen", {
         userId: matchedUserId,
         matchId: null,
       });
     }
-  }, [channel, isStudyGroup, matchedUserId, navigation]);
+  }, [channel, matchedUserId, navigation]);
 
   const rightIconConfig = useMemo(() => {
-    if (isStudyGroup) {
-      return {
-        name: "people",
-        onPress: handleHeaderPress,
-      };
-    } else {
-      return {
-        name: "person",
-        onPress: handleHeaderPress,
-      };
-    }
-  }, [isStudyGroup, handleHeaderPress]);
+    return {
+      name: "person",
+      onPress: handleHeaderPress,
+    };
+  }, [handleHeaderPress]);
 
   const fetchAndApplyConsentStatus = useCallback(
     async (matchId: string) => {

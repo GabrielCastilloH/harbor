@@ -37,7 +37,6 @@ const emptyProfile: Profile = {
   q2: "",
   q3: "",
   availability: -1,
-  groupSize: 2,
 };
 
 function isProfileDirty(current: Profile, initial: Profile): boolean {
@@ -239,7 +238,6 @@ export default function EditProfileScreen() {
         q1: profileData.q1,
         q2: profileData.q2,
         q3: profileData.q3,
-        groupSize: profileData.groupSize,
       };
 
       // ATOMIC: Update user profile with images in a single transaction

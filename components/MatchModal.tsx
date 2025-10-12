@@ -59,7 +59,7 @@ export default function MatchModal({
           </TouchableOpacity>
 
           <Text style={styles.matchText}>
-            You connected with {"\n"} {matchedProfile.firstName}!
+            You matched with {"\n"} {matchedProfile.firstName}!
           </Text>
 
           <View style={styles.cardsContainer}>
