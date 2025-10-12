@@ -572,15 +572,10 @@ export const updateUser = functions.https.onCall(
           validationErrors.push("Sexual orientation selection is required");
         } else {
           const validOrientations = [
-            "Straight",
-            "Gay",
-            "Lesbian",
+            "Heterosexual",
+            "Homosexual",
             "Bisexual",
             "Pansexual",
-            "Asexual",
-            "Demisexual",
-            "Questioning",
-            "Other",
           ];
           if (!validOrientations.includes(userData.sexualOrientation)) {
             validationErrors.push("Invalid sexual orientation selection");
@@ -1861,11 +1856,11 @@ export const updateUserWithImages = functions.https.onCall(
       console.log("👤 [UPDATE USER WITH IMAGES] User ID:", firebaseUid);
       console.log(
         "📊 [UPDATE USER WITH IMAGES] New images count:",
-        newImages.length
+        newImages?.length || 0
       );
       console.log(
         "🗑️ [UPDATE USER WITH IMAGES] Old images to delete:",
-        oldImages.length
+        oldImages?.length || 0
       );
       console.log(
         "📝 [UPDATE USER WITH IMAGES] User data fields:",
@@ -1903,16 +1898,16 @@ export const updateUserWithImages = functions.https.onCall(
 
       console.log(
         "🖼️ [UPDATE USER WITH IMAGES] Processing",
-        newImages.length,
+        newImages?.length || 0,
         "new images"
       );
 
       try {
-        for (const imageInfo of newImages) {
+        for (const imageInfo of newImages || []) {
           const { imageData, index } = imageInfo;
           console.log(
             `🔄 [UPDATE USER WITH IMAGES] Processing image ${index + 1}/${
-              newImages.length
+              newImages?.length || 0
             }`
           );
 
@@ -2020,12 +2015,77 @@ export const updateUserWithImages = functions.https.onCall(
             );
           }
 
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Current user data keys:",
+            Object.keys(currentData)
+          );
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Current images type:",
+            typeof currentData.images
+          );
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Current images value:",
+            currentData.images
+          );
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Old images type:",
+            typeof oldImages
+          );
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Old images value:",
+            oldImages
+          );
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Processed new images type:",
+            typeof processedNewImages
+          );
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Processed new images value:",
+            processedNewImages
+          );
+
           // Merge new images with existing ones, excluding old images
           const currentImages = currentData.images || [];
-          const filteredCurrentImages = currentImages.filter(
-            (img: string) => !oldImages.includes(img)
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Current images array:",
+            currentImages
           );
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Current images length:",
+            currentImages.length
+          );
+
+          const oldImagesArray = oldImages || [];
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Old images array:",
+            oldImagesArray
+          );
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Old images length:",
+            oldImagesArray.length
+          );
+
+          const filteredCurrentImages = currentImages.filter(
+            (img: string) => !oldImagesArray.includes(img)
+          );
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Filtered current images:",
+            filteredCurrentImages
+          );
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Filtered current images length:",
+            filteredCurrentImages.length
+          );
+
           const finalImages = [...filteredCurrentImages, ...processedNewImages];
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Final images:",
+            finalImages
+          );
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Final images length:",
+            finalImages.length
+          );
 
           console.log("📸 [UPDATE USER WITH IMAGES] Image merge:", {
             currentImages: currentImages.length,
@@ -2041,23 +2101,50 @@ export const updateUserWithImages = functions.https.onCall(
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };
 
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Update data before cleanup:",
+            updateData
+          );
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Update data keys:",
+            Object.keys(updateData)
+          );
+
           // Remove undefined values
-          Object.keys(updateData).forEach(
-            (key) => updateData[key] === undefined && delete updateData[key]
+          Object.keys(updateData).forEach((key) => {
+            if (updateData[key] === undefined) {
+              console.log(
+                "🔍 [UPDATE USER WITH IMAGES] Removing undefined key:",
+                key
+              );
+              delete updateData[key];
+            }
+          });
+
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Update data after cleanup:",
+            updateData
+          );
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Update data keys after cleanup:",
+            Object.keys(updateData)
           );
 
           transaction.update(userRef, updateData);
+          console.log(
+            "🔍 [UPDATE USER WITH IMAGES] Transaction update called successfully"
+          );
 
           return {
             message: "User profile updated successfully",
             user: { ...currentData, ...updateData },
             newImageCount: processedNewImages.length,
-            deletedImageCount: oldImages.length,
+            deletedImageCount: (oldImages || []).length,
           };
         });
 
         // Clean up old images after successful transaction
-        for (const oldImageFilename of oldImages) {
+        for (const oldImageFilename of oldImages || []) {
           try {
             // Delete original image
             const originalPath = `users/${firebaseUid}/images/${oldImageFilename}`;
