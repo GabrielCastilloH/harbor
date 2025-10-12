@@ -78,7 +78,7 @@ export default function AccountSetupScreen({
       setUserId(null);
       setProfile(null);
     } catch (error) {
-      console.error("❌ [ACCOUNT SETUP] Error during logout:", error);
+      // Error during logout
     }
   };
 
@@ -174,7 +174,6 @@ export default function AccountSetupScreen({
           // Small delay to let progress animation catch up
           await new Promise((resolve) => setTimeout(resolve, 50));
         } catch (conversionError) {
-          console.error(`Failed to convert image ${i + 1}:`, conversionError);
           Alert.alert(
             "Image Processing Error",
             `Failed to process image ${i + 1}. Please try again.`
@@ -237,10 +236,6 @@ export default function AccountSetupScreen({
           setStreamApiKey(apiKey);
           setStreamUserToken(userToken);
         } catch (error) {
-          console.error(
-            "AccountSetupScreen - Error pre-loading chat credentials:",
-            error
-          );
           // The key fix: DO NOT RETURN HERE. Allow the process to continue.
           // The chat UI will simply not have a user token and can't connect,
           // but the app won't crash.
@@ -253,7 +248,6 @@ export default function AccountSetupScreen({
             firebaseUid
           );
         } catch (error) {
-          console.error("AccountSetupScreen - Error saving FCM token:", error);
           if (!hasAlertBeenShown.current) {
             Alert.alert(
               "Notifications Disabled",
@@ -284,22 +278,16 @@ export default function AccountSetupScreen({
         setProfileExists(true);
 
         // Track account creation in PostHog
-        console.log("PostHog: Tracking account creation", firebaseUid);
         try {
           posthog.capture("account_created", {
             user_id: firebaseUid,
             email: currentUser.email,
             name: profileData.firstName,
           });
-          console.log("PostHog: Account creation event sent successfully");
         } catch (error) {
-          console.error("PostHog: Error tracking account creation", error);
+          // PostHog error tracking account creation
         }
       } catch (profileError) {
-        console.error(
-          "Failed to create user profile atomically:",
-          profileError
-        );
         Alert.alert(
           "Profile Creation Error",
           "Failed to create your profile. Please try again."
@@ -308,7 +296,6 @@ export default function AccountSetupScreen({
         return;
       }
     } catch (error) {
-      console.error("Error creating profile:", error);
       Alert.alert("Error", "Failed to create profile. Please try again.");
     } finally {
       setLoading(false);
