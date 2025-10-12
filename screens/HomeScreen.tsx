@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, FlatList, SafeAreaView, Text, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import Post from "../components/Block";
 import LoadingScreen from "../components/LoadingScreen";
 import { Profile } from "../types/App";
@@ -70,6 +71,7 @@ const DUMMY_PROFILES: Profile[] = [
 
 const FeedScreen = () => {
   const { currentUser, userId, profile } = useAppContext();
+  const navigation = useNavigation();
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -145,7 +147,11 @@ const FeedScreen = () => {
         data={profilesToDisplay}
         keyExtractor={(item) => item.uid || `profile-${Math.random()}`}
         renderItem={({ item }) => (
-          <Post profile={item} onUserRemoved={handleUserRemoved} />
+          <Post
+            profile={item}
+            onUserRemoved={handleUserRemoved}
+            navigation={navigation}
+          />
         )}
         showsVerticalScrollIndicator={false}
         // Add an empty list component for when there's no data

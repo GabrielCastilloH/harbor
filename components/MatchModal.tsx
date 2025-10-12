@@ -42,7 +42,17 @@ export default function MatchModal({
     setIsLoadingChat(true);
     try {
       if (navigation && typeof navigation.navigate === "function") {
-        (navigation as any).navigate("ChatsTab");
+        // Navigate to the parent tab navigator to switch to ChatsTab
+        const parentNavigation = navigation.getParent();
+        if (
+          parentNavigation &&
+          typeof parentNavigation.navigate === "function"
+        ) {
+          parentNavigation.navigate("ChatsTab");
+        } else {
+          // Fallback: try direct navigation
+          (navigation as any).navigate("ChatsTab");
+        }
         onClose();
       } else {
         console.warn("Navigation not available yet");
