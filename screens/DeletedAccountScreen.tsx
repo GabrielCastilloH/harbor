@@ -8,23 +8,30 @@ import {
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, CommonActions } from "@react-navigation/native";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useAppContext } from "../context/AppContext";
+import { useEffect } from "react";
 import Colors from "../constants/Colors";
 
 export default function DeletedAccountScreen() {
-  const navigation = useNavigation();
-  const { setUserId, setProfile, setStreamApiKey, setStreamUserToken } =
-    useAppContext();
+  // Lifecycle logging
+  useEffect(() => {
+    console.log("✅ [LIFECYCLE] DeletedAccountScreen MOUNTED");
+    return () => {
+      console.log("❌ [LIFECYCLE] DeletedAccountScreen UNMOUNTED");
+    };
+  }, []);
 
   const handleBackToSignIn = async () => {
+    console.log("🔄 [DELETED SCREEN] Starting sign-out process...");
+
     try {
-      // Sign out from Firebase Auth and clear all app state
+      // Use the EXACT same logic as SettingsScreen
       await Promise.all([
+        // Sign out from Firebase Auth
         signOut(auth),
+        // Clear AsyncStorage
         AsyncStorage.multiRemove([
           "@user",
           "@authToken",
@@ -33,18 +40,11 @@ export default function DeletedAccountScreen() {
         ]),
       ]);
 
-      // Clear app context state
-      setUserId(null);
-      setProfile(null);
-      setStreamApiKey(null);
-      setStreamUserToken(null);
+      console.log(
+        "✅ [DELETED SCREEN] Sign-out successful. App will now navigate automatically."
+      );
     } catch (error) {
-      console.error("Error signing out:", error);
-      // Even if sign out fails, clear local state
-      setUserId(null);
-      setProfile(null);
-      setStreamApiKey(null);
-      setStreamUserToken(null);
+      console.error("❌ [DELETED SCREEN] Error during sign out:", error);
     }
   };
 

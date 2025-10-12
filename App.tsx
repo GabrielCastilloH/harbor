@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import {
   NavigationContainer,
   NavigationContainerRef,
+  useNavigationContainerRef,
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import TabNavigator from "./navigation/TabNavigator";
@@ -41,6 +42,9 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
+
+// Define the Root Stack Navigator
+const RootStack = createNativeStackNavigator();
 
 // Expo Notifications Setup Component
 function ExpoNotificationSetup() {
@@ -173,6 +177,14 @@ class ErrorBoundary extends React.Component<
 
 // AuthNavigator for unauthenticated users - only Google Sign-In now
 function AuthNavigator() {
+  // Lifecycle logging
+  useEffect(() => {
+    console.log("✅ [LIFECYCLE] AuthNavigator MOUNTED");
+    return () => {
+      console.log("❌ [LIFECYCLE] AuthNavigator UNMOUNTED");
+    };
+  }, []);
+
   return (
     <AuthStack.Navigator
       screenOptions={{ headerShown: false }}
@@ -192,18 +204,44 @@ function AuthNavigator() {
   );
 }
 
-// Main Navigator for authenticated users
+// Main Navigator for authenticated users (simplified - no isDeleted/isBanned checks)
 function MainNavigator() {
   const AppStack = createNativeStackNavigator();
   const { currentUser, isAuthenticated, profileExists } = useAppContext();
 
+  // Lifecycle logging
+  useEffect(() => {
+    console.log("✅ [LIFECYCLE] MainNavigator MOUNTED");
+    return () => {
+      console.log("❌ [LIFECYCLE] MainNavigator UNMOUNTED");
+    };
+  }, []);
+
+  console.log("🧭 [MAIN NAV] MainNavigator called with state:", {
+    currentUser: currentUser?.uid,
+    isAuthenticated,
+    profileExists,
+  });
+
+  // Safety check: if not authenticated, don't render anything
+  if (!isAuthenticated) {
+    console.log("🧭 [MAIN NAV] Not authenticated, returning null");
+    return null;
+  }
+
   if (!currentUser) {
+    console.log("🧭 [MAIN NAV] No currentUser, returning null");
     return null; // This should not happen if isAuthenticated is true
   }
 
   // Only require email verification for non-Google auth users
   // Google Sign-In users are already verified
-  if (!currentUser.emailVerified && !currentUser.providerData.some(provider => provider.providerId === 'google.com')) {
+  if (
+    !currentUser.emailVerified &&
+    !currentUser.providerData.some(
+      (provider) => provider.providerId === "google.com"
+    )
+  ) {
     return (
       <AppStack.Navigator screenOptions={{ headerShown: false }}>
         <AppStack.Screen
@@ -231,11 +269,16 @@ function MainNavigator() {
 }
 
 function AppContent() {
-  const { isInitialized, isAuthenticated, currentUser, isBanned, isDeleted } =
-    useAppContext();
-  const navigationRef = useRef<NavigationContainerRef<any> | null>(null);
-  const BannedStack = createNativeStackNavigator();
-  const DeletedStack = createNativeStackNavigator();
+  const {
+    isInitialized,
+    isAuthenticated,
+    currentUser,
+    isBanned,
+    isDeleted,
+    profileExists,
+  } = useAppContext();
+  const navigationRef = useNavigationContainerRef();
+  const hasNavigatedRef = useRef(false);
 
   // Debug logging for navigation decisions
   console.log("🧭 [NAV DEBUG] App state:", {
@@ -244,58 +287,100 @@ function AppContent() {
     currentUser: currentUser?.uid,
     isBanned,
     isDeleted,
+    profileExists,
   });
+
+  // Log when authentication state changes
+  if (isAuthenticated) {
+    console.log("🔐 [AUTH STATE] User is authenticated");
+  } else {
+    console.log("🔐 [AUTH STATE] User is NOT authenticated");
+  }
+
+  // This effect controls navigation based on state
+  useEffect(() => {
+    if (isInitialized && navigationRef.isReady()) {
+      const currentRoute = navigationRef.getCurrentRoute()?.name;
+
+      // ADD A DETAILED "BEFORE" LOG
+      console.log("--- NAV DECISION START ---");
+      console.log(`Current Route: ${currentRoute}`);
+      console.log("State:", {
+        isAuthenticated,
+        isBanned,
+        isDeleted,
+        profileExists,
+      });
+
+      let routeName: string | null = null;
+      if (!isAuthenticated) {
+        routeName = "Auth";
+      } else if (isDeleted) {
+        routeName = "DeletedAccount";
+      } else if (isBanned) {
+        routeName = "BannedAccount";
+      } else if (!profileExists) {
+        routeName = "AccountSetup";
+      } else {
+        routeName = "MainApp";
+      }
+
+      console.log(`Determined Target Route: ${routeName}`);
+
+      if (routeName && routeName !== currentRoute) {
+        console.log(
+          `💣 [ROOT NAV] State change requires RESET. From: ${currentRoute}, To: ${routeName}`
+        );
+
+        if (routeName === "Auth") {
+          console.log("AUTH SCREEN SHOWN AUTH SCREEN SHOWN");
+        }
+
+        // Replace navigate with reset - this forcefully clears the navigation history
+        navigationRef.reset({
+          index: 0,
+          routes: [{ name: routeName }],
+        });
+      } else {
+        console.log("Decision: No navigation needed.");
+      }
+      console.log("--- NAV DECISION END ---");
+    }
+  }, [
+    isInitialized,
+    isAuthenticated,
+    isBanned,
+    isDeleted,
+    profileExists,
+    navigationRef,
+  ]);
 
   if (!isInitialized) {
     return <LoadingScreen loadingText="Loading..." />;
   }
 
-  // Check if user is deleted and authenticated
-  if (isAuthenticated && isDeleted) {
-    console.log("🧭 [NAV] Showing DeletedAccountScreen");
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer ref={navigationRef}>
-          <StatusBar style="dark" />
-          <DeletedStack.Navigator screenOptions={{ headerShown: false }}>
-            <DeletedStack.Screen
-              name="DeletedAccount"
-              component={DeletedAccountScreen}
-            />
-          </DeletedStack.Navigator>
-          <NotificationHandler navigationRef={navigationRef} />
-          <ExpoNotificationSetup />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
-
-  // Check if user is banned and authenticated
-  if (isAuthenticated && isBanned) {
-    console.log("🧭 [NAV] Showing BannedAccountScreen");
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer ref={navigationRef}>
-          <StatusBar style="dark" />
-          <BannedStack.Navigator screenOptions={{ headerShown: false }}>
-            <BannedStack.Screen
-              name="BannedAccount"
-              component={BannedAccountScreen}
-            />
-          </BannedStack.Navigator>
-          <NotificationHandler navigationRef={navigationRef} />
-          <ExpoNotificationSetup />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
-
-  // Single NavigationContainer for the entire app
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer ref={navigationRef}>
         <StatusBar style="dark" />
-        {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
+        <RootStack.Navigator screenOptions={{ headerShown: false }}>
+          {/* Define all possible top-level states as screens */}
+          <RootStack.Screen name="Auth" component={AuthNavigator} />
+          <RootStack.Screen name="MainApp" component={MainNavigator} />
+          <RootStack.Screen
+            name="AccountSetup"
+            component={AccountSetupScreen}
+          />
+          <RootStack.Screen
+            name="DeletedAccount"
+            component={DeletedAccountScreen}
+          />
+          <RootStack.Screen
+            name="BannedAccount"
+            component={BannedAccountScreen}
+          />
+        </RootStack.Navigator>
+
         {isAuthenticated && <UnviewedMatchesHandler />}
         <NotificationHandler navigationRef={navigationRef} />
         <ExpoNotificationSetup />
