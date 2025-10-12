@@ -173,17 +173,18 @@ export default function ChatScreen() {
         setMatchedUserId(otherUserId);
         setHasMatchedUser(true);
         try {
+          // Eagerly resolve matchId to fetch consent status immediately
+          const matchId = await resolveMatchId();
+
           const [matchedProfileResponse, consentStatusResponse] =
             await Promise.all([
               UserService.getUserById(otherUserId).catch((error) => {
                 return null;
               }),
-              activeMatchId
-                ? ConsentService.getConsentStatus(activeMatchId).catch(
-                    (error) => {
-                      return null;
-                    }
-                  )
+              matchId
+                ? ConsentService.getConsentStatus(matchId).catch((error) => {
+                    return null;
+                  })
                 : Promise.resolve(null),
             ]);
 
@@ -195,7 +196,7 @@ export default function ChatScreen() {
           } else {
             setMatchedUserName("User");
           }
-          if (consentStatusResponse && activeMatchId) {
+          if (consentStatusResponse && matchId) {
             setConsentStatus(consentStatusResponse);
             const clarity = getUnifiedClarityPercent({
               messageCount: consentStatusResponse.messageCount,
@@ -226,7 +227,7 @@ export default function ChatScreen() {
       }
     };
     fetchChatData();
-  }, [channel, userId, activeMatchId]);
+  }, [channel, userId, resolveMatchId]);
 
   useEffect(() => {
     if (matchedUserName !== "Loading...") {
