@@ -52,7 +52,8 @@ export default function TabNavigator() {
         if (nextAppState === "active") {
           // App has come to foreground - check if notifications are now enabled
           try {
-            const hasPermission = await streamNotificationService.areNotificationsEnabled();
+            const hasPermission =
+              await streamNotificationService.areNotificationsEnabled();
             if (hasPermission) {
               // Permission is granted - save the token if we don't have it yet
               await streamNotificationService.saveUserToken(currentUser.uid);
