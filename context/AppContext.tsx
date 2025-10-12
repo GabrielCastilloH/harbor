@@ -260,18 +260,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
               isDeleted: false,
             }));
 
-            // Identify user in PostHog for DAU tracking
-            if (posthog) {
-              try {
-                posthog.identify(user.uid, {
-                  email: user.email,
-                  name: response.user.firstName,
-                });
-              } catch (error) {
-                // PostHog error identifying user
-              }
-            }
-
             // Fetch centralized data
             fetchUserData(user.uid);
           } else {
@@ -290,6 +278,24 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             // For new accounts, still try to fetch user data in case it exists
             fetchUserData(user.uid);
           }
+
+          // Identify user in PostHog for DAU tracking (for all authenticated users)
+          if (posthog) {
+            try {
+              const userProperties: any = {
+                email: user.email,
+              };
+
+              // Add name if available from profile response
+              if (response && response.user && response.user.firstName) {
+                userProperties.name = response.user.firstName;
+              }
+
+              posthog.identify(user.uid, userProperties);
+            } catch (error) {
+              // PostHog error identifying user
+            }
+          }
         } catch (error: any) {
           setAppState((prevState) => ({
             ...prevState,
@@ -302,6 +308,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
             isBanned: false,
             isDeleted: false,
           }));
+
+          // Still identify user in PostHog even if there was an error fetching profile
+          if (posthog && user?.uid) {
+            try {
+              posthog.identify(user.uid, {
+                email: user.email,
+              });
+            } catch (posthogError) {
+              // PostHog error identifying user
+            }
+          }
         }
       } catch (outerError: any) {
         // Outer error in auth handler
