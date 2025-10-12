@@ -239,7 +239,7 @@ export default function ChatNavigator() {
   }, [chatUserToken, userId, setStreamUserToken, cacheStreamUserToken]);
 
   // 💡 CRITICAL: This useEffect must run and set the notificationToken state
-  // Get notification token from AsyncStorage (set during AccountSetupScreen)
+  // Get notification token from AsyncStorage (set during AccountSetupScreen or TabNavigator)
   useEffect(() => {
     const getStoredNotificationToken = async () => {
       try {
@@ -251,7 +251,14 @@ export default function ChatNavigator() {
         // Failed to get stored notification token
       }
     };
+
+    // Initial load
     getStoredNotificationToken();
+
+    // Poll for token updates every 2 seconds (in case permission is granted while chat is open)
+    const interval = setInterval(getStoredNotificationToken, 2000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Create a memoized user object using cached profile
@@ -404,6 +411,40 @@ export default function ChatNavigator() {
       }
     };
   }, [chatClient, userId]);
+
+  // 💡 CRITICAL: Register device with Stream if token becomes available after client connection
+  // This handles the case where permission is granted AFTER the chat client is already connected
+  useEffect(() => {
+    if (!chatClient || !userId || !notificationToken) {
+      return;
+    }
+
+    const registerLateDevice = async () => {
+      try {
+        // Check if device is already registered by seeing if we have it in Stream
+        // We'll try to add it - Stream will handle duplicates gracefully
+        await chatClient.addDevice(
+          notificationToken,
+          "firebase",
+          userId,
+          "HarborFirebasePush"
+        );
+      } catch (error) {
+        // Device might already be registered, which is fine
+        // Only log if it's not a duplicate error
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        if (
+          !errorMessage.includes("already") &&
+          !errorMessage.includes("duplicate")
+        ) {
+          console.error("🔔 Error registering late device:", error);
+        }
+      }
+    };
+
+    registerLateDevice();
+  }, [chatClient, userId, notificationToken]);
 
   // Badge count management for app icon
   useEffect(() => {
