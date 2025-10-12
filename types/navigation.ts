@@ -12,10 +12,6 @@ export type RootStackParamList = {
     reportedUserName?: string;
     matchId?: string;
   };
-  StudyGroupConnections: {
-    channelId: string;
-    memberIds: string[];
-  };
 };
 
 export type AuthStackParamList = {

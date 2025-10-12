@@ -67,7 +67,6 @@ interface CreateUserData {
   q2?: string; // "Favorite book, movie or song"
   q3?: string; // "Some of my hobbies are"
   email: string;
-  groupSize?: number; // Preferred group size for matching (2, 3, or 4)
 }
 
 interface UpdateUserData {
@@ -83,7 +82,6 @@ interface UpdateUserData {
   q1?: string; // "Together we could"
   q2?: string; // "Favorite book, movie or song"
   q3?: string; // "Some of my hobbies are"
-  groupSize?: number; // Preferred group size for matching (2, 3, or 4)
 }
 
 /**
@@ -232,12 +230,6 @@ export const createUser = functions.https.onCall(
         validationErrors.push("Email addresses with periods are not allowed");
       }
 
-      // Validate group size if provided
-      if (userData.groupSize !== undefined) {
-        if (![2, 3, 4].includes(userData.groupSize)) {
-          validationErrors.push("Group size must be 2, 3, or 4");
-        }
-      }
 
       // Validate profile content for inappropriate content
       const textFields = [
@@ -303,10 +295,6 @@ export const createUser = functions.https.onCall(
             q1: userData.q1 || existingData?.q1 || "",
             q2: userData.q2 || existingData?.q2 || "",
             q3: userData.q3 || existingData?.q3 || "",
-            groupSize:
-              userData.groupSize !== undefined
-                ? userData.groupSize
-                : existingData?.groupSize || 2,
             // Preserve existing isActive if present; default to true
             isActive:
               existingData?.isActive !== undefined
@@ -347,8 +335,6 @@ export const createUser = functions.https.onCall(
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             // New availability field
             availability: -1,
-            // Group size preference (default to 2)
-            groupSize: userData.groupSize || 2,
             // Explicit active flag for consistency
             isActive: true,
             // Match availability (defaults to true)
@@ -604,12 +590,6 @@ export const updateUser = functions.https.onCall(
         }
       }
 
-      // Validate group size if provided
-      if (userData.groupSize !== undefined) {
-        if (![2, 3, 4].includes(userData.groupSize)) {
-          validationErrors.push("Group size must be 2, 3, or 4");
-        }
-      }
 
       // Validate text fields if provided
       const textFieldValidations = [
@@ -1562,7 +1542,6 @@ interface AtomicCreateUserData {
   q2?: string; // "Favorite book, movie or song"
   q3?: string; // "Some of my hobbies are"
   email: string;
-  groupSize?: number; // Preferred group size for matching (2, 3, or 4)
   images: Array<{
     imageData: string; // base64 encoded image data
     index: number;
@@ -1767,7 +1746,6 @@ export const createUserWithImages = functions.https.onCall(
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           availability: -1,
-          groupSize: userData.groupSize || 2,
           isActive: true,
           isAvailable: true,
           currentMatches: [],
