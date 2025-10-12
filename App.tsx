@@ -16,8 +16,7 @@ import BannedAccountScreen from "./screens/BannedAccountScreen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
 import NotificationHandler from "./components/NotificationHandler";
-// import TelemetryDeck from "@telemetrydeck/sdk";
-// import { TelemetryDeckProvider } from "@typedigital/telemetrydeck-react";
+import { PostHogProvider } from "posthog-react-native";
 
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
@@ -290,13 +289,6 @@ function AppContent() {
 }
 
 export default function App() {
-  // Initialize the TelemetryDeck client using the core SDK
-  // const td = new TelemetryDeck({
-  //   appID: process.env.EXPO_PUBLIC_TELEMETRYDECK_APP_ID,
-  //   clientUser: "anonymous",
-  //   target: "https://nom.telemetrydeck.com", // Specify the target URL for React Native
-  // });
-
   // PREMIUM DISABLED: Superwall configuration commented out
   // const apiKeys = SUPERWALL_CONFIG.apiKeys;
   // const [superwallApiKeys, setSuperwallApiKeys] = useState<{
@@ -315,13 +307,23 @@ export default function App() {
   // PREMIUM DISABLED: Superwall provider removed, using simple provider structure
   return (
     <SafeAreaProvider>
-      {/* <TelemetryDeckProvider telemetryDeck={td}> */}
-      <AppProvider>
-        <ErrorBoundary>
-          <AppContent />
-        </ErrorBoundary>
-      </AppProvider>
-      {/* </TelemetryDeckProvider> */}
+      <PostHogProvider
+        apiKey={
+          process.env.EXPO_PUBLIC_POSTHOG_API_KEY ||
+          "phc_GM2nAzYhvvz8GifZBO2sYBADGM2BtVLuS16yK1bK0CO"
+        }
+        options={{
+          host:
+            process.env.EXPO_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
+          disabled: false, // Enable in development for testing
+        }}
+      >
+        <AppProvider>
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
+        </AppProvider>
+      </PostHogProvider>
     </SafeAreaProvider>
   );
 

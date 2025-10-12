@@ -12,6 +12,7 @@ import { signOut } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { preloadChatCredentials } from "../util/chatPreloader";
 import { streamNotificationService } from "../util/streamNotifService";
+import { usePostHog } from "posthog-react-native";
 
 export default function AccountSetupScreen({
   showProgressBar = true,
@@ -23,6 +24,7 @@ export default function AccountSetupScreen({
     setStreamApiKey,
     setStreamUserToken,
   } = useAppContext();
+  const posthog = usePostHog();
   const [profileData, setProfileData] = useState<Profile>({
     firstName: "",
     yearLevel: "",
@@ -280,6 +282,14 @@ export default function AccountSetupScreen({
           images: imageFilenames,
         });
         setProfileExists(true);
+
+        // Track account creation in PostHog
+        console.log("PostHog: Tracking account creation", firebaseUid);
+        posthog.capture("account_created", {
+          user_id: firebaseUid,
+          email: currentUser.email,
+          name: profileData.firstName,
+        });
       } catch (profileError) {
         console.error(
           "Failed to create user profile atomically:",
