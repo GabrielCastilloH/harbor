@@ -566,68 +566,6 @@ function getCompatibilityQuery(currentUserData: any) {
 }
 
 /**
- * Blocks a user by adding them to the current user's blocked subcollection
- */
-export const blockUser = functions.https.onCall(
-  {
-    region: "us-central1",
-    memory: "256MiB",
-    timeoutSeconds: 30,
-    minInstances: 0,
-    maxInstances: 10,
-    concurrency: 80,
-    cpu: 1,
-    ingressSettings: "ALLOW_ALL",
-    invoker: "public",
-  },
-  async (request: CallableRequest<{ blockedUserId: string }>) => {
-    try {
-      if (!request.auth) {
-        throw new functions.https.HttpsError(
-          "unauthenticated",
-          "User must be authenticated"
-        );
-      }
-
-      const userId = request.auth.uid;
-      const { blockedUserId } = request.data;
-
-      if (!blockedUserId) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "blockedUserId is required"
-        );
-      }
-
-      if (userId === blockedUserId) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "Cannot block yourself"
-        );
-      }
-
-      // Add to blocked subcollection
-      await db
-        .collection("users")
-        .doc(userId)
-        .collection("blocked")
-        .doc(blockedUserId)
-        .set({
-          blockedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-      return { success: true, message: "User blocked successfully" };
-    } catch (error: any) {
-      console.error("Error blocking user:", error);
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
-      }
-      throw new functions.https.HttpsError("internal", "Failed to block user");
-    }
-  }
-);
-
-/**
  * Unblocks a user by removing them from the current user's blocked subcollection
  */
 export const unblockUser = functions.https.onCall(
@@ -685,6 +623,5 @@ export const unblockUser = functions.https.onCall(
 
 export const recommendationsFunctions = {
   getRecommendations,
-  blockUser,
   unblockUser,
 };

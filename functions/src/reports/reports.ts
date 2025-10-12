@@ -382,6 +382,24 @@ export const reportAndUnmatch = functions.https.onCall(
           currentMatches: admin.firestore.FieldValue.arrayRemove(matchId),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+
+        // 4. Create a document in the blocked subcollection
+        const blockData = {
+          blockedUserId: reportedUserId,
+          blockedAt: admin.firestore.FieldValue.serverTimestamp(),
+          reason: "report_block",
+          reportId: reportRef.id,
+          matchId,
+        };
+
+        transaction.set(
+          db
+            .collection("users")
+            .doc(reporterId)
+            .collection("blocked")
+            .doc(reportedUserId),
+          blockData
+        );
       });
 
       // Freeze the chat channel and send system message (outside transaction)
@@ -505,7 +523,7 @@ export const blockUser = functions.https.onCall(
 
       // Use a transaction for atomic operations
       await db.runTransaction(async (transaction) => {
-        // 1. Add the blocked user to the current user's 'blockedUsers' array
+        // 1. Create a document in the blocked subcollection
         const blockerRef = db.collection("users").doc(blockerId);
         const blockerDoc = await transaction.get(blockerRef);
 
@@ -516,9 +534,25 @@ export const blockUser = functions.https.onCall(
           );
         }
 
-        // Add to the 'blockedUsers' array. arrayUnion ensures no duplicates.
+        // Create block document in blocked subcollection
+        const blockData = {
+          blockedUserId,
+          blockedAt: admin.firestore.FieldValue.serverTimestamp(),
+          reason: "manual_block",
+          ...(matchId && { matchId }),
+        };
+
+        transaction.set(
+          db
+            .collection("users")
+            .doc(blockerId)
+            .collection("blocked")
+            .doc(blockedUserId),
+          blockData
+        );
+
+        // Update user's last updated timestamp
         transaction.update(blockerRef, {
-          blockedUsers: admin.firestore.FieldValue.arrayUnion(blockedUserId),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
@@ -693,7 +727,18 @@ export const reportAndBlock = functions.https.onCall(
       // Use transaction for atomic report + block operations
       const reportRef = db.collection("reports").doc();
       await db.runTransaction(async (transaction) => {
-        // 1. Create the report
+        // 1. Read the reporter document first (all reads before writes)
+        const reporterRef = db.collection("users").doc(reporterId);
+        const reporterDoc = await transaction.get(reporterRef);
+
+        if (!reporterDoc.exists) {
+          throw new functions.https.HttpsError(
+            "not-found",
+            "Reporter user not found"
+          );
+        }
+
+        // 2. Create the report
         const reportData = {
           reporterId,
           reporterEmail,
@@ -709,19 +754,25 @@ export const reportAndBlock = functions.https.onCall(
 
         transaction.set(reportRef, reportData);
 
-        // 2. Add the reported user to the reporter's 'blockedUsers' array
-        const reporterRef = db.collection("users").doc(reporterId);
-        const reporterDoc = await transaction.get(reporterRef);
+        // 3. Create a document in the blocked subcollection
+        const blockData = {
+          blockedUserId: reportedUserId,
+          blockedAt: admin.firestore.FieldValue.serverTimestamp(),
+          reason: "report_block",
+          reportId: reportRef.id,
+        };
 
-        if (!reporterDoc.exists) {
-          throw new functions.https.HttpsError(
-            "not-found",
-            "Reporter user not found"
-          );
-        }
+        transaction.set(
+          db
+            .collection("users")
+            .doc(reporterId)
+            .collection("blocked")
+            .doc(reportedUserId),
+          blockData
+        );
 
+        // Update user's last updated timestamp
         transaction.update(reporterRef, {
-          blockedUsers: admin.firestore.FieldValue.arrayUnion(reportedUserId),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       });
