@@ -19,7 +19,7 @@ import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
 import { streamNotificationService } from "../util/streamNotifService";
-import InAppReview from "react-native-in-app-review";
+import { requestInAppReview } from "../util/inAppReviewUtils";
 // import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
 // PREMIUM DISABLED: Superwall imports commented out
 // import { usePlacement, useUser } from "expo-superwall";
@@ -250,51 +250,7 @@ export default function SettingsScreen() {
   };
 
   const handleAppReview = async () => {
-    try {
-      const isAvailable = InAppReview.isAvailable();
-      if (isAvailable) {
-        InAppReview.RequestInAppReview()
-          .then((hasFlowFinishedSuccessfully) => {
-            // InAppReview completed
-          })
-          .catch((error) => {
-            console.error("InAppReview error:", error);
-            // Fallback to direct store links
-            if (Platform.OS === "ios") {
-              Linking.openURL(
-                "https://apps.apple.com/app/id6752791663?action=write-review"
-              );
-            } else {
-              Linking.openURL(
-                "https://play.google.com/store/apps/details?id=app.tryharbor&showAllReviews=true"
-              );
-            }
-          });
-      } else {
-        // Fallback to direct store links
-        if (Platform.OS === "ios") {
-          Linking.openURL(
-            "https://apps.apple.com/app/id6752791663?action=write-review"
-          );
-        } else {
-          Linking.openURL(
-            "https://play.google.com/store/apps/details?id=app.tryharbor&showAllReviews=true"
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Error requesting app review:", error);
-      // Fallback to direct store links
-      if (Platform.OS === "ios") {
-        Linking.openURL(
-          "https://apps.apple.com/app/id6752791663?action=write-review"
-        );
-      } else {
-        Linking.openURL(
-          "https://play.google.com/store/apps/details?id=app.tryharbor&showAllReviews=true"
-        );
-      }
-    }
+    await requestInAppReview();
   };
 
   // PREMIUM DISABLED: Always set premium to false
