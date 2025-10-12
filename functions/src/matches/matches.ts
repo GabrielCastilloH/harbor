@@ -393,64 +393,6 @@ export const markMatchAsViewed = functions.https.onCall(
 );
 
 /**
- * Gets active matches for a user
- */
-export const getActiveMatches = functions.https.onCall(
-  {
-    region: "us-central1",
-    memory: "256MiB",
-    timeoutSeconds: 60,
-    minInstances: 0,
-    maxInstances: 10,
-    concurrency: 80,
-    cpu: 1,
-    ingressSettings: "ALLOW_ALL",
-    invoker: "public",
-  },
-  async (request: CallableRequest<{ id: string }>) => {
-    try {
-      if (!request.auth) {
-        throw new functions.https.HttpsError(
-          "unauthenticated",
-          "User must be authenticated"
-        );
-      }
-
-      const { id } = request.data;
-
-      if (!id) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "User ID is required"
-        );
-      }
-
-      // Query active matches by participantIds (unified)
-      const snapshot = await db
-        .collection("matches")
-        .where("isActive", "==", true)
-        .where("participantIds", "array-contains", id)
-        .get();
-
-      const matches = snapshot.docs.map((doc) => ({
-        _id: doc.id,
-        ...doc.data(),
-      }));
-      return { matches };
-    } catch (error: any) {
-      console.error("Error getting active matches:", error);
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
-      }
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to get active matches"
-      );
-    }
-  }
-);
-
-/**
  * Unmatches two users and freezes their chat
  */
 export const unmatchUsers = functions.https.onCall(
@@ -1109,7 +1051,6 @@ export const migrateMatchConsent = functions.https.onCall(
 export const matchFunctions = {
   createMatch,
   createGroupMatch,
-  getActiveMatches,
   unmatchUsers,
   updateMatchChannel,
   getMatchId,

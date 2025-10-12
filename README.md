@@ -285,7 +285,6 @@ App.tsx (Main Navigator)
 
 - **createMatch**: Creates individual match records between two users
 - **createGroupMatch**: Creates group match records between multiple users
-- **getActiveMatches**: Retrieves all active matches for a user
 - **getUnviewedMatches**: Gets unviewed matches for showing match modals
 - **markMatchAsViewed**: Tracks when users view new matches
 - **unmatchUsers**: Deactivates matches and freezes chat channels
