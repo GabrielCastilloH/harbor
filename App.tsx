@@ -256,65 +256,30 @@ function AppContent() {
   const navigationRef = useNavigationContainerRef();
   const hasNavigatedRef = useRef(false);
 
-  // This effect controls navigation based on state
-  useEffect(() => {
-    if (isInitialized && navigationRef.isReady()) {
-      const currentRoute = navigationRef.getCurrentRoute()?.name;
-
-      let routeName: string | null = null;
-      if (!isAuthenticated) {
-        routeName = "Auth";
-      } else if (isDeleted) {
-        routeName = "DeletedAccount";
-      } else if (isBanned) {
-        routeName = "BannedAccount";
-      } else if (!profileExists) {
-        routeName = "AccountSetup";
-      } else {
-        routeName = "MainApp";
-      }
-
-      if (routeName && routeName !== currentRoute) {
-        navigationRef.reset({
-          index: 0,
-          routes: [{ name: routeName }],
-        });
-      }
-    }
-  }, [
-    isInitialized,
-    isAuthenticated,
-    isBanned,
-    isDeleted,
-    profileExists,
-    navigationRef,
-  ]);
-
   if (!isInitialized) {
     return <LoadingScreen loadingText="Loading..." />;
   }
+
+  // Render the appropriate screen based on app state
+  const renderCurrentScreen = () => {
+    if (!isAuthenticated) {
+      return <AuthNavigator />;
+    } else if (isDeleted) {
+      return <DeletedAccountScreen />;
+    } else if (isBanned) {
+      return <BannedAccountScreen />;
+    } else if (!profileExists) {
+      return <AccountSetupScreen />;
+    } else {
+      return <MainNavigator />;
+    }
+  };
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer ref={navigationRef}>
         <StatusBar style="dark" />
-        <RootStack.Navigator screenOptions={{ headerShown: false }}>
-          {/* Define all possible top-level states as screens */}
-          <RootStack.Screen name="Auth" component={AuthNavigator} />
-          <RootStack.Screen name="MainApp" component={MainNavigator} />
-          <RootStack.Screen
-            name="AccountSetup"
-            component={AccountSetupScreen}
-          />
-          <RootStack.Screen
-            name="DeletedAccount"
-            component={DeletedAccountScreen}
-          />
-          <RootStack.Screen
-            name="BannedAccount"
-            component={BannedAccountScreen}
-          />
-        </RootStack.Navigator>
+        {renderCurrentScreen()}
 
         {isAuthenticated && <UnviewedMatchesHandler />}
         <NotificationHandler navigationRef={navigationRef} />
