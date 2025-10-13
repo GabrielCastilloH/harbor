@@ -692,7 +692,7 @@ export const blockUser = functions.https.onCall(
 
             await channel.update({ frozen: true });
             await channel.sendMessage({
-              text: "This chat has been frozen because one of the users blocked the other.",
+              text: "This chat has been frozen because one of the users unmatched.",
               user_id: "system",
             });
           }
