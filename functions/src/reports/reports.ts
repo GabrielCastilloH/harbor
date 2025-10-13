@@ -496,7 +496,7 @@ export const reportAndUnmatch = functions.https.onCall(
 
           // Send system message about report/unmatch
           await channel.sendMessage({
-            text: "This chat has been frozen because one of the users reported and unmatched.",
+            text: "This chat has been frozen because one of the users unmatched.",
             user_id: "system",
           });
         }
