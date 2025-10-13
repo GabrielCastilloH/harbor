@@ -360,19 +360,24 @@ export const reportAndUnmatch = functions.https.onCall(
       }
 
       console.log("📋 Match data:", {
-        participantIds: matchData.participantIds,
+        user1Id: matchData.user1Id,
+        user2Id: matchData.user2Id,
         isActive: matchData.isActive,
-        type: matchData.type,
       });
 
       // Verify the requesting user is part of this match
       console.log("🔐 Checking if reporter is part of match:", {
         reporterId,
-        participantIds: matchData.participantIds,
-        isParticipant: matchData.participantIds?.includes(reporterId),
+        user1Id: matchData.user1Id,
+        user2Id: matchData.user2Id,
+        isParticipant:
+          matchData.user1Id === reporterId || matchData.user2Id === reporterId,
       });
 
-      if (!matchData.participantIds?.includes(reporterId)) {
+      if (
+        matchData.user1Id !== reporterId &&
+        matchData.user2Id !== reporterId
+      ) {
         console.log("❌ Reporter is not part of this match");
         throw new functions.https.HttpsError(
           "permission-denied",
@@ -410,17 +415,19 @@ export const reportAndUnmatch = functions.https.onCall(
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        // 3. Set all participants as available again
-        console.log(
-          "👥 Updating user documents for participants:",
-          matchData.participantIds
-        );
-        for (const participantId of matchData.participantIds) {
-          transaction.update(db.collection("users").doc(participantId), {
-            isAvailable: true,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
+        // 3. Set both users as available again
+        console.log("👥 Updating user documents for participants:", [
+          matchData.user1Id,
+          matchData.user2Id,
+        ]);
+        transaction.update(db.collection("users").doc(matchData.user1Id), {
+          isAvailable: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        transaction.update(db.collection("users").doc(matchData.user2Id), {
+          isAvailable: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
 
         // 4. Create a document in the blocked subcollection
         console.log(
@@ -478,8 +485,10 @@ export const reportAndUnmatch = functions.https.onCall(
         if (apiKey && apiSecret) {
           const serverClient = StreamChat.getInstance(apiKey, apiSecret);
 
-          // Create channel ID using participantIds (sorted to ensure consistency)
-          const channelId = matchData.participantIds.sort().join("-");
+          // Create channel ID using user IDs (sorted to ensure consistency)
+          const channelId = [matchData.user1Id, matchData.user2Id]
+            .sort()
+            .join("-");
           const channel = serverClient.channel("messaging", channelId);
 
           // Freeze the channel
@@ -621,12 +630,20 @@ export const blockUser = functions.https.onCall(
               });
 
               // Set both users as available again
-              for (const participantId of matchData.participantIds) {
-                transaction.update(db.collection("users").doc(participantId), {
+              transaction.update(
+                db.collection("users").doc(matchData.user1Id),
+                {
                   isAvailable: true,
                   updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                });
-              }
+                }
+              );
+              transaction.update(
+                db.collection("users").doc(matchData.user2Id),
+                {
+                  isAvailable: true,
+                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }
+              );
             }
           }
         }

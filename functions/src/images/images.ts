@@ -170,45 +170,37 @@ export const getImages = functions.https.onCall(
       const targetUserData = targetUserDoc.data();
       const images = targetUserData?.images || [];
 
-      // SECURITY FIX: Get match info using unified participantIds only
-      const participantMatchQuery = await db
+      // Find match between current user and target user
+      const allMatches = await db
         .collection("matches")
-        .where("participantIds", "array-contains", currentUserId)
         .where("isActive", "==", true)
         .get();
 
       let user1Consented = false;
       let user2Consented = false;
-      let allMembersConsented = false;
       let messageCount = 0;
-      let isGroupMatch = false;
       let hasValidMatch = false;
 
-      // Unified participantIds approach only
-      for (const matchDoc of participantMatchQuery.docs) {
-        const matchData = matchDoc.data() as any;
-        const ids: string[] = matchData.participantIds || [];
-        if (ids.includes(targetUserId)) {
-          hasValidMatch = true;
-          isGroupMatch = matchData.type === "group";
-          messageCount = matchData?.messageCount ?? 0;
+      const matchDoc = allMatches.docs.find((doc) => {
+        const data = doc.data();
+        return (
+          (data.user1Id === currentUserId && data.user2Id === targetUserId) ||
+          (data.user1Id === targetUserId && data.user2Id === currentUserId)
+        );
+      });
 
-          if (isGroupMatch) {
-            // Group consent requires all true
-            const consentMap = matchData.participantConsent || {};
-            allMembersConsented = Object.values(consentMap).every(Boolean);
-          } else {
-            // Individual: use unified consent map
-            const consentMap = matchData.participantConsent || {};
-            if (
-              consentMap[currentUserId] !== undefined ||
-              consentMap[targetUserId] !== undefined
-            ) {
-              user1Consented = Boolean(consentMap[currentUserId]);
-              user2Consented = Boolean(consentMap[targetUserId]);
-            }
-          }
-          break;
+      if (matchDoc) {
+        hasValidMatch = true;
+        const matchData = matchDoc.data() as any;
+        messageCount = matchData?.messageCount ?? 0;
+
+        // Determine which user is user1 and which is user2
+        if (matchData.user1Id === currentUserId) {
+          user1Consented = Boolean(matchData.user1Consented);
+          user2Consented = Boolean(matchData.user2Consented);
+        } else {
+          user1Consented = Boolean(matchData.user2Consented);
+          user2Consented = Boolean(matchData.user1Consented);
         }
       }
 
@@ -220,13 +212,8 @@ export const getImages = functions.https.onCall(
         );
       }
 
-      // Determine consent status based on match type
-      let bothConsented = false;
-      if (isGroupMatch) {
-        bothConsented = allMembersConsented; // All group members must consent
-      } else {
-        bothConsented = user1Consented && user2Consented; // Both individual users must consent
-      }
+      // Both users must consent
+      const bothConsented = user1Consented && user2Consented;
 
       // For each image, return the correct URL and blurLevel
       const result = [];

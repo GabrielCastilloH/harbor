@@ -67,19 +67,19 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // --- Matches (unified) ---
+    // --- Matches ---
     match /matches/{matchId} {
       // Read if the requester is a participant
-      allow read: if request.auth != null && !isBannedOrDeleted(request.auth.uid) && request.auth.uid in resource.data.participantIds;
+      allow read: if request.auth != null && !isBannedOrDeleted(request.auth.uid) && 
+        (request.auth.uid == resource.data.user1Id || request.auth.uid == resource.data.user2Id);
 
       // Create if requester is one of the participants
-      allow create: if request.auth != null && !isBannedOrDeleted(request.auth.uid) && request.auth.uid in request.resource.data.participantIds;
+      allow create: if request.auth != null && !isBannedOrDeleted(request.auth.uid) && 
+        (request.auth.uid == request.resource.data.user1Id || request.auth.uid == request.resource.data.user2Id);
 
-      // Users can only update their own consent/view flags (unified only)
-      allow update: if request.auth != null && !isBannedOrDeleted(request.auth.uid) && request.auth.uid in resource.data.participantIds && (
-        request.resource.data.participantConsent[request.auth.uid] != resource.data.participantConsent[request.auth.uid] ||
-        request.resource.data.participantViewed[request.auth.uid] != resource.data.participantViewed[request.auth.uid]
-      );
+      // Users can only update their own consent/view flags
+      allow update: if request.auth != null && !isBannedOrDeleted(request.auth.uid) && 
+        (request.auth.uid == resource.data.user1Id || request.auth.uid == resource.data.user2Id);
     }
 
     // --- Reports ---
@@ -89,13 +89,16 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // --- Chats (generalized to participantIds array) ---
+    // --- Chats ---
     match /chats/{chatId} {
-      allow read: if request.auth != null && request.auth.uid in resource.data.participantIds;
-      allow create: if request.auth != null && !isBannedOrDeleted(request.auth.uid) && request.auth.uid in request.resource.data.participantIds;
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.user1Id || request.auth.uid == resource.data.user2Id);
+      allow create: if request.auth != null && !isBannedOrDeleted(request.auth.uid) && 
+        (request.auth.uid == request.resource.data.user1Id || request.auth.uid == request.resource.data.user2Id);
 
       match /messages/{messageId} {
-        allow read: if request.auth != null && request.auth.uid in resource.data.participantIds;
+        allow read: if request.auth != null && 
+          (request.auth.uid == resource.data.user1Id || request.auth.uid == resource.data.user2Id);
         allow create: if request.auth != null && request.auth.uid == request.resource.data.senderId;
         allow update, delete: if false;
       }
