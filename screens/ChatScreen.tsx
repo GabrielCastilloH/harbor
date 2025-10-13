@@ -86,22 +86,15 @@ export default function ChatScreen() {
       try {
         const status = await ConsentService.getConsentStatus(matchId);
         setConsentStatus(status);
-        const isSelfUser1 = status.user1Id === userId;
-        const showForSelf = isSelfUser1
-          ? status.shouldShowConsentForUser1
-          : status.shouldShowConsentForUser2;
         const channelFrozen = Boolean((channel as any)?.data?.frozen);
+
+        setShowConsentModal(status.shouldShowConsentForUser && !channelFrozen);
+        setIsChatFrozen(channelFrozen || status.shouldShowConsentScreen);
+
+        const isSelfUser1 = status.user1Id === userId;
         const currentUserConsented = isSelfUser1
           ? status.user1Consented
           : status.user2Consented;
-        const shouldShowModal =
-          (showForSelf || status.shouldShowConsentScreen) &&
-          !currentUserConsented &&
-          !channelFrozen;
-        setShowConsentModal(shouldShowModal);
-        setIsChatFrozen(
-          channelFrozen || showForSelf || status.shouldShowConsentScreen
-        );
         setUserConsented(currentUserConsented);
       } catch (e) {
         console.error("[#CONSENT] fetchAndApplyConsentStatus error:", e);
@@ -160,16 +153,6 @@ export default function ChatScreen() {
   }, [insets.bottom]);
 
   useEffect(() => {
-    const migrateMatchConsent = async () => {
-      if (!activeMatchId) return;
-      try {
-        await MatchService.migrateMatchConsent(activeMatchId);
-      } catch (migrationError) {}
-    };
-    migrateMatchConsent();
-  }, [activeMatchId]);
-
-  useEffect(() => {
     const fetchChatData = async () => {
       if (!channel || !userId) {
         return;
@@ -213,24 +196,19 @@ export default function ChatScreen() {
               bothConsented: consentStatusResponse.bothConsented,
             });
             setClarityPercent(clarity);
-            const isSelfUser1 = consentStatusResponse.user1Id === userId;
-            const showForSelf = isSelfUser1
-              ? consentStatusResponse.shouldShowConsentForUser1
-              : consentStatusResponse.shouldShowConsentForUser2;
             const isChannelFrozen = (channel.data as any)?.frozen || false;
+
+            setShowConsentModal(
+              consentStatusResponse.shouldShowConsentForUser && !isChannelFrozen
+            );
+            setIsChatFrozen(
+              isChannelFrozen || consentStatusResponse.shouldShowConsentScreen
+            );
+
+            const isSelfUser1 = consentStatusResponse.user1Id === userId;
             const currentUserConsented = isSelfUser1
               ? consentStatusResponse.user1Consented
               : consentStatusResponse.user2Consented;
-            const shouldShowModal =
-              (showForSelf || consentStatusResponse.shouldShowConsentScreen) &&
-              !currentUserConsented &&
-              !isChannelFrozen;
-            setShowConsentModal(shouldShowModal);
-            setIsChatFrozen(
-              isChannelFrozen ||
-                showForSelf ||
-                consentStatusResponse.shouldShowConsentScreen
-            );
             setUserConsented(currentUserConsented);
           }
         } catch (error) {
@@ -283,26 +261,20 @@ export default function ChatScreen() {
           });
           setClarityPercent(clarity);
           const isChannelFrozen = channel.data?.frozen || false;
+
           if (isChannelFrozen) {
             setIsChatFrozen(true);
             setShowConsentModal(false);
           } else {
-            const isSelfUser1 = status.user1Id === userId;
-            const showForSelf = isSelfUser1
-              ? status.shouldShowConsentForUser1
-              : status.shouldShowConsentForUser2;
-            const currentUserConsented = isSelfUser1
-              ? status.user1Consented
-              : status.user2Consented;
-            const shouldFreezeChat =
-              showForSelf || status.shouldShowConsentScreen;
-            const shouldShowModal =
-              (showForSelf || status.shouldShowConsentScreen) &&
-              !currentUserConsented;
-            setIsChatFrozen(shouldFreezeChat);
-            setShowConsentModal(shouldShowModal);
-            setUserConsented(currentUserConsented);
+            setShowConsentModal(status.shouldShowConsentForUser);
+            setIsChatFrozen(status.shouldShowConsentScreen);
           }
+
+          const isSelfUser1 = status.user1Id === userId;
+          const currentUserConsented = isSelfUser1
+            ? status.user1Consented
+            : status.user2Consented;
+          setUserConsented(currentUserConsented);
         } catch (error) {
           console.error("[#CONSENT] message.new error:", error);
         }
