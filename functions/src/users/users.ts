@@ -456,20 +456,16 @@ export const getUserById = functions.https.onCall(
       // Find matchId between current user and target user
       let matchId = null;
       if (currentUserId !== id) {
-        // Find existing match using participantIds
-        // Firestore limitation: cannot use two array-contains on the same field.
-        // Use array-contains-any and filter in memory to ensure both users present.
-        const possibleSnap = await db
+        const allMatches = await db
           .collection("matches")
-          .where("participantIds", "array-contains-any", [currentUserId, id])
           .where("isActive", "==", true)
           .get();
 
-        const foundDoc = possibleSnap.docs.find((doc) => {
+        const foundDoc = allMatches.docs.find((doc) => {
           const data = doc.data() as any;
-          const participants = data.participantIds || [];
           return (
-            participants.includes(currentUserId) && participants.includes(id)
+            (data.user1Id === currentUserId && data.user2Id === id) ||
+            (data.user1Id === id && data.user2Id === currentUserId)
           );
         });
 
@@ -921,11 +917,17 @@ export const deleteUser = functions.https.onCall(
       const userData = userDoc.data();
 
       // Query all matches for this user
-      const matchesSnapshot = await db
+      const allMatches = await db
         .collection("matches")
-        .where("participantIds", "array-contains", userId)
         .where("isActive", "==", true)
         .get();
+
+      const matchesSnapshot = {
+        docs: allMatches.docs.filter((doc) => {
+          const data = doc.data();
+          return data.user1Id === userId || data.user2Id === userId;
+        }),
+      };
 
       const currentMatches = matchesSnapshot.docs.map((doc) => doc.id);
 
@@ -942,24 +944,13 @@ export const deleteUser = functions.https.onCall(
           // Also read the other user's data upfront
           if (!matchData) continue;
 
-          // Handle both individual and group matches
+          // Get the other user in the match
           let otherUserIds: string[] = [];
-          if (matchData.type === "individual") {
-            // Individual match: find the other participant
-            const participantIds = matchData.participantIds || [];
-            otherUserIds = participantIds.filter((id: string) => id !== userId);
-          } else if (matchData.type === "group") {
-            // Group match: get all other participants
-            const participantIds = matchData.participantIds || [];
-            otherUserIds = participantIds.filter((id: string) => id !== userId);
-          } else {
-            // Legacy individual match format
-            const otherUserId =
-              matchData.user1Id === userId
-                ? matchData.user2Id
-                : matchData.user1Id;
-            if (otherUserId) otherUserIds = [otherUserId];
-          }
+          const otherUserId =
+            matchData.user1Id === userId
+              ? matchData.user2Id
+              : matchData.user1Id;
+          if (otherUserId) otherUserIds = [otherUserId];
           // Read data for all other users in the match
           for (const otherUserId of otherUserIds) {
             if (!otherUserDataMap.has(otherUserId)) {
@@ -999,26 +990,13 @@ export const deleteUser = functions.https.onCall(
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
-            // Set all other participants as available
+            // Set the other participant as available
             let otherUserIds: string[] = [];
-            if (matchData.type === "individual") {
-              const participantIds = matchData.participantIds || [];
-              otherUserIds = participantIds.filter(
-                (id: string) => id !== userId
-              );
-            } else if (matchData.type === "group") {
-              const participantIds = matchData.participantIds || [];
-              otherUserIds = participantIds.filter(
-                (id: string) => id !== userId
-              );
-            } else {
-              // Legacy individual match format
-              const otherUserId =
-                matchData.user1Id === userId
-                  ? matchData.user2Id
-                  : matchData.user1Id;
-              if (otherUserId) otherUserIds = [otherUserId];
-            }
+            const otherUserId =
+              matchData.user1Id === userId
+                ? matchData.user2Id
+                : matchData.user1Id;
+            if (otherUserId) otherUserIds = [otherUserId];
 
             for (const otherUserId of otherUserIds) {
               const otherUserRef = db.collection("users").doc(otherUserId);
@@ -1125,26 +1103,13 @@ export const deleteUser = functions.https.onCall(
               const matchData = matchDataMap.get(matchId);
               if (matchData) {
                 try {
-                  // Get other user IDs in this match
+                  // Get the other user in this match
                   let otherUserIds: string[] = [];
-                  if (matchData.type === "individual") {
-                    const participantIds = matchData.participantIds || [];
-                    otherUserIds = participantIds.filter(
-                      (id: string) => id !== userId
-                    );
-                  } else if (matchData.type === "group") {
-                    const participantIds = matchData.participantIds || [];
-                    otherUserIds = participantIds.filter(
-                      (id: string) => id !== userId
-                    );
-                  } else {
-                    // Legacy individual match format
-                    const otherUserId =
-                      matchData.user1Id === userId
-                        ? matchData.user2Id
-                        : matchData.user1Id;
-                    if (otherUserId) otherUserIds = [otherUserId];
-                  }
+                  const otherUserId =
+                    matchData.user1Id === userId
+                      ? matchData.user2Id
+                      : matchData.user1Id;
+                  if (otherUserId) otherUserIds = [otherUserId];
 
                   // For each other user, create a channel ID and freeze the chat
                   for (const otherUserId of otherUserIds) {

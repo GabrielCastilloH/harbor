@@ -157,12 +157,13 @@ Harbor uses **Firebase Firestore** as its primary database with a well-structure
 
 ### Recent Schema Updates (October 2025)
 
-**Match Schema Optimization:**
+**Match Schema Simplification:**
 
-- Migrated from array-based `participantIds` to explicit `user1Id`/`user2Id` fields
-- Changed from dynamic consent maps to explicit `user1Consented`/`user2Consented` booleans
-- Changed from dynamic view maps to explicit `user1Viewed`/`user2Viewed` booleans
-- **Benefit**: Simpler queries, better performance, clearer code for 1-on-1 matches
+- Uses explicit `user1Id`/`user2Id` fields for clean 1-on-1 match queries
+- Uses explicit `user1Consented`/`user2Consented` booleans for consent tracking
+- Uses explicit `user1Viewed`/`user2Viewed` booleans for view tracking
+- Removed unnecessary `type` field (all matches are 1-on-1)
+- **Benefit**: Simpler queries, better performance, clearer code
 
 **Swipe Counter Simplification:**
 
@@ -211,12 +212,11 @@ Harbor uses **Firebase Firestore** as its primary database with a well-structure
 
 #### 🔄 **matches** Collection
 
-**Individual match records between two users**
+**Match records between two users**
 
 ```typescript
 // Document: /matches/{matchId}
 {
-  type: "individual";         // Match type (always "individual" for 1-on-1 matches)
   user1Id: string;            // First user's ID
   user2Id: string;            // Second user's ID
   user1Consented: boolean;    // User 1's consent status
