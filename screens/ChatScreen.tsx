@@ -91,8 +91,18 @@ export default function ChatScreen() {
           ? status.shouldShowConsentForUser1
           : status.shouldShowConsentForUser2;
         const channelFrozen = Boolean((channel as any)?.data?.frozen);
-        setShowConsentModal(showForSelf);
-        setIsChatFrozen(channelFrozen || showForSelf);
+        const currentUserConsented = isSelfUser1
+          ? status.user1Consented
+          : status.user2Consented;
+        const shouldShowModal =
+          (showForSelf || status.shouldShowConsentScreen) &&
+          !currentUserConsented &&
+          !channelFrozen;
+        setShowConsentModal(shouldShowModal);
+        setIsChatFrozen(
+          channelFrozen || showForSelf || status.shouldShowConsentScreen
+        );
+        setUserConsented(currentUserConsented);
       } catch (e) {
         console.error("[#CONSENT] fetchAndApplyConsentStatus error:", e);
       }
@@ -208,15 +218,19 @@ export default function ChatScreen() {
               ? consentStatusResponse.shouldShowConsentForUser1
               : consentStatusResponse.shouldShowConsentForUser2;
             const isChannelFrozen = (channel.data as any)?.frozen || false;
-            setShowConsentModal(showForSelf);
+            const currentUserConsented = isSelfUser1
+              ? consentStatusResponse.user1Consented
+              : consentStatusResponse.user2Consented;
+            const shouldShowModal =
+              (showForSelf || consentStatusResponse.shouldShowConsentScreen) &&
+              !currentUserConsented &&
+              !isChannelFrozen;
+            setShowConsentModal(shouldShowModal);
             setIsChatFrozen(
               isChannelFrozen ||
                 showForSelf ||
                 consentStatusResponse.shouldShowConsentScreen
             );
-            const currentUserConsented = isSelfUser1
-              ? consentStatusResponse.user1Consented
-              : consentStatusResponse.user2Consented;
             setUserConsented(currentUserConsented);
           }
         } catch (error) {
@@ -277,10 +291,17 @@ export default function ChatScreen() {
             const showForSelf = isSelfUser1
               ? status.shouldShowConsentForUser1
               : status.shouldShowConsentForUser2;
+            const currentUserConsented = isSelfUser1
+              ? status.user1Consented
+              : status.user2Consented;
             const shouldFreezeChat =
               showForSelf || status.shouldShowConsentScreen;
+            const shouldShowModal =
+              (showForSelf || status.shouldShowConsentScreen) &&
+              !currentUserConsented;
             setIsChatFrozen(shouldFreezeChat);
-            setShowConsentModal(showForSelf);
+            setShowConsentModal(shouldShowModal);
+            setUserConsented(currentUserConsented);
           }
         } catch (error) {
           console.error("[#CONSENT] message.new error:", error);
