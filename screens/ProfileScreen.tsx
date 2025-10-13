@@ -37,8 +37,6 @@ import LoadingScreen from "../components/LoadingScreen";
 import ImageCarousel from "../components/ImageCarousel";
 import { auth } from "../firebaseConfig";
 import HeaderBack from "../components/HeaderBack";
-import { usePremium } from "../hooks/usePremium";
-import { getFunctions, httpsCallable } from "firebase/functions";
 
 type ProfileScreenParams = {
   ProfileScreen: {
@@ -81,7 +79,6 @@ export default function ProfileScreen() {
   const matchIdParam = route.params?.matchId;
   const [matchId, setMatchId] = useState<string | null>(matchIdParam ?? null);
   const [unmatchLoading, setUnmatchLoading] = useState(false);
-  const [blockLoading, setBlockLoading] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -259,63 +256,6 @@ export default function ProfileScreen() {
     );
   };
 
-  const handleBlock = async () => {
-    if (!userId || !currentUserId) {
-      return;
-    }
-
-    Alert.alert(
-      "Block User",
-      "Are you sure you want to block this user? You will be unmatched and won't be able to match with them again.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Block",
-          style: "destructive",
-          onPress: async () => {
-            setBlockLoading(true);
-            try {
-              const functions = getFunctions();
-              const blockUser = httpsCallable(
-                functions,
-                "reportFunctions-blockUser"
-              );
-
-              await blockUser({
-                blockedUserId: userId,
-                matchId: matchId,
-              });
-
-              Alert.alert(
-                "User Blocked",
-                "This user has been blocked successfully.",
-                [
-                  {
-                    text: "OK",
-                    onPress: () => {
-                      navigationRef.current.goBack();
-                      navigationRef.current.goBack();
-                    },
-                  },
-                ]
-              );
-            } catch (error) {
-              Alert.alert(
-                "Error",
-                "Failed to block user. Please try again later."
-              );
-            } finally {
-              setBlockLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
   // Show message when trying to view unmatched user's profile
   if (!matchId && !loading) {
     return (
@@ -480,33 +420,15 @@ export default function ProfileScreen() {
           <PersonalView profile={profile} showFlag={false} />
         </View>
 
-        {/* Unmatch and Block Buttons at the bottom */}
         {matchId && (
-          <View style={styles.actionsContainer}>
-            <Pressable
-              style={[
-                styles.blockButtonFull,
-                blockLoading && styles.blockButtonDisabled,
-              ]}
-              onPress={handleBlock}
-              disabled={blockLoading || unmatchLoading}
-            >
-              {blockLoading ? (
-                <View style={styles.buttonLoadingContainer}>
-                  <ActivityIndicator size="small" color={Colors.secondary100} />
-                  <Text style={styles.blockButtonTextFull}>Blocking...</Text>
-                </View>
-              ) : (
-                <Text style={styles.blockButtonTextFull}>Block</Text>
-              )}
-            </Pressable>
+          <View style={styles.unmatchContainer}>
             <Pressable
               style={[
                 styles.unmatchButtonFull,
                 unmatchLoading && styles.unmatchButtonDisabled,
               ]}
               onPress={handleUnmatch}
-              disabled={unmatchLoading || blockLoading}
+              disabled={unmatchLoading}
             >
               {unmatchLoading ? (
                 <View style={styles.buttonLoadingContainer}>
@@ -559,34 +481,10 @@ const styles = StyleSheet.create({
   unmatchButtonDisabled: {
     opacity: 0.5,
   },
-  blockButtonDisabled: {
-    opacity: 0.5,
-  },
   unmatchButtonText: {
     color: Colors.strongRed,
     fontWeight: "bold",
     fontSize: 16,
-  },
-  actionsContainer: {
-    flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: Colors.secondary200,
-    backgroundColor: Colors.secondary100,
-  },
-  blockButtonFull: {
-    flex: 1,
-    backgroundColor: Colors.strongRed,
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  blockButtonTextFull: {
-    color: Colors.secondary100,
-    fontSize: 16,
-    fontWeight: "bold",
   },
   unmatchContainer: {
     paddingHorizontal: 24,
