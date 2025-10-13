@@ -5,6 +5,19 @@ import { CallableRequest } from "firebase-functions/v2/https";
 const db = admin.firestore();
 
 /**
+ * SECURITY: Helper function to check if user has admin privileges
+ */
+async function isAdmin(userId: string): Promise<boolean> {
+  try {
+    const user = await admin.auth().getUser(userId);
+    return user.customClaims?.admin === true;
+  } catch (error) {
+    console.error("Error checking admin status:", error);
+    return false;
+  }
+}
+
+/**
  * Creates a report for a user
  */
 export const createReport = functions.https.onCall(
@@ -151,9 +164,14 @@ export const getReports = functions.https.onCall(
         );
       }
 
-      // TODO: Add admin check here when implementing admin functionality
-      // For now, allow any authenticated user to view reports
-      // In production, you'd want to check if the user is an admin
+      // SECURITY: Only admins can view all reports
+      const userIsAdmin = await isAdmin(request.auth.uid);
+      if (!userIsAdmin) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "Only administrators can view reports"
+        );
+      }
 
       const reportsSnapshot = await db
         .collection("reports")
@@ -217,7 +235,14 @@ export const updateReportStatus = functions.https.onCall(
         );
       }
 
-      // TODO: Add admin check here when implementing admin functionality
+      // SECURITY: Only admins can update report status
+      const userIsAdmin = await isAdmin(request.auth.uid);
+      if (!userIsAdmin) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "Only administrators can update report status"
+        );
+      }
 
       const updateData: any = {
         status,
