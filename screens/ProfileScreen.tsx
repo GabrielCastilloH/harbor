@@ -79,40 +79,28 @@ export default function ProfileScreen() {
   const userId = route.params?.userId;
   const matchIdParam = route.params?.matchId;
   const [matchId, setMatchId] = useState<string | null>(matchIdParam ?? null);
-  const [matchLoading, setMatchLoading] = useState(false);
   const [unmatchLoading, setUnmatchLoading] = useState(false);
 
-  // Commented out: No longer checking for a valid matchId
-  // // Fetch matchId if not provided
-  // useEffect(() => {
-  //   if (!matchId && userId && currentUserId) {
-  //     setMatchLoading(true);
-  //     MatchService.getMatchId(currentUserId, userId)
-  //       .then((id) => setMatchId(id))
-  //       .catch((e) => {
-  //         console.error("Error fetching matchId in ProfileScreen:", e);
-  //       })
-  //       .finally(() => setMatchLoading(false));
-  //   }
-  // }, [matchId, userId, currentUserId]);
-
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchProfileAndMatchId = async () => {
       if (!userId) {
         setLoading(false);
         return;
       }
 
-      // Commented out: No longer checking for a valid match to fetch profile
-      // // Only fetch profile data if we have a valid match
-      // if (!matchId && !matchLoading) {
-      //   setLoading(false);
-      //   return;
-      // }
-
       try {
-        const response = await UserService.getUserById(userId);
-        if (response) {
+        // Fetch both profile data and matchId in parallel
+        const [profileResponse, matchIdResult] = await Promise.allSettled([
+          UserService.getUserById(userId),
+          // Only fetch matchId if not already provided and we have currentUserId
+          matchId || !currentUserId
+            ? Promise.resolve(matchId)
+            : MatchService.getMatchId(currentUserId, userId),
+        ]);
+
+        // Handle profile data
+        if (profileResponse.status === "fulfilled" && profileResponse.value) {
+          const response = profileResponse.value;
           // Handle different response formats from Firebase
           let profileData = null;
 
@@ -134,30 +122,49 @@ export default function ProfileScreen() {
 
           if (profileData && profileData.firstName) {
             setProfile(profileData);
-            // Add a minimum loading time to prevent blank page flash
-            setTimeout(() => {
-              setLoading(false);
-            }, 500);
           } else {
             console.error(
               "ProfileScreen - Missing required profile fields:",
               profileData
             );
             setLoading(false);
+            return;
           }
         } else {
-          console.error("ProfileScreen - No data in response:", response);
+          console.error(
+            "ProfileScreen - Failed to fetch user profile:",
+            profileResponse
+          );
           setLoading(false);
+          return;
         }
+
+        // Handle matchId
+        if (matchIdResult.status === "fulfilled" && matchIdResult.value) {
+          setMatchId(matchIdResult.value);
+        } else if (matchIdResult.status === "rejected") {
+          console.error(
+            "Error fetching matchId in ProfileScreen:",
+            matchIdResult.reason
+          );
+          // Don't set matchId if there was an error - this will show the unmatched message
+        }
+
+        // Add a minimum loading time to prevent blank page flash
+        setTimeout(() => {
+          setLoading(false);
+        }, 500);
       } catch (error) {
-        console.error("ProfileScreen - Failed to fetch user profile:", error);
+        console.error(
+          "ProfileScreen - Failed to fetch profile and match data:",
+          error
+        );
         setLoading(false);
       }
     };
 
-    fetchProfile();
-    // Commented out matchId, matchLoading from dependency array since they are not used
-  }, [userId]);
+    fetchProfileAndMatchId();
+  }, [userId, currentUserId, matchId]);
 
   // Fetch images with blur info - this ensures proper consent and blur levels
   useEffect(() => {
@@ -275,21 +282,20 @@ export default function ProfileScreen() {
     );
   };
 
-  // Commented out the return block for unmatched users
-  // // Show message when trying to view unmatched user's profile
-  // if (!matchId && !matchLoading) {
-  //   return (
-  //     <View style={{ flex: 1 }}>
-  //       <HeaderBack title="Profile" onBack={() => navigation.goBack()} />
-  //       <View style={styles.unmatchedContainer}>
-  //         <Text style={styles.unmatchedText}>
-  //           You are not allowed to view profiles of people you are no longer
-  //           connected with.
-  //         </Text>
-  //       </View>
-  //     </View>
-  //   );
-  // }
+  // Show message when trying to view unmatched user's profile
+  if (!matchId && !loading) {
+    return (
+      <View style={{ flex: 1 }}>
+        <HeaderBack title="Profile" onBack={() => navigation.goBack()} />
+        <View style={styles.unmatchedContainer}>
+          <Text style={styles.unmatchedText}>
+            You are not allowed to view profiles of people you are no longer
+            connected with.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   // Show loading screen for other loading states
   if (loading || !profile) {
