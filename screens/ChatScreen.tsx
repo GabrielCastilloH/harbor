@@ -51,6 +51,7 @@ export default function ChatScreen() {
   const [clarityPercent, setClarityPercent] = useState<number | undefined>(
     undefined
   );
+  const [otherUserDeleted, setOtherUserDeleted] = useState<boolean>(false);
   const lastHandledMessageIdRef = useRef<string | null>(null);
   const lastAppliedFreezeRef = useRef<boolean | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -59,8 +60,8 @@ export default function ChatScreen() {
 
   // Update the header title logic
   const headerTitle = useMemo(() => {
-    return matchedUserName;
-  }, [matchedUserName]);
+    return otherUserDeleted ? "Deleted User" : matchedUserName;
+  }, [matchedUserName, otherUserDeleted]);
 
   // Update the header right icon and title press logic
   const handleHeaderPress = useCallback(() => {
@@ -75,26 +76,32 @@ export default function ChatScreen() {
   }, [channel, matchedUserId, navigation]);
 
   const rightIconConfig = useMemo(() => {
+    if (otherUserDeleted || !matchedUserId) return undefined;
     return {
       name: "person",
       onPress: handleHeaderPress,
-    };
-  }, [handleHeaderPress]);
+    } as any;
+  }, [handleHeaderPress, otherUserDeleted, matchedUserId]);
 
   const fetchAndApplyConsentStatus = useCallback(
     async (matchId: string) => {
       try {
-        const status = await ConsentService.getConsentStatus(matchId);
-        setConsentStatus(status);
+        const status = await Promise.race([
+          ConsentService.getConsentStatus(matchId),
+          new Promise((resolve) => setTimeout(() => resolve(null), 5000)),
+        ] as const);
+        if (!status) return;
+        const s: any = status as any;
+        setConsentStatus(s);
         const channelFrozen = Boolean((channel as any)?.data?.frozen);
 
-        setShowConsentModal(status.shouldShowConsentForUser && !channelFrozen);
-        setIsChatFrozen(channelFrozen || status.shouldShowConsentScreen);
+        setShowConsentModal(s.shouldShowConsentForUser && !channelFrozen);
+        setIsChatFrozen(channelFrozen || s.shouldShowConsentScreen);
 
-        const isSelfUser1 = status.user1Id === userId;
+        const isSelfUser1 = s.user1Id === userId;
         const currentUserConsented = isSelfUser1
-          ? status.user1Consented
-          : status.user2Consented;
+          ? s.user1Consented
+          : s.user2Consented;
         setUserConsented(currentUserConsented);
       } catch (e) {
         console.error("[#CONSENT] fetchAndApplyConsentStatus error:", e);
@@ -110,10 +117,15 @@ export default function ChatScreen() {
     const otherMembers = channel?.state?.members || {};
     const otherUserId = Object.keys(otherMembers).find((key) => key !== userId);
     if (!otherUserId) {
+      setOtherUserDeleted(true);
+      setMatchedUserName("Deleted User");
       return null;
     }
     try {
-      const fetchedMatchId = await MatchService.getMatchId(userId, otherUserId);
+      const fetchedMatchId = (await Promise.race([
+        MatchService.getMatchId(userId, otherUserId),
+        new Promise((resolve) => setTimeout(() => resolve(null), 5000)),
+      ])) as string | null;
       if (fetchedMatchId) {
         setActiveMatchId(fetchedMatchId);
         setIsMatchActive(true);
@@ -165,28 +177,40 @@ export default function ChatScreen() {
       if (otherUserId) {
         setMatchedUserId(otherUserId);
         setHasMatchedUser(true);
+        if (matchedUserName === "Loading...") {
+          setMatchedUserName("User");
+        }
         try {
           // Eagerly resolve matchId to fetch consent status immediately
           const matchId = await resolveMatchId();
-
-          const [matchedProfileResponse, consentStatusResponse] =
-            await Promise.all([
-              UserService.getUserById(otherUserId).catch((error) => {
-                return null;
-              }),
-              matchId
-                ? ConsentService.getConsentStatus(matchId).catch((error) => {
-                    return null;
-                  })
-                : Promise.resolve(null),
+          let matchedProfileResponse: any = null;
+          try {
+            matchedProfileResponse = await Promise.race([
+              UserService.getUserById(otherUserId),
+              new Promise((resolve) => setTimeout(() => resolve(null), 5000)),
             ]);
+          } catch (profileErr: any) {
+            if (profileErr?.code === "not-found") {
+              setOtherUserDeleted(true);
+              setMatchedUserName("Former member");
+            }
+          }
 
-          if (matchedProfileResponse) {
-            const userData =
-              (matchedProfileResponse as any).user || matchedProfileResponse;
+          let consentStatusResponse: any = null;
+          if (matchId) {
+            try {
+              consentStatusResponse = await Promise.race([
+                ConsentService.getConsentStatus(matchId),
+                new Promise((resolve) => setTimeout(() => resolve(null), 5000)),
+              ]);
+            } catch {}
+          }
+
+          if (matchedProfileResponse && matchedProfileResponse.user) {
+            const userData = matchedProfileResponse.user;
             const firstName = userData.firstName || "User";
             setMatchedUserName(firstName);
-          } else {
+          } else if (!otherUserDeleted) {
             setMatchedUserName("User");
           }
           if (consentStatusResponse && matchId) {
@@ -212,7 +236,7 @@ export default function ChatScreen() {
             setUserConsented(currentUserConsented);
           }
         } catch (error) {
-          setMatchedUserName("User");
+          if (!otherUserDeleted) setMatchedUserName("User");
         }
       } else {
         setHasMatchedUser(false);
@@ -222,10 +246,10 @@ export default function ChatScreen() {
   }, [channel, userId, resolveMatchId]);
 
   useEffect(() => {
-    if (matchedUserName !== "Loading...") {
+    if (channel && !isLayoutReady) {
       setIsLayoutReady(true);
     }
-  }, [matchedUserName]);
+  }, [channel, isLayoutReady]);
 
   // Add a timeout fallback to prevent infinite loading
   useEffect(() => {
@@ -319,10 +343,12 @@ export default function ChatScreen() {
             style={[styles.channelContent, { paddingBottom: keyboardHeight }]}
           >
             <MessageList />
-            {isChatFrozen ? (
+            {isChatFrozen || otherUserDeleted ? (
               <View style={styles.disabledContainer}>
                 <Text style={styles.disabledText}>
-                  {channel.data?.frozen
+                  {otherUserDeleted
+                    ? "This chat is unavailable because the other account was deleted."
+                    : channel.data?.frozen
                     ? "This chat has been frozen because one of the users unmatched."
                     : userConsented
                     ? "Waiting for the other person to continue the chat..."
