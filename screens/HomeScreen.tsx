@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, FlatList, SafeAreaView, Text, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import Post from "../components/Block";
 import LoadingScreen from "../components/LoadingScreen";
 import { Profile } from "../types/App";
@@ -18,7 +19,6 @@ const DUMMY_PROFILES: Profile[] = [
     major: "Computer Science",
     gender: "Male",
     sexualOrientation: "Heterosexual",
-    groupSize: 2, // Default group size for dummy profiles
     images: [
       "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop&crop=face",
     ],
@@ -38,7 +38,6 @@ const DUMMY_PROFILES: Profile[] = [
     major: "Biology",
     gender: "Female",
     sexualOrientation: "Heterosexual",
-    groupSize: 2, // Default group size for dummy profiles
     images: [
       "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=600&fit=crop&crop=face",
     ],
@@ -58,7 +57,6 @@ const DUMMY_PROFILES: Profile[] = [
     major: "Engineering",
     gender: "Male",
     sexualOrientation: "Bisexual",
-    groupSize: 2, // Default group size for dummy profiles
     images: [
       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=600&fit=crop&crop=face",
     ],
@@ -72,7 +70,8 @@ const DUMMY_PROFILES: Profile[] = [
 ];
 
 const FeedScreen = () => {
-  const { currentUser, userId } = useAppContext();
+  const { currentUser, userId, profile } = useAppContext();
+  const navigation = useNavigation();
   const [recommendations, setRecommendations] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +104,13 @@ const FeedScreen = () => {
 
     fetchRecommendations();
   }, [userId]);
+
+  // Handle removing a user from recommendations (e.g., after reporting)
+  const handleUserRemoved = (removedUserId: string) => {
+    setRecommendations((prevRecommendations) =>
+      prevRecommendations.filter((profile) => profile.uid !== removedUserId)
+    );
+  };
 
   // Conditionally select the data source
   const profilesToDisplay = (() => {
@@ -140,19 +146,52 @@ const FeedScreen = () => {
       <FlatList
         data={profilesToDisplay}
         keyExtractor={(item) => item.uid || `profile-${Math.random()}`}
-        renderItem={({ item }) => <Post profile={item} />}
+        renderItem={({ item }) => (
+          <Post
+            profile={item}
+            onUserRemoved={handleUserRemoved}
+            navigation={navigation}
+          />
+        )}
         showsVerticalScrollIndicator={false}
         // Add an empty list component for when there's no data
-        ListEmptyComponent={() => (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>No More Available</Text>
-            <Text style={styles.emptyTitle}>Matches</Text>
-            <Text style={styles.emptySubtitle}>
-              You have no more matches left for today OR are in an active match.
-              Come back tomorrow for more.
-            </Text>
-          </View>
-        )}
+        ListEmptyComponent={() => {
+          // Check if user's account is deactivated
+          const isAccountDeactivated = profile?.isActive === false;
+          // Check if user is in an active match (not available for new matches)
+          const isInActiveMatch = profile?.isAvailable === false;
+
+          return (
+            <View style={styles.emptyContainer}>
+              {isAccountDeactivated ? (
+                <>
+                  <Text style={styles.emptyTitle}>Account Deactivated</Text>
+                  <Text style={styles.emptySubtitle}>
+                    Your account has been deactivated. You can reactivate it in
+                    settings.
+                  </Text>
+                </>
+              ) : isInActiveMatch ? (
+                <>
+                  <Text style={styles.emptyTitle}>In Active Match</Text>
+                  <Text style={styles.emptySubtitle}>
+                    You're currently in an active match. Check your chats to
+                    continue the conversation.
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.emptyTitle}>No More Available</Text>
+                  <Text style={styles.emptyTitle}>Matches</Text>
+                  <Text style={styles.emptySubtitle}>
+                    You have no more matches left for today. Come back tomorrow
+                    for more.
+                  </Text>
+                </>
+              )}
+            </View>
+          );
+        }}
       />
     </SafeAreaView>
   );

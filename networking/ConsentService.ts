@@ -41,8 +41,7 @@ export class ConsentService {
     bothConsented: boolean;
     messageCount: number;
     shouldShowConsentScreen: boolean;
-    shouldShowConsentForUser1: boolean;
-    shouldShowConsentForUser2: boolean;
+    shouldShowConsentForUser: boolean;
     state: "both_consented" | "one_consented" | "none_consented";
     consent: {
       state: string;
@@ -65,8 +64,7 @@ export class ConsentService {
         bothConsented: boolean;
         messageCount: number;
         shouldShowConsentScreen: boolean;
-        shouldShowConsentForUser1: boolean;
-        shouldShowConsentForUser2: boolean;
+        shouldShowConsentForUser: boolean;
         state: "both_consented" | "one_consented" | "none_consented";
         consent: {
           state: string;

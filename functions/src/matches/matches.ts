@@ -5,134 +5,6 @@ import { CallableRequest } from "firebase-functions/v2/https";
 const db = admin.firestore();
 
 /**
- * Creates a group match between multiple users
- */
-export const createGroupMatch = functions.https.onCall(
-  {
-    region: "us-central1",
-    memory: "256MiB",
-    timeoutSeconds: 60,
-    minInstances: 0,
-    maxInstances: 10,
-    concurrency: 80,
-    cpu: 1,
-    ingressSettings: "ALLOW_ALL",
-    invoker: "public",
-  },
-  async (
-    request: CallableRequest<{ memberIds: string[]; groupSize: number }>
-  ) => {
-    try {
-      if (!request.auth) {
-        throw new functions.https.HttpsError(
-          "unauthenticated",
-          "User must be authenticated"
-        );
-      }
-
-      const { memberIds, groupSize } = request.data;
-
-      if (!memberIds || !Array.isArray(memberIds) || memberIds.length < 2) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "At least 2 member IDs are required"
-        );
-      }
-
-      if (![2, 3, 4].includes(groupSize)) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "Group size must be 2, 3, or 4"
-        );
-      }
-
-      if (memberIds.length !== groupSize) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "Number of members must match group size"
-        );
-      }
-
-      // Check if any of these users already have an active group match together
-      const existingMatches = await db
-        .collection("matches")
-        .where("isActive", "==", true)
-        .where("type", "==", "group")
-        .get();
-
-      for (const matchDoc of existingMatches.docs) {
-        const matchData = matchDoc.data();
-        const existingMembers = matchData.memberIds || [];
-
-        // Check if there's any overlap between existing members and new members
-        const hasOverlap = memberIds.some((id) => existingMembers.includes(id));
-        if (hasOverlap) {
-          throw new functions.https.HttpsError(
-            "already-exists",
-            "One or more users are already in an active group match"
-          );
-        }
-      }
-
-      // Create new group match and update user availability in a transaction
-      const matchRef = db.collection("matches").doc();
-
-      const result = await db.runTransaction(async (transaction) => {
-        // Create the match
-        const matchData = {
-          type: "group",
-          memberIds: memberIds,
-          participantIds: memberIds,
-          groupSize: groupSize,
-          matchDate: admin.firestore.FieldValue.serverTimestamp(),
-          isActive: true,
-          status: "active",
-          messageCount: 0,
-          participantConsent: memberIds.reduce((acc, id) => {
-            acc[id] = false;
-            return acc;
-          }, {} as Record<string, boolean>),
-          participantViewed: memberIds.reduce((acc, id) => {
-            acc[id] = false;
-            return acc;
-          }, {} as Record<string, boolean>),
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        } as any;
-
-        transaction.set(matchRef, matchData);
-
-        // Set all group members as unavailable (in a match)
-        for (const memberId of memberIds) {
-          const memberRef = db.collection("users").doc(memberId);
-          transaction.update(memberRef, {
-            isAvailable: false,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
-
-        return { id: matchRef.id, ...matchData };
-      });
-
-      return {
-        message: "Group match created successfully",
-        matchId: matchRef.id,
-        match: result,
-      };
-    } catch (error: any) {
-      console.error("Error creating group match:", error);
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
-      }
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to create group match"
-      );
-    }
-  }
-);
-
-/**
  * Creates a match between two users
  */
 export const createMatch = functions.https.onCall(
@@ -165,19 +37,18 @@ export const createMatch = functions.https.onCall(
         );
       }
 
-      // Check if match already exists using participantIds
-      // Firestore does not support multiple array-contains on the same field,
-      // so we use array-contains-any and filter the results in memory.
-      const potentialMatchesSnap = await db
+      // Check if match already exists
+      const existingMatchesSnap = await db
         .collection("matches")
-        .where("participantIds", "array-contains-any", [user1Id, user2Id])
         .where("isActive", "==", true)
         .get();
 
-      const existingMatchDoc = potentialMatchesSnap.docs.find((doc) => {
+      const existingMatchDoc = existingMatchesSnap.docs.find((doc) => {
         const data = doc.data() as any;
-        const participants = data.participantIds || [];
-        return participants.includes(user1Id) && participants.includes(user2Id);
+        return (
+          (data.user1Id === user1Id && data.user2Id === user2Id) ||
+          (data.user1Id === user2Id && data.user2Id === user1Id)
+        );
       });
 
       if (existingMatchDoc) {
@@ -197,21 +68,22 @@ export const createMatch = functions.https.onCall(
       const result = await db.runTransaction(async (transaction) => {
         // Create the match
         const matchData = {
-          type: "individual",
-          participantIds: [user1Id, user2Id],
+          user1Id,
+          user2Id,
           matchDate: admin.firestore.FieldValue.serverTimestamp(),
           isActive: true,
-          status: "active",
           messageCount: 0,
-          participantConsent: { [user1Id]: false, [user2Id]: false },
-          participantViewed: { [user1Id]: false, [user2Id]: false },
+          user1Consented: false,
+          user2Consented: false,
+          user1Viewed: false,
+          user2Viewed: false,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         } as any;
 
         transaction.set(matchRef, matchData);
 
-        // Set both users as unavailable (in a match)
+        // Set both users as unavailable
         transaction.update(user1Ref, {
           isAvailable: false,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -275,25 +147,31 @@ export const getUnviewedMatches = functions.https.onCall(
         );
       }
 
-      // Get unviewed matches using participantIds and participantViewed
-      const unviewedMatches = await db
+      // Get unviewed matches for this user
+      const allMatches = await db
         .collection("matches")
         .where("isActive", "==", true)
-        .where("participantIds", "array-contains", userId)
         .get();
 
-      const allUnviewedMatches = unviewedMatches.docs.filter((doc) => {
+      const unviewedMatches = allMatches.docs.filter((doc) => {
         const matchData = doc.data();
-        return matchData.participantViewed?.[userId] === false;
+        const isParticipant =
+          matchData.user1Id === userId || matchData.user2Id === userId;
+        if (!isParticipant) return false;
+
+        const hasViewed =
+          matchData.user1Id === userId
+            ? matchData.user1Viewed
+            : matchData.user2Viewed;
+        return hasViewed === false;
       });
 
       const matches = [] as any[];
-      for (const doc of allUnviewedMatches) {
+      for (const doc of unviewedMatches) {
         const matchData = doc.data();
 
-        const otherUserId = matchData.participantIds.find(
-          (id: string) => id !== userId
-        );
+        const otherUserId =
+          matchData.user1Id === userId ? matchData.user2Id : matchData.user1Id;
         const otherUserDoc = await db
           .collection("users")
           .doc(otherUserId)
@@ -363,18 +241,33 @@ export const markMatchAsViewed = functions.https.onCall(
       }
 
       const matchData = matchDoc.data();
-      const updateData: any = {};
 
-      if (matchData?.participantIds?.includes(userId)) {
-        updateData[`participantViewed.${userId}`] = true;
-      } else {
+      if (!matchData) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "Match data not found"
+        );
+      }
+
+      const isUser1 = matchData.user1Id === userId;
+      const isUser2 = matchData.user2Id === userId;
+
+      if (!isUser1 && !isUser2) {
         throw new functions.https.HttpsError(
           "permission-denied",
           "User is not part of this match"
         );
       }
 
-      updateData.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+      const updateData: any = {
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      if (isUser1) {
+        updateData.user1Viewed = true;
+      } else {
+        updateData.user2Viewed = true;
+      }
 
       await matchRef.update(updateData);
 
@@ -387,64 +280,6 @@ export const markMatchAsViewed = functions.https.onCall(
       throw new functions.https.HttpsError(
         "internal",
         "Failed to mark match as viewed"
-      );
-    }
-  }
-);
-
-/**
- * Gets active matches for a user
- */
-export const getActiveMatches = functions.https.onCall(
-  {
-    region: "us-central1",
-    memory: "256MiB",
-    timeoutSeconds: 60,
-    minInstances: 0,
-    maxInstances: 10,
-    concurrency: 80,
-    cpu: 1,
-    ingressSettings: "ALLOW_ALL",
-    invoker: "public",
-  },
-  async (request: CallableRequest<{ id: string }>) => {
-    try {
-      if (!request.auth) {
-        throw new functions.https.HttpsError(
-          "unauthenticated",
-          "User must be authenticated"
-        );
-      }
-
-      const { id } = request.data;
-
-      if (!id) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "User ID is required"
-        );
-      }
-
-      // Query active matches by participantIds (unified)
-      const snapshot = await db
-        .collection("matches")
-        .where("isActive", "==", true)
-        .where("participantIds", "array-contains", id)
-        .get();
-
-      const matches = snapshot.docs.map((doc) => ({
-        _id: doc.id,
-        ...doc.data(),
-      }));
-      return { matches };
-    } catch (error: any) {
-      console.error("Error getting active matches:", error);
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
-      }
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to get active matches"
       );
     }
   }
@@ -496,7 +331,7 @@ export const unmatchUsers = functions.https.onCall(
         );
       }
 
-      if (!matchData.participantIds?.includes(userId)) {
+      if (matchData.user1Id !== userId && matchData.user2Id !== userId) {
         throw new functions.https.HttpsError(
           "permission-denied",
           "User not part of this match"
@@ -504,21 +339,21 @@ export const unmatchUsers = functions.https.onCall(
       }
 
       await db.runTransaction(async (transaction) => {
-        // Update match status
+        // Deactivate the match
         transaction.update(db.collection("matches").doc(matchId), {
           isActive: false,
-          status: "unmatched",
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        // Set all participants as available again
-        for (const participantId of matchData.participantIds) {
-          const userRef = db.collection("users").doc(participantId);
-          transaction.update(userRef, {
-            isAvailable: true,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
+        // Set both users as available again
+        transaction.update(db.collection("users").doc(matchData.user1Id), {
+          isAvailable: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        transaction.update(db.collection("users").doc(matchData.user2Id), {
+          isAvailable: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
       });
 
       // Freeze chat and notify remains the same
@@ -546,9 +381,10 @@ export const unmatchUsers = functions.https.onCall(
 
         if (apiKey && apiSecret) {
           const serverClient = StreamChat.getInstance(apiKey, apiSecret);
-          const otherId = matchData.participantIds.find(
-            (id: string) => id !== userId
-          );
+          const otherId =
+            matchData.user1Id === userId
+              ? matchData.user2Id
+              : matchData.user1Id;
           const channelId = [userId, otherId].sort().join("-");
           const channel = serverClient.channel("messaging", channelId);
           await channel.update({ frozen: true });
@@ -725,19 +561,18 @@ export const getMatchId = functions.https.onCall(
         );
       }
 
-      // Find existing match using participantIds
-      // Firestore limitation: cannot use two array-contains on the same field.
-      // Use array-contains-any and filter in memory to ensure both users present.
-      const possibleSnap = await db
+      // Find existing match using user1Id and user2Id
+      const allMatches = await db
         .collection("matches")
-        .where("participantIds", "array-contains-any", [userId1, userId2])
         .where("isActive", "==", true)
         .get();
 
-      const foundDoc = possibleSnap.docs.find((doc) => {
+      const foundDoc = allMatches.docs.find((doc) => {
         const data = doc.data() as any;
-        const participants = data.participantIds || [];
-        return participants.includes(userId1) && participants.includes(userId2);
+        return (
+          (data.user1Id === userId1 && data.user2Id === userId2) ||
+          (data.user1Id === userId2 && data.user2Id === userId1)
+        );
       });
 
       if (foundDoc) {
@@ -818,7 +653,10 @@ export const updateConsent = functions.https.onCall(
 
         const matchData = matchDoc.data() as any;
 
-        if (!matchData.participantIds?.includes(userId)) {
+        const isUser1 = matchData.user1Id === userId;
+        const isUser2 = matchData.user2Id === userId;
+
+        if (!isUser1 && !isUser2) {
           throw new functions.https.HttpsError(
             "permission-denied",
             "User not part of this match"
@@ -826,18 +664,16 @@ export const updateConsent = functions.https.onCall(
         }
 
         const updateData: any = {
-          [`participantConsent.${userId}`]: consented,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
-        // Check if all participants have consented
-        const updatedConsent = {
-          ...matchData.participantConsent,
-          [userId]: consented,
-        };
-        bothConsented = matchData.participantIds.every(
-          (id: string) => updatedConsent[id] === true
-        );
+        if (isUser1) {
+          updateData.user1Consented = consented;
+          bothConsented = consented && matchData.user2Consented === true;
+        } else {
+          updateData.user2Consented = consented;
+          bothConsented = consented && matchData.user1Consented === true;
+        }
 
         const consentMessageSent = Boolean(matchData.consentMessageSent);
 
@@ -876,7 +712,9 @@ export const updateConsent = functions.https.onCall(
 
           if (apiKey && apiSecret) {
             const serverClient = StreamChat.getInstance(apiKey, apiSecret);
-            const channelId = matchData.participantIds.sort().join("-");
+            const channelId = [matchData.user1Id, matchData.user2Id]
+              .sort()
+              .join("-");
             const channel = serverClient.channel("messaging", channelId);
             await channel.sendMessage({
               text: "Both of you have decided to continue getting to know one another!",
@@ -946,29 +784,31 @@ export const getConsentStatus = functions.https.onCall(
 
       const matchData = matchDoc.data() as any;
 
-      if (!matchData.participantIds?.includes(currentUserId)) {
+      const isUser1 = matchData.user1Id === currentUserId;
+      const isUser2 = matchData.user2Id === currentUserId;
+
+      if (!isUser1 && !isUser2) {
         throw new functions.https.HttpsError(
           "permission-denied",
           "User not part of this match"
         );
       }
 
-      const participantConsent = matchData.participantConsent || {};
-      const bothConsented = matchData.participantIds.every(
-        (id: string) => participantConsent[id] === true
-      );
+      const user1Consented = matchData.user1Consented || false;
+      const user2Consented = matchData.user2Consented || false;
+      const bothConsented = user1Consented && user2Consented;
       const messageCount = matchData.messageCount || 0;
 
       const MESSAGE_THRESHOLD = 30;
       const shouldShowConsentScreen =
         messageCount >= MESSAGE_THRESHOLD && !bothConsented;
 
+      const currentUserConsented = isUser1 ? user1Consented : user2Consented;
       const shouldShowConsentForUser =
-        shouldShowConsentScreen && !participantConsent[currentUserId];
+        shouldShowConsentScreen && !currentUserConsented;
 
-      const consentedCount = matchData.participantIds.filter(
-        (id: string) => participantConsent[id] === true
-      ).length;
+      const consentedCount =
+        (user1Consented ? 1 : 0) + (user2Consented ? 1 : 0);
       const state = bothConsented
         ? "both_consented"
         : consentedCount > 0
@@ -976,8 +816,10 @@ export const getConsentStatus = functions.https.onCall(
         : "none_consented";
 
       return {
-        participantIds: matchData.participantIds,
-        participantConsent,
+        user1Id: matchData.user1Id,
+        user2Id: matchData.user2Id,
+        user1Consented,
+        user2Consented,
         bothConsented,
         messageCount,
         shouldShowConsentScreen,
@@ -987,11 +829,18 @@ export const getConsentStatus = functions.https.onCall(
           state,
           messageThreshold: MESSAGE_THRESHOLD,
           bothConsented,
-          users: matchData.participantIds.map((id: string) => ({
-            id,
-            hasConsented: participantConsent[id] === true,
-            shouldShow: shouldShowConsentScreen && !participantConsent[id],
-          })),
+          users: [
+            {
+              id: matchData.user1Id,
+              hasConsented: user1Consented,
+              shouldShow: shouldShowConsentScreen && !user1Consented,
+            },
+            {
+              id: matchData.user2Id,
+              hasConsented: user2Consented,
+              shouldShow: shouldShowConsentScreen && !user2Consented,
+            },
+          ],
         },
       };
     } catch (error: any) {
@@ -1007,115 +856,14 @@ export const getConsentStatus = functions.https.onCall(
   }
 );
 
-/**
- * Migrates existing match documents to use new consent fields
- */
-export const migrateMatchConsent = functions.https.onCall(
-  {
-    region: "us-central1",
-    memory: "256MiB",
-    timeoutSeconds: 60,
-    minInstances: 0,
-    maxInstances: 10,
-    concurrency: 80,
-    cpu: 1,
-    ingressSettings: "ALLOW_ALL",
-    invoker: "public",
-  },
-  async (request: CallableRequest<{ matchId: string }>) => {
-    try {
-      if (!request.auth) {
-        throw new functions.https.HttpsError(
-          "unauthenticated",
-          "User must be authenticated"
-        );
-      }
-
-      const { matchId } = request.data;
-
-      if (!matchId) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "Match ID is required"
-        );
-      }
-
-      // Get the match document
-      const matchDoc = await db.collection("matches").doc(matchId).get();
-      if (!matchDoc.exists) {
-        throw new functions.https.HttpsError("not-found", "Match not found");
-      }
-
-      const matchData = matchDoc.data();
-      if (!matchData) {
-        throw new functions.https.HttpsError(
-          "not-found",
-          "Match data not found"
-        );
-      }
-
-      // Check if migration is needed (has old fields)
-      const needsMigration =
-        matchData.hasOwnProperty("blurPercentage") ||
-        matchData.hasOwnProperty("user1Agreed") ||
-        matchData.hasOwnProperty("user2Agreed") ||
-        matchData.hasOwnProperty("warningShown");
-
-      if (!needsMigration) {
-        return { message: "Match already uses new consent fields" };
-      }
-
-      // Migrate to new consent fields
-      const updateData: any = {
-        user1Consented: matchData.user1Agreed || false,
-        user2Consented: matchData.user2Agreed || false,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      };
-
-      // Remove old fields
-      updateData.blurPercentage = admin.firestore.FieldValue.delete();
-      updateData.user1Agreed = admin.firestore.FieldValue.delete();
-      updateData.user2Agreed = admin.firestore.FieldValue.delete();
-      updateData.warningShown = admin.firestore.FieldValue.delete();
-
-      await db.collection("matches").doc(matchId).update(updateData);
-
-      return {
-        message: "Match migrated successfully",
-        oldFields: {
-          blurPercentage: matchData.blurPercentage,
-          user1Agreed: matchData.user1Agreed,
-          user2Agreed: matchData.user2Agreed,
-          warningShown: matchData.warningShown,
-        },
-        newFields: {
-          user1Consented: updateData.user1Consented,
-          user2Consented: updateData.user2Consented,
-        },
-      };
-    } catch (error: any) {
-      console.error("Error migrating match consent:", error);
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
-      }
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to migrate match consent"
-      );
-    }
-  }
-);
-
 export const matchFunctions = {
   createMatch,
-  createGroupMatch,
-  getActiveMatches,
   unmatchUsers,
   updateMatchChannel,
   getMatchId,
   updateConsent,
   getConsentStatus,
-  migrateMatchConsent,
   getUnviewedMatches,
   markMatchAsViewed,
+  incrementMatchMessages,
 };

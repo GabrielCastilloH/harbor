@@ -12,7 +12,6 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "../constants/Colors";
 import { Profile } from "../types/App";
 import BasicInfoView from "./BasicInfoView";
-import { useNavigation } from "@react-navigation/native";
 import { useAppContext } from "../context/AppContext";
 
 interface MatchModalProps {
@@ -21,6 +20,7 @@ interface MatchModalProps {
   matchedProfile: Profile | null;
   currentProfile: Profile | null;
   matchId?: string;
+  navigation?: any; // Optional navigation prop
 }
 
 const { width } = Dimensions.get("window");
@@ -31,8 +31,8 @@ export default function MatchModal({
   matchedProfile,
   currentProfile,
   matchId,
+  navigation,
 }: MatchModalProps) {
-  const navigation = useNavigation();
   const { userId, setChannel } = useAppContext();
   const [isLoadingChat, setIsLoadingChat] = React.useState(false);
 
@@ -41,10 +41,26 @@ export default function MatchModal({
   const handleGoToChat = async () => {
     setIsLoadingChat(true);
     try {
-      (navigation as any).navigate("ChatsTab");
-      onClose();
+      if (navigation && typeof navigation.navigate === "function") {
+        // Navigate to the parent tab navigator to switch to ChatsTab
+        const parentNavigation = navigation.getParent();
+        if (
+          parentNavigation &&
+          typeof parentNavigation.navigate === "function"
+        ) {
+          parentNavigation.navigate("ChatsTab");
+        } else {
+          // Fallback: try direct navigation
+          (navigation as any).navigate("ChatsTab");
+        }
+        onClose();
+      } else {
+        console.warn("Navigation not available yet");
+        onClose();
+      }
     } catch (error) {
       console.error("Error navigating to chat tab:", error);
+      onClose();
     } finally {
       setIsLoadingChat(false);
     }
@@ -59,7 +75,7 @@ export default function MatchModal({
           </TouchableOpacity>
 
           <Text style={styles.matchText}>
-            You connected with {"\n"} {matchedProfile.firstName}!
+            You matched with {"\n"} {matchedProfile.firstName}!
           </Text>
 
           <View style={styles.cardsContainer}>

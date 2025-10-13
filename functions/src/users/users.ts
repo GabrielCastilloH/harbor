@@ -2,9 +2,13 @@ import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import { StreamChat } from "stream-chat";
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
+import { Storage } from "@google-cloud/storage";
+import sharp from "sharp";
 
 const db = admin.firestore();
 const secretManager = new SecretManagerServiceClient();
+const storage = new Storage();
+const bucket = storage.bucket("harbor-ch.firebasestorage.app"); // Fixed bucket name
 
 async function getStreamClient(): Promise<StreamChat> {
   try {
@@ -63,7 +67,6 @@ interface CreateUserData {
   q2?: string; // "Favorite book, movie or song"
   q3?: string; // "Some of my hobbies are"
   email: string;
-  groupSize?: number; // Preferred group size for matching (2, 3, or 4)
 }
 
 interface UpdateUserData {
@@ -79,7 +82,6 @@ interface UpdateUserData {
   q1?: string; // "Together we could"
   q2?: string; // "Favorite book, movie or song"
   q3?: string; // "Some of my hobbies are"
-  groupSize?: number; // Preferred group size for matching (2, 3, or 4)
 }
 
 /**
@@ -228,13 +230,6 @@ export const createUser = functions.https.onCall(
         validationErrors.push("Email addresses with periods are not allowed");
       }
 
-      // Validate group size if provided
-      if (userData.groupSize !== undefined) {
-        if (![2, 3, 4].includes(userData.groupSize)) {
-          validationErrors.push("Group size must be 2, 3, or 4");
-        }
-      }
-
       // Validate profile content for inappropriate content
       const textFields = [
         userData.firstName,
@@ -299,10 +294,6 @@ export const createUser = functions.https.onCall(
             q1: userData.q1 || existingData?.q1 || "",
             q2: userData.q2 || existingData?.q2 || "",
             q3: userData.q3 || existingData?.q3 || "",
-            groupSize:
-              userData.groupSize !== undefined
-                ? userData.groupSize
-                : existingData?.groupSize || 2,
             // Preserve existing isActive if present; default to true
             isActive:
               existingData?.isActive !== undefined
@@ -313,8 +304,6 @@ export const createUser = functions.https.onCall(
               existingData?.isAvailable !== undefined
                 ? existingData.isAvailable
                 : true,
-            // Preserve existing currentMatches if present; default to empty array
-            currentMatches: existingData?.currentMatches || [],
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };
 
@@ -343,14 +332,10 @@ export const createUser = functions.https.onCall(
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             // New availability field
             availability: -1,
-            // Group size preference (default to 2)
-            groupSize: userData.groupSize || 2,
             // Explicit active flag for consistency
             isActive: true,
             // Match availability (defaults to true)
             isAvailable: true,
-            // Initialize current matches array
-            currentMatches: [],
           };
 
           transaction.set(db.collection("users").doc(firebaseUid), newUserDoc);
@@ -426,7 +411,7 @@ export const getAllUsers = functions.https.onCall(
 );
 
 /**
- * Fetches user by ID (Firebase UID)
+ * Fetches user by ID (Firebase UID) and returns matchId if users are matched
  */
 export const getUserById = functions.https.onCall(
   {
@@ -450,6 +435,8 @@ export const getUserById = functions.https.onCall(
       }
 
       const { id } = request.data;
+      const currentUserId = request.auth.uid;
+
       if (!id) {
         throw new functions.https.HttpsError(
           "invalid-argument",
@@ -466,6 +453,27 @@ export const getUserById = functions.https.onCall(
 
       const userData = userDoc.data();
 
+      // Find matchId between current user and target user
+      let matchId = null;
+      if (currentUserId !== id) {
+        const allMatches = await db
+          .collection("matches")
+          .where("isActive", "==", true)
+          .get();
+
+        const foundDoc = allMatches.docs.find((doc) => {
+          const data = doc.data() as any;
+          return (
+            (data.user1Id === currentUserId && data.user2Id === id) ||
+            (data.user1Id === id && data.user2Id === currentUserId)
+          );
+        });
+
+        if (foundDoc) {
+          matchId = foundDoc.id;
+        }
+      }
+
       // Remove sensitive data from the response for security
       if (userData) {
         const { images, email, ...userDataWithoutSensitiveInfo } = userData;
@@ -474,10 +482,11 @@ export const getUserById = functions.https.onCall(
             ...userDataWithoutSensitiveInfo,
             uid: userDoc.id, // Add the document ID as uid
           },
+          matchId,
         };
       }
 
-      return { user: userData };
+      return { user: userData, matchId };
     } catch (error: any) {
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -597,13 +606,6 @@ export const updateUser = functions.https.onCall(
           validationErrors.push("At least 3 images are required");
         } else if (userData.images.length > 6) {
           validationErrors.push("Maximum 6 images allowed");
-        }
-      }
-
-      // Validate group size if provided
-      if (userData.groupSize !== undefined) {
-        if (![2, 3, 4].includes(userData.groupSize)) {
-          validationErrors.push("Group size must be 2, 3, or 4");
         }
       }
 
@@ -763,7 +765,8 @@ export const updateUser = functions.https.onCall(
 );
 
 /**
- * Unmatches a user (removes match from currentMatches array)
+ * Unmatches a user by setting them as available
+ * Note: Use matchFunctions-unmatchUsers instead for proper unmatching with match deactivation
  */
 export const unmatchUser = functions.https.onCall(
   {
@@ -797,23 +800,18 @@ export const unmatchUser = functions.https.onCall(
         );
       }
 
-      // Remove the match from the user's matches array
+      // Set user as available (deprecated function, use matchFunctions-unmatchUsers)
       const userRef = db.collection("users").doc(id);
       await userRef.update({
-        matches: admin.firestore.FieldValue.arrayRemove(matchId),
+        isAvailable: true,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Get updated matches
-      const userDoc = await userRef.get();
-      const currentMatches = userDoc.data()?.matches || [];
-
       return {
-        message: "User unmatched successfully",
-        currentMatches,
+        message: "User set as available (deprecated, use unmatchUsers)",
       };
     } catch (error: any) {
-      console.error("Error unmatching user:", error);
+      console.error("Error in unmatchUser:", error);
       throw new functions.https.HttpsError(
         "internal",
         "Failed to unmatch user"
@@ -917,63 +915,61 @@ export const deleteUser = functions.https.onCall(
       }
 
       const userData = userDoc.data();
-      const currentMatches = userData?.currentMatches || [];
+
+      // Query all matches for this user
+      const allMatches = await db
+        .collection("matches")
+        .where("isActive", "==", true)
+        .get();
+
+      const matchesSnapshot = {
+        docs: allMatches.docs.filter((doc) => {
+          const data = doc.data();
+          return data.user1Id === userId || data.user2Id === userId;
+        }),
+      };
+
+      const currentMatches = matchesSnapshot.docs.map((doc) => doc.id);
 
       // Read all match data upfront to avoid reads inside transaction
       const matchDataMap = new Map();
       const otherUserDataMap = new Map();
 
-      for (const matchId of currentMatches) {
+      for (const matchDoc of matchesSnapshot.docs) {
+        const matchId = matchDoc.id;
         try {
-          const matchDoc = await db.collection("matches").doc(matchId).get();
-          if (matchDoc.exists) {
-            const matchData = matchDoc.data();
-            matchDataMap.set(matchId, matchData);
+          const matchData = matchDoc.data();
+          matchDataMap.set(matchId, matchData);
 
-            // Also read the other user's data upfront
-            if (!matchData) continue;
+          // Also read the other user's data upfront
+          if (!matchData) continue;
 
-            // Handle both individual and group matches
-            let otherUserIds: string[] = [];
-            if (matchData.type === "individual") {
-              // Individual match: find the other participant
-              const participantIds = matchData.participantIds || [];
-              otherUserIds = participantIds.filter(
-                (id: string) => id !== userId
-              );
-            } else if (matchData.type === "group") {
-              // Group match: get all other participants
-              const participantIds = matchData.participantIds || [];
-              otherUserIds = participantIds.filter(
-                (id: string) => id !== userId
-              );
-            } else {
-              // Legacy individual match format
-              const otherUserId =
-                matchData.user1Id === userId
-                  ? matchData.user2Id
-                  : matchData.user1Id;
-              if (otherUserId) otherUserIds = [otherUserId];
-            }
-            // Read data for all other users in the match
-            for (const otherUserId of otherUserIds) {
-              if (!otherUserDataMap.has(otherUserId)) {
-                try {
-                  const otherUserDoc = await db
-                    .collection("users")
-                    .doc(otherUserId)
-                    .get();
-                  if (otherUserDoc.exists) {
-                    otherUserDataMap.set(otherUserId, otherUserDoc.data());
-                  }
-                } catch (error) {
-                  console.error(`Error reading user ${otherUserId}:`, error);
+          // Get the other user in the match
+          let otherUserIds: string[] = [];
+          const otherUserId =
+            matchData.user1Id === userId
+              ? matchData.user2Id
+              : matchData.user1Id;
+          if (otherUserId) otherUserIds = [otherUserId];
+          // Read data for all other users in the match
+          for (const otherUserId of otherUserIds) {
+            if (!otherUserDataMap.has(otherUserId)) {
+              try {
+                const otherUserDoc = await db
+                  .collection("users")
+                  .doc(otherUserId)
+                  .get();
+                if (otherUserDoc.exists) {
+                  otherUserDataMap.set(otherUserId, otherUserDoc.data());
                 }
+              } catch (error) {
+                console.error(`Error reading user ${otherUserId}:`, error);
               }
             }
-          } else {
           }
-        } catch (error) {}
+        } catch (error) {
+          console.error(`Error processing match ${matchId}:`, error);
+        }
       }
 
       // --- STEP 2: USE TRANSACTION FOR ATOMIC UPDATES ---
@@ -982,7 +978,7 @@ export const deleteUser = functions.https.onCall(
         // Delete user document
         transaction.delete(userRef);
 
-        // Update matches and other users' currentMatches arrays
+        // Deactivate all matches and set other users as available
         for (const matchId of currentMatches) {
           const matchData = matchDataMap.get(matchId);
           if (matchData) {
@@ -994,39 +990,21 @@ export const deleteUser = functions.https.onCall(
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
-            // Remove match from all other users' currentMatches arrays
+            // Set the other participant as available
             let otherUserIds: string[] = [];
-            if (matchData.type === "individual") {
-              const participantIds = matchData.participantIds || [];
-              otherUserIds = participantIds.filter(
-                (id: string) => id !== userId
-              );
-            } else if (matchData.type === "group") {
-              const participantIds = matchData.participantIds || [];
-              otherUserIds = participantIds.filter(
-                (id: string) => id !== userId
-              );
-            } else {
-              // Legacy individual match format
-              const otherUserId =
-                matchData.user1Id === userId
-                  ? matchData.user2Id
-                  : matchData.user1Id;
-              if (otherUserId) otherUserIds = [otherUserId];
-            }
+            const otherUserId =
+              matchData.user1Id === userId
+                ? matchData.user2Id
+                : matchData.user1Id;
+            if (otherUserId) otherUserIds = [otherUserId];
 
             for (const otherUserId of otherUserIds) {
               const otherUserRef = db.collection("users").doc(otherUserId);
               const otherUserData = otherUserDataMap.get(otherUserId);
 
               if (otherUserData) {
-                const updatedMatches = (
-                  otherUserData.currentMatches || []
-                ).filter((id: string) => id !== matchId);
-
                 transaction.update(otherUserRef, {
-                  currentMatches: updatedMatches,
-                  isAvailable: true, // Set user as available again
+                  isAvailable: true,
                   updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 });
               }
@@ -1068,8 +1046,8 @@ export const deleteUser = functions.https.onCall(
         const swipeCountersRef = db
           .collection("users")
           .doc(userId)
-          .collection("counters")
-          .doc("swipes");
+          .collection("swipeCounter")
+          .doc("daily");
         const swipeCountersDoc = await swipeCountersRef.get();
         if (swipeCountersDoc.exists) {
           batch.delete(swipeCountersRef);
@@ -1115,15 +1093,59 @@ export const deleteUser = functions.https.onCall(
 
       // --- STEP 4: CLEAN UP EXTERNAL SERVICES IN PARALLEL ---
       await Promise.all([
-        // Delete Stream Chat user
+        // Delete Stream Chat user and handle chat channels
         (async () => {
           try {
             const client = await getStreamClient();
+
+            // First, handle all chat channels the user was part of
+            for (const matchId of currentMatches) {
+              const matchData = matchDataMap.get(matchId);
+              if (matchData) {
+                try {
+                  // Get the other user in this match
+                  let otherUserIds: string[] = [];
+                  const otherUserId =
+                    matchData.user1Id === userId
+                      ? matchData.user2Id
+                      : matchData.user1Id;
+                  if (otherUserId) otherUserIds = [otherUserId];
+
+                  // For each other user, create a channel ID and freeze the chat
+                  for (const otherUserId of otherUserIds) {
+                    try {
+                      const channelId = [userId, otherUserId].sort().join("-");
+                      const channel = client.channel("messaging", channelId);
+
+                      // Freeze the channel and send a system message
+                      await channel.update({ frozen: true });
+                      await channel.sendMessage({
+                        text: "This chat has been frozen because one of the users unmatched.",
+                        user_id: "system",
+                      });
+                    } catch (channelError) {
+                      console.error(
+                        `Error handling channel for match ${matchId}:`,
+                        channelError
+                      );
+                    }
+                  }
+                } catch (matchError) {
+                  console.error(
+                    `Error processing match ${matchId}:`,
+                    matchError
+                  );
+                }
+              }
+            }
+
+            // Finally, delete the Stream Chat user
             await client.deleteUser(userId, {
               mark_messages_deleted: true,
               hard_delete: true,
             });
           } catch (streamError) {
+            console.error("Error in Stream Chat cleanup:", streamError);
             // Don't fail the entire operation if Stream Chat deletion fails
           }
         })(),
@@ -1210,7 +1232,7 @@ export const deactivateAccount = functions.https.onCall(
 
       return { success: true, message: "Account deactivated successfully" };
     } catch (error: any) {
-      console.error("❌ DEACTIVATE: Error deactivating account:", error);
+      console.error("Error deactivating account:", error);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -1259,7 +1281,7 @@ export const reactivateAccount = functions.https.onCall(
 
       return { success: true, message: "Account reactivated successfully" };
     } catch (error: any) {
-      console.error("❌ REACTIVATE: Error reactivating account:", error);
+      console.error("Error reactivating account:", error);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -1313,7 +1335,7 @@ export const checkDeletedAccount = functions.https.onCall(
           : null,
       };
     } catch (error: any) {
-      console.error("❌ CHECK DELETED: Error checking deleted account:", error);
+      console.error("Error checking deleted account:", error);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -1454,8 +1476,548 @@ export const checkBannedStatus = functions.https.onCall(
   }
 );
 
+/**
+ * Blur image buffer using sharp
+ */
+async function blurImageBuffer(
+  buffer: Buffer,
+  blurPercent: number
+): Promise<Buffer> {
+  try {
+    // Use sigma 25 for consistent blur level across the app
+    const sigma = 25;
+    const blurredBuffer = await sharp(buffer)
+      .resize(800, 800, { fit: "inside", withoutEnlargement: true })
+      .blur(sigma)
+      .jpeg({ quality: 50 }) // Lower quality for blurred images
+      .toBuffer();
+    return blurredBuffer;
+  } catch (error) {
+    console.error("Error blurring image:", error);
+    throw error;
+  }
+}
+
+/**
+ * Moderate image content (placeholder implementation)
+ */
+async function moderateImage(
+  imageBuffer: Buffer
+): Promise<{ isAppropriate: boolean; reason?: string }> {
+  try {
+    // For now, we'll accept all images
+    // In production, you'd integrate with a content moderation service
+    return { isAppropriate: true };
+  } catch (error) {
+    console.error("Error moderating image:", error);
+    return { isAppropriate: false, reason: "Moderation check failed" };
+  }
+}
+
+interface AtomicCreateUserData {
+  firstName: string;
+  yearLevel?: string;
+  age?: number;
+  major?: string;
+  gender?: string;
+  sexualOrientation?: string;
+  aboutMe?: string;
+  q1?: string; // "Together we could"
+  q2?: string; // "Favorite book, movie or song"
+  q3?: string; // "Some of my hobbies are"
+  email: string;
+  images: Array<{
+    imageData: string; // base64 encoded image data
+    index: number;
+  }>;
+}
+
+/**
+ * ATOMIC: Creates user profile with images in a single transaction
+ * If ANY part fails, EVERYTHING is rolled back
+ */
+export const createUserWithImages = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "1GiB", // Increased memory for image processing
+    timeoutSeconds: 300, // 5 minutes for image processing
+    minInstances: 0,
+    maxInstances: 5,
+    concurrency: 20,
+    cpu: 2,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (request: functions.https.CallableRequest<AtomicCreateUserData>) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const userData = request.data;
+      const firebaseUid = request.auth.uid;
+
+      // Validate user is creating profile for themselves
+      if (request.auth.uid !== firebaseUid) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User can only create profile for themselves"
+        );
+      }
+
+      // Backend validation - enforce all client-side rules
+      const validationErrors: string[] = [];
+
+      // Validate required fields
+      if (!userData.firstName?.trim()) {
+        validationErrors.push("Your name, initial(s) or nickname is required");
+      } else if (userData.firstName.trim().length < 1) {
+        validationErrors.push(
+          "Your name, initial(s) or nickname must be at least 1 character"
+        );
+      } else if (userData.firstName.trim().length > 11) {
+        validationErrors.push(
+          "Your name, initial(s) or nickname must be 11 characters or less"
+        );
+      }
+
+      if (!userData.age || userData.age < 18) {
+        validationErrors.push("Age must be 18 or older");
+      } else if (userData.age > 100) {
+        validationErrors.push("Please enter a valid age");
+      }
+
+      if (!userData.gender?.trim()) {
+        validationErrors.push("Gender selection is required");
+      } else {
+        const validGenders = ["Male", "Female", "Non-Binary"];
+        if (!validGenders.includes(userData.gender)) {
+          validationErrors.push("Invalid gender selection");
+        }
+      }
+
+      if (!userData.sexualOrientation?.trim()) {
+        validationErrors.push("Sexual orientation selection is required");
+      } else {
+        const validOrientations = [
+          "Heterosexual",
+          "Homosexual",
+          "Bisexual",
+          "Pansexual",
+        ];
+        if (!validOrientations.includes(userData.sexualOrientation)) {
+          validationErrors.push("Invalid sexual orientation selection");
+        }
+      }
+
+      if (!userData.yearLevel?.trim()) {
+        validationErrors.push("Year level selection is required");
+      }
+
+      if (!userData.major?.trim()) {
+        validationErrors.push("Major selection is required");
+      }
+
+      // Validate images
+      if (!userData.images || userData.images.length < 3) {
+        validationErrors.push("At least 3 images are required");
+      } else if (userData.images.length > 6) {
+        validationErrors.push("Maximum 6 images allowed");
+      }
+
+      // If validation fails, return error
+      if (validationErrors.length > 0) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          `Validation failed: ${validationErrors.join("; ")}`
+        );
+      }
+
+      // Check if user already exists
+      const existingUser = await db.collection("users").doc(firebaseUid).get();
+      if (existingUser.exists) {
+        throw new functions.https.HttpsError(
+          "already-exists",
+          "User profile already exists"
+        );
+      }
+
+      // Process all images first
+      const processedImages: string[] = [];
+      const uploadedFiles: string[] = []; // Track uploaded files for cleanup
+
+      try {
+        for (const imageInfo of userData.images) {
+          const { imageData, index } = imageInfo;
+
+          // Convert base64 to buffer
+          const imageBuffer = Buffer.from(imageData, "base64");
+
+          // Content moderation
+          const moderationResult = await moderateImage(imageBuffer);
+          if (!moderationResult.isAppropriate) {
+            throw new functions.https.HttpsError(
+              "invalid-argument",
+              `Image ${index + 1} rejected: ${moderationResult.reason}`
+            );
+          }
+
+          // Generate unique filename
+          const timestamp = Date.now();
+          const filename = `image_${timestamp}_${index}_original.jpg`;
+          const blurredFilename = `image_${timestamp}_${index}_blurred.jpg`;
+
+          // Upload original image
+          const originalPath = `users/${firebaseUid}/images/${filename}`;
+          const originalFile = bucket.file(originalPath);
+
+          await originalFile.save(imageBuffer, {
+            metadata: {
+              contentType: "image/jpeg",
+              cacheControl: "public, max-age=31536000",
+            },
+          });
+
+          uploadedFiles.push(originalPath);
+
+          // Generate blurred version
+          const blurredBuffer = await blurImageBuffer(imageBuffer, 80);
+          const blurredPath = `users/${firebaseUid}/images/${blurredFilename}`;
+          const blurredFile = bucket.file(blurredPath);
+
+          await blurredFile.save(blurredBuffer, {
+            metadata: {
+              contentType: "image/jpeg",
+              cacheControl: "public, max-age=31536000",
+            },
+          });
+
+          uploadedFiles.push(blurredPath);
+          processedImages.push(filename);
+        }
+      } catch (imageError) {
+        // Clean up any uploaded images if processing fails
+        console.error("Image processing failed, cleaning up:", imageError);
+        for (const filePath of uploadedFiles) {
+          try {
+            await bucket.file(filePath).delete();
+          } catch (deleteError) {
+            console.error(`Failed to delete file ${filePath}:`, deleteError);
+          }
+        }
+        throw imageError;
+      }
+
+      // Now create the user profile in Firestore
+      try {
+        const newUserDoc = {
+          firstName: userData.firstName,
+          email: userData.email,
+          age: userData.age,
+          yearLevel: userData.yearLevel,
+          major: userData.major,
+          gender: userData.gender,
+          sexualOrientation: userData.sexualOrientation,
+          images: processedImages,
+          aboutMe: userData.aboutMe || "",
+          q1: userData.q1 || "",
+          q2: userData.q2 || "",
+          q3: userData.q3 || "",
+          paywallSeen: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          availability: -1,
+          isActive: true,
+          isAvailable: true,
+        };
+
+        await db.collection("users").doc(firebaseUid).set(newUserDoc);
+
+        // Create Stream Chat user after successful Firestore transaction
+        try {
+          await createStreamUser(firebaseUid, userData.firstName);
+        } catch (streamError) {
+          console.error("Failed to create Stream Chat user:", streamError);
+          // Don't fail the entire operation if Stream Chat fails
+        }
+
+        return {
+          message: "User profile created successfully with images",
+          user: newUserDoc,
+          imageCount: processedImages.length,
+        };
+      } catch (profileError) {
+        // If profile creation fails, clean up all uploaded images
+        console.error(
+          "Profile creation failed, cleaning up images:",
+          profileError
+        );
+        for (const filePath of uploadedFiles) {
+          try {
+            await bucket.file(filePath).delete();
+          } catch (deleteError) {
+            console.error(`Failed to delete file ${filePath}:`, deleteError);
+          }
+        }
+        throw profileError;
+      }
+    } catch (error: any) {
+      console.error("Error in createUserWithImages:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to create user profile with images"
+      );
+    }
+  }
+);
+
+/**
+ * ATOMIC: Updates user profile with images in a single transaction
+ * If ANY part fails, EVERYTHING is rolled back
+ */
+export const updateUserWithImages = functions.https.onCall(
+  {
+    region: "us-central1",
+    memory: "1GiB", // Increased memory for image processing
+    timeoutSeconds: 300, // 5 minutes for image processing
+    minInstances: 0,
+    maxInstances: 5,
+    concurrency: 20,
+    cpu: 2,
+    ingressSettings: "ALLOW_ALL",
+    invoker: "public",
+  },
+  async (
+    request: functions.https.CallableRequest<{
+      userData: UpdateUserData;
+      newImages?: Array<{ imageData: string; index: number }>;
+      oldImages?: string[];
+    }>
+  ) => {
+    try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      const { userData, newImages = [], oldImages = [] } = request.data;
+      const firebaseUid = request.auth.uid;
+
+      // Validate user is updating profile for themselves
+      if (request.auth.uid !== firebaseUid) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User can only update profile for themselves"
+        );
+      }
+
+      // Check if user exists
+      const userDoc = await db.collection("users").doc(firebaseUid).get();
+      if (!userDoc.exists) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "User profile not found"
+        );
+      }
+
+      const currentUserData = userDoc.data();
+      if (!currentUserData) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "User data not found"
+        );
+      }
+
+      // Process new images if any
+      const processedNewImages: string[] = [];
+      const uploadedFiles: string[] = []; // Track uploaded files for cleanup
+
+      try {
+        for (const imageInfo of newImages || []) {
+          const { imageData, index } = imageInfo;
+
+          // Convert base64 to buffer
+          const imageBuffer = Buffer.from(imageData, "base64");
+
+          // Content moderation
+          const moderationResult = await moderateImage(imageBuffer);
+          if (!moderationResult.isAppropriate) {
+            throw new functions.https.HttpsError(
+              "invalid-argument",
+              `Image ${index + 1} rejected: ${moderationResult.reason}`
+            );
+          }
+
+          // Generate unique filename
+          const timestamp = Date.now();
+          const filename = `image_${timestamp}_${index}_original.jpg`;
+          const blurredFilename = `image_${timestamp}_${index}_blurred.jpg`;
+
+          // Upload original image
+          const originalPath = `users/${firebaseUid}/images/${filename}`;
+          const originalFile = bucket.file(originalPath);
+
+          await originalFile.save(imageBuffer, {
+            metadata: {
+              contentType: "image/jpeg",
+              cacheControl: "public, max-age=31536000",
+            },
+          });
+
+          uploadedFiles.push(originalPath);
+
+          // Generate blurred version
+          const blurredBuffer = await blurImageBuffer(imageBuffer, 80);
+          const blurredPath = `users/${firebaseUid}/images/${blurredFilename}`;
+          const blurredFile = bucket.file(blurredPath);
+
+          await blurredFile.save(blurredBuffer, {
+            metadata: {
+              contentType: "image/jpeg",
+              cacheControl: "public, max-age=31536000",
+            },
+          });
+
+          uploadedFiles.push(blurredPath);
+          processedNewImages.push(filename);
+        }
+      } catch (imageError) {
+        // Clean up any uploaded images if processing fails
+        console.error(
+          "❌ [UPDATE USER WITH IMAGES] Image processing failed, cleaning up:",
+          imageError
+        );
+        for (const filePath of uploadedFiles) {
+          try {
+            await bucket.file(filePath).delete();
+          } catch (deleteError) {
+            console.error(
+              `❌ [UPDATE USER WITH IMAGES] Failed to delete file ${filePath}:`,
+              deleteError
+            );
+          }
+        }
+        throw imageError;
+      }
+
+      // Use transaction for atomic operations
+      try {
+        const result = await db.runTransaction(async (transaction) => {
+          const userRef = db.collection("users").doc(firebaseUid);
+          const userDoc = await transaction.get(userRef);
+
+          if (!userDoc.exists) {
+            throw new functions.https.HttpsError(
+              "not-found",
+              "User profile not found"
+            );
+          }
+
+          const currentData = userDoc.data();
+          if (!currentData) {
+            throw new functions.https.HttpsError(
+              "not-found",
+              "User data not found"
+            );
+          }
+
+          // Merge new images with existing ones, excluding old images
+          const currentImages = currentData.images || [];
+          const oldImagesArray = oldImages || [];
+          const filteredCurrentImages = currentImages.filter(
+            (img: string) => !oldImagesArray.includes(img)
+          );
+          const finalImages = [...filteredCurrentImages, ...processedNewImages];
+
+          // Prepare update data
+          const updateData: any = {
+            ...userData,
+            images: finalImages,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          };
+
+          // Remove undefined values
+          Object.keys(updateData).forEach((key) => {
+            if (updateData[key] === undefined) {
+              delete updateData[key];
+            }
+          });
+
+          transaction.update(userRef, updateData);
+
+          return {
+            message: "User profile updated successfully",
+            user: { ...currentData, ...updateData },
+            newImageCount: processedNewImages.length,
+            deletedImageCount: (oldImages || []).length,
+          };
+        });
+
+        // Clean up old images after successful transaction
+        for (const oldImageFilename of oldImages || []) {
+          try {
+            // Delete original image
+            const originalPath = `users/${firebaseUid}/images/${oldImageFilename}`;
+            await bucket.file(originalPath).delete();
+
+            // Delete blurred image
+            const blurredFilename = oldImageFilename.replace(
+              "_original.jpg",
+              "_blurred.jpg"
+            );
+            const blurredPath = `users/${firebaseUid}/images/${blurredFilename}`;
+            await bucket.file(blurredPath).delete();
+          } catch (deleteError) {
+            console.error(
+              `Failed to delete old image ${oldImageFilename}:`,
+              deleteError
+            );
+            // Don't fail the entire operation if cleanup fails
+          }
+        }
+
+        return result;
+      } catch (transactionError) {
+        // If transaction fails, clean up all uploaded images
+        console.error(
+          "Transaction failed, cleaning up images:",
+          transactionError
+        );
+        for (const filePath of uploadedFiles) {
+          try {
+            await bucket.file(filePath).delete();
+          } catch (deleteError) {
+            console.error(`Failed to delete file ${filePath}:`, deleteError);
+          }
+        }
+        throw transactionError;
+      }
+    } catch (error: any) {
+      console.error("Error in updateUserWithImages:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        "internal",
+        "Failed to update user profile with images"
+      );
+    }
+  }
+);
+
 export const userFunctions = {
-  createUser,
+  createUserWithImages,
+  updateUserWithImages,
   getAllUsers,
   getUserById,
   updateUser,

@@ -25,7 +25,6 @@ import {
 import { NavigationProp } from "@react-navigation/native";
 import ProfileScreen from "../screens/ProfileScreen";
 import ReportScreen from "../screens/ReportScreen";
-import StudyGroupConnectionsScreen from "../screens/StudyGroupConnectionsScreen";
 import { useAppContext } from "../context/AppContext";
 import { RootStackParamList } from "../types/navigation";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -73,10 +72,6 @@ function HeaderRightButton({ navigation }: HeaderRightButtonProps) {
             userId: otherUserId,
             matchId: null, // Will be fetched in ProfileScreen
           });
-        } else {
-          console.error(
-            `[PROFILE ICON] Navigation failed: otherUserId or userId missing. otherUserId=${otherUserId}, userId=${userId}`
-          );
         }
       }}
       style={{ padding: 8 }}
@@ -107,7 +102,6 @@ function HeaderTitleButton({ navigation }: HeaderTitleButtonProps) {
             setMatchedUserName(userData.firstName || "User");
           }
         } catch (error) {
-          console.error("Error fetching matched user name:", error);
           setMatchedUserName("User");
         }
       }
@@ -217,7 +211,6 @@ export default function ChatNavigator() {
         setStreamApiKey(apiKey); // Store in context for future use
         cacheStreamApiKey(apiKey); // 🚀 Cache the API key
       } catch (error) {
-        console.error("🔴 ChatNavigator - Failed to fetch API key:", error);
         setError("Failed to fetch API key");
       }
     };
@@ -238,7 +231,6 @@ export default function ChatNavigator() {
         setStreamUserToken(token); // Store in context for future use
         cacheStreamUserToken(token, 24); // 🚀 Cache the token for 24 hours
       } catch (error) {
-        console.error("🔴 ChatNavigator - Failed to fetch chat token:", error);
         setError("Failed to fetch chat token");
       }
     };
@@ -247,36 +239,48 @@ export default function ChatNavigator() {
   }, [chatUserToken, userId, setStreamUserToken, cacheStreamUserToken]);
 
   // 💡 CRITICAL: This useEffect must run and set the notificationToken state
-  // Get notification token from AsyncStorage (set during AccountSetupScreen)
+  // Get notification token from AsyncStorage (set during AccountSetupScreen or TabNavigator)
   useEffect(() => {
     const getStoredNotificationToken = async () => {
       try {
         const token = await AsyncStorage.getItem("@current_push_token");
         if (token) {
           setNotificationToken(token);
-        } else {
-          console.warn("🟡 No stored FCM token available.");
         }
       } catch (err) {
-        console.error(
-          "🔴 ChatNavigator - Failed to get stored notification token:",
-          err
-        );
+        // Failed to get stored notification token
       }
     };
+
+    // Initial load
     getStoredNotificationToken();
+
+    // Poll for token updates every 2 seconds (in case permission is granted while chat is open)
+    const interval = setInterval(getStoredNotificationToken, 2000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Create a memoized user object using cached profile
   const user = useMemo(() => {
-    if (!userProfile || !userId) {
+    if (!userId) {
       return null;
     }
 
-    return {
+    // For new accounts, userProfile might not be loaded yet, so we create a fallback user object
+    if (!userProfile) {
+      const fallbackUserObj = {
+        id: userId,
+        name: "User", // Fallback name for new accounts
+      };
+      return fallbackUserObj;
+    }
+
+    const userObj = {
       id: userId,
       name: userProfile.firstName || "User",
     };
+    return userObj;
   }, [userProfile, userId]);
 
   // 💡 Centralized client creation and connection logic
@@ -327,7 +331,6 @@ export default function ChatNavigator() {
           setChatClient(clientInstance);
         }
       } catch (error) {
-        console.error("🔴 Error creating chat client:", error);
         if (isMounted) {
           setError("Failed to create chat client");
         }
@@ -371,10 +374,6 @@ export default function ChatNavigator() {
             try {
               await chatClient.removeDevice(oldToken);
             } catch (removeError) {
-              console.warn(
-                "🔔 [TOKEN REFRESH] Failed to remove old device (may not exist):",
-                removeError
-              );
               // Continue with registration even if removal fails
             }
           }
@@ -398,16 +397,9 @@ export default function ChatNavigator() {
             // Update stored token only after successful registration
             await AsyncStorage.setItem(PUSH_TOKEN_KEY, newToken);
           } catch (deviceError) {
-            console.error(
-              "🔔 [TOKEN REFRESH] Failed to register new device, keeping old token:",
-              deviceError
-            );
+            // Failed to register new device, keeping old token
           }
         } catch (error) {
-          console.error(
-            "🔴 [TOKEN REFRESH] Error handling token refresh:",
-            error
-          );
           // Don't update AsyncStorage if registration failed
         }
       });
@@ -419,6 +411,40 @@ export default function ChatNavigator() {
       }
     };
   }, [chatClient, userId]);
+
+  // 💡 CRITICAL: Register device with Stream if token becomes available after client connection
+  // This handles the case where permission is granted AFTER the chat client is already connected
+  useEffect(() => {
+    if (!chatClient || !userId || !notificationToken) {
+      return;
+    }
+
+    const registerLateDevice = async () => {
+      try {
+        // Check if device is already registered by seeing if we have it in Stream
+        // We'll try to add it - Stream will handle duplicates gracefully
+        await chatClient.addDevice(
+          notificationToken,
+          "firebase",
+          userId,
+          "HarborFirebasePush"
+        );
+      } catch (error) {
+        // Device might already be registered, which is fine
+        // Only log if it's not a duplicate error
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        if (
+          !errorMessage.includes("already") &&
+          !errorMessage.includes("duplicate")
+        ) {
+          console.error("🔔 Error registering late device:", error);
+        }
+      }
+    };
+
+    registerLateDevice();
+  }, [chatClient, userId, notificationToken]);
 
   // Badge count management for app icon
   useEffect(() => {
@@ -447,7 +473,7 @@ export default function ChatNavigator() {
           // You would need a separate library or a different approach for Android
         }
       } catch (error) {
-        console.error("🔴 Failed to get unread count or set badge:", error);
+        // Failed to get unread count or set badge
       }
     };
 
@@ -493,21 +519,14 @@ export default function ChatNavigator() {
 
   // 💡 CRITICAL FIX: Comprehensive loading condition to prevent partial renders
   // This ensures the Chat component is NEVER rendered until ALL prerequisites are met:
-  // 1. User profile must be available from cache
-  // 2. Chat API key must be fetched from backend
-  // 3. Chat user token must be generated
-  // 4. User ID must be available from context
-  // 5. Chat client must be fully initialized and connected
-  // 6. User object must be properly constructed
+  // 1. Chat API key must be fetched from backend
+  // 2. Chat user token must be generated
+  // 3. User ID must be available from context
+  // 4. Chat client must be fully initialized and connected
+  // 5. User object must be properly constructed
+  // Note: userProfile is now optional for new accounts (fallback user object is created)
 
-  if (
-    !userProfile ||
-    !chatApiKey ||
-    !chatUserToken ||
-    !userId ||
-    !user ||
-    !chatClient
-  ) {
+  if (!chatApiKey || !chatUserToken || !userId || !user || !chatClient) {
     return <LoadingScreen loadingText="Connecting to chat..." />;
   }
 
@@ -546,13 +565,6 @@ export default function ChatNavigator() {
           <Stack.Screen
             name="ReportScreen"
             component={ReportScreen}
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="StudyGroupConnections"
-            component={StudyGroupConnectionsScreen}
             options={{
               headerShown: false,
             }}

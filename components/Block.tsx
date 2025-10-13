@@ -46,9 +46,11 @@ const VERTICAL_SCROLL_PRIORITY_SLOP = 20;
 
 interface PostProps {
   profile: Profile;
+  onUserRemoved?: (userId: string) => void;
+  navigation?: any;
 }
 
-const Post = ({ profile }: PostProps) => {
+const Post = ({ profile, onUserRemoved, navigation }: PostProps) => {
   const { userId, profile: currentUserProfile } = useAppContext();
   const translateX = useSharedValue(0);
   const opacity = useSharedValue(1);
@@ -222,7 +224,11 @@ const Post = ({ profile }: PostProps) => {
             <BasicInfoView profile={profile} />
           </ScrollView>
           <ScrollView style={styles.viewContainer}>
-            <PersonalView profile={profile} showFlag={true} />
+            <PersonalView
+              profile={profile}
+              showFlag={true}
+              onUserRemoved={onUserRemoved}
+            />
           </ScrollView>
         </Animated.View>
       </PanGestureHandler>
@@ -262,6 +268,7 @@ const Post = ({ profile }: PostProps) => {
         matchedProfile={matchedProfile}
         currentProfile={currentUserProfile}
         matchId={matchId || undefined}
+        navigation={navigation}
       />
     </GestureHandlerRootView>
   );

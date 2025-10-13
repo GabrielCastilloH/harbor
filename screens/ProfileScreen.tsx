@@ -37,8 +37,6 @@ import LoadingScreen from "../components/LoadingScreen";
 import ImageCarousel from "../components/ImageCarousel";
 import { auth } from "../firebaseConfig";
 import HeaderBack from "../components/HeaderBack";
-// import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
-import { usePremium } from "../hooks/usePremium";
 
 type ProfileScreenParams = {
   ProfileScreen: {
@@ -70,7 +68,6 @@ export default function ProfileScreen() {
   const route = useRoute<RouteProp<ProfileScreenParams, "ProfileScreen">>();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { userId: currentUserId } = useAppContext();
-  // const { signal } = useTelemetryDeck();
   const navigationRef = useRef<NavigationProp<RootStackParamList>>(navigation);
 
   // Update ref when navigation changes
@@ -78,30 +75,10 @@ export default function ProfileScreen() {
     navigationRef.current = navigation;
   }, [navigation]);
 
-  // Track page view for TelemetryDeck
-  useEffect(() => {
-    // Send a signal whenever this screen is viewed
-    // signal("pageview", { screen: "Profile" });
-  }, []);
   const userId = route.params?.userId;
   const matchIdParam = route.params?.matchId;
   const [matchId, setMatchId] = useState<string | null>(matchIdParam ?? null);
-  const [matchLoading, setMatchLoading] = useState(false);
   const [unmatchLoading, setUnmatchLoading] = useState(false);
-
-  // Commented out: No longer checking for a valid matchId
-  // // Fetch matchId if not provided
-  // useEffect(() => {
-  //   if (!matchId && userId && currentUserId) {
-  //     setMatchLoading(true);
-  //     MatchService.getMatchId(currentUserId, userId)
-  //       .then((id) => setMatchId(id))
-  //       .catch((e) => {
-  //         console.error("Error fetching matchId in ProfileScreen:", e);
-  //       })
-  //       .finally(() => setMatchLoading(false));
-  //   }
-  // }, [matchId, userId, currentUserId]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -110,18 +87,12 @@ export default function ProfileScreen() {
         return;
       }
 
-      // Commented out: No longer checking for a valid match to fetch profile
-      // // Only fetch profile data if we have a valid match
-      // if (!matchId && !matchLoading) {
-      //   setLoading(false);
-      //   return;
-      // }
-
       try {
         const response = await UserService.getUserById(userId);
         if (response) {
           // Handle different response formats from Firebase
           let profileData = null;
+          let responseMatchId = null;
 
           if (response.firstName || (response as any).uid) {
             profileData = response as any;
@@ -130,6 +101,7 @@ export default function ProfileScreen() {
             ((response as any).user.firstName || (response as any).user.uid)
           ) {
             profileData = (response as any).user;
+            responseMatchId = (response as any).matchId;
           } else {
             console.error(
               "ProfileScreen - Invalid profile data format:",
@@ -141,6 +113,8 @@ export default function ProfileScreen() {
 
           if (profileData && profileData.firstName) {
             setProfile(profileData);
+            // Set matchId from the response, or use the one from route params if provided
+            setMatchId(matchId || responseMatchId);
             // Add a minimum loading time to prevent blank page flash
             setTimeout(() => {
               setLoading(false);
@@ -163,8 +137,7 @@ export default function ProfileScreen() {
     };
 
     fetchProfile();
-    // Commented out matchId, matchLoading from dependency array since they are not used
-  }, [userId]);
+  }, [userId, currentUserId, matchId]);
 
   // Fetch images with blur info - this ensures proper consent and blur levels
   useEffect(() => {
@@ -239,6 +212,7 @@ export default function ProfileScreen() {
         reportedUserId: userId,
         reportedUserEmail: profile.email,
         reportedUserName: profile.firstName,
+        matchId: matchId || undefined, // Pass matchId so ReportScreen can unmatch automatically
       });
     } catch (error) {
       console.error("❌ Navigation error:", error);
@@ -282,21 +256,20 @@ export default function ProfileScreen() {
     );
   };
 
-  // Commented out the return block for unmatched users
-  // // Show message when trying to view unmatched user's profile
-  // if (!matchId && !matchLoading) {
-  //   return (
-  //     <View style={{ flex: 1 }}>
-  //       <HeaderBack title="Profile" onBack={() => navigation.goBack()} />
-  //       <View style={styles.unmatchedContainer}>
-  //         <Text style={styles.unmatchedText}>
-  //           You are not allowed to view profiles of people you are no longer
-  //           connected with.
-  //         </Text>
-  //       </View>
-  //     </View>
-  //   );
-  // }
+  // Show message when trying to view unmatched user's profile
+  if (!matchId && !loading) {
+    return (
+      <View style={{ flex: 1 }}>
+        <HeaderBack title="Profile" onBack={() => navigation.goBack()} />
+        <View style={styles.unmatchedContainer}>
+          <Text style={styles.unmatchedText}>
+            You are not allowed to view profiles of people you are no longer
+            matched with.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   // Show loading screen for other loading states
   if (loading || !profile) {
@@ -447,7 +420,6 @@ export default function ProfileScreen() {
           <PersonalView profile={profile} showFlag={false} />
         </View>
 
-        {/* Unmatch Button at the bottom */}
         {matchId && (
           <View style={styles.unmatchContainer}>
             <Pressable
@@ -459,14 +431,14 @@ export default function ProfileScreen() {
               disabled={unmatchLoading}
             >
               {unmatchLoading ? (
-                <View style={styles.unmatchLoadingContainer}>
+                <View style={styles.buttonLoadingContainer}>
                   <ActivityIndicator size="small" color={Colors.secondary100} />
                   <Text style={styles.unmatchButtonTextFull}>
-                    Un-connecting...
+                    Unmatching...
                   </Text>
                 </View>
               ) : (
-                <Text style={styles.unmatchButtonTextFull}>Un-connect</Text>
+                <Text style={styles.unmatchButtonTextFull}>Unmatch</Text>
               )}
             </Pressable>
           </View>
@@ -491,12 +463,6 @@ const styles = StyleSheet.create({
   fullImage: {
     width: windowWidth,
     height: windowWidth,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: Colors.secondary100,
   },
   reportButton: {
     marginRight: 15,
@@ -528,6 +494,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.secondary100,
   },
   unmatchButtonFull: {
+    flex: 1,
     backgroundColor: Colors.strongRed,
     paddingVertical: 16,
     borderRadius: 8,
@@ -538,7 +505,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  unmatchLoadingContainer: {
+  buttonLoadingContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,

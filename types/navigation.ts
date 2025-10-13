@@ -12,17 +12,10 @@ export type RootStackParamList = {
     reportedUserName?: string;
     matchId?: string;
   };
-  StudyGroupConnections: {
-    channelId: string;
-    memberIds: string[];
-  };
 };
 
 export type AuthStackParamList = {
   SignIn: undefined;
-  CreateAccount: {
-    email?: string;
-  };
   EmailVerification: {
     email: string;
     fromSignIn?: boolean;

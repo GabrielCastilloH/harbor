@@ -2,7 +2,7 @@
   "expo": {
     "name": "harbor",
     "slug": "harbor",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -28,7 +28,8 @@
         "NSMicrophoneUsageDescription": "Harbor needs access to your microphone for voice messages in chat.",
         "CFBundleDisplayName": "Harbor",
         "CFBundleName": "Harbor",
-        "CFBundleShortVersionString": "1.1.0"
+        "CFBundleShortVersionString": "1.2.0",
+        "GIDClientID": "838717009645-na9797ln0flr27gjcgcul6jue999r8eh.apps.googleusercontent.com"
       },
       "appleTeamId": "V45GUPHT93"
     },
@@ -86,7 +87,14 @@
         }
       ],
       "@react-native-firebase/app",
-      "@react-native-firebase/messaging"
+      "@react-native-firebase/messaging",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.838717009645-na9797ln0flr27gjcgcul6jue999r8eh"
+        }
+      ],
+      "expo-localization"
     ],
     "extra": {
       "eas": {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,38 +8,74 @@ import {
   Alert,
   Linking,
   Platform,
-  KeyboardAvoidingView,
-  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, CommonActions } from "@react-navigation/native";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 import LoadingScreen from "../components/LoadingScreen";
-import EmailInput from "../components/EmailInput";
-import PasswordInput from "../components/PasswordInput";
-import {
-  signInWithEmailAndPassword,
-  sendPasswordResetEmail,
-} from "firebase/auth";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { preloadChatCredentials } from "../util/chatPreloader";
-import { AuthService } from "../networking/AuthService";
-import { UserService } from "../networking/UserService";
-import { streamNotificationService } from "../util/streamNotifService";
+import {
+  preloadChatCredentials,
+  clearChatCredentials,
+} from "../util/chatPreloader";
 
-export default function SignIn({ navigation }: any) {
-  const nav = useNavigation();
-  const { isAuthenticated, currentUser, userId } = useAppContext();
-
+export default function SignIn() {
+  // --- ALL HOOKS MUST BE AT THE TOP ---
+  const {
+    isAuthenticated,
+    currentUser,
+    userId,
+    setUserId,
+    setProfile,
+    setStreamApiKey,
+    setStreamUserToken,
+  } = useAppContext();
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingDeleted, setIsCheckingDeleted] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [emailError, setEmailError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
+  const [isNewUser, setIsNewUser] = useState(false);
+  const [signInSuccessful, setSignInSuccessful] = useState(false);
 
+  // Only clean up auth state if user is not already authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      const cleanupAuth = async () => {
+        try {
+          // Sign out from Google Sign-In
+          await GoogleSignin.signOut();
+
+          // Sign out from Firebase Auth
+          await signOut(auth);
+
+          // Clear app context state
+          setUserId(null);
+          setProfile(null);
+          setStreamApiKey(null);
+          setStreamUserToken(null);
+
+          // Clear stored data from AsyncStorage
+          await AsyncStorage.multiRemove(["@streamApiKey", "@streamUserToken"]);
+
+          // Clear chat credentials
+          await clearChatCredentials();
+        } catch (error) {
+          console.error("❌ [SIGN IN] Error during cleanup:", error);
+        }
+      };
+
+      cleanupAuth();
+    }
+  }, [
+    isAuthenticated,
+    setUserId,
+    setProfile,
+    setStreamApiKey,
+    setStreamUserToken,
+  ]);
+
+  // --- CONDITIONAL RETURNS AFTER ALL HOOKS ---
   // If user is already authenticated or has a current user, don't show SignIn screen
   if (isAuthenticated || currentUser) {
     return null;
@@ -50,355 +86,118 @@ export default function SignIn({ navigation }: any) {
     return null;
   }
 
-  const validateForm = (): boolean => {
-    let isValid = true;
-
-    // Clear previous errors
-    setEmailError("");
-    setPasswordError("");
-
-    // Validate email
-    if (!email.trim()) {
-      setEmailError("Email is required");
-      isValid = false;
-    } else {
-      // Reject emails with + symbols to prevent alias abuse
-      if (email.includes("+")) {
-        setEmailError("Email addresses with + symbols are not allowed");
-        isValid = false;
-      } else {
-        // Reject emails with periods in the username to prevent duplicate accounts
-        const [localPart] = email.split("@");
-        if (localPart && localPart.includes(".")) {
-          setEmailError("Email addresses with periods are not allowed");
-          isValid = false;
-        } else {
-          const emailRegex = /^[^\s@]+@cornell\.edu$/i;
-          if (!emailRegex.test(email)) {
-            setEmailError("Please enter a valid Cornell email address");
-            isValid = false;
-          }
-        }
-      }
-    }
-
-    // Validate password
-    if (!password.trim()) {
-      setPasswordError("Password is required");
-      isValid = false;
-    }
-
-    return isValid;
-  };
-
-  // Normalize email by removing + alias part and periods
-  const normalizeEmail = (email: string): string => {
-    const [localPart, domain] = email.split("@");
-    const normalizedLocalPart = localPart.split("+")[0].replace(/\./g, ""); // Remove everything after + and all periods
-    return `${normalizedLocalPart}@${domain}`.toLowerCase();
-  };
-
-  const handleSignIn = async () => {
-    if (!validateForm()) {
+  const handleExistingUser = async (userData: any) => {
+    // Guard against running this when user is already authenticated
+    if (isAuthenticated || currentUser) {
       return;
     }
 
-    setIsCheckingDeleted(false); // Reset checking state
-    const normalizedEmail = normalizeEmail(email.trim());
+    // Additional guard: if userId is already set in context, don't override it
+    if (userId && userId.trim() !== "") {
+      return;
+    }
 
     try {
-      // Sign in with Firebase Auth directly
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        normalizedEmail,
-        password
-      );
+      // Pre-load chat credentials for existing users
+      const { apiKey, userToken } = await preloadChatCredentials(userData.uid);
 
-      // Only set loading to true AFTER successful authentication
-      setIsLoading(true);
-      const user = userCredential.user;
-
-      // Force token refresh to get accurate verification status
-      await user.reload();
-
-      // Check if email is verified
-      if (!user.emailVerified) {
-        // Email not verified - redirect to verification screen
-        (nav as any).dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [
-              {
-                name: "EmailVerification",
-                params: {
-                  email: normalizedEmail,
-                  fromSignIn: true,
-                },
-              },
-            ],
-          })
-        );
-        return;
-      }
-
-      // Check if this email belongs to a deleted account
-      try {
-        const deletedCheck = await UserService.checkDeletedAccount(
-          normalizedEmail
-        );
-        if (deletedCheck.isDeleted) {
-          // Show the deleted account screen
-          (nav as any).dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [{ name: "DeletedAccount" }],
-            })
-          );
-          return;
-        }
-      } catch (error) {
-        console.error("Error checking deleted account:", error);
-        // Continue with sign-in if check fails
-      }
-
-      // Email is verified - proceed with sign in
-      try {
-        // Pre-load chat credentials for existing users
-        await preloadChatCredentials(user.uid);
-      } catch (error) {
-        // Don't block sign-in if chat pre-loading fails
-        // This could happen if the user profile doesn't exist yet
-        console.error("Failed to pre-load chat credentials:", error);
-      }
-
-      // Save FCM token for existing users
-      try {
-        await streamNotificationService.saveUserToken(user.uid);
-      } catch (error) {
-        // Don't block sign-in if FCM token saving fails
-        console.error("Failed to save FCM token:", error);
-      }
-    } catch (error: any) {
-      console.error("❌ [SIGN IN] Sign-in error:", error);
-
-      // Check for deleted account when user not found
-      if (
-        error.code === "auth/user-not-found" ||
-        error.code === "auth/invalid-credential"
-      ) {
-        setIsCheckingDeleted(true);
-        try {
-          const deletedCheck = await UserService.checkDeletedAccount(
-            normalizedEmail
-          );
-          if (deletedCheck.isDeleted) {
-            // Show the deleted account screen
-            (nav as any).dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [{ name: "DeletedAccount" }],
-              })
-            );
-            return;
-          }
-        } catch (deletedCheckError) {
-          console.error("Error checking deleted account:", deletedCheckError);
-          // Continue with normal error handling if check fails
-        } finally {
-          setIsCheckingDeleted(false);
-        }
-      }
-
-      let errorMessage = "Failed to sign in. Please try again.";
-      let errorTitle = "Sign In Error";
-
-      if (error.code === "auth/user-not-found") {
-        errorMessage = "No account found with this email address";
-      } else if (error.code === "auth/wrong-password") {
-        errorMessage = "Incorrect password";
-      } else if (error.code === "auth/invalid-email") {
-        errorMessage = "Please enter a valid Cornell email address";
-      } else if (error.code === "auth/invalid-credential") {
-        errorTitle = "Invalid Email or Password";
-        errorMessage =
-          "Please try again, create a new account, or click 'Forgot Password' to reset your password.";
-      }
-
-      Alert.alert(errorTitle, errorMessage);
-    } finally {
-      setIsLoading(false);
+      // Update context with pre-loaded credentials
+      setStreamApiKey(apiKey);
+      setStreamUserToken(userToken);
+    } catch (error) {
+      // Don't block sign-in if chat pre-loading fails
     }
+
+    // Don't set authentication state here - let AppContext handle it
+    // The GoogleSignInButton will trigger Firebase Auth, which will trigger AppContext
+    setSignInSuccessful(true);
+    setIsLoading(false);
   };
 
-  const handleForgotPassword = () => {
-    if (!email.trim()) {
-      Alert.alert("Forgot Password", "Please enter your email address first");
+  const handleNewUser = (user: any) => {
+    // Guard against running this when user is already authenticated
+    if (isAuthenticated || currentUser) {
       return;
     }
 
-    // Reject emails with + symbols to prevent alias abuse
-    if (email.includes("+")) {
-      Alert.alert(
-        "Forgot Password",
-        "Email addresses with + symbols are not allowed"
-      );
-      return;
-    }
+    // Handle new user - the AppContext will detect the new user and navigate to account setup
+    // Don't pre-load chat credentials for new users since they need to complete setup first
+    setSignInSuccessful(true);
+    setIsNewUser(true);
+    // Don't set authentication state here - let AppContext handle it
+    setIsLoading(false);
+  };
 
-    // Reject emails with periods in the username to prevent duplicate accounts
-    const [localPart] = email.split("@");
-    if (localPart && localPart.includes(".")) {
-      Alert.alert(
-        "Forgot Password",
-        "Email addresses with periods are not allowed"
-      );
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@cornell\.edu$/i;
-    if (!emailRegex.test(email)) {
-      Alert.alert(
-        "Forgot Password",
-        "Please enter a valid Cornell email address"
-      );
-      return;
-    }
-
-    const normalizedEmail = normalizeEmail(email.trim());
-
+  const handleError = (error: any) => {
+    console.error("❌ [SIGN IN] Sign-in error:", error);
+    setIsLoading(false);
     Alert.alert(
-      "Reset Password",
-      `We'll send a password reset link to ${normalizedEmail}`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Send Reset Link",
-          onPress: async () => {
-            try {
-              // Use Firebase Auth's built-in password reset
-              await sendPasswordResetEmail(auth, normalizedEmail);
-              Alert.alert(
-                "Reset Link Sent",
-                "Check your email for a password reset link. Please wait around 2 minutes for it to arrive and be sure to check your spam folder as it will likely end up there."
-              );
-            } catch (error: any) {
-              console.error("Password reset error:", error);
-              Alert.alert(
-                "Error",
-                "Failed to send reset link. Please try again."
-              );
-            }
-          },
-        },
-      ]
+      "Sign In Error",
+      error.message || "Failed to sign in with Google"
     );
   };
 
-  const handleCreateAccount = () => {
-    (nav as any).navigate("CreateAccount", { email: email.trim() });
+  const handleSignInStart = () => {
+    setIsLoading(true);
+    setIsNewUser(false);
   };
 
-  if (isLoading && !isCheckingDeleted) {
-    return <LoadingScreen loadingText="Signing you in..." />;
+  const handleSignInComplete = () => {
+    setIsLoading(false);
+  };
+
+  if (isLoading) {
+    const loadingText = isNewUser
+      ? "Setting up your account..."
+      : "Signing you in...";
+
+    return <LoadingScreen loadingText={loadingText} />;
   }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.secondary100 }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.container}>
-            <View style={styles.logoContainer}>
-              <Image
-                tintColor={Colors.primary500}
-                source={require("../assets/logo.png")}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-            </View>
+      <View style={styles.container}>
+        <View style={styles.logoContainer}>
+          <Image
+            tintColor={Colors.primary500}
+            source={require("../assets/logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+        <Text style={styles.title}>Sign In</Text>
+        <Text style={styles.description}>
+          In order to use this app you must sign in/up with your Cornell email
+          via Google.
+        </Text>
 
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.description}>
-              Sign in with your Cornell email
-            </Text>
-
-            <View style={styles.formContainer}>
-              <EmailInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Enter your Cornell email"
-                error={emailError}
-                returnKeyType="next"
-                onSubmitEditing={() => {
-                  // Focus password input
-                }}
-              />
-
-              <PasswordInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Enter your password"
-                error={passwordError}
-                returnKeyType="done"
-                onSubmitEditing={handleSignIn}
-              />
-
-              <TouchableOpacity
-                style={[
-                  styles.signInButton,
-                  (isLoading || isCheckingDeleted) && styles.buttonDisabled,
-                ]}
-                onPress={handleSignIn}
-                disabled={isLoading || isCheckingDeleted}
-              >
-                <Text style={styles.signInButtonText}>
-                  {isCheckingDeleted
-                    ? "Checking account..."
-                    : isLoading
-                    ? "Signing in..."
-                    : "Sign In"}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.forgotPasswordButton}
-                onPress={handleForgotPassword}
-              >
-                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-              </TouchableOpacity>
-
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <TouchableOpacity
-                style={styles.createAccountButton}
-                onPress={handleCreateAccount}
-              >
-                <Text style={styles.createAccountText}>Create Account</Text>
-              </TouchableOpacity>
-            </View>
+        {/* Custom Button */}
+        {!isAuthenticated && !currentUser && !signInSuccessful && !userId && (
+          <View style={styles.buttonContainer}>
+            <GoogleSignInButton
+              onUserExists={handleExistingUser}
+              onNewUser={handleNewUser}
+              onError={handleError}
+              onSignInStart={handleSignInStart}
+              onSignInComplete={handleSignInComplete}
+              buttonText="Continue with Cornell"
+              buttonStyle={styles.button}
+              textStyle={styles.buttonText}
+              showCornellLogo={true}
+            />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
+        )}
+      </View>
       {/* Terms and Privacy Disclaimer */}
       <View style={styles.termsContainer}>
         <Text style={styles.termsText}>
-          By signing in you agree to our{" "}
+          By making an account you agree to our{" "}
           <Text
             style={styles.termsLink}
             onPress={() => {
               window.open
-                ? window.open("https://www.tryharbor.app/terms", "_blank")
-                : Linking.openURL("https://www.tryharbor.app/terms");
+                ? window.open("https://www.tryharbor.app/terms.html", "_blank")
+                : Linking.openURL("https://www.tryharbor.app/terms.html");
             }}
           >
             Terms of Service
@@ -408,8 +207,11 @@ export default function SignIn({ navigation }: any) {
             style={styles.termsLink}
             onPress={() => {
               window.open
-                ? window.open("https://www.tryharbor.app/privacy", "_blank")
-                : Linking.openURL("https://www.tryharbor.app/privacy");
+                ? window.open(
+                    "https://www.tryharbor.app/privacy.html",
+                    "_blank"
+                  )
+                : Linking.openURL("https://www.tryharbor.app/privacy.html");
             }}
           >
             Privacy Policy
@@ -422,9 +224,6 @@ export default function SignIn({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
-  },
   container: {
     flex: 1,
     backgroundColor: Colors.secondary100,
@@ -432,98 +231,51 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logoContainer: {
-    height: 100,
-    marginTop: Platform.OS === "ios" ? "10%" : "8%",
+    height: 120,
+    marginTop: Platform.OS === "ios" ? "45%" : "35%",
     justifyContent: "center",
   },
   logo: {
-    width: 120,
-    height: 120,
+    width: 150,
+    height: 150,
   },
   title: {
     fontSize: 32,
     fontWeight: "bold",
     color: Colors.primary500,
-    marginTop: Platform.OS === "ios" ? "5%" : "3%",
-    marginBottom: "2%",
+    marginTop: Platform.OS === "ios" ? "15%" : "8%",
+    marginBottom: Platform.OS === "ios" ? "5%" : "3%",
   },
   description: {
     fontSize: 18,
     color: Colors.primary500,
     textAlign: "center",
-    marginBottom: "6%",
+    marginBottom: Platform.OS === "ios" ? "10%" : "10%",
     paddingHorizontal: 20,
   },
-  formContainer: {
+  buttonContainer: {
     width: "100%",
     maxWidth: 300,
-    marginBottom: "3%",
   },
-  signInButton: {
-    backgroundColor: Colors.primary500,
-    paddingVertical: 16,
-    paddingHorizontal: 30,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-  },
-  signInButtonText: {
-    color: Colors.secondary100,
-    fontWeight: "600",
-    fontSize: 18,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  forgotPasswordButton: {
-    alignItems: "center",
-    marginTop: 16,
-  },
-  forgotPasswordText: {
-    color: Colors.primary500,
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  divider: {
+  button: {
     flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
-    maxWidth: 300,
-    marginTop: 15,
-    marginVertical: 10,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.secondary200,
-  },
-  dividerText: {
-    color: Colors.secondary500,
-    fontSize: 16,
-    marginHorizontal: 16,
-  },
-  createAccountButton: {
     backgroundColor: Colors.primary100,
-    paddingVertical: 16,
+    paddingVertical: 15,
     paddingHorizontal: 30,
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: Colors.primary500,
-    marginTop: 8,
   },
-  createAccountText: {
+  buttonText: {
     color: Colors.primary500,
-    fontWeight: "600",
-    fontSize: 16,
+    fontWeight: "500",
+    fontSize: 20,
   },
   termsContainer: {
     alignItems: "center",
-    marginVertical: 20,
-    paddingHorizontal: 20,
-    maxWidth: 300,
+    marginVertical: 20, // More space above and below
+    paddingHorizontal: 0,
+    maxWidth: 260,
     alignSelf: "center",
   },
   termsText: {

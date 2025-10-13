@@ -12,7 +12,6 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 - **Consent-based transitions**: Users must consent to continue chatting after 30 messages to see clearer photos
 - **Server-side blur processing**: Secure image processing with 80% server-side blur for privacy
 - **Seamless client animations**: Smooth blur transitions create engaging user experience
-- **Group match support**: Unified blur system works for both individual and group matches
 
 ### 💫 Smart Matching & Swiping
 
@@ -20,7 +19,6 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 - **Unified swipe system**: **Efficient daily swipe tracking using subcollections for optimal performance**
 - **Daily swipe limits**: **5 swipes per day for all users (premium features currently disabled)**
 - **Instant match detection**: Real-time matching when two users swipe right on each other
-- **Group formation**: Automatic group match creation when multiple users with same group size preferences match
 - **Swipe gesture controls**: Smooth card-based swiping with visual feedback
 
 ### 💬 Real-time Chat System
@@ -29,11 +27,11 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 - **Progressive unlock system**: Chat becomes available after matching, photos unlock through conversation
 - **Consent modals**: Built-in consent flow ensures both users want to continue chatting
 - **Channel freezing**: Automatic chat freeze when users unmatch or report
-- **Group chat support**: Multi-user chat channels for group matches
 
 ### 🔐 Security & Privacy
 
-- **Cornell email verification**: Custom 6-digit code system designed for university email systems
+- **Google Sign-In authentication**: Secure authentication through Google's verified system
+- **Cornell email validation**: Ensures only Cornell students can join the platform
 - **Image moderation**: Automated content screening for inappropriate images
 - **Report system**: Comprehensive reporting with automatic unmatching and chat freezing
 - **Account management**: Complete account deletion, banning, and deactivation systems
@@ -48,16 +46,15 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 
 ## ⚡ Swipe System Architecture
 
-Harbor implements a **subcollection-based swipe tracking system** that provides efficient daily swipe management and group formation capabilities.
+Harbor implements a **subcollection-based swipe tracking system** that provides efficient daily swipe management.
 
 ### Current Implementation
 
 #### 🚀 Performance Benefits
 
 - **Subcollection Organization**: Swipes stored in `/swipes/{userId}/outgoing/` and `/swipes/{userId}/incoming/` for efficient querying
-- **Counter-based Limits**: Daily swipe counts tracked in `/users/{userId}/counters/swipes` subcollection
+- **Counter-based Limits**: Daily swipe counts tracked in `/users/{userId}/swipeCounter/daily` subcollection
 - **Atomic Operations**: All swipe data updates happen in transactions, preventing race conditions
-- **Group Formation**: Automatic group match creation when multiple users with same group size preferences match
 
 #### 🔒 Data Consistency
 
@@ -69,7 +66,6 @@ Harbor implements a **subcollection-based swipe tracking system** that provides 
 #### 🏗️ Scalability Advantages
 
 - **Efficient Querying**: Subcollections allow for fast retrieval of user's swipe history
-- **Group Support**: System supports both individual (2-person) and group (3-4 person) matches
 - **Availability Tracking**: Index-based filtering prevents recommending users who are already in matches
 - **Future-Proof**: Framework ready for premium tiers and advanced features
 
@@ -105,17 +101,16 @@ Harbor implements a scalable **availability tracking system** that prevents user
 // User document in /users/{userId}
 {
   // ... other user fields
-  groupSize: 2,             // Preferred group size (2, 3, or 4)
   isActive: true,           // Account status (account enabled/disabled)
   isAvailable: true,        // Match availability (true = available to match, false = currently in a match)
   currentMatches: [],       // Array of active match IDs
 }
 
-// Swipe counter in /users/{userId}/counters/swipes
+// Swipe counter in /users/{userId}/swipeCounter/daily
 {
   count: 3,                 // Current day's swipe count
-  resetDate: timestamp,     // Last reset timestamp
-  updatedAt: timestamp,     // Last update timestamp
+  resetDate: Timestamp,     // Last reset timestamp (Firestore Timestamp)
+  updatedAt: Timestamp,     // Last update timestamp (Firestore Timestamp)
 }
 
 // Outgoing swipes in /swipes/{userId}/outgoing/{swipedUserId}
@@ -137,7 +132,7 @@ Harbor implements a scalable **availability tracking system** that prevents user
 
 ```typescript
 // Scheduled function runs daily to reset swipe counts
-export const resetDailySwipes = onSchedule("0 0 * * *", async () => {
+export const resetDailySwipes = onSchedule("0 10 * * *", async () => {
   // Reset all user swipe counters to 0
   // Send notifications to users who reached their limit
 });
@@ -157,6 +152,223 @@ await db.runTransaction(async (transaction) => {
 });
 ```
 
+## 🗄️ Database Schema
+
+Harbor uses **Firebase Firestore** as its primary database with a well-structured collection hierarchy designed for scalability and efficient querying.
+
+### Recent Schema Updates (October 2025)
+
+**Match Schema Simplification:**
+
+- Uses explicit `user1Id`/`user2Id` fields for clean 1-on-1 match queries
+- Uses explicit `user1Consented`/`user2Consented` booleans for consent tracking
+- Uses explicit `user1Viewed`/`user2Viewed` booleans for view tracking
+- Removed unnecessary `type` field (all matches are 1-on-1)
+- **Benefit**: Simpler queries, better performance, clearer code
+
+**Swipe Counter Simplification:**
+
+- Changed from `/users/{userId}/counters/swipes` to `/users/{userId}/swipeCounter/daily`
+- **Benefit**: Cleaner structure, single-purpose subcollection
+
+### Main Collections
+
+#### 📊 **users** Collection
+
+**Primary user profile data and account management**
+
+```typescript
+// Document: /users/{userId}
+{
+  // Profile Information
+  firstName: string;           // 1-11 characters
+  email: string;              // Cornell email only
+  age: number;                // 18+ years old
+  yearLevel: string;          // Freshman, Sophomore, Junior, Senior
+  major: string;              // 85+ major options
+  gender: string;             // Male, Female, Non-Binary
+  sexualOrientation: string;  // Heterosexual, Homosexual, Bisexual, Pansexual
+
+  // Profile Content
+  images: string[];           // Array of image filenames (3-6 images)
+  aboutMe: string;            // 5-180 characters
+  q1: string;                 // "Together we could" (5-100 chars)
+  q2: string;                 // "Favorite book, movie or song" (5-100 chars)
+  q3: string;                 // "Some of my hobbies are" (5-100 chars)
+
+  // Account Status
+  isActive: boolean;          // Account enabled/disabled (default: true)
+  isAvailable: boolean;       // Match availability (default: true, false when in active match)
+  currentMatches: string[];   // Array of active match IDs
+
+  // System Fields
+  paywallSeen: boolean;       // Premium feature tracking (disabled)
+  fcmToken?: string;          // Firebase Cloud Messaging token
+  expoPushToken?: string;     // Expo push notification token
+  availability: number;       // For matching algorithm (-1 default)
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+#### 🔄 **matches** Collection
+
+**Match records between two users**
+
+```typescript
+// Document: /matches/{matchId}
+{
+  user1Id: string;            // First user's ID
+  user2Id: string;            // Second user's ID
+  user1Consented: boolean;    // User 1's consent status
+  user2Consented: boolean;    // User 2's consent status
+  user1Viewed: boolean;       // User 1's view status
+  user2Viewed: boolean;       // User 2's view status
+  messageCount: number;       // Total messages in chat
+  isActive: boolean;          // Match status
+  matchDate: Timestamp;       // When match was created
+  consentMessageSent?: boolean; // Consent notification sent
+  introMessageSent?: boolean;   // Intro message sent
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+#### 👆 **swipes** Collection
+
+**Swipe tracking with subcollections for efficient querying**
+
+```typescript
+// Document: /swipes/{userId}/outgoing/{swipedUserId}
+{
+  direction: "left" | "right"; // Swipe direction
+  createdAt: Timestamp; // When swipe occurred
+}
+
+// Document: /swipes/{userId}/incoming/{swiperId}
+{
+  direction: "left" | "right"; // Swipe direction
+  createdAt: Timestamp; // When swipe occurred
+}
+```
+
+#### 📝 **reports** Collection
+
+**User reports for moderation**
+
+```typescript
+// Document: /reports/{reportId}
+{
+  reporterId: string; // ID of user making report
+  reporterEmail: string; // Email of reporter
+  reportedUserId: string; // ID of reported user
+  reportedUserEmail: string; // Email of reported user
+  reportedUserName: string; // Name of reported user
+  reason: string; // Report category
+  explanation: string; // Detailed explanation
+  status: "pending" | "resolved" | "dismissed";
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+```
+
+#### 🚫 **bannedAccounts** Collection
+
+**Banned user records**
+
+```typescript
+// Document: /bannedAccounts/{userId}
+{
+  bannedByEmail: string; // User's email at time of ban
+  unbanDate: Timestamp | null; // Ban expiration (null for permanent)
+  reason: string; // Internal ban reason
+  createdAt: Timestamp; // When ban was created
+}
+```
+
+#### 🗑️ **deletedAccounts** Collection
+
+**Deleted user tracking**
+
+```typescript
+// Document: /deletedAccounts/{userId}
+{
+  email: string; // User's email at time of deletion
+  deletedAt: Timestamp; // When account was deleted
+  deletedBy: string; // User ID who deleted account
+  firstName: string; // User's first name
+  lastName: string; // User's last name
+}
+```
+
+### Subcollections
+
+#### 📊 **users/{userId}/swipeCounter** Subcollection
+
+**Daily swipe count tracking**
+
+```typescript
+// Document: /users/{userId}/swipeCounter/daily
+{
+  count: number; // Current day's swipe count
+  resetDate: Timestamp; // Last reset timestamp (Firestore Timestamp)
+  updatedAt: Timestamp; // Last update timestamp (Firestore Timestamp)
+}
+```
+
+#### 🚫 **users/{userId}/blocked** Subcollection
+
+**User blocking system**
+
+```typescript
+// Document: /users/{userId}/blocked/{blockedUserId}
+{
+  blockedUserId: string;        // ID of blocked user
+  blockedAt: Timestamp;         // When user was blocked
+  reason: string;               // "manual_block" | "report_block"
+  matchId?: string;             // Optional match ID if blocking from match
+  reportId?: string;            // Optional report ID if blocking from report
+}
+```
+
+### Database Design Principles
+
+#### 🚀 **Performance Optimizations**
+
+- **Subcollection Architecture**: Swipes stored in `/swipes/{userId}/outgoing/` and `/swipes/{userId}/incoming/` for efficient querying
+- **Counter-based Limits**: Daily swipe counts tracked in `/users/{userId}/swipeCounter/daily` subcollection
+- **Index-based Filtering**: Availability status prevents recommending users in active matches
+- **Atomic Operations**: All critical operations use Firestore transactions
+
+#### 🔒 **Data Consistency**
+
+- **Transaction Safety**: Swipe count increments and limit checks happen atomically
+- **No Race Conditions**: Prevents users from exceeding limits during rapid swiping
+- **Automatic Reset**: Daily swipe counts reset automatically via scheduled function
+- **Match Prevention**: Users with active matches cannot swipe until match is resolved
+
+#### 🏗️ **Scalability Features**
+
+- **Efficient Querying**: Subcollections allow for fast retrieval of user's swipe history
+- **Availability Tracking**: Index-based filtering prevents recommending users who are already in matches
+- **Future-Proof**: Framework ready for premium tiers and advanced features
+- **Composite Indexes**: Support efficient multi-field queries (orientation + gender + availability)
+
+#### 🎯 **User Availability System**
+
+Harbor implements a scalable **availability tracking system** that prevents users currently in matches from being recommended to others:
+
+- **`isActive`**: Controls account status (enabled/disabled)
+- **`isAvailable`**: Controls match availability (defaults to `true` if not set)
+  - `true`: User is available for new matches
+  - `false`: User is currently in an active match
+
+**Automatic State Management**:
+
+- **Match Creation**: When users match, both/all participants are set to `isAvailable: false`
+- **Match Deletion**: When users unmatch, all participants are set to `isAvailable: true`
+- **Recommendation Filtering**: Only users with `isActive !== false` and `isAvailable !== false` are recommended
+
 ## 🏗️ Technical Architecture
 
 ### Frontend Stack
@@ -171,13 +383,12 @@ await db.runTransaction(async (transaction) => {
 
 ### Backend Services
 
-- **Firebase Authentication** with custom email verification
+- **Firebase Authentication** with Google Sign-In provider
 - **Cloud Firestore** for real-time data storage
 - **Firebase Cloud Functions** (Node.js 22) for backend logic
 - **Firebase Storage** for image hosting and processing
 - **Stream Chat** for messaging infrastructure
 - **Google Secret Manager** for secure API key storage
-- **Mailgun** for reliable email delivery
 
 ### Key Dependencies
 
@@ -199,9 +410,7 @@ await db.runTransaction(async (transaction) => {
 ```
 App.tsx (Main Navigator)
 ├── AuthStack (Unauthenticated)
-│   ├── SignIn
-│   ├── CreateAccount
-│   └── EmailVerification
+│   └── SignIn (Google Sign-In)
 ├── AccountSetup (First-time users)
 ├── BannedAccountScreen (Banned users)
 ├── DeletedAccountScreen (Deleted users)
@@ -214,32 +423,27 @@ App.tsx (Main Navigator)
     │   ├── ChatScreen
     │   ├── ProfileScreen
     │   ├── ReportScreen
-    │   └── StudyGroupConnectionsScreen
     └── SettingsTab (SettingsStack)
         ├── SettingsScreen
         ├── EditProfile
         ├── SelfProfile
-        └── GroupSizeScreen
 ```
 
 ### Core Screens
 
-- **HomeScreen**: Card-based swiping interface with recommendations and group formation
+- **HomeScreen**: Card-based swiping interface with recommendations
 - **ChatList**: List of active matches and conversations with unread count badges
 - **ChatScreen**: Real-time messaging with progressive photo reveal and consent modals
 - **ProfileScreen**: View other users' profiles with blur effects and reporting options
 - **AccountSetupScreen**: Onboarding flow for new users with progress tracking
-- **SettingsScreen**: App preferences, account management, and group size selection
+- **SettingsScreen**: App preferences and account management
 - **BannedAccountScreen**: Screen shown to banned users with appeal contact
 - **DeletedAccountScreen**: Screen shown to deleted users
-- **StudyGroupConnectionsScreen**: Group match management and connections
-- **GroupSizeScreen**: Group size preference selection (2, 3, or 4 people)
 
 ### Component Architecture
 
 - **AnimatedStack**: Gesture-based swiping with smooth animations
 - **ImageCarousel**: Profile photo viewer with blur transitions
-- **VerificationCodeInput**: Custom 6-digit code input for email verification
 - **MatchModal**: Celebration screen when users match
 - **SettingsButton**: Reusable settings interface component
 - **ClarityBar**: Visual progress indicator for photo reveal
@@ -251,10 +455,7 @@ App.tsx (Main Navigator)
 
 ### Authentication Functions (`authFunctions`)
 
-- **sendVerificationCode**: Sends 6-digit codes via Mailgun with 2-minute cooldown
-- **verifyVerificationCode**: Validates codes and marks emails as verified
-- **getVerificationCooldown**: Returns remaining cooldown time for verification requests
-- **signInWithEmail**: Custom sign-in flow with Firestore user checking
+- **signInWithEmail**: Custom sign-in flow with Firestore user checking (legacy - now uses Google Sign-In)
 
 ### Chat Functions (`chatFunctions`)
 
@@ -275,7 +476,7 @@ App.tsx (Main Navigator)
 
 ### Swipe Functions (`swipeFunctions`)
 
-- **createSwipe**: Records swipes, detects mutual matches, and handles group formation
+- **createSwipe**: Records swipes and detects mutual matches
 - **countRecentSwipes**: Fetches a user's daily swipe count from counters subcollection
 - **getSwipesByUser**: Retrieves all swipes made by a specific user
 - **savePushToken**: Saves Expo push tokens for notifications
@@ -284,8 +485,6 @@ App.tsx (Main Navigator)
 ### Match Functions (`matchFunctions`)
 
 - **createMatch**: Creates individual match records between two users
-- **createGroupMatch**: Creates group match records between multiple users
-- **getActiveMatches**: Retrieves all active matches for a user
 - **getUnviewedMatches**: Gets unviewed matches for showing match modals
 - **markMatchAsViewed**: Tracks when users view new matches
 - **unmatchUsers**: Deactivates matches and freezes chat channels
@@ -293,7 +492,6 @@ App.tsx (Main Navigator)
 - **getMatchId**: Finds match ID between two users
 - **updateConsent**: Updates user's consent status for continued chatting
 - **getConsentStatus**: Manages consent flow for continued chatting
-- **migrateMatchConsent**: Migrates old match documents to new consent schema
 - **incrementMatchMessages**: Increments message count for matches
 
 ### Recommendation Functions (`recommendationsFunctions`)
@@ -327,144 +525,52 @@ App.tsx (Main Navigator)
 
 - **getSuperwallApiKeys**: Provides Superwall API keys for premium features (currently disabled)
 
-## 🔐 Authentication & Email Verification Flow
+## 🔐 Authentication & Google Sign-In Flow
 
-Harbor uses Firebase Auth with a **custom code-based email verification system** that replaces Firebase's default link-based verification. This system is specifically designed to work with university email systems that pre-fetch verification links.
+Harbor uses **Google Sign-In** for streamlined authentication, eliminating the need for email verification codes and providing a seamless user experience.
 
-### Flow Logic
+### Current Authentication Flow
 
-The app has 6 distinct authentication states handled in `App.tsx`:
+The app has 4 distinct authentication states handled in `App.tsx`:
 
-1. **User signed in but email NOT verified** → `EmailVerificationScreen`
-2. **User verified but NO profile in database** → `AccountSetupScreen`
-3. **User verified AND has profile** → Main App (`TabNavigator`)
-4. **User not signed in** → Auth screens (`SignIn`/`CreateAccount`)
-5. **User account deleted** → `DeletedAccountScreen`
-6. **User account banned** → `BannedAccountScreen`
+1. **User not signed in** → Auth screens (`SignIn` with Google Sign-In)
+2. **User signed in but NO profile in database** → `AccountSetupScreen`
+3. **User signed in AND has profile** → Main App (`TabNavigator`)
+4. **User account deleted** → `DeletedAccountScreen`
+5. **User account banned** → `BannedAccountScreen`
 
-### Email Verification System
+### Google Sign-In Implementation
 
 #### Overview
 
-Instead of using Firebase's built-in email verification links, Harbor implements a custom verification system using:
+Harbor implements Google Sign-In using:
 
-- **6-digit verification codes** sent via email
-- **5-minute expiration** for security
-- **Mailgun integration** for reliable email delivery
-- **Google Secret Manager** for secure API key storage
+- **Firebase Auth Google provider** for secure authentication
+- **Automatic email verification** through Google's verified email system
+- **Seamless user experience** with one-tap sign-in
+- **Cornell email validation** to ensure only Cornell students can join
 
-#### Complete Verification Flow
+#### Authentication Flow
 
-1. **User Signs Up** (`CreateAccountScreen.tsx`)
-
-   ```typescript
-   // 1. Create user with Firebase Auth
-   const userCredential = await createUserWithEmailAndPassword(
-     auth,
-     email,
-     password
-   );
-
-   // 2. User automatically navigated to EmailVerificationScreen
-   // 3. No manual email sending - handled by EmailVerificationScreen
-   ```
-
-2. **Code Generation & Sending** (`EmailVerificationScreen.tsx`)
+1. **User Signs In** (`SignIn.tsx`)
 
    ```typescript
-   // Screen loads → automatically calls sendVerificationCode Firebase Function
-   useEffect(() => {
-     if (currentUser && !initialEmailSent) {
-       handleResendEmail(true); // Send initial verification code
-       setInitialEmailSent(true);
-     }
-   }, [currentUser, initialEmailSent]);
-   ```
-
-3. **Backend Code Processing** (`functions/src/auth/emailVerification.ts`)
-
-   ```typescript
-   // Generate 6-digit code
-   const code = Math.floor(100000 + Math.random() * 900000).toString();
-   const expiresAt =
-     admin.firestore.Timestamp.now().toMillis() + 10 * 60 * 1000;
-
-   // Store in Firestore
-   await db.collection("verificationCodes").doc(userId).set({
-     code,
-     email,
-     expiresAt,
-     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-   });
-
-   // Send via Mailgun
-   const msg = {
-     from: `Harbor <noreply@tryharbor.app>`,
-     subject: "Your Harbor Verification Code",
-     html: `<div>Your verification code is: <h2>${code}</h2></div>`,
+   // Google Sign-In button triggers authentication
+   const handleGoogleSignIn = async () => {
+     const result = await GoogleSignin.signIn();
+     const googleCredential = GoogleAuthProvider.credential(result.idToken);
+     return signInWithCredential(auth, googleCredential);
    };
-   await mg.messages.create(domain, msg);
    ```
 
-4. **User Enters Code** (`EmailVerificationScreen.tsx`)
+2. **Automatic Profile Creation**
 
-   ```typescript
-   // Modern 6-box input UI with paste functionality
-   <VerificationCodeInput
-     value={verificationCode}
-     onChangeText={setVerificationCode}
-     maxLength={6}
-   />
-   ```
+   - User is automatically redirected to `AccountSetupScreen` if no profile exists
+   - Profile creation process begins immediately after successful authentication
 
-5. **Code Verification** (`functions/src/auth/emailVerification.ts`)
-
-   ```typescript
-   // Verify code against Firestore
-   const doc = await db.collection("verificationCodes").doc(userId).get();
-   const storedData = doc.data();
-
-   if (storedData?.code === code && storedData?.expiresAt > now) {
-     // Mark email as verified using Firebase Admin SDK
-     await admin.auth().updateUser(userId, { emailVerified: true });
-     await doc.ref.delete(); // Clean up used code
-     return { success: true };
-   } else if (storedData?.expiresAt < now) {
-     // Code expired - delete and require new code
-     await doc.ref.delete();
-     throw new functions.https.HttpsError("unauthenticated", "Code expired");
-   } else {
-     // Incorrect code - keep code active for retry
-     throw new functions.https.HttpsError("unauthenticated", "Incorrect code");
-   }
-   ```
-
-6. **Access Granted**
-   - Once verified, app automatically navigates to `AccountSetupScreen`
-   - User can now access full app features
-
-#### Security Features
-
-- **6-digit codes** with 10-minute expiration
-- **One-time use** (deleted after verification)
-- **Server-side verification** (cannot be bypassed)
-- **Mailgun integration** with verified domain (`tryharbor.app`)
-- **Google Secret Manager** for secure API key storage
-- **Forgiving verification** (codes stay active for typos)
-
-#### Cooldown & Rate Limiting
-
-- **2-minute cooldown** enforced on both frontend and backend
-- **Server-side protection** against abuse (cannot be bypassed)
-- **Real-time countdown** showing remaining time
-- **Smart button states** (disabled during cooldown)
-- **Graceful error handling** for cooldown violations
-
-#### Cornell Email Validation
-
-- **Frontend validation**: Explicit rejection of emails containing `+` symbols
-- **Backend normalization**: Strip `+` aliases in Cloud Functions (when needed)
-- **Domain enforcement**: Only `@cornell.edu` emails accepted
+3. **Access Granted**
+   - Once profile is complete, user can access full app features
+   - No additional verification steps required
 
 ## 🚫 Account Management & Banning System
 
@@ -583,7 +689,6 @@ All fields must be completed before profile creation:
 - **Sexual Orientation**: Must select from dropdown (Heterosexual, Homosexual, Bisexual, Pansexual)
 - **Year Level**: Must select from dropdown (Freshman, Sophomore, Junior, Senior)
 - **Major**: Must select from dropdown (85+ options)
-- **Group Size**: Must select from dropdown (2, 3, or 4 people)
 
 #### Text Field Limits
 
@@ -612,7 +717,6 @@ export type Profile = {
   q1: string; // "Together we could:"
   q2: string; // "Favorite book, movie or song:"
   q3: string; // "Some of my hobbies are:"
-  groupSize: number; // 2, 3, or 4
   availability: number; // For matching algorithm
   currentMatches?: string[];
   paywallSeen?: boolean;
@@ -629,7 +733,7 @@ export type Profile = {
 
 ### Core Design Philosophy
 
-The app uses a **unified progressive blur system** that works for both individual and group matches, creating intrigue while maintaining privacy:
+The app uses a **progressive blur system** that creates intrigue while maintaining privacy:
 
 #### Phase 1: Pre-Consent (Theatrical Reveal)
 
@@ -652,7 +756,7 @@ The app uses a **unified progressive blur system** that works for both individua
 ```typescript
 export const BLUR_CONFIG = {
   SERVER_BLUR_PERCENT: 80, // Server-side blur for _blurred.jpg
-  CLIENT_MAX_BLUR_RADIUS: 50, // Max React Native blur radius
+  CLIENT_MAX_BLUR_RADIUS: 40, // Max React Native blur radius
   MESSAGES_TO_CLEAR_BLUR: 30, // Phase 1: 100% → 0% fake unblur
   MESSAGES_TO_CLEAR_ORIGINAL: 10, // Phase 2: 80% → 0% real unblur
 };
@@ -689,31 +793,21 @@ export function getClientBlurLevel({
     return percentageToBlurRadius(blurPercent);
   }
 }
-
-// Group-specific blur calculation
-export function getGroupClientBlurLevel({
-  messageCount,
-  allMembersConsented,
-}: {
-  messageCount: number;
-  allMembersConsented: boolean;
-}): number {
-  // Similar logic but requires ALL group members to consent
-}
 ```
 
 ### Consent State Management
 
-#### Unified Match Document Structure
+#### Match Document Structure (Optimized for 1-on-1 Matches)
 
 ```typescript
 interface Match {
-  type: "individual" | "group";
-  participantIds: string[]; // Unified field for both individual and group matches
-  memberIds?: string[]; // For group matches only
-  groupSize?: number; // For group matches only
-  participantConsent: Record<string, boolean>; // Unified consent tracking
-  participantViewed: Record<string, boolean>; // Unified view tracking
+  type: "individual";
+  user1Id: string; // First user's ID
+  user2Id: string; // Second user's ID
+  user1Consented: boolean; // User 1's consent status
+  user2Consented: boolean; // User 2's consent status
+  user1Viewed: boolean; // User 1's view status
+  user2Viewed: boolean; // User 2's view status
   messageCount: number;
   isActive: boolean;
   matchDate: Timestamp;
@@ -728,13 +822,15 @@ interface Match {
 
 The `matchFunctions-getConsentStatus` callable returns:
 
-- `participantIds` (unified for both individual and group matches)
-- `participantConsent` (unified consent map)
-- `bothConsented` (for individual) / `allMembersConsented` (for group)
+- `user1Id` (first user's ID)
+- `user2Id` (second user's ID)
+- `user1Consented` (user 1's consent status)
+- `user2Consented` (user 2's consent status)
+- `bothConsented` (true when both users have consented)
 - `messageCount`
-- `shouldShowConsentScreen` (true when `messageCount >= threshold` and not all consented)
+- `shouldShowConsentScreen` (true when `messageCount >= threshold` and not both consented)
 - `shouldShowConsentForUser` (per-user modal visibility)
-- `state` ("none_consented" | "one_consented" | "both_consented" | "all_consented")
+- `state` ("none_consented" | "one_consented" | "both_consented")
 
 #### Client Detection Flow
 
@@ -742,7 +838,6 @@ The `matchFunctions-getConsentStatus` callable returns:
 2. **Consent Checking**: After each message, calls `getConsentStatus(matchId)`
 3. **Modal Display**: Shows consent modal only when user's `shouldShowConsentForUser` is true
 4. **Channel Management**: Freezes chat until all participants consent when threshold reached
-5. **Group Support**: For group matches, requires ALL members to consent before Phase 2 begins
 
 ## 🔔 Push Notifications System
 
@@ -902,6 +997,93 @@ export const getFeatureConfig = (isPremium: boolean): FeatureConfig => {
 - **Ban enforcement**: Comprehensive blocking of banned users
 - **Consent system**: Progressive photo reveal requires explicit user consent
 
+## ⚠️ Potential Security Breaches
+
+### Critical Security Concerns
+
+#### 1. **Original Image Access Without Consent**
+
+- **Risk**: Users could potentially access `_original.jpg` images without proper consent validation
+- **Location**: `functions/src/images/images.ts` - `getImages` function
+- **Mitigation**: Function properly validates match existence and consent status before serving original images
+- **Status**: ✅ **SECURE** - Consent validation is enforced server-side
+
+#### 2. **Email Address Exposure in Matches**
+
+- **Risk**: User emails could be exposed to matched users, allowing identity discovery
+- **Location**: `functions/src/users/users.ts` - `getUserById` function
+- **Mitigation**: Email addresses are explicitly filtered out from user data responses
+- **Code**: `const { images, email, ...userDataWithoutSensitiveInfo } = userData;`
+- **Status**: ✅ **SECURE** - Emails are never returned in user lookups
+
+#### 3. **Unauthorized User Data Access**
+
+- **Risk**: Users could access other users' profile data without proper authorization
+- **Location**: Multiple functions including `getUserById`, `getRecommendations`
+- **Mitigation**: All functions require authentication and validate user permissions
+- **Status**: ✅ **SECURE** - Authentication required for all data access
+
+#### 4. **Image Bypass Through Direct Storage Access**
+
+- **Risk**: Users could potentially access images directly through Firebase Storage URLs
+- **Location**: `storage.rules` and image serving functions
+- **Mitigation**: Images are served through signed URLs with expiration, not direct access
+- **Status**: ✅ **SECURE** - All image access goes through Cloud Functions with consent validation
+
+#### 5. **Match Data Manipulation**
+
+- **Risk**: Users could potentially manipulate match consent or view status
+- **Location**: `functions/src/matches/matches.ts` - consent and view functions
+- **Mitigation**: Firestore security rules restrict updates to only consent/view fields for authenticated users
+- **Status**: ✅ **SECURE** - Limited update permissions enforced
+
+#### 6. **Recommendation Data Leakage**
+
+- **Risk**: Sensitive user data could be exposed in recommendation responses
+- **Location**: `functions/src/recommendations/recommendations.ts`
+- **Mitigation**: Email addresses and images are filtered out from recommendation responses
+- **Code**: `const { images, email, ...userDataWithoutSensitiveInfo } = userData;`
+- **Status**: ✅ **SECURE** - Sensitive data filtered from recommendations
+
+#### 7. **Report System Abuse**
+
+- **Risk**: Users could potentially access reported user emails or sensitive data
+- **Location**: `functions/src/reports/reports.ts`
+- **Mitigation**: Reports only store necessary data, emails are fetched securely from Firebase Auth
+- **Status**: ✅ **SECURE** - Limited data exposure in reports
+
+#### 8. **Authentication Bypass**
+
+- **Risk**: Unauthenticated users could access protected functions
+- **Location**: All Cloud Functions
+- **Mitigation**: Every function checks `request.auth` and throws `unauthenticated` error if missing
+- **Status**: ✅ **SECURE** - Authentication required for all functions
+
+#### 9. **Account Status Bypass**
+
+- **Risk**: Banned or deleted users could access the app
+- **Location**: `App.tsx` authentication flow and Firestore security rules
+- **Mitigation**: Multiple layers of protection including client-side checks and server-side rules
+- **Status**: ✅ **SECURE** - Account status enforced at multiple levels
+
+#### 10. **Cross-User Data Access**
+
+- **Risk**: Users could access data from users they're not matched with
+- **Location**: `functions/src/images/images.ts` - `getImages` function
+- **Mitigation**: Function validates active match existence before serving any user data
+- **Code**: `if (!hasValidMatch) { throw new functions.https.HttpsError("permission-denied", "No active match found between users"); }`
+- **Status**: ✅ **SECURE** - Match validation enforced
+
+### Security Architecture Strengths
+
+- **Multi-layer validation**: Authentication, authorization, and data filtering at multiple levels
+- **Server-side enforcement**: All security checks happen in Cloud Functions, not client-side
+- **Firestore security rules**: Additional layer of protection at database level
+- **Consent-based access**: Progressive photo reveal requires explicit user consent
+- **Data minimization**: Only necessary data is exposed in API responses
+- **Signed URL system**: Images served through time-limited signed URLs
+- **Comprehensive logging**: All security events are logged for monitoring
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -972,8 +1154,6 @@ export const getFeatureConfig = (isPremium: boolean): FeatureConfig => {
 - **Premium subscription system**: Reactivate Superwall integration for paid features
 - **Enhanced matching**: Ability to see profiles that swiped on you
 - **Advanced filters**: Additional matching criteria and preferences
-- **Social features**: Group activities and events for Cornell students
-- **Group match improvements**: Enhanced group formation algorithms
 - **Availability matching**: More sophisticated compatibility scoring
 
 ### Technical Improvements
@@ -1024,7 +1204,6 @@ harbor/
 ├── components/             # Reusable UI components
 │   ├── AnimatedStack.tsx   # Gesture-based swiping component
 │   ├── ImageCarousel.tsx   # Profile photo viewer with blur transitions
-│   ├── VerificationCodeInput.tsx # Custom 6-digit code input
 │   ├── ClarityBar.tsx      # Visual progress indicator for photo reveal
 │   ├── DataPicker.tsx      # Custom picker components
 │   ├── NotificationHandler.tsx # Push notification management
@@ -1042,10 +1221,10 @@ harbor/
 │       ├── auth/          # Authentication functions
 │       ├── chat/          # Stream Chat integration
 │       ├── images/        # Image processing and moderation
-│       ├── matches/       # Match management (individual & group)
+│       ├── matches/       # Match management
 │       ├── recommendations/ # User recommendations with availability matching
 │       ├── reports/       # Reporting and blocking system
-│       ├── swipes/        # Swipe handling and group formation
+│       ├── swipes/        # Swipe handling
 │       ├── superwall/     # Premium features (disabled)
 │       └── users/         # User management and account operations
 ├── hooks/                 # Custom React hooks
@@ -1071,8 +1250,6 @@ harbor/
 │   ├── ProfileScreen.tsx  # View other users' profiles
 │   ├── AccountSetupScreen.tsx # Onboarding flow
 │   ├── SettingsScreen.tsx # App preferences and account management
-│   ├── GroupSizeScreen.tsx # Group size preference selection
-│   ├── StudyGroupConnectionsScreen.tsx # Group match management
 │   ├── BannedAccountScreen.tsx # Banned user screen
 │   ├── DeletedAccountScreen.tsx # Deleted user screen
 │   └── ReportScreen.tsx   # User reporting interface
@@ -1085,6 +1262,268 @@ harbor/
     ├── SocketService.tsx # WebSocket management
     └── streamNotifService.ts # Stream Chat notifications
 ```
+
+---
+
+## 📦 Archived: Previous Email Verification System
+
+**⚠️ IMPORTANT: This section documents the previous email verification system that has been replaced with Google Sign-In. This content is preserved for potential future reference but is no longer active in the current codebase.**
+
+### Previous Email Verification System (Archived)
+
+Harbor previously used Firebase Auth with a **custom code-based email verification system** that replaced Firebase's default link-based verification. This system was specifically designed to work with university email systems that pre-fetch verification links.
+
+#### Archived Flow Logic
+
+The app previously had 6 distinct authentication states handled in `App.tsx`:
+
+1. **User signed in but email NOT verified** → `EmailVerificationScreen`
+2. **User verified but NO profile in database** → `AccountSetupScreen`
+3. **User verified AND has profile** → Main App (`TabNavigator`)
+4. **User not signed in** → Auth screens (`SignIn`/`CreateAccount`)
+5. **User account deleted** → `DeletedAccountScreen`
+6. **User account banned** → `BannedAccountScreen`
+
+#### Archived Email Verification System
+
+Instead of using Firebase's built-in email verification links, Harbor previously implemented a custom verification system using:
+
+- **6-digit verification codes** sent via email
+- **5-minute expiration** for security
+- **Mailgun integration** for reliable email delivery
+- **Google Secret Manager** for secure API key storage
+
+#### Archived Verification Flow
+
+1. **User Signs Up** (`CreateAccountScreen.tsx`)
+
+   ```typescript
+   // 1. Create user with Firebase Auth
+   const userCredential = await createUserWithEmailAndPassword(
+     auth,
+     email,
+     password
+   );
+
+   // 2. User automatically navigated to EmailVerificationScreen
+   // 3. No manual email sending - handled by EmailVerificationScreen
+   ```
+
+2. **Code Generation & Sending** (`EmailVerificationScreen.tsx`)
+
+   ```typescript
+   // Screen loads → automatically calls sendVerificationCode Firebase Function
+   useEffect(() => {
+     if (currentUser && !initialEmailSent) {
+       handleResendEmail(true); // Send initial verification code
+       setInitialEmailSent(true);
+     }
+   }, [currentUser, initialEmailSent]);
+   ```
+
+3. **Backend Code Processing** (`functions/src/auth/emailVerification.ts`)
+
+   ```typescript
+   // Generate 6-digit code
+   const code = Math.floor(100000 + Math.random() * 900000).toString();
+   const expiresAt =
+     admin.firestore.Timestamp.now().toMillis() + 10 * 60 * 1000;
+
+   // Store in Firestore
+   await db.collection("verificationCodes").doc(userId).set({
+     code,
+     email,
+     expiresAt,
+     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+   });
+
+   // Send via Mailgun
+   const msg = {
+     from: `Harbor <noreply@tryharbor.app>`,
+     subject: "Your Harbor Verification Code",
+     html: `<div>Your verification code is: <h2>${code}</h2></div>`,
+   };
+   await mg.messages.create(domain, msg);
+   ```
+
+4. **User Enters Code** (`EmailVerificationScreen.tsx`)
+
+   ```typescript
+   // Modern 6-box input UI with paste functionality
+   <VerificationCodeInput
+     value={verificationCode}
+     onChangeText={setVerificationCode}
+     maxLength={6}
+   />
+   ```
+
+5. **Code Verification** (`functions/src/auth/emailVerification.ts`)
+
+   ```typescript
+   // Verify code against Firestore
+   const doc = await db.collection("verificationCodes").doc(userId).get();
+   const storedData = doc.data();
+
+   if (storedData?.code === code && storedData?.expiresAt > now) {
+     // Mark email as verified using Firebase Admin SDK
+     await admin.auth().updateUser(userId, { emailVerified: true });
+     await doc.ref.delete(); // Clean up used code
+     return { success: true };
+   } else if (storedData?.expiresAt < now) {
+     // Code expired - delete and require new code
+     await doc.ref.delete();
+     throw new functions.https.HttpsError("unauthenticated", "Code expired");
+   } else {
+     // Incorrect code - keep code active for retry
+     throw new functions.https.HttpsError("unauthenticated", "Incorrect code");
+   }
+   ```
+
+6. **Access Granted**
+   - Once verified, app automatically navigates to `AccountSetupScreen`
+   - User can now access full app features
+
+#### Archived Security Features
+
+- **6-digit codes** with 10-minute expiration
+- **One-time use** (deleted after verification)
+- **Server-side verification** (cannot be bypassed)
+- **Mailgun integration** with verified domain (`tryharbor.app`)
+- **Google Secret Manager** for secure API key storage
+- **Forgiving verification** (codes stay active for typos)
+
+#### Archived Cooldown & Rate Limiting
+
+- **2-minute cooldown** enforced on both frontend and backend
+- **Server-side protection** against abuse (cannot be bypassed)
+- **Real-time countdown** showing remaining time
+- **Smart button states** (disabled during cooldown)
+- **Graceful error handling** for cooldown violations
+
+#### Archived Cornell Email Validation
+
+- **Frontend validation**: Explicit rejection of emails containing `+` symbols
+- **Backend normalization**: Strip `+` aliases in Cloud Functions (when needed)
+- **Domain enforcement**: Only `@cornell.edu` emails accepted
+
+### 🗑️ Complete Deletion Guide for Email Verification System
+
+**When you're ready to permanently remove the email verification system, follow this comprehensive guide:**
+
+#### Frontend Files to Delete
+
+1. **Screens:**
+
+   - `screens/EmailVerificationScreen.tsx`
+   - `screens/CreateAccountScreen.tsx` (if it only handles email/password signup)
+
+2. **Components:**
+
+   - `components/VerificationCodeInput.tsx`
+   - `components/EmailInput.tsx` (if only used for email verification)
+   - `components/PasswordInput.tsx` (if only used for email verification)
+
+3. **Navigation Updates:**
+   - Remove `EmailVerification` from `App.tsx` navigation stack
+   - Remove `CreateAccount` from `App.tsx` navigation stack (if only for email signup)
+   - Update authentication flow logic in `App.tsx`
+
+#### Backend Files to Delete
+
+1. **Cloud Functions:**
+
+   - `functions/src/auth/emailVerification.ts`
+   - Remove email verification functions from `functions/src/auth/index.ts`
+   - Remove email verification exports from `functions/src/index.ts`
+
+2. **Database Collections:**
+   - Delete entire `verificationCodes` collection from Firestore
+   - Remove any references to verification codes in user documents
+
+#### Configuration Files to Update
+
+1. **Firebase Configuration:**
+
+   - Remove Mailgun API keys from Google Secret Manager
+   - Remove email verification environment variables
+   - Update Firebase Auth configuration to disable email/password provider
+
+2. **Package Dependencies:**
+   - Remove Mailgun dependency from `functions/package.json`
+   - Remove any email-related dependencies not used elsewhere
+
+#### Code References to Remove
+
+1. **Authentication Flow:**
+
+   - Remove email verification checks from `App.tsx`
+   - Remove email verification state management
+   - Update authentication state logic
+
+2. **Service Files:**
+
+   - Remove email verification methods from `networking/AuthService.ts`
+   - Remove email verification API calls
+
+3. **Type Definitions:**
+   - Remove email verification related types from `types/` files
+   - Remove verification code interfaces
+
+#### Database Cleanup
+
+1. **Firestore Collections:**
+
+   ```bash
+   # Delete verification codes collection
+   firebase firestore:delete --recursive verificationCodes
+   ```
+
+2. **User Document Fields:**
+   - Remove any email verification related fields from user documents
+   - Clean up any verification status fields
+
+#### Testing & Validation
+
+1. **Authentication Flow:**
+
+   - Test Google Sign-In flow end-to-end
+   - Verify no broken references to email verification
+   - Test account creation and profile setup
+
+2. **Database Queries:**
+
+   - Verify no queries reference `verificationCodes` collection
+   - Check that user creation flow works without email verification
+
+3. **Error Handling:**
+   - Remove email verification error handling
+   - Update error messages and user feedback
+
+#### Final Verification Steps
+
+1. **Search Codebase:**
+
+   ```bash
+   # Search for any remaining references
+   grep -r "verificationCode" .
+   grep -r "EmailVerification" .
+   grep -r "sendVerificationCode" .
+   grep -r "verifyVerificationCode" .
+   ```
+
+2. **Test Complete Flow:**
+
+   - New user signup with Google
+   - Profile creation
+   - App functionality
+   - Account management
+
+3. **Deploy and Test:**
+   - Deploy updated Cloud Functions
+   - Test on staging environment
+   - Verify no broken functionality
+
+**⚠️ WARNING: This deletion is irreversible. Make sure to backup any important data and test thoroughly before proceeding with production deployment.**
 
 ---
 

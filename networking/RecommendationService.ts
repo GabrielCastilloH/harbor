@@ -10,6 +10,7 @@ export class RecommendationService {
         functions,
         "recommendationsFunctions-getRecommendations"
       );
+
       const result = await getRecommendations({ userId });
       const data = result.data as { recommendations: any[] };
 

@@ -10,7 +10,8 @@ import {
 } from "react-native";
 import { Profile } from "../types/App";
 import { useAppContext } from "../context/AppContext";
-import { uploadImage } from "../util/imageUtils";
+import { updateUserProfileWithImages } from "../util/userBackend";
+import * as FileSystem from "expo-file-system";
 import ProfileForm from "../components/ProfileForm";
 import Colors from "../constants/Colors";
 import { UserService, getPersonalImages } from "../networking";
@@ -36,7 +37,6 @@ const emptyProfile: Profile = {
   q2: "",
   q3: "",
   availability: -1,
-  groupSize: 2,
 };
 
 function isProfileDirty(current: Profile, initial: Profile): boolean {
@@ -165,111 +165,116 @@ export default function EditProfileScreen() {
         return;
       }
 
-      // Check if there are any local image URIs that need to be uploaded
       const updatedImages = images || profileData.images;
-      let hasChanges = false;
-      const processedImages: string[] = [];
+      const currentImages = contextProfile?.images || [];
+
+      // Helper function to extract filename from URL
+      const extractFilename = (img: string): string => {
+        if (img.includes("storage.googleapis.com")) {
+          const lastSlashIndex = img.lastIndexOf("/");
+          if (lastSlashIndex !== -1) {
+            const filenameWithQuery = img.substring(lastSlashIndex + 1);
+            const questionMarkIndex = filenameWithQuery.indexOf("?");
+            return questionMarkIndex !== -1
+              ? filenameWithQuery.substring(0, questionMarkIndex)
+              : filenameWithQuery;
+          }
+        }
+        return img;
+      };
+
+      // Separate new images (file: or data:) from existing images
+      const newImageUris: string[] = [];
+      const existingImages: string[] = [];
+      const oldImagesToDelete: string[] = [];
 
       for (const img of updatedImages) {
         if (!img) continue; // Skip empty slots
 
         if (img.startsWith("file:") || img.startsWith("data:")) {
-          // This is a new, local image that needs to be uploaded.
-          try {
-            const uploadResult = await uploadImage(currentUser.uid, img);
-            processedImages.push(uploadResult.filename);
-            hasChanges = true;
-          } catch (error) {
-            console.error(
-              "❌ [EDIT PROFILE] Error uploading new image:",
-              error
-            );
-            // Keep the original image if upload fails
-            processedImages.push(img);
-          }
+          // This is a new, local image that needs to be uploaded
+          newImageUris.push(img);
         } else if (img.includes("storage.googleapis.com")) {
-          // This is a temporary signed URL. We need to save the permanent filename.
-          // Find the index of the last '/' to isolate the filename.
-          const lastSlashIndex = img.lastIndexOf("/");
-          if (lastSlashIndex !== -1) {
-            // Get the part of the URL that contains the filename and query string.
-            const filenameWithQuery = img.substring(lastSlashIndex + 1);
-            // Find the index of '?' to get only the filename.
-            const questionMarkIndex = filenameWithQuery.indexOf("?");
-            const filename =
-              questionMarkIndex !== -1
-                ? filenameWithQuery.substring(0, questionMarkIndex)
-                : filenameWithQuery;
+          // This is a temporary signed URL. Extract the filename
+          const filename = extractFilename(img);
 
-            if (filename && filename.includes("_original.jpg")) {
-              processedImages.push(filename);
-              hasChanges = true;
-            } else {
-              console.error("Could not extract valid filename from URL:", img);
-            }
-          } else {
-            console.error("Could not find filename in URL:", img);
+          if (filename && filename.includes("_original.jpg")) {
+            existingImages.push(filename);
           }
         } else if (img.includes("_original.jpg")) {
-          // This is already a filename, keep it as is
-          processedImages.push(img);
+          // This is already a filename
+          existingImages.push(img);
         } else if (img && img.trim() !== "") {
-          // Keep the image as is (could be a filename or other format)
-          processedImages.push(img);
-        } else {
-          // Skip empty images
+          // Keep the image as is
+          existingImages.push(img);
         }
       }
 
-      // If we processed any images, update the profileData
-      if (hasChanges) {
-        setProfileData((prev) => ({
-          ...prev,
-          images: processedImages,
-        }));
+      // Find which old images are no longer in the updated list
+      for (const oldImg of currentImages) {
+        const filename = extractFilename(oldImg);
+
+        if (!existingImages.includes(filename)) {
+          oldImagesToDelete.push(filename);
+        }
       }
 
-      // Get the current images from the context profile to identify what needs to be deleted
-      const currentImages = contextProfile?.images || [];
+      // Images will be compressed in the atomic function
 
-      // Create final data to send to server
-      const finalProfileData = {
-        ...profileData,
-        images: processedImages,
-        oldImages: currentImages, // Pass old images for cleanup
+      // Prepare user data for update (exclude images as they're handled separately)
+      const userDataToUpdate = {
+        firstName: profileData.firstName,
+        age: profileData.age,
+        yearLevel: profileData.yearLevel,
+        major: profileData.major,
+        gender: profileData.gender,
+        sexualOrientation: profileData.sexualOrientation,
+        aboutMe: profileData.aboutMe,
+        q1: profileData.q1,
+        q2: profileData.q2,
+        q3: profileData.q3,
       };
 
-      console.error(
-        "💾 [EDIT PROFILE] Saving filenames to Firestore:",
-        processedImages
-      );
-      console.error("🗑️ [EDIT PROFILE] Old images for cleanup:", currentImages);
-
-      const response = await UserService.updateUser(
-        currentUser.uid,
-        finalProfileData
+      // ATOMIC: Update user profile with images in a single transaction
+      const response = await updateUserProfileWithImages(
+        userDataToUpdate,
+        newImageUris.length > 0 ? newImageUris : undefined,
+        oldImagesToDelete.length > 0 ? oldImagesToDelete : undefined
       );
 
-      // Store the updated full user profile in context
-      setProfile(response.user);
+      if (response.success) {
+        // Extract final images from the result
+        const finalImages = response.result?.user?.images || existingImages;
 
-      // 🏆 The Fix: Reset the initial profile state after a successful save.
-      // This prevents the "Exit Without Saving" message from appearing
-      // when the user tries to exit after saving.
-      // Use the response.user data (without oldImages) for the initial reference
-      initialProfileRef.current = response.user;
+        // Store the updated full user profile in context
+        setProfile({
+          ...profileData,
+          images: finalImages,
+        });
 
-      Alert.alert("Success", "Profile saved successfully!");
+        // Reset the initial profile state after a successful save
+        initialProfileRef.current = {
+          ...profileData,
+          images: finalImages,
+        };
+
+        Alert.alert("Success", "Profile saved successfully!");
+      } else {
+        console.error("❌ [EDIT PROFILE] Profile update failed:", response);
+        Alert.alert("Error", "Failed to update profile. Please try again.");
+      }
     } catch (error: any) {
-      // Error handling
-      console.error("Failed to save profile:", error);
+      console.error("❌ [EDIT PROFILE] Failed to save profile:", error);
+      console.error("❌ [EDIT PROFILE] Error details:", {
+        message: error.message,
+        code: error.code,
+        stack: error.stack,
+      });
 
-      // Attempt to extract error details from the response.
       let errorMessage = "Failed to save profile";
       if (error.message) {
         errorMessage = error.message;
       }
-
       Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);

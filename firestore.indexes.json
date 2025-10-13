@@ -5,19 +5,23 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "sexualOrientation",
-          "order": "ASCENDING"
-        },
-        {
           "fieldPath": "gender",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "isActive",
+          "fieldPath": "isAvailable",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "isAvailable",
+          "fieldPath": "sexualOrientation",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "yearLevel",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "age",
           "order": "ASCENDING"
         }
       ]
@@ -39,7 +43,21 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "isActive",
+          "fieldPath": "isAvailable",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sexualOrientation",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "gender",
           "order": "ASCENDING"
         },
         {

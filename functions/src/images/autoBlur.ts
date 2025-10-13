@@ -12,7 +12,7 @@ async function blurImageBuffer(
   blurPercent: number
 ): Promise<Buffer> {
   try {
-    const sigma = 50; // Extremely strong blur
+    const sigma = 25; // Moderate blur for good balance
     const blurredBuffer = await sharp(buffer)
       .resize(800, 800, { fit: "inside", withoutEnlargement: true })
       .blur(sigma)
@@ -41,13 +41,11 @@ export const autoGenerateBlurred = functions.storage.onObjectFinalized(
 
       // Only process images
       if (!contentType || !contentType.startsWith("image/")) {
-        console.log(`Skipping non-image file: ${filePath}`);
         return;
       }
 
       // Only process original images (not already blurred ones)
       if (!filePath.includes("_original.jpg")) {
-        console.log(`Skipping non-original image: ${filePath}`);
         return;
       }
 
@@ -58,9 +56,6 @@ export const autoGenerateBlurred = functions.storage.onObjectFinalized(
         pathParts[0] !== "users" ||
         pathParts[2] !== "images"
       ) {
-        console.log(
-          `Skipping file not in users/{userId}/images/ path: ${filePath}`
-        );
         return;
       }
 
@@ -76,12 +71,8 @@ export const autoGenerateBlurred = functions.storage.onObjectFinalized(
       const [blurredExists] = await blurredFile.exists();
 
       if (blurredExists) {
-        console.log(`Blurred version already exists: ${blurredPath}`);
         return;
       }
-
-      console.log(`Processing image: ${filePath}`);
-      console.log(`Generating blurred version: ${blurredPath}`);
 
       // Download original image
       const originalFile = bucket.file(filePath);
@@ -97,8 +88,6 @@ export const autoGenerateBlurred = functions.storage.onObjectFinalized(
           cacheControl: "public, max-age=31536000",
         },
       });
-
-      console.log(`Successfully created blurred version: ${blurredPath}`);
     } catch (error) {
       console.error("Error in autoGenerateBlurred:", error);
       // Don't throw error to avoid retries for non-critical issues

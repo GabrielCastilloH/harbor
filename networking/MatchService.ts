@@ -19,21 +19,6 @@ export class MatchService {
     }
   }
 
-  static async getActiveMatches(userId: string) {
-    try {
-      const getActiveMatches = httpsCallable(
-        functions,
-        "matchFunctions-getActiveMatches"
-      );
-      const result = await getActiveMatches({ id: userId });
-      const data = result.data as any;
-      return data;
-    } catch (error) {
-      console.error("MatchService - Error getting active matches:", error);
-      throw error;
-    }
-  }
-
   static async unmatch(userId: string, matchId: string) {
     try {
       const unmatch = httpsCallable(functions, "matchFunctions-unmatchUsers");
@@ -82,20 +67,6 @@ export class MatchService {
       return data.matchId;
     } catch (error) {
       console.error("MatchService - Error getting match ID:", error);
-      throw error;
-    }
-  }
-
-  static async migrateMatchConsent(matchId: string) {
-    try {
-      const migrateMatchConsent = httpsCallable(
-        functions,
-        "matchFunctions-migrateMatchConsent"
-      );
-      const result = await migrateMatchConsent({ matchId });
-      return result.data as any;
-    } catch (error) {
-      console.error("MatchService - Error migrating match consent:", error);
       throw error;
     }
   }
