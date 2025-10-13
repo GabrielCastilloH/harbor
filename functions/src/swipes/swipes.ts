@@ -359,8 +359,8 @@ export const countRecentSwipes = functions.https.onCall(
       const counterRef = db
         .collection("users")
         .doc(id)
-        .collection("counters")
-        .doc("swipes");
+        .collection("swipeCounter")
+        .doc("daily");
       const counterSnap = await counterRef.get();
       const data = counterSnap.exists ? (counterSnap.data() as any) : {};
       const resetDate = data.resetDate?.toDate?.() ?? todayStart;
@@ -552,8 +552,8 @@ export const resetDailySwipes = onSchedule(
         const countersRef = db
           .collection("users")
           .doc(userId)
-          .collection("counters")
-          .doc("swipes");
+          .collection("swipeCounter")
+          .doc("daily");
         const countersSnap = await countersRef.get();
         if (!countersSnap.exists) continue;
 
