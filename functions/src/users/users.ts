@@ -230,7 +230,6 @@ export const createUser = functions.https.onCall(
         validationErrors.push("Email addresses with periods are not allowed");
       }
 
-
       // Validate profile content for inappropriate content
       const textFields = [
         userData.firstName,
@@ -416,7 +415,7 @@ export const getAllUsers = functions.https.onCall(
 );
 
 /**
- * Fetches user by ID (Firebase UID)
+ * Fetches user by ID (Firebase UID) and returns matchId if users are matched
  */
 export const getUserById = functions.https.onCall(
   {
@@ -440,6 +439,8 @@ export const getUserById = functions.https.onCall(
       }
 
       const { id } = request.data;
+      const currentUserId = request.auth.uid;
+
       if (!id) {
         throw new functions.https.HttpsError(
           "invalid-argument",
@@ -456,6 +457,31 @@ export const getUserById = functions.https.onCall(
 
       const userData = userDoc.data();
 
+      // Find matchId between current user and target user
+      let matchId = null;
+      if (currentUserId !== id) {
+        // Find existing match using participantIds
+        // Firestore limitation: cannot use two array-contains on the same field.
+        // Use array-contains-any and filter in memory to ensure both users present.
+        const possibleSnap = await db
+          .collection("matches")
+          .where("participantIds", "array-contains-any", [currentUserId, id])
+          .where("isActive", "==", true)
+          .get();
+
+        const foundDoc = possibleSnap.docs.find((doc) => {
+          const data = doc.data() as any;
+          const participants = data.participantIds || [];
+          return (
+            participants.includes(currentUserId) && participants.includes(id)
+          );
+        });
+
+        if (foundDoc) {
+          matchId = foundDoc.id;
+        }
+      }
+
       // Remove sensitive data from the response for security
       if (userData) {
         const { images, email, ...userDataWithoutSensitiveInfo } = userData;
@@ -464,10 +490,11 @@ export const getUserById = functions.https.onCall(
             ...userDataWithoutSensitiveInfo,
             uid: userDoc.id, // Add the document ID as uid
           },
+          matchId,
         };
       }
 
-      return { user: userData };
+      return { user: userData, matchId };
     } catch (error: any) {
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -589,7 +616,6 @@ export const updateUser = functions.https.onCall(
           validationErrors.push("Maximum 6 images allowed");
         }
       }
-
 
       // Validate text fields if provided
       const textFieldValidations = [
