@@ -1,6 +1,8 @@
 import { auth, db } from "../firebaseConfig";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { UserService } from "../networking/UserService";
+import * as ImageManipulator from "expo-image-manipulator";
+import * as FileSystem from "expo-file-system";
 
 /**
  * Check if user exists in your database
@@ -18,15 +20,19 @@ export const checkUserExists = async (uid: string): Promise<boolean> => {
 };
 
 /**
- * Create new user profile
+ * Create new user profile with images atomically (compressed)
  * @param userData User data to create
+ * @param imageUris Array of image URIs
  * @returns Promise<{success: boolean}>
  */
-export const createUserProfile = async (userData: {
-  firstName: string;
-  email: string;
-  [key: string]: any;
-}) => {
+export const createUserProfileWithImages = async (
+  userData: {
+    firstName: string;
+    email: string;
+    [key: string]: any;
+  },
+  imageUris: string[]
+) => {
   const currentUser = auth.currentUser;
 
   if (!currentUser) {
@@ -34,31 +40,100 @@ export const createUserProfile = async (userData: {
   }
 
   try {
-    const result = await UserService.createUser(userData);
-    return { success: true };
+    // Process all images in parallel. If one fails, this will throw an error.
+    const compressedImages = await Promise.all(
+      imageUris.map(async (uri, index) => {
+        const compressed = await ImageManipulator.manipulateAsync(
+          uri,
+          [{ resize: { width: 500 } }],
+          { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+        );
+
+        const base64Data = await FileSystem.readAsStringAsync(compressed.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        return { imageData: base64Data, index: index };
+      })
+    );
+
+    // Prepare the payload for the atomic Cloud Function
+    const payload = {
+      ...userData,
+      images: compressedImages,
+    };
+
+    // Call the atomic Cloud Function
+    const result = await UserService.createUserWithImages(payload);
+    return { success: true, result };
   } catch (error) {
-    console.error("createUserProfile - Error creating user profile:", error);
+    console.error(
+      "createUserProfileWithImages - Error preparing data or calling function:",
+      error
+    );
+    // The entire operation failed, either during image processing or the cloud call
     throw error;
   }
 };
 
 /**
- * Update user profile
- * @param uid User ID
- * @param updates Updates to apply
+ * Update user profile with images atomically (compressed)
+ * @param userData User data to update
+ * @param newImageUris Array of new image URIs
+ * @param oldImages Array of old image filenames to delete
+ * @returns Promise<{success: boolean}>
  */
-export const updateUserProfile = async (uid: string, updates: any) => {
+export const updateUserProfileWithImages = async (
+  userData: {
+    [key: string]: any;
+  },
+  newImageUris?: string[],
+  oldImages?: string[]
+) => {
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    throw new Error("No authenticated user found");
+  }
+
   try {
-    await setDoc(
-      doc(db, "users", uid),
-      {
-        ...updates,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
+    let compressedImages: Array<{ imageData: string; index: number }> = [];
+
+    // Process all new images in parallel. If one fails, this will throw an error.
+    if (newImageUris && newImageUris.length > 0) {
+      compressedImages = await Promise.all(
+        newImageUris.map(async (uri, index) => {
+          const compressed = await ImageManipulator.manipulateAsync(
+            uri,
+            [{ resize: { width: 500 } }],
+            { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+          );
+
+          const base64Data = await FileSystem.readAsStringAsync(
+            compressed.uri,
+            {
+              encoding: FileSystem.EncodingType.Base64,
+            }
+          );
+
+          return { imageData: base64Data, index: index };
+        })
+      );
+    }
+
+    // Call the atomic Cloud Function
+    const result = await UserService.updateUserWithImages(
+      userData,
+      compressedImages.length > 0 ? compressedImages : undefined,
+      oldImages
     );
+    return { success: true, result };
   } catch (error) {
-    console.error("Error updating user profile:", error);
+    console.error(
+      "updateUserProfileWithImages - Error preparing data or calling function:",
+      error
+    );
+    // The entire operation failed, either during image processing or the cloud call
     throw error;
   }
 };

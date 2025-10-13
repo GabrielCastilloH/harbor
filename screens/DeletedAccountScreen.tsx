@@ -8,23 +8,20 @@ import {
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, CommonActions } from "@react-navigation/native";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useAppContext } from "../context/AppContext";
+import { useEffect } from "react";
 import Colors from "../constants/Colors";
 
 export default function DeletedAccountScreen() {
-  const navigation = useNavigation();
-  const { setUserId, setProfile, setStreamApiKey, setStreamUserToken } =
-    useAppContext();
-
   const handleBackToSignIn = async () => {
     try {
-      // Sign out from Firebase Auth and clear all app state
+      // Use the EXACT same logic as SettingsScreen
       await Promise.all([
+        // Sign out from Firebase Auth
         signOut(auth),
+        // Clear AsyncStorage
         AsyncStorage.multiRemove([
           "@user",
           "@authToken",
@@ -32,19 +29,8 @@ export default function DeletedAccountScreen() {
           "@streamUserToken",
         ]),
       ]);
-
-      // Clear app context state
-      setUserId(null);
-      setProfile(null);
-      setStreamApiKey(null);
-      setStreamUserToken(null);
     } catch (error) {
-      console.error("Error signing out:", error);
-      // Even if sign out fails, clear local state
-      setUserId(null);
-      setProfile(null);
-      setStreamApiKey(null);
-      setStreamUserToken(null);
+      console.error("❌ [DELETED SCREEN] Error during sign out:", error);
     }
   };
 
@@ -77,11 +63,6 @@ export default function DeletedAccountScreen() {
         >
           <Text style={styles.backButtonText}>Back to Sign In</Text>
         </TouchableOpacity>
-
-        {/* Harbor Logo/Branding */}
-        <View style={styles.brandingContainer}>
-          <Text style={styles.brandingText}>Harbor</Text>
-        </View>
       </View>
     </SafeAreaView>
   );

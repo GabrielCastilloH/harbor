@@ -14,12 +14,12 @@ export type Profile = {
   q1: string; // "Together we could:"
   q2: string; // "Favorite book, movie or song:"
   q3: string; // "Some of my hobbies are:"
-  currentMatches?: string[];
   paywallSeen?: boolean;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
   availability: number;
-  groupSize: number; // Preferred group size for matching (2, 3, or 4)
+  isActive?: boolean; // Account activation status
+  isAvailable?: boolean; // Match availability (true = available to match, false = currently in a match)
 };
 
 export interface CardViewProps {

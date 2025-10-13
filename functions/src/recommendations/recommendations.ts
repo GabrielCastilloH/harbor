@@ -54,11 +54,13 @@ export const getRecommendations = functions.https.onCall(
       const MAX_RECS_TO_FETCH = 10;
 
       const userDoc = await db.collection("users").doc(userId).get();
+
       if (!userDoc.exists) {
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
       const currentUserData = userDoc.data();
+
       if (!currentUserData) {
         throw new functions.https.HttpsError(
           "not-found",
@@ -74,10 +76,8 @@ export const getRecommendations = functions.https.onCall(
       // 🛑 CRITICAL CHECK: Return empty if the current user is in an active match
       // The `isAvailable` field should be set to `false` by a Match creation/update trigger.
       const isAvailable = currentUserData?.isAvailable !== false;
+
       if (!isAvailable) {
-        console.log(
-          `User ${userId} is not available (in match). Returning empty recommendations.`
-        );
         return { recommendations: [] };
       }
       // 🛑 END CRITICAL CHECK
@@ -86,13 +86,14 @@ export const getRecommendations = functions.https.onCall(
       const countersRef = db
         .collection("users")
         .doc(userId)
-        .collection("counters")
-        .doc("swipes");
+        .collection("swipeCounter")
+        .doc("daily");
       const countersSnap = await countersRef.get();
       const cData = countersSnap.exists ? (countersSnap.data() as any) : {};
       const swipesMadeToday = Number(cData?.count || 0);
 
       const remainingSwipes = Math.max(0, MAX_SWIPES_PER_DAY - swipesMadeToday);
+
       if (remainingSwipes === 0) {
         return { recommendations: [] };
       }
@@ -157,8 +158,10 @@ export const getRecommendations = functions.https.onCall(
         const uniqueInboundSwipes = whoSwipedOnYouIds.filter(
           (id) => !matchedUserIds.has(id)
         );
+
         if (uniqueInboundSwipes.length > 0) {
           const limitedIds = uniqueInboundSwipes.slice(0, 10);
+
           const swipedUsersSnapshot = await db
             .collection("users")
             .where(admin.firestore.FieldPath.documentId(), "in", limitedIds)
@@ -186,6 +189,7 @@ export const getRecommendations = functions.https.onCall(
       let ageYearUsers: any[] = [];
       const userAge = currentUserData?.age ?? -1;
       const userYear = currentUserData?.yearLevel ?? null;
+
       const compatibilityData = getCompatibilityQuery(currentUserData);
 
       if (
@@ -211,7 +215,9 @@ export const getRecommendations = functions.https.onCall(
 
           ageYearUsers = ageYearSnapshot.docs
             .filter((doc) => {
-              if (matchedUserIds.has(doc.id)) return false;
+              if (matchedUserIds.has(doc.id)) {
+                return false;
+              }
               const userData = doc.data();
               const isActive = userData?.isActive !== false;
               return isActive;
@@ -315,6 +321,7 @@ export const getRecommendations = functions.https.onCall(
       }
 
       // Step 6: Merge results in priority order
+
       shuffleArray(swipedUsers);
       shuffleArray(ageYearUsers);
       shuffleArray(availabilityUsers);
@@ -329,7 +336,9 @@ export const getRecommendations = functions.https.onCall(
           if (!seen.has(id)) {
             seen.add(id);
             merged.push(u);
-            if (merged.length >= finalRecsLimit) return true;
+            if (merged.length >= finalRecsLimit) {
+              return true;
+            }
           }
         }
         return false;
@@ -343,9 +352,28 @@ export const getRecommendations = functions.https.onCall(
         }
       }
 
+      functions.logger.info("🔥 Backend getRecommendations: Final results", {
+        userId,
+        recommendationsCount: merged.length,
+        recommendations: merged.map((u) => ({
+          uid: u.uid,
+          firstName: u.firstName,
+          gender: u.gender,
+          sexualOrientation: u.sexualOrientation,
+        })),
+      });
+
       return { recommendations: merged };
     } catch (error: any) {
-      console.error("Recommendations function error:", error);
+      console.error(
+        "🔥 Backend getRecommendations: Function error occurred:",
+        error
+      );
+      console.error(
+        "🔥 Backend getRecommendations: Error message:",
+        error.message
+      );
+      console.error("🔥 Backend getRecommendations: Error stack:", error.stack);
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
@@ -431,68 +459,6 @@ function getCompatibilityQuery(currentUserData: any) {
 }
 
 /**
- * Blocks a user by adding them to the current user's blocked subcollection
- */
-export const blockUser = functions.https.onCall(
-  {
-    region: "us-central1",
-    memory: "256MiB",
-    timeoutSeconds: 30,
-    minInstances: 0,
-    maxInstances: 10,
-    concurrency: 80,
-    cpu: 1,
-    ingressSettings: "ALLOW_ALL",
-    invoker: "public",
-  },
-  async (request: CallableRequest<{ blockedUserId: string }>) => {
-    try {
-      if (!request.auth) {
-        throw new functions.https.HttpsError(
-          "unauthenticated",
-          "User must be authenticated"
-        );
-      }
-
-      const userId = request.auth.uid;
-      const { blockedUserId } = request.data;
-
-      if (!blockedUserId) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "blockedUserId is required"
-        );
-      }
-
-      if (userId === blockedUserId) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "Cannot block yourself"
-        );
-      }
-
-      // Add to blocked subcollection
-      await db
-        .collection("users")
-        .doc(userId)
-        .collection("blocked")
-        .doc(blockedUserId)
-        .set({
-          blockedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-      return { success: true, message: "User blocked successfully" };
-    } catch (error: any) {
-      console.error("Error blocking user:", error);
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
-      }
-      throw new functions.https.HttpsError("internal", "Failed to block user");
-    }
-  }
-);
-
-/**
  * Unblocks a user by removing them from the current user's blocked subcollection
  */
 export const unblockUser = functions.https.onCall(
@@ -550,6 +516,5 @@ export const unblockUser = functions.https.onCall(
 
 export const recommendationsFunctions = {
   getRecommendations,
-  blockUser,
   unblockUser,
 };

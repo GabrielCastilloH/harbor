@@ -10,18 +10,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useAppContext } from "../context/AppContext";
 import Colors from "../constants/Colors";
 
 export default function BannedAccountScreen() {
-  const { setUserId, setProfile, setStreamApiKey, setStreamUserToken } =
-    useAppContext();
-
   const handleBackToSignIn = async () => {
     try {
-      // Sign out from Firebase Auth and clear all app state
+      // Use the EXACT same logic as SettingsScreen
       await Promise.all([
+        // Sign out from Firebase Auth
         signOut(auth),
+        // Clear AsyncStorage
         AsyncStorage.multiRemove([
           "@user",
           "@authToken",
@@ -29,19 +27,8 @@ export default function BannedAccountScreen() {
           "@streamUserToken",
         ]),
       ]);
-
-      // Clear app context state
-      setUserId(null);
-      setProfile(null);
-      setStreamApiKey(null);
-      setStreamUserToken(null);
     } catch (error) {
-      console.error("Error signing out:", error);
-      // Even if sign out fails, clear local state
-      setUserId(null);
-      setProfile(null);
-      setStreamApiKey(null);
-      setStreamUserToken(null);
+      console.error("❌ [BANNED SCREEN] Error during sign out:", error);
     }
   };
   return (
@@ -74,14 +61,6 @@ export default function BannedAccountScreen() {
         >
           <Text style={styles.backButtonText}>Back to Sign In</Text>
         </TouchableOpacity>
-
-        {/* Harbor Logo/Branding */}
-        <View style={styles.brandingContainer}>
-          <Text style={styles.brandingText}>Harbor</Text>
-          <Text style={styles.brandingSubtext}>
-            Community Guidelines Matter
-          </Text>
-        </View>
       </View>
     </SafeAreaView>
   );

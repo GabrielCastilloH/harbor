@@ -14,9 +14,9 @@ async function blurImageBuffer(
   blurPercent: number
 ): Promise<Buffer> {
   try {
-    // Set sigma to 50 for extremely strong blur (makes image very blurry and unrecognizable)
-    // Sigma controls the strength of the blur: higher sigma = more blur. Sigma=50 is extremely high.
-    const sigma = 50;
+    // Set sigma to 25 for moderate blur (good balance between privacy and visibility)
+    // Sigma controls the strength of the blur: higher sigma = more blur. Sigma=25 provides good balance.
+    const sigma = 25;
 
     // Process image with sharp
     // Lower quality for blurred images (quality: 50)
@@ -32,154 +32,9 @@ async function blurImageBuffer(
   }
 }
 
-/**
- * Basic content moderation check for images
- */
-async function moderateImage(
-  imageBuffer: Buffer
-): Promise<{ isAppropriate: boolean; reason?: string }> {
-  try {
-    // Basic file size check (prevent extremely large files)
-    if (imageBuffer.length > 10 * 1024 * 1024) {
-      // 10MB limit
-      return { isAppropriate: false, reason: "File too large" };
-    }
+// REMOVED: moderateImage function - moved to users.ts for atomic operations
 
-    // Basic file type validation
-    const header = imageBuffer.slice(0, 4);
-    const isJPEG =
-      header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
-    const isPNG =
-      header[0] === 0x89 &&
-      header[1] === 0x50 &&
-      header[2] === 0x4e &&
-      header[3] === 0x47;
-
-    if (!isJPEG && !isPNG) {
-      return { isAppropriate: false, reason: "Invalid file type" };
-    }
-
-    // For now, we'll assume all images are appropriate
-    // In a production environment, you would integrate with a content moderation service
-    return { isAppropriate: true };
-  } catch (error) {
-    console.error("Error in content moderation:", error);
-    return { isAppropriate: false, reason: "Moderation check failed" };
-  }
-}
-
-/**
- * Uploads an image to Firebase Storage and generates a blurred version
- */
-export const uploadImage = functions.https.onCall(
-  {
-    region: "us-central1",
-    memory: "512MiB",
-    timeoutSeconds: 60,
-    minInstances: 0,
-    maxInstances: 10,
-    concurrency: 80,
-    cpu: 1,
-    ingressSettings: "ALLOW_ALL",
-    invoker: "public",
-  },
-  async (request) => {
-    try {
-      if (!request.auth) {
-        throw new functions.https.HttpsError(
-          "unauthenticated",
-          "User must be authenticated"
-        );
-      }
-
-      const { imageData, userId } = request.data;
-
-      if (!imageData || !userId) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "Image data and user ID are required"
-        );
-      }
-
-      // Verify user is uploading for themselves
-      if (request.auth.uid !== userId) {
-        throw new functions.https.HttpsError(
-          "permission-denied",
-          "User can only upload images for themselves"
-        );
-      }
-
-      // Convert base64 to buffer
-      const imageBuffer = Buffer.from(imageData, "base64");
-
-      // Content moderation
-      const moderationResult = await moderateImage(imageBuffer);
-      if (!moderationResult.isAppropriate) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          `Image rejected: ${moderationResult.reason}`
-        );
-      }
-
-      // Generate unique filename
-      const timestamp = Date.now();
-      const filename = `image_${timestamp}_original.jpg`;
-      const blurredFilename = `image_${timestamp}_blurred.jpg`;
-
-      // Upload original image
-      const originalPath = `users/${userId}/images/${filename}`;
-      const originalFile = bucket.file(originalPath);
-
-      await originalFile.save(imageBuffer, {
-        metadata: {
-          contentType: "image/jpeg",
-          cacheControl: "public, max-age=31536000",
-        },
-      });
-
-      // Generate blurred version
-      const blurredBuffer = await blurImageBuffer(imageBuffer, 80);
-      const blurredPath = `users/${userId}/images/${blurredFilename}`;
-      const blurredFile = bucket.file(blurredPath);
-
-      await blurredFile.save(blurredBuffer, {
-        metadata: {
-          contentType: "image/jpeg",
-          cacheControl: "public, max-age=31536000",
-        },
-      });
-
-      // Generate signed URLs
-      const [originalUrl] = await originalFile.getSignedUrl({
-        action: "read",
-        expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-        version: "v4",
-      });
-
-      const [blurredUrl] = await blurredFile.getSignedUrl({
-        action: "read",
-        expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-        version: "v4",
-      });
-
-      return {
-        filename,
-        originalUrl,
-        blurredUrl,
-        message: "Image uploaded successfully",
-      };
-    } catch (error: any) {
-      console.error("Error in uploadImage:", error);
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
-      }
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to upload image"
-      );
-    }
-  }
-);
+// REMOVED: uploadImage function - replaced with atomic createUserWithImages and updateUserWithImages functions
 
 /**
  * Returns personal images for a user (unblurred) - only accessible by the user themselves
@@ -315,45 +170,37 @@ export const getImages = functions.https.onCall(
       const targetUserData = targetUserDoc.data();
       const images = targetUserData?.images || [];
 
-      // SECURITY FIX: Get match info using unified participantIds only
-      const participantMatchQuery = await db
+      // Find match between current user and target user
+      const allMatches = await db
         .collection("matches")
-        .where("participantIds", "array-contains", currentUserId)
         .where("isActive", "==", true)
         .get();
 
       let user1Consented = false;
       let user2Consented = false;
-      let allMembersConsented = false;
       let messageCount = 0;
-      let isGroupMatch = false;
       let hasValidMatch = false;
 
-      // Unified participantIds approach only
-      for (const matchDoc of participantMatchQuery.docs) {
-        const matchData = matchDoc.data() as any;
-        const ids: string[] = matchData.participantIds || [];
-        if (ids.includes(targetUserId)) {
-          hasValidMatch = true;
-          isGroupMatch = matchData.type === "group";
-          messageCount = matchData?.messageCount ?? 0;
+      const matchDoc = allMatches.docs.find((doc) => {
+        const data = doc.data();
+        return (
+          (data.user1Id === currentUserId && data.user2Id === targetUserId) ||
+          (data.user1Id === targetUserId && data.user2Id === currentUserId)
+        );
+      });
 
-          if (isGroupMatch) {
-            // Group consent requires all true
-            const consentMap = matchData.participantConsent || {};
-            allMembersConsented = Object.values(consentMap).every(Boolean);
-          } else {
-            // Individual: use unified consent map
-            const consentMap = matchData.participantConsent || {};
-            if (
-              consentMap[currentUserId] !== undefined ||
-              consentMap[targetUserId] !== undefined
-            ) {
-              user1Consented = Boolean(consentMap[currentUserId]);
-              user2Consented = Boolean(consentMap[targetUserId]);
-            }
-          }
-          break;
+      if (matchDoc) {
+        hasValidMatch = true;
+        const matchData = matchDoc.data() as any;
+        messageCount = matchData?.messageCount ?? 0;
+
+        // Determine which user is user1 and which is user2
+        if (matchData.user1Id === currentUserId) {
+          user1Consented = Boolean(matchData.user1Consented);
+          user2Consented = Boolean(matchData.user2Consented);
+        } else {
+          user1Consented = Boolean(matchData.user2Consented);
+          user2Consented = Boolean(matchData.user1Consented);
         }
       }
 
@@ -365,13 +212,8 @@ export const getImages = functions.https.onCall(
         );
       }
 
-      // Determine consent status based on match type
-      let bothConsented = false;
-      if (isGroupMatch) {
-        bothConsented = allMembersConsented; // All group members must consent
-      } else {
-        bothConsented = user1Consented && user2Consented; // Both individual users must consent
-      }
+      // Both users must consent
+      const bothConsented = user1Consented && user2Consented;
 
       // For each image, return the correct URL and blurLevel
       const result = [];
@@ -589,7 +431,6 @@ export const getOriginalImages = functions.https.onCall(
 );
 
 export const imageFunctions = {
-  uploadImage,
   generateBlurred,
   getImages,
   getPersonalImages,

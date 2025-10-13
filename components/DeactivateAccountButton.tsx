@@ -30,7 +30,7 @@ export default function DeactivateAccountButton({
 
     Alert.alert(
       "Deactivate Account",
-      "Your account won't be shown to other people when deactivated and you won't be able to connect with anyone. You can still chat with existing matches. You can reactivate anytime.",
+      "Your account won't be shown to other people when deactivated and you won't be able to match with anyone. You can still chat with existing matches. You can reactivate anytime.",
       [
         {
           text: "Cancel",
@@ -68,7 +68,7 @@ export default function DeactivateAccountButton({
 
     Alert.alert(
       "Reactivate Account",
-      "Your account will be shown to other people again and you'll be able to connect with new people.",
+      "Your account will be shown to other people again and you'll be able to match with new people.",
       [
         {
           text: "Cancel",

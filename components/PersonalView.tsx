@@ -5,14 +5,13 @@ import Colors from "../constants/Colors";
 import { CardViewProps } from "../types/App";
 import { useAppContext } from "../context/AppContext";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { useNavigation } from "@react-navigation/native";
 
 export default function PersonalView({
   profile,
   showFlag = true,
-}: CardViewProps) {
+  onUserRemoved,
+}: CardViewProps & { onUserRemoved?: (userId: string) => void }) {
   const { userId } = useAppContext();
-  const navigation = useNavigation();
 
   const handleReportUser = () => {
     Alert.alert(
@@ -50,7 +49,10 @@ export default function PersonalView({
                   {
                     text: "OK",
                     onPress: () => {
-                      // The user will be removed from recommendations automatically
+                      // Remove the user from recommendations immediately
+                      if (onUserRemoved && profile.uid) {
+                        onUserRemoved(profile.uid);
+                      }
                     },
                   },
                 ]

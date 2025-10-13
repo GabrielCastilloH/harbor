@@ -18,9 +18,8 @@ import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import Colors from "../constants/Colors";
 import { useAppContext } from "../context/AppContext";
-import { useNotification } from "../context/NotificationContext";
-import InAppReview from "react-native-in-app-review";
-// import { useTelemetryDeck } from "@typedigital/telemetrydeck-react";
+import { streamNotificationService } from "../util/streamNotifService";
+import { requestInAppReview } from "../util/inAppReviewUtils";
 // PREMIUM DISABLED: Superwall imports commented out
 // import { usePlacement, useUser } from "expo-superwall";
 // import { useUser } from "expo-superwall"; // PREMIUM DISABLED
@@ -33,21 +32,28 @@ import { UserService } from "../networking/UserService";
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { setUserId, userId } = useAppContext();
-  // const { signal } = useTelemetryDeck();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-  const [currentGroupSize, setCurrentGroupSize] = useState<number>(2);
-  const {
-    isNotificationsEnabled,
-    isLoading,
-    enableNotifications,
-    disableNotifications,
-  } = useNotification();
+  const [notificationPermissionStatus, setNotificationPermissionStatus] =
+    useState<boolean | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [locationServices, setLocationServices] = useState(true);
   // PREMIUM DISABLED: useUser commented out
   // const { user } = useUser();
+
+  // Check notification permission status
+  const checkNotificationPermission = React.useCallback(async () => {
+    try {
+      const hasPermission =
+        await streamNotificationService.areNotificationsEnabled();
+      setNotificationPermissionStatus(hasPermission);
+    } catch (error) {
+      console.error("Error checking notification permission:", error);
+      setNotificationPermissionStatus(false);
+    }
+  }, []);
 
   // Fetch user profile to get isActive status and group size
   const fetchUserProfile = React.useCallback(async () => {
@@ -60,7 +66,6 @@ export default function SettingsScreen() {
       // Handle the nested structure returned by UserService
       const userData = profile.user || profile;
       setUserProfile(userData);
-      setCurrentGroupSize(userData.groupSize || 2);
     } catch (error) {
       console.error("Error fetching user profile:", error);
     } finally {
@@ -68,26 +73,62 @@ export default function SettingsScreen() {
     }
   }, [userId]);
 
-  // Fetch profile on mount
+  // Fetch profile and check notification permission on mount
   React.useEffect(() => {
     fetchUserProfile();
-  }, [fetchUserProfile]);
+    checkNotificationPermission();
+  }, [fetchUserProfile, checkNotificationPermission]);
 
-  // Refresh profile data when screen comes into focus (e.g., returning from GroupSizeScreen)
+  // Refresh profile data and notification status when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       fetchUserProfile();
-    }, [fetchUserProfile])
+      checkNotificationPermission();
+    }, [fetchUserProfile, checkNotificationPermission])
   );
-
-  // Track page view for TelemetryDeck
-  React.useEffect(() => {
-    // Send a signal whenever this screen is viewed
-    // signal("pageview", { screen: "Settings" });
-  }, []);
 
   const handleAccountStatusChange = (isActive: boolean) => {
     setUserProfile((prev: any) => ({ ...prev, isActive }));
+  };
+
+  const handleNotificationSettingsTap = () => {
+    if (notificationPermissionStatus === false) {
+      Alert.alert(
+        "Enable Notifications",
+        "To receive notifications, please enable them in your device settings.\n\nGo to Settings > Notifications > Harbor and turn on Allow Notifications.",
+        [
+          {
+            text: "Open Settings",
+            onPress: () => {
+              if (Platform.OS === "ios") {
+                Linking.openURL("app-settings:");
+              } else {
+                Linking.openSettings();
+              }
+            },
+          },
+          { text: "Cancel", style: "cancel" },
+        ]
+      );
+    } else {
+      Alert.alert(
+        "Notifications Enabled",
+        "You're currently receiving notifications. To change this, go to your device settings.",
+        [
+          {
+            text: "Open Settings",
+            onPress: () => {
+              if (Platform.OS === "ios") {
+                Linking.openURL("app-settings:");
+              } else {
+                Linking.openSettings();
+              }
+            },
+          },
+          { text: "OK", style: "cancel" },
+        ]
+      );
+    }
   };
 
   // PREMIUM DISABLED: Superwall paywall placement commented out
@@ -182,11 +223,6 @@ export default function SettingsScreen() {
     navigation.navigate("SelfProfile" as never);
   };
 
-  const handleGroupSize = () => {
-    // Navigate to group size selection screen
-    navigation.navigate("GroupSize" as never);
-  };
-
   const handlePrivacyPolicy = () => {
     Linking.openURL("https://www.tryharbor.app/privacy");
   };
@@ -200,51 +236,7 @@ export default function SettingsScreen() {
   };
 
   const handleAppReview = async () => {
-    try {
-      const isAvailable = InAppReview.isAvailable();
-      if (isAvailable) {
-        InAppReview.RequestInAppReview()
-          .then((hasFlowFinishedSuccessfully) => {
-            console.log("InAppReview completed:", hasFlowFinishedSuccessfully);
-          })
-          .catch((error) => {
-            console.error("InAppReview error:", error);
-            // Fallback to direct store links
-            if (Platform.OS === "ios") {
-              Linking.openURL(
-                "https://apps.apple.com/app/id6752791663?action=write-review"
-              );
-            } else {
-              Linking.openURL(
-                "https://play.google.com/store/apps/details?id=app.tryharbor&showAllReviews=true"
-              );
-            }
-          });
-      } else {
-        // Fallback to direct store links
-        if (Platform.OS === "ios") {
-          Linking.openURL(
-            "https://apps.apple.com/app/id6752791663?action=write-review"
-          );
-        } else {
-          Linking.openURL(
-            "https://play.google.com/store/apps/details?id=app.tryharbor&showAllReviews=true"
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Error requesting app review:", error);
-      // Fallback to direct store links
-      if (Platform.OS === "ios") {
-        Linking.openURL(
-          "https://apps.apple.com/app/id6752791663?action=write-review"
-        );
-      } else {
-        Linking.openURL(
-          "https://play.google.com/store/apps/details?id=app.tryharbor&showAllReviews=true"
-        );
-      }
-    }
+    await requestInAppReview();
   };
 
   // PREMIUM DISABLED: Always set premium to false
@@ -262,27 +254,22 @@ export default function SettingsScreen() {
           <SettingsButton
             icon="notifications-outline"
             text="Notifications"
-            switchProps={{
-              value: isNotificationsEnabled,
-              onValueChange: async (enabled: boolean) => {
-                if (enabled) {
-                  await enableNotifications();
-                } else {
-                  await disableNotifications();
-                }
-              },
-              disabled: isLoading,
+            onPress={handleNotificationSettingsTap}
+            status={{
+              text:
+                notificationPermissionStatus === null
+                  ? "Checking..."
+                  : notificationPermissionStatus
+                  ? "Enabled"
+                  : "Disabled",
+              color:
+                notificationPermissionStatus === null
+                  ? Colors.secondary500
+                  : notificationPermissionStatus
+                  ? Colors.green
+                  : Colors.red,
             }}
           />
-
-          {/** Group Size hidden per request **/}
-          {/**
-          <SettingsButton
-            icon="people-outline"
-            text={`Group Size: ${currentGroupSize}`}
-            onPress={handleGroupSize}
-          />
-          **/}
         </View>
 
         {/* Profile Section */}
@@ -409,6 +396,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#788a87",
     textAlign: "center",
-    fontStyle: "italic",
   },
 });

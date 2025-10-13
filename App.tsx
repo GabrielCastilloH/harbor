@@ -4,26 +4,26 @@ import { StatusBar } from "expo-status-bar";
 import {
   NavigationContainer,
   NavigationContainerRef,
+  useNavigationContainerRef,
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import TabNavigator from "./navigation/TabNavigator";
 import SignIn from "./screens/SignIn";
-import CreateAccountScreen from "./screens/CreateAccountScreen";
 import EmailVerificationScreen from "./screens/EmailVerificationScreen";
 import AccountSetupScreen from "./screens/AccountSetupScreen";
 import DeletedAccountScreen from "./screens/DeletedAccountScreen";
 import BannedAccountScreen from "./screens/BannedAccountScreen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppProvider, useAppContext } from "./context/AppContext";
-import { NotificationProvider } from "./context/NotificationContext";
 import NotificationHandler from "./components/NotificationHandler";
-// import TelemetryDeck from "@telemetrydeck/sdk";
-// import { TelemetryDeckProvider } from "@typedigital/telemetrydeck-react";
+import { PostHogProvider } from "posthog-react-native";
+import { logToNtfy } from "./util/ntfyLogger";
 
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-get-random-values";
 import LoadingScreen from "./components/LoadingScreen";
 import UnviewedMatchesHandler from "./components/UnviewedMatchesHandler";
+import NavigationErrorBoundary from "./components/NavigationErrorBoundary";
 // PREMIUM DISABLED: Superwall imports commented out
 // import { SuperwallProvider, SuperwallLoaded } from "expo-superwall";
 // import { SUPERWALL_CONFIG } from "./firebaseConfig";
@@ -44,19 +44,22 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// Define the Root Stack Navigator
+const RootStack = createNativeStackNavigator();
+
 // Expo Notifications Setup Component
+// NOTE: Permission request is deferred to TabNavigator - this only sets up listeners
 function ExpoNotificationSetup() {
   const [expoPushToken, setExpoPushToken] = useState<string>("");
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
 
   useEffect(() => {
-    registerForPushNotificationsAsync().then((token) => {
-      if (token) {
-        setExpoPushToken(token);
-      }
-    });
+    // REMOVED: Don't request permissions immediately on app launch
+    // Permission request now happens in TabNavigator after account setup
+    // This prevents double permission prompts
 
+    // Only set up notification listeners (doesn't require permissions)
     notificationListener.current =
       Notifications.addNotificationReceivedListener((notification) => {
         // Handle notification received
@@ -133,7 +136,7 @@ async function registerForPushNotificationsAsync() {
       // Failed to save Expo push token to Firestore
     }
   } else {
-    alert("Must use physical device for Push Notifications");
+    // Running on simulator - push notifications not available
   }
 
   return token;
@@ -173,7 +176,7 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// AuthNavigator remains the same, but it's only for unauthenticated users.
+// AuthNavigator for unauthenticated users - only Google Sign-In now
 function AuthNavigator() {
   return (
     <AuthStack.Navigator
@@ -181,7 +184,6 @@ function AuthNavigator() {
       initialRouteName="SignIn"
     >
       <AuthStack.Screen name="SignIn" component={SignIn} />
-      <AuthStack.Screen name="CreateAccount" component={CreateAccountScreen} />
       <AuthStack.Screen
         name="EmailVerification"
         component={EmailVerificationScreen}
@@ -195,16 +197,28 @@ function AuthNavigator() {
   );
 }
 
-// Main Navigator for authenticated users
+// Main Navigator for authenticated users (simplified - no isDeleted/isBanned checks)
 function MainNavigator() {
   const AppStack = createNativeStackNavigator();
   const { currentUser, isAuthenticated, profileExists } = useAppContext();
+
+  // Safety check: if not authenticated, don't render anything
+  if (!isAuthenticated) {
+    return null;
+  }
 
   if (!currentUser) {
     return null; // This should not happen if isAuthenticated is true
   }
 
-  if (!currentUser.emailVerified) {
+  // Only require email verification for non-Google auth users
+  // Google Sign-In users are already verified
+  if (
+    !currentUser.emailVerified &&
+    !currentUser.providerData.some(
+      (provider) => provider.providerId === "google.com"
+    )
+  ) {
     return (
       <AppStack.Navigator screenOptions={{ headerShown: false }}>
         <AppStack.Screen
@@ -232,75 +246,79 @@ function MainNavigator() {
 }
 
 function AppContent() {
-  const { isInitialized, isAuthenticated, currentUser, isBanned, isDeleted } =
-    useAppContext();
-  const navigationRef = useRef<NavigationContainerRef<any> | null>(null);
-  const BannedStack = createNativeStackNavigator();
-  const DeletedStack = createNativeStackNavigator();
+  const {
+    isInitialized,
+    isAuthenticated,
+    currentUser,
+    isBanned,
+    isDeleted,
+    profileExists,
+  } = useAppContext();
+  const navigationRef = useNavigationContainerRef();
+  const hasNavigatedRef = useRef(false);
 
   if (!isInitialized) {
     return <LoadingScreen loadingText="Loading..." />;
   }
 
-  // Check if user is deleted and authenticated
-  if (isAuthenticated && isDeleted) {
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer ref={navigationRef}>
-          <StatusBar style="dark" />
-          <DeletedStack.Navigator screenOptions={{ headerShown: false }}>
-            <DeletedStack.Screen
-              name="DeletedAccount"
-              component={DeletedAccountScreen}
-            />
-          </DeletedStack.Navigator>
-          <NotificationHandler navigationRef={navigationRef} />
-          <ExpoNotificationSetup />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
+  // Render the appropriate screen based on app state
+  const renderCurrentScreen = () => {
+    if (!isAuthenticated) {
+      return <AuthNavigator />;
+    } else if (isDeleted) {
+      return <DeletedAccountScreen />;
+    } else if (isBanned) {
+      return <BannedAccountScreen />;
+    } else if (!profileExists) {
+      return <AccountSetupScreen />;
+    } else {
+      return <MainNavigator />;
+    }
+  };
 
-  // Check if user is banned and authenticated
-  if (isAuthenticated && isBanned) {
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <NavigationContainer ref={navigationRef}>
-          <StatusBar style="dark" />
-          <BannedStack.Navigator screenOptions={{ headerShown: false }}>
-            <BannedStack.Screen
-              name="BannedAccount"
-              component={BannedAccountScreen}
-            />
-          </BannedStack.Navigator>
-          <NotificationHandler navigationRef={navigationRef} />
-          <ExpoNotificationSetup />
-        </NavigationContainer>
-      </GestureHandlerRootView>
-    );
-  }
-
-  // Single NavigationContainer for the entire app
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer ref={navigationRef}>
-        <StatusBar style="dark" />
-        {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
-        {isAuthenticated && <UnviewedMatchesHandler />}
-        <NotificationHandler navigationRef={navigationRef} />
-        <ExpoNotificationSetup />
-      </NavigationContainer>
+      <NavigationErrorBoundary>
+        <NavigationContainer ref={navigationRef}>
+          <StatusBar style="dark" />
+          {renderCurrentScreen()}
+
+          {isAuthenticated && <UnviewedMatchesHandler />}
+          <NotificationHandler navigationRef={navigationRef} />
+          {/* Only setup Expo notifications when user is authenticated and has a profile (on main tab screens) */}
+          {isAuthenticated && profileExists && <ExpoNotificationSetup />}
+        </NavigationContainer>
+      </NavigationErrorBoundary>
     </GestureHandlerRootView>
   );
 }
 
 export default function App() {
-  // Initialize the TelemetryDeck client using the core SDK
-  // const td = new TelemetryDeck({
-  //   appID: process.env.EXPO_PUBLIC_TELEMETRYDECK_APP_ID,
-  //   clientUser: "anonymous",
-  //   target: "https://nom.telemetrydeck.com", // Specify the target URL for React Native
-  // });
+  console.log("🔥 App component rendering");
+
+  // Check PostHog environment variables
+  const posthogApiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
+  const posthogHost = process.env.EXPO_PUBLIC_POSTHOG_HOST;
+
+  // Log PostHog key status on app startup
+  useEffect(() => {
+    console.log("🔍 App.tsx useEffect triggered");
+    console.log("🔍 posthogApiKey:", posthogApiKey ? "exists" : "missing");
+    console.log("🔍 posthogHost:", posthogHost ? "exists" : "missing");
+
+    logToNtfy("App loaded - PostHog key status", {
+      hasApiKey: !!posthogApiKey,
+      hasHost: !!posthogHost,
+      apiKeyPreview: posthogApiKey
+        ? posthogApiKey.substring(0, 5) + "..."
+        : "missing",
+      hostPreview: posthogHost
+        ? posthogHost.substring(0, 5) + "..."
+        : "missing",
+    });
+
+    console.log("🔍 logToNtfy called");
+  }, []);
 
   // PREMIUM DISABLED: Superwall configuration commented out
   // const apiKeys = SUPERWALL_CONFIG.apiKeys;
@@ -318,17 +336,35 @@ export default function App() {
   // }
 
   // PREMIUM DISABLED: Superwall provider removed, using simple provider structure
-  return (
-    <SafeAreaProvider>
-      {/* <TelemetryDeckProvider telemetryDeck={td}> */}
-      <AppProvider>
-        <NotificationProvider>
+  // If PostHog is not configured, render without it to prevent crashes
+  if (!posthogApiKey || !posthogHost) {
+    return (
+      <SafeAreaProvider>
+        <AppProvider>
           <ErrorBoundary>
             <AppContent />
           </ErrorBoundary>
-        </NotificationProvider>
-      </AppProvider>
-      {/* </TelemetryDeckProvider> */}
+        </AppProvider>
+      </SafeAreaProvider>
+    );
+  }
+
+  return (
+    <SafeAreaProvider>
+      <PostHogProvider
+        apiKey={posthogApiKey}
+        options={{
+          host: posthogHost,
+          disabled: false,
+        }}
+        autocapture={false}
+      >
+        <AppProvider>
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
+        </AppProvider>
+      </PostHogProvider>
     </SafeAreaProvider>
   );
 
