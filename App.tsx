@@ -48,18 +48,18 @@ Notifications.setNotificationHandler({
 const RootStack = createNativeStackNavigator();
 
 // Expo Notifications Setup Component
+// NOTE: Permission request is deferred to TabNavigator - this only sets up listeners
 function ExpoNotificationSetup() {
   const [expoPushToken, setExpoPushToken] = useState<string>("");
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
 
   useEffect(() => {
-    registerForPushNotificationsAsync().then((token) => {
-      if (token) {
-        setExpoPushToken(token);
-      }
-    });
+    // REMOVED: Don't request permissions immediately on app launch
+    // Permission request now happens in TabNavigator after account setup
+    // This prevents double permission prompts
 
+    // Only set up notification listeners (doesn't require permissions)
     notificationListener.current =
       Notifications.addNotificationReceivedListener((notification) => {
         // Handle notification received
