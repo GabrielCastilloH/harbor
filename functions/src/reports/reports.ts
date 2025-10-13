@@ -577,6 +577,34 @@ export const blockUser = functions.https.onCall(
         );
       }
 
+      // Verify match exists and user is part of it (if matchId is provided)
+      let matchData: any = null;
+      if (matchId) {
+        const matchDoc = await db.collection("matches").doc(matchId).get();
+        if (!matchDoc.exists) {
+          throw new functions.https.HttpsError("not-found", "Match not found");
+        }
+
+        matchData = matchDoc.data();
+        if (!matchData) {
+          throw new functions.https.HttpsError(
+            "not-found",
+            "Match data not found"
+          );
+        }
+
+        // Verify the requesting user is part of this match
+        if (
+          matchData.user1Id !== blockerId &&
+          matchData.user2Id !== blockerId
+        ) {
+          throw new functions.https.HttpsError(
+            "permission-denied",
+            "User not part of this match"
+          );
+        }
+      }
+
       // Use a transaction for atomic operations
       await db.runTransaction(async (transaction) => {
         // 1. Create a document in the blocked subcollection
@@ -613,39 +641,22 @@ export const blockUser = functions.https.onCall(
         });
 
         // 2. Unmatch if a matchId is provided
-        if (matchId) {
-          const matchDoc = await transaction.get(
-            db.collection("matches").doc(matchId)
-          );
-          if (!matchDoc.exists) {
-            // It's possible the match was already deleted, don't throw an error.
-            console.warn("Match not found, continuing with block operation.");
-          } else {
-            const matchData = matchDoc.data();
-            if (matchData) {
-              // Deactivate the match
-              transaction.update(db.collection("matches").doc(matchId), {
-                isActive: false,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-              });
+        if (matchId && matchData) {
+          // Deactivate the match
+          transaction.update(db.collection("matches").doc(matchId), {
+            isActive: false,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
 
-              // Set both users as available again
-              transaction.update(
-                db.collection("users").doc(matchData.user1Id),
-                {
-                  isAvailable: true,
-                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                }
-              );
-              transaction.update(
-                db.collection("users").doc(matchData.user2Id),
-                {
-                  isAvailable: true,
-                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                }
-              );
-            }
-          }
+          // Set both users as available again
+          transaction.update(db.collection("users").doc(matchData.user1Id), {
+            isAvailable: true,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          transaction.update(db.collection("users").doc(matchData.user2Id), {
+            isAvailable: true,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
         }
       });
 
