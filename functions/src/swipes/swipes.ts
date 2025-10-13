@@ -46,27 +46,29 @@ export const createSwipe = functions.https.onCall(
         );
       }
 
-      const [swiperActiveMatches, swipedActiveMatches] = await Promise.all([
-        db
-          .collection("matches")
-          .where("isActive", "==", true)
-          .where("participantIds", "array-contains", swiperId)
-          .get(),
-        db
-          .collection("matches")
-          .where("isActive", "==", true)
-          .where("participantIds", "array-contains", swipedId)
-          .get(),
-      ]);
+      const activeMatches = await db
+        .collection("matches")
+        .where("isActive", "==", true)
+        .get();
 
-      if (swiperActiveMatches.docs.length > 0) {
+      const swiperHasMatch = activeMatches.docs.some((doc) => {
+        const data = doc.data();
+        return data.user1Id === swiperId || data.user2Id === swiperId;
+      });
+
+      const swipedHasMatch = activeMatches.docs.some((doc) => {
+        const data = doc.data();
+        return data.user1Id === swipedId || data.user2Id === swipedId;
+      });
+
+      if (swiperHasMatch) {
         throw new functions.https.HttpsError(
           "permission-denied",
           "Cannot swipe while you have an active match"
         );
       }
 
-      if (swipedActiveMatches.docs.length > 0) {
+      if (swipedHasMatch) {
         throw new functions.https.HttpsError(
           "permission-denied",
           "Cannot swipe on a user who has an active match"
@@ -97,8 +99,8 @@ export const createSwipe = functions.https.onCall(
         const counterRef = db
           .collection("users")
           .doc(swiperId)
-          .collection("counters")
-          .doc("swipes");
+          .collection("swipeCounter")
+          .doc("daily");
         const counterSnap = await transaction.get(counterRef);
         const counterData = counterSnap.exists
           ? (counterSnap.data() as any)
@@ -157,12 +159,15 @@ export const createSwipe = functions.https.onCall(
 
             const matchData = {
               type: "individual",
-              participantIds: [swiperId, swipedId],
+              user1Id: swiperId,
+              user2Id: swipedId,
               matchDate: admin.firestore.FieldValue.serverTimestamp(),
               isActive: true,
               messageCount: 0,
-              participantConsent: { [swiperId]: false, [swipedId]: false },
-              participantViewed: { [swiperId]: false, [swipedId]: false },
+              user1Consented: false,
+              user2Consented: false,
+              user1Viewed: false,
+              user2Viewed: false,
               createdAt: admin.firestore.FieldValue.serverTimestamp(),
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             };

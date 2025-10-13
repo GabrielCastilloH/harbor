@@ -71,20 +71,6 @@ export class MatchService {
     }
   }
 
-  static async migrateMatchConsent(matchId: string) {
-    try {
-      const migrateMatchConsent = httpsCallable(
-        functions,
-        "matchFunctions-migrateMatchConsent"
-      );
-      const result = await migrateMatchConsent({ matchId });
-      return result.data as any;
-    } catch (error) {
-      console.error("MatchService - Error migrating match consent:", error);
-      throw error;
-    }
-  }
-
   static async getUnviewedMatches(userId: string) {
     try {
       const getUnviewedMatches = httpsCallable(
