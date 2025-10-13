@@ -131,7 +131,7 @@ Harbor implements a scalable **availability tracking system** that prevents user
 
 ```typescript
 // Scheduled function runs daily to reset swipe counts
-export const resetDailySwipes = onSchedule("0 0 * * *", async () => {
+export const resetDailySwipes = onSchedule("0 10 * * *", async () => {
   // Reset all user swipe counters to 0
   // Send notifications to users who reached their limit
 });
@@ -868,7 +868,7 @@ The app uses a **progressive blur system** that creates intrigue while maintaini
 ```typescript
 export const BLUR_CONFIG = {
   SERVER_BLUR_PERCENT: 80, // Server-side blur for _blurred.jpg
-  CLIENT_MAX_BLUR_RADIUS: 50, // Max React Native blur radius
+  CLIENT_MAX_BLUR_RADIUS: 40, // Max React Native blur radius
   MESSAGES_TO_CLEAR_BLUR: 30, // Phase 1: 100% → 0% fake unblur
   MESSAGES_TO_CLEAR_ORIGINAL: 10, // Phase 2: 80% → 0% real unblur
 };

@@ -1046,8 +1046,8 @@ export const deleteUser = functions.https.onCall(
         const swipeCountersRef = db
           .collection("users")
           .doc(userId)
-          .collection("counters")
-          .doc("swipes");
+          .collection("swipeCounter")
+          .doc("daily");
         const swipeCountersDoc = await swipeCountersRef.get();
         if (swipeCountersDoc.exists) {
           batch.delete(swipeCountersRef);

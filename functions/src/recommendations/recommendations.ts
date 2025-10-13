@@ -86,8 +86,8 @@ export const getRecommendations = functions.https.onCall(
       const countersRef = db
         .collection("users")
         .doc(userId)
-        .collection("counters")
-        .doc("swipes");
+        .collection("swipeCounter")
+        .doc("daily");
       const countersSnap = await countersRef.get();
       const cData = countersSnap.exists ? (countersSnap.data() as any) : {};
       const swipesMadeToday = Number(cData?.count || 0);
