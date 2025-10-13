@@ -30,7 +30,8 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 
 ### 🔐 Security & Privacy
 
-- **Cornell email verification**: Custom 6-digit code system designed for university email systems
+- **Google Sign-In authentication**: Secure authentication through Google's verified system
+- **Cornell email validation**: Ensures only Cornell students can join the platform
 - **Image moderation**: Automated content screening for inappropriate images
 - **Report system**: Comprehensive reporting with automatic unmatching and chat freezing
 - **Account management**: Complete account deletion, banning, and deactivation systems
@@ -300,20 +301,6 @@ Harbor uses **Firebase Firestore** as its primary database with a well-structure
 }
 ```
 
-#### ✉️ **verificationCodes** Collection
-
-**Email verification codes**
-
-```typescript
-// Document: /verificationCodes/{userId}
-{
-  code: string; // 6-digit verification code
-  email: string; // Email being verified
-  expiresAt: number; // Expiration timestamp (10 minutes)
-  createdAt: Timestamp; // When code was created
-}
-```
-
 ### Subcollections
 
 #### 📊 **users/{userId}/swipeCounter** Subcollection
@@ -396,13 +383,12 @@ Harbor implements a scalable **availability tracking system** that prevents user
 
 ### Backend Services
 
-- **Firebase Authentication** with custom email verification
+- **Firebase Authentication** with Google Sign-In provider
 - **Cloud Firestore** for real-time data storage
 - **Firebase Cloud Functions** (Node.js 22) for backend logic
 - **Firebase Storage** for image hosting and processing
 - **Stream Chat** for messaging infrastructure
 - **Google Secret Manager** for secure API key storage
-- **Mailgun** for reliable email delivery
 
 ### Key Dependencies
 
@@ -424,9 +410,7 @@ Harbor implements a scalable **availability tracking system** that prevents user
 ```
 App.tsx (Main Navigator)
 ├── AuthStack (Unauthenticated)
-│   ├── SignIn
-│   ├── CreateAccount
-│   └── EmailVerification
+│   └── SignIn (Google Sign-In)
 ├── AccountSetup (First-time users)
 ├── BannedAccountScreen (Banned users)
 ├── DeletedAccountScreen (Deleted users)
@@ -460,7 +444,6 @@ App.tsx (Main Navigator)
 
 - **AnimatedStack**: Gesture-based swiping with smooth animations
 - **ImageCarousel**: Profile photo viewer with blur transitions
-- **VerificationCodeInput**: Custom 6-digit code input for email verification
 - **MatchModal**: Celebration screen when users match
 - **SettingsButton**: Reusable settings interface component
 - **ClarityBar**: Visual progress indicator for photo reveal
@@ -472,10 +455,7 @@ App.tsx (Main Navigator)
 
 ### Authentication Functions (`authFunctions`)
 
-- **sendVerificationCode**: Sends 6-digit codes via Mailgun with 2-minute cooldown
-- **verifyVerificationCode**: Validates codes and marks emails as verified
-- **getVerificationCooldown**: Returns remaining cooldown time for verification requests
-- **signInWithEmail**: Custom sign-in flow with Firestore user checking
+- **signInWithEmail**: Custom sign-in flow with Firestore user checking (legacy - now uses Google Sign-In)
 
 ### Chat Functions (`chatFunctions`)
 
@@ -545,144 +525,52 @@ App.tsx (Main Navigator)
 
 - **getSuperwallApiKeys**: Provides Superwall API keys for premium features (currently disabled)
 
-## 🔐 Authentication & Email Verification Flow
+## 🔐 Authentication & Google Sign-In Flow
 
-Harbor uses Firebase Auth with a **custom code-based email verification system** that replaces Firebase's default link-based verification. This system is specifically designed to work with university email systems that pre-fetch verification links.
+Harbor uses **Google Sign-In** for streamlined authentication, eliminating the need for email verification codes and providing a seamless user experience.
 
-### Flow Logic
+### Current Authentication Flow
 
-The app has 6 distinct authentication states handled in `App.tsx`:
+The app has 4 distinct authentication states handled in `App.tsx`:
 
-1. **User signed in but email NOT verified** → `EmailVerificationScreen`
-2. **User verified but NO profile in database** → `AccountSetupScreen`
-3. **User verified AND has profile** → Main App (`TabNavigator`)
-4. **User not signed in** → Auth screens (`SignIn`/`CreateAccount`)
-5. **User account deleted** → `DeletedAccountScreen`
-6. **User account banned** → `BannedAccountScreen`
+1. **User not signed in** → Auth screens (`SignIn` with Google Sign-In)
+2. **User signed in but NO profile in database** → `AccountSetupScreen`
+3. **User signed in AND has profile** → Main App (`TabNavigator`)
+4. **User account deleted** → `DeletedAccountScreen`
+5. **User account banned** → `BannedAccountScreen`
 
-### Email Verification System
+### Google Sign-In Implementation
 
 #### Overview
 
-Instead of using Firebase's built-in email verification links, Harbor implements a custom verification system using:
+Harbor implements Google Sign-In using:
 
-- **6-digit verification codes** sent via email
-- **5-minute expiration** for security
-- **Mailgun integration** for reliable email delivery
-- **Google Secret Manager** for secure API key storage
+- **Firebase Auth Google provider** for secure authentication
+- **Automatic email verification** through Google's verified email system
+- **Seamless user experience** with one-tap sign-in
+- **Cornell email validation** to ensure only Cornell students can join
 
-#### Complete Verification Flow
+#### Authentication Flow
 
-1. **User Signs Up** (`CreateAccountScreen.tsx`)
-
-   ```typescript
-   // 1. Create user with Firebase Auth
-   const userCredential = await createUserWithEmailAndPassword(
-     auth,
-     email,
-     password
-   );
-
-   // 2. User automatically navigated to EmailVerificationScreen
-   // 3. No manual email sending - handled by EmailVerificationScreen
-   ```
-
-2. **Code Generation & Sending** (`EmailVerificationScreen.tsx`)
+1. **User Signs In** (`SignIn.tsx`)
 
    ```typescript
-   // Screen loads → automatically calls sendVerificationCode Firebase Function
-   useEffect(() => {
-     if (currentUser && !initialEmailSent) {
-       handleResendEmail(true); // Send initial verification code
-       setInitialEmailSent(true);
-     }
-   }, [currentUser, initialEmailSent]);
-   ```
-
-3. **Backend Code Processing** (`functions/src/auth/emailVerification.ts`)
-
-   ```typescript
-   // Generate 6-digit code
-   const code = Math.floor(100000 + Math.random() * 900000).toString();
-   const expiresAt =
-     admin.firestore.Timestamp.now().toMillis() + 10 * 60 * 1000;
-
-   // Store in Firestore
-   await db.collection("verificationCodes").doc(userId).set({
-     code,
-     email,
-     expiresAt,
-     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-   });
-
-   // Send via Mailgun
-   const msg = {
-     from: `Harbor <noreply@tryharbor.app>`,
-     subject: "Your Harbor Verification Code",
-     html: `<div>Your verification code is: <h2>${code}</h2></div>`,
+   // Google Sign-In button triggers authentication
+   const handleGoogleSignIn = async () => {
+     const result = await GoogleSignin.signIn();
+     const googleCredential = GoogleAuthProvider.credential(result.idToken);
+     return signInWithCredential(auth, googleCredential);
    };
-   await mg.messages.create(domain, msg);
    ```
 
-4. **User Enters Code** (`EmailVerificationScreen.tsx`)
+2. **Automatic Profile Creation**
 
-   ```typescript
-   // Modern 6-box input UI with paste functionality
-   <VerificationCodeInput
-     value={verificationCode}
-     onChangeText={setVerificationCode}
-     maxLength={6}
-   />
-   ```
+   - User is automatically redirected to `AccountSetupScreen` if no profile exists
+   - Profile creation process begins immediately after successful authentication
 
-5. **Code Verification** (`functions/src/auth/emailVerification.ts`)
-
-   ```typescript
-   // Verify code against Firestore
-   const doc = await db.collection("verificationCodes").doc(userId).get();
-   const storedData = doc.data();
-
-   if (storedData?.code === code && storedData?.expiresAt > now) {
-     // Mark email as verified using Firebase Admin SDK
-     await admin.auth().updateUser(userId, { emailVerified: true });
-     await doc.ref.delete(); // Clean up used code
-     return { success: true };
-   } else if (storedData?.expiresAt < now) {
-     // Code expired - delete and require new code
-     await doc.ref.delete();
-     throw new functions.https.HttpsError("unauthenticated", "Code expired");
-   } else {
-     // Incorrect code - keep code active for retry
-     throw new functions.https.HttpsError("unauthenticated", "Incorrect code");
-   }
-   ```
-
-6. **Access Granted**
-   - Once verified, app automatically navigates to `AccountSetupScreen`
-   - User can now access full app features
-
-#### Security Features
-
-- **6-digit codes** with 10-minute expiration
-- **One-time use** (deleted after verification)
-- **Server-side verification** (cannot be bypassed)
-- **Mailgun integration** with verified domain (`tryharbor.app`)
-- **Google Secret Manager** for secure API key storage
-- **Forgiving verification** (codes stay active for typos)
-
-#### Cooldown & Rate Limiting
-
-- **2-minute cooldown** enforced on both frontend and backend
-- **Server-side protection** against abuse (cannot be bypassed)
-- **Real-time countdown** showing remaining time
-- **Smart button states** (disabled during cooldown)
-- **Graceful error handling** for cooldown violations
-
-#### Cornell Email Validation
-
-- **Frontend validation**: Explicit rejection of emails containing `+` symbols
-- **Backend normalization**: Strip `+` aliases in Cloud Functions (when needed)
-- **Domain enforcement**: Only `@cornell.edu` emails accepted
+3. **Access Granted**
+   - Once profile is complete, user can access full app features
+   - No additional verification steps required
 
 ## 🚫 Account Management & Banning System
 
@@ -1316,7 +1204,6 @@ harbor/
 ├── components/             # Reusable UI components
 │   ├── AnimatedStack.tsx   # Gesture-based swiping component
 │   ├── ImageCarousel.tsx   # Profile photo viewer with blur transitions
-│   ├── VerificationCodeInput.tsx # Custom 6-digit code input
 │   ├── ClarityBar.tsx      # Visual progress indicator for photo reveal
 │   ├── DataPicker.tsx      # Custom picker components
 │   ├── NotificationHandler.tsx # Push notification management
@@ -1375,6 +1262,268 @@ harbor/
     ├── SocketService.tsx # WebSocket management
     └── streamNotifService.ts # Stream Chat notifications
 ```
+
+---
+
+## 📦 Archived: Previous Email Verification System
+
+**⚠️ IMPORTANT: This section documents the previous email verification system that has been replaced with Google Sign-In. This content is preserved for potential future reference but is no longer active in the current codebase.**
+
+### Previous Email Verification System (Archived)
+
+Harbor previously used Firebase Auth with a **custom code-based email verification system** that replaced Firebase's default link-based verification. This system was specifically designed to work with university email systems that pre-fetch verification links.
+
+#### Archived Flow Logic
+
+The app previously had 6 distinct authentication states handled in `App.tsx`:
+
+1. **User signed in but email NOT verified** → `EmailVerificationScreen`
+2. **User verified but NO profile in database** → `AccountSetupScreen`
+3. **User verified AND has profile** → Main App (`TabNavigator`)
+4. **User not signed in** → Auth screens (`SignIn`/`CreateAccount`)
+5. **User account deleted** → `DeletedAccountScreen`
+6. **User account banned** → `BannedAccountScreen`
+
+#### Archived Email Verification System
+
+Instead of using Firebase's built-in email verification links, Harbor previously implemented a custom verification system using:
+
+- **6-digit verification codes** sent via email
+- **5-minute expiration** for security
+- **Mailgun integration** for reliable email delivery
+- **Google Secret Manager** for secure API key storage
+
+#### Archived Verification Flow
+
+1. **User Signs Up** (`CreateAccountScreen.tsx`)
+
+   ```typescript
+   // 1. Create user with Firebase Auth
+   const userCredential = await createUserWithEmailAndPassword(
+     auth,
+     email,
+     password
+   );
+
+   // 2. User automatically navigated to EmailVerificationScreen
+   // 3. No manual email sending - handled by EmailVerificationScreen
+   ```
+
+2. **Code Generation & Sending** (`EmailVerificationScreen.tsx`)
+
+   ```typescript
+   // Screen loads → automatically calls sendVerificationCode Firebase Function
+   useEffect(() => {
+     if (currentUser && !initialEmailSent) {
+       handleResendEmail(true); // Send initial verification code
+       setInitialEmailSent(true);
+     }
+   }, [currentUser, initialEmailSent]);
+   ```
+
+3. **Backend Code Processing** (`functions/src/auth/emailVerification.ts`)
+
+   ```typescript
+   // Generate 6-digit code
+   const code = Math.floor(100000 + Math.random() * 900000).toString();
+   const expiresAt =
+     admin.firestore.Timestamp.now().toMillis() + 10 * 60 * 1000;
+
+   // Store in Firestore
+   await db.collection("verificationCodes").doc(userId).set({
+     code,
+     email,
+     expiresAt,
+     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+   });
+
+   // Send via Mailgun
+   const msg = {
+     from: `Harbor <noreply@tryharbor.app>`,
+     subject: "Your Harbor Verification Code",
+     html: `<div>Your verification code is: <h2>${code}</h2></div>`,
+   };
+   await mg.messages.create(domain, msg);
+   ```
+
+4. **User Enters Code** (`EmailVerificationScreen.tsx`)
+
+   ```typescript
+   // Modern 6-box input UI with paste functionality
+   <VerificationCodeInput
+     value={verificationCode}
+     onChangeText={setVerificationCode}
+     maxLength={6}
+   />
+   ```
+
+5. **Code Verification** (`functions/src/auth/emailVerification.ts`)
+
+   ```typescript
+   // Verify code against Firestore
+   const doc = await db.collection("verificationCodes").doc(userId).get();
+   const storedData = doc.data();
+
+   if (storedData?.code === code && storedData?.expiresAt > now) {
+     // Mark email as verified using Firebase Admin SDK
+     await admin.auth().updateUser(userId, { emailVerified: true });
+     await doc.ref.delete(); // Clean up used code
+     return { success: true };
+   } else if (storedData?.expiresAt < now) {
+     // Code expired - delete and require new code
+     await doc.ref.delete();
+     throw new functions.https.HttpsError("unauthenticated", "Code expired");
+   } else {
+     // Incorrect code - keep code active for retry
+     throw new functions.https.HttpsError("unauthenticated", "Incorrect code");
+   }
+   ```
+
+6. **Access Granted**
+   - Once verified, app automatically navigates to `AccountSetupScreen`
+   - User can now access full app features
+
+#### Archived Security Features
+
+- **6-digit codes** with 10-minute expiration
+- **One-time use** (deleted after verification)
+- **Server-side verification** (cannot be bypassed)
+- **Mailgun integration** with verified domain (`tryharbor.app`)
+- **Google Secret Manager** for secure API key storage
+- **Forgiving verification** (codes stay active for typos)
+
+#### Archived Cooldown & Rate Limiting
+
+- **2-minute cooldown** enforced on both frontend and backend
+- **Server-side protection** against abuse (cannot be bypassed)
+- **Real-time countdown** showing remaining time
+- **Smart button states** (disabled during cooldown)
+- **Graceful error handling** for cooldown violations
+
+#### Archived Cornell Email Validation
+
+- **Frontend validation**: Explicit rejection of emails containing `+` symbols
+- **Backend normalization**: Strip `+` aliases in Cloud Functions (when needed)
+- **Domain enforcement**: Only `@cornell.edu` emails accepted
+
+### 🗑️ Complete Deletion Guide for Email Verification System
+
+**When you're ready to permanently remove the email verification system, follow this comprehensive guide:**
+
+#### Frontend Files to Delete
+
+1. **Screens:**
+
+   - `screens/EmailVerificationScreen.tsx`
+   - `screens/CreateAccountScreen.tsx` (if it only handles email/password signup)
+
+2. **Components:**
+
+   - `components/VerificationCodeInput.tsx`
+   - `components/EmailInput.tsx` (if only used for email verification)
+   - `components/PasswordInput.tsx` (if only used for email verification)
+
+3. **Navigation Updates:**
+   - Remove `EmailVerification` from `App.tsx` navigation stack
+   - Remove `CreateAccount` from `App.tsx` navigation stack (if only for email signup)
+   - Update authentication flow logic in `App.tsx`
+
+#### Backend Files to Delete
+
+1. **Cloud Functions:**
+
+   - `functions/src/auth/emailVerification.ts`
+   - Remove email verification functions from `functions/src/auth/index.ts`
+   - Remove email verification exports from `functions/src/index.ts`
+
+2. **Database Collections:**
+   - Delete entire `verificationCodes` collection from Firestore
+   - Remove any references to verification codes in user documents
+
+#### Configuration Files to Update
+
+1. **Firebase Configuration:**
+
+   - Remove Mailgun API keys from Google Secret Manager
+   - Remove email verification environment variables
+   - Update Firebase Auth configuration to disable email/password provider
+
+2. **Package Dependencies:**
+   - Remove Mailgun dependency from `functions/package.json`
+   - Remove any email-related dependencies not used elsewhere
+
+#### Code References to Remove
+
+1. **Authentication Flow:**
+
+   - Remove email verification checks from `App.tsx`
+   - Remove email verification state management
+   - Update authentication state logic
+
+2. **Service Files:**
+
+   - Remove email verification methods from `networking/AuthService.ts`
+   - Remove email verification API calls
+
+3. **Type Definitions:**
+   - Remove email verification related types from `types/` files
+   - Remove verification code interfaces
+
+#### Database Cleanup
+
+1. **Firestore Collections:**
+
+   ```bash
+   # Delete verification codes collection
+   firebase firestore:delete --recursive verificationCodes
+   ```
+
+2. **User Document Fields:**
+   - Remove any email verification related fields from user documents
+   - Clean up any verification status fields
+
+#### Testing & Validation
+
+1. **Authentication Flow:**
+
+   - Test Google Sign-In flow end-to-end
+   - Verify no broken references to email verification
+   - Test account creation and profile setup
+
+2. **Database Queries:**
+
+   - Verify no queries reference `verificationCodes` collection
+   - Check that user creation flow works without email verification
+
+3. **Error Handling:**
+   - Remove email verification error handling
+   - Update error messages and user feedback
+
+#### Final Verification Steps
+
+1. **Search Codebase:**
+
+   ```bash
+   # Search for any remaining references
+   grep -r "verificationCode" .
+   grep -r "EmailVerification" .
+   grep -r "sendVerificationCode" .
+   grep -r "verifyVerificationCode" .
+   ```
+
+2. **Test Complete Flow:**
+
+   - New user signup with Google
+   - Profile creation
+   - App functionality
+   - Account management
+
+3. **Deploy and Test:**
+   - Deploy updated Cloud Functions
+   - Test on staging environment
+   - Verify no broken functionality
+
+**⚠️ WARNING: This deletion is irreversible. Make sure to backup any important data and test thoroughly before proceeding with production deployment.**
 
 ---
 
