@@ -12,7 +12,7 @@ async function blurImageBuffer(
   blurPercent: number
 ): Promise<Buffer> {
   try {
-    const sigma = 50; // Extremely strong blur
+    const sigma = 25; // Moderate blur for good balance
     const blurredBuffer = await sharp(buffer)
       .resize(800, 800, { fit: "inside", withoutEnlargement: true })
       .blur(sigma)
