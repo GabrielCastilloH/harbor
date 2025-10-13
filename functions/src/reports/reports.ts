@@ -478,18 +478,16 @@ export const reportAndUnmatch = functions.https.onCall(
         if (apiKey && apiSecret) {
           const serverClient = StreamChat.getInstance(apiKey, apiSecret);
 
-          // Create channel ID (sorted to ensure consistency)
-          const channelId = [matchData.user1Id, matchData.user2Id]
-            .sort()
-            .join("-");
+          // Create channel ID using participantIds (sorted to ensure consistency)
+          const channelId = matchData.participantIds.sort().join("-");
           const channel = serverClient.channel("messaging", channelId);
 
           // Freeze the channel
           await channel.update({ frozen: true });
 
-          // Send system message about unmatch
+          // Send system message about report/unmatch
           await channel.sendMessage({
-            text: "This chat has been frozen because one of the users disconnected.",
+            text: "This chat has been frozen because one of the users reported and unmatched.",
             user_id: "system",
           });
         }
