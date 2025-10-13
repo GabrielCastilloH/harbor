@@ -291,15 +291,21 @@ export const createChatChannel = functions.https.onCall(
       // Find the match between these users
       const matchQuery = await db
         .collection("matches")
-        .where("user1Id", "in", [userId1, userId2])
-        .where("user2Id", "in", [userId1, userId2])
         .where("isActive", "==", true)
-        .limit(1)
         .get();
 
       let matchId = null;
       if (!matchQuery.empty) {
-        matchId = matchQuery.docs[0].id;
+        const foundMatch = matchQuery.docs.find((doc) => {
+          const data = doc.data();
+          return (
+            (data.user1Id === userId1 && data.user2Id === userId2) ||
+            (data.user1Id === userId2 && data.user2Id === userId1)
+          );
+        });
+        if (foundMatch) {
+          matchId = foundMatch.id;
+        }
       }
 
       // Create or get the channel with matchId in the data

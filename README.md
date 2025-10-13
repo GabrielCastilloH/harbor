@@ -52,7 +52,7 @@ Harbor implements a **subcollection-based swipe tracking system** that provides 
 #### 🚀 Performance Benefits
 
 - **Subcollection Organization**: Swipes stored in `/swipes/{userId}/outgoing/` and `/swipes/{userId}/incoming/` for efficient querying
-- **Counter-based Limits**: Daily swipe counts tracked in `/users/{userId}/counters/swipes` subcollection
+- **Counter-based Limits**: Daily swipe counts tracked in `/users/{userId}/swipeCounter/daily` subcollection
 - **Atomic Operations**: All swipe data updates happen in transactions, preventing race conditions
 
 #### 🔒 Data Consistency
@@ -105,7 +105,7 @@ Harbor implements a scalable **availability tracking system** that prevents user
   currentMatches: [],       // Array of active match IDs
 }
 
-// Swipe counter in /users/{userId}/counters/swipes
+// Swipe counter in /users/{userId}/swipeCounter/daily
 {
   count: 3,                 // Current day's swipe count
   resetDate: Timestamp,     // Last reset timestamp (Firestore Timestamp)
@@ -155,6 +155,20 @@ await db.runTransaction(async (transaction) => {
 
 Harbor uses **Firebase Firestore** as its primary database with a well-structured collection hierarchy designed for scalability and efficient querying.
 
+### Recent Schema Updates (October 2025)
+
+**Match Schema Optimization:**
+
+- Migrated from array-based `participantIds` to explicit `user1Id`/`user2Id` fields
+- Changed from dynamic consent maps to explicit `user1Consented`/`user2Consented` booleans
+- Changed from dynamic view maps to explicit `user1Viewed`/`user2Viewed` booleans
+- **Benefit**: Simpler queries, better performance, clearer code for 1-on-1 matches
+
+**Swipe Counter Simplification:**
+
+- Changed from `/users/{userId}/counters/swipes` to `/users/{userId}/swipeCounter/daily`
+- **Benefit**: Cleaner structure, single-purpose subcollection
+
 ### Main Collections
 
 #### 📊 **users** Collection
@@ -197,20 +211,23 @@ Harbor uses **Firebase Firestore** as its primary database with a well-structure
 
 #### 🔄 **matches** Collection
 
-**Individual match records between users**
+**Individual match records between two users**
 
 ```typescript
 // Document: /matches/{matchId}
 {
-  type: "individual";                           // Match type
-  participantIds: string[];                     // Array of participant user IDs
-  participantConsent: Record<string, boolean>;  // Consent tracking per user
-  participantViewed: Record<string, boolean>;   // View tracking per user
-  messageCount: number;                         // Total messages in chat
-  isActive: boolean;                            // Match status
-  matchDate: Timestamp;                         // When match was created
-  consentMessageSent?: boolean;                 // Consent notification sent
-  introMessageSent?: boolean;                   // Intro message sent
+  type: "individual";         // Match type (always "individual" for 1-on-1 matches)
+  user1Id: string;            // First user's ID
+  user2Id: string;            // Second user's ID
+  user1Consented: boolean;    // User 1's consent status
+  user2Consented: boolean;    // User 2's consent status
+  user1Viewed: boolean;       // User 1's view status
+  user2Viewed: boolean;       // User 2's view status
+  messageCount: number;       // Total messages in chat
+  isActive: boolean;          // Match status
+  matchDate: Timestamp;       // When match was created
+  consentMessageSent?: boolean; // Consent notification sent
+  introMessageSent?: boolean;   // Intro message sent
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -299,12 +316,12 @@ Harbor uses **Firebase Firestore** as its primary database with a well-structure
 
 ### Subcollections
 
-#### 📊 **users/{userId}/counters** Subcollection
+#### 📊 **users/{userId}/swipeCounter** Subcollection
 
 **Daily swipe count tracking**
 
 ```typescript
-// Document: /users/{userId}/counters/swipes
+// Document: /users/{userId}/swipeCounter/daily
 {
   count: number; // Current day's swipe count
   resetDate: Timestamp; // Last reset timestamp (Firestore Timestamp)
@@ -332,7 +349,7 @@ Harbor uses **Firebase Firestore** as its primary database with a well-structure
 #### 🚀 **Performance Optimizations**
 
 - **Subcollection Architecture**: Swipes stored in `/swipes/{userId}/outgoing/` and `/swipes/{userId}/incoming/` for efficient querying
-- **Counter-based Limits**: Daily swipe counts tracked in `/users/{userId}/counters/swipes` subcollection
+- **Counter-based Limits**: Daily swipe counts tracked in `/users/{userId}/swipeCounter/daily` subcollection
 - **Index-based Filtering**: Availability status prevents recommending users in active matches
 - **Atomic Operations**: All critical operations use Firestore transactions
 
@@ -495,7 +512,6 @@ App.tsx (Main Navigator)
 - **getMatchId**: Finds match ID between two users
 - **updateConsent**: Updates user's consent status for continued chatting
 - **getConsentStatus**: Manages consent flow for continued chatting
-- **migrateMatchConsent**: Migrates old match documents to new consent schema
 - **incrementMatchMessages**: Increments message count for matches
 
 ### Recommendation Functions (`recommendationsFunctions`)
@@ -893,14 +909,17 @@ export function getClientBlurLevel({
 
 ### Consent State Management
 
-#### Unified Match Document Structure
+#### Match Document Structure (Optimized for 1-on-1 Matches)
 
 ```typescript
 interface Match {
   type: "individual";
-  participantIds: string[]; // Array of participant user IDs
-  participantConsent: Record<string, boolean>; // Consent tracking
-  participantViewed: Record<string, boolean>; // View tracking
+  user1Id: string; // First user's ID
+  user2Id: string; // Second user's ID
+  user1Consented: boolean; // User 1's consent status
+  user2Consented: boolean; // User 2's consent status
+  user1Viewed: boolean; // User 1's view status
+  user2Viewed: boolean; // User 2's view status
   messageCount: number;
   isActive: boolean;
   matchDate: Timestamp;
@@ -915,13 +934,15 @@ interface Match {
 
 The `matchFunctions-getConsentStatus` callable returns:
 
-- `participantIds` (array of participant user IDs)
-- `participantConsent` (consent map)
+- `user1Id` (first user's ID)
+- `user2Id` (second user's ID)
+- `user1Consented` (user 1's consent status)
+- `user2Consented` (user 2's consent status)
 - `bothConsented` (true when both users have consented)
 - `messageCount`
-- `shouldShowConsentScreen` (true when `messageCount >= threshold` and not all consented)
+- `shouldShowConsentScreen` (true when `messageCount >= threshold` and not both consented)
 - `shouldShowConsentForUser` (per-user modal visibility)
-- `state` ("none_consented" | "one_consented" | "both_consented" | "all_consented")
+- `state` ("none_consented" | "one_consented" | "both_consented")
 
 #### Client Detection Flow
 
