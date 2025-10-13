@@ -170,9 +170,13 @@ export const createSwipe = functions.https.onCall(
             transaction.set(matchRef, matchData);
             transaction.update(swiperUserRef, {
               currentMatches: admin.firestore.FieldValue.arrayUnion(matchId),
+              isAvailable: false,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
             transaction.update(swipedUserRef, {
               currentMatches: admin.firestore.FieldValue.arrayUnion(matchId),
+              isAvailable: false,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
           }
         }
