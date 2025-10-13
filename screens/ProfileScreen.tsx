@@ -213,6 +213,7 @@ export default function ProfileScreen() {
         reportedUserId: userId,
         reportedUserEmail: profile.email,
         reportedUserName: profile.firstName,
+        matchId: matchId || undefined, // Pass matchId so ReportScreen can unmatch automatically
       });
     } catch (error) {
       console.error("❌ Navigation error:", error);

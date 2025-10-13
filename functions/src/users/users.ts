@@ -304,8 +304,6 @@ export const createUser = functions.https.onCall(
               existingData?.isAvailable !== undefined
                 ? existingData.isAvailable
                 : true,
-            // Preserve existing currentMatches if present; default to empty array
-            currentMatches: existingData?.currentMatches || [],
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };
 
@@ -338,8 +336,6 @@ export const createUser = functions.https.onCall(
             isActive: true,
             // Match availability (defaults to true)
             isAvailable: true,
-            // Initialize current matches array
-            currentMatches: [],
           };
 
           transaction.set(db.collection("users").doc(firebaseUid), newUserDoc);
@@ -773,7 +769,8 @@ export const updateUser = functions.https.onCall(
 );
 
 /**
- * Unmatches a user (removes match from currentMatches array)
+ * Unmatches a user by setting them as available
+ * Note: Use matchFunctions-unmatchUsers instead for proper unmatching with match deactivation
  */
 export const unmatchUser = functions.https.onCall(
   {
@@ -807,23 +804,18 @@ export const unmatchUser = functions.https.onCall(
         );
       }
 
-      // Remove the match from the user's matches array
+      // Set user as available (deprecated function, use matchFunctions-unmatchUsers)
       const userRef = db.collection("users").doc(id);
       await userRef.update({
-        matches: admin.firestore.FieldValue.arrayRemove(matchId),
+        isAvailable: true,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Get updated matches
-      const userDoc = await userRef.get();
-      const currentMatches = userDoc.data()?.matches || [];
-
       return {
-        message: "User unmatched successfully",
-        currentMatches,
+        message: "User set as available (deprecated, use unmatchUsers)",
       };
     } catch (error: any) {
-      console.error("Error unmatching user:", error);
+      console.error("Error in unmatchUser:", error);
       throw new functions.https.HttpsError(
         "internal",
         "Failed to unmatch user"
@@ -927,63 +919,66 @@ export const deleteUser = functions.https.onCall(
       }
 
       const userData = userDoc.data();
-      const currentMatches = userData?.currentMatches || [];
+
+      // Query all matches for this user
+      const matchesSnapshot = await db
+        .collection("matches")
+        .where("participantIds", "array-contains", userId)
+        .where("isActive", "==", true)
+        .get();
+
+      const currentMatches = matchesSnapshot.docs.map((doc) => doc.id);
 
       // Read all match data upfront to avoid reads inside transaction
       const matchDataMap = new Map();
       const otherUserDataMap = new Map();
 
-      for (const matchId of currentMatches) {
+      for (const matchDoc of matchesSnapshot.docs) {
+        const matchId = matchDoc.id;
         try {
-          const matchDoc = await db.collection("matches").doc(matchId).get();
-          if (matchDoc.exists) {
-            const matchData = matchDoc.data();
-            matchDataMap.set(matchId, matchData);
+          const matchData = matchDoc.data();
+          matchDataMap.set(matchId, matchData);
 
-            // Also read the other user's data upfront
-            if (!matchData) continue;
+          // Also read the other user's data upfront
+          if (!matchData) continue;
 
-            // Handle both individual and group matches
-            let otherUserIds: string[] = [];
-            if (matchData.type === "individual") {
-              // Individual match: find the other participant
-              const participantIds = matchData.participantIds || [];
-              otherUserIds = participantIds.filter(
-                (id: string) => id !== userId
-              );
-            } else if (matchData.type === "group") {
-              // Group match: get all other participants
-              const participantIds = matchData.participantIds || [];
-              otherUserIds = participantIds.filter(
-                (id: string) => id !== userId
-              );
-            } else {
-              // Legacy individual match format
-              const otherUserId =
-                matchData.user1Id === userId
-                  ? matchData.user2Id
-                  : matchData.user1Id;
-              if (otherUserId) otherUserIds = [otherUserId];
-            }
-            // Read data for all other users in the match
-            for (const otherUserId of otherUserIds) {
-              if (!otherUserDataMap.has(otherUserId)) {
-                try {
-                  const otherUserDoc = await db
-                    .collection("users")
-                    .doc(otherUserId)
-                    .get();
-                  if (otherUserDoc.exists) {
-                    otherUserDataMap.set(otherUserId, otherUserDoc.data());
-                  }
-                } catch (error) {
-                  console.error(`Error reading user ${otherUserId}:`, error);
+          // Handle both individual and group matches
+          let otherUserIds: string[] = [];
+          if (matchData.type === "individual") {
+            // Individual match: find the other participant
+            const participantIds = matchData.participantIds || [];
+            otherUserIds = participantIds.filter((id: string) => id !== userId);
+          } else if (matchData.type === "group") {
+            // Group match: get all other participants
+            const participantIds = matchData.participantIds || [];
+            otherUserIds = participantIds.filter((id: string) => id !== userId);
+          } else {
+            // Legacy individual match format
+            const otherUserId =
+              matchData.user1Id === userId
+                ? matchData.user2Id
+                : matchData.user1Id;
+            if (otherUserId) otherUserIds = [otherUserId];
+          }
+          // Read data for all other users in the match
+          for (const otherUserId of otherUserIds) {
+            if (!otherUserDataMap.has(otherUserId)) {
+              try {
+                const otherUserDoc = await db
+                  .collection("users")
+                  .doc(otherUserId)
+                  .get();
+                if (otherUserDoc.exists) {
+                  otherUserDataMap.set(otherUserId, otherUserDoc.data());
                 }
+              } catch (error) {
+                console.error(`Error reading user ${otherUserId}:`, error);
               }
             }
-          } else {
           }
-        } catch (error) {}
+        } catch (error) {
+          console.error(`Error processing match ${matchId}:`, error);
+        }
       }
 
       // --- STEP 2: USE TRANSACTION FOR ATOMIC UPDATES ---
@@ -992,7 +987,7 @@ export const deleteUser = functions.https.onCall(
         // Delete user document
         transaction.delete(userRef);
 
-        // Update matches and other users' currentMatches arrays
+        // Deactivate all matches and set other users as available
         for (const matchId of currentMatches) {
           const matchData = matchDataMap.get(matchId);
           if (matchData) {
@@ -1004,7 +999,7 @@ export const deleteUser = functions.https.onCall(
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
-            // Remove match from all other users' currentMatches arrays
+            // Set all other participants as available
             let otherUserIds: string[] = [];
             if (matchData.type === "individual") {
               const participantIds = matchData.participantIds || [];
@@ -1030,13 +1025,8 @@ export const deleteUser = functions.https.onCall(
               const otherUserData = otherUserDataMap.get(otherUserId);
 
               if (otherUserData) {
-                const updatedMatches = (
-                  otherUserData.currentMatches || []
-                ).filter((id: string) => id !== matchId);
-
                 transaction.update(otherUserRef, {
-                  currentMatches: updatedMatches,
-                  isAvailable: true, // Set user as available again
+                  isAvailable: true,
                   updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 });
               }
@@ -1774,7 +1764,6 @@ export const createUserWithImages = functions.https.onCall(
           availability: -1,
           isActive: true,
           isAvailable: true,
-          currentMatches: [],
         };
 
         await db.collection("users").doc(firebaseUid).set(newUserDoc);

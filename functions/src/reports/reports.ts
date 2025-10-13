@@ -274,7 +274,10 @@ export const reportAndUnmatch = functions.https.onCall(
     }>
   ) => {
     try {
+      console.log("=== reportAndUnmatch function called ===");
+
       if (!request.auth) {
+        console.log("❌ No authentication found");
         throw new functions.https.HttpsError(
           "unauthenticated",
           "User must be authenticated"
@@ -292,7 +295,23 @@ export const reportAndUnmatch = functions.https.onCall(
 
       const reporterId = request.auth.uid;
 
+      console.log("📝 Request data:", {
+        reporterId,
+        reportedUserId,
+        reportedUserEmail,
+        reportedUserName,
+        reason,
+        explanation: explanation?.substring(0, 50) + "...",
+        matchId,
+      });
+
       if (!reportedUserId || !reason || !explanation || !matchId) {
+        console.log("❌ Missing required fields:", {
+          reportedUserId: !!reportedUserId,
+          reason: !!reason,
+          explanation: !!explanation,
+          matchId: !!matchId,
+        });
         throw new functions.https.HttpsError(
           "invalid-argument",
           "Missing required fields: reportedUserId, reason, explanation, or matchId"
@@ -301,6 +320,7 @@ export const reportAndUnmatch = functions.https.onCall(
 
       // Prevent self-reporting
       if (reporterId === reportedUserId) {
+        console.log("❌ Self-reporting attempt blocked");
         throw new functions.https.HttpsError(
           "invalid-argument",
           "Cannot report yourself"
@@ -323,33 +343,50 @@ export const reportAndUnmatch = functions.https.onCall(
       }
 
       // Get the match document to verify it exists and get user IDs
+      console.log("🔍 Fetching match document with ID:", matchId);
       const matchDoc = await db.collection("matches").doc(matchId).get();
       if (!matchDoc.exists) {
+        console.log("❌ Match document not found for ID:", matchId);
         throw new functions.https.HttpsError("not-found", "Match not found");
       }
 
       const matchData = matchDoc.data();
       if (!matchData) {
+        console.log("❌ Match document exists but has no data");
         throw new functions.https.HttpsError(
           "not-found",
           "Match data not found"
         );
       }
 
+      console.log("📋 Match data:", {
+        participantIds: matchData.participantIds,
+        isActive: matchData.isActive,
+        type: matchData.type,
+      });
+
       // Verify the requesting user is part of this match
-      if (
-        reporterId !== matchData.user1Id &&
-        reporterId !== matchData.user2Id
-      ) {
+      console.log("🔐 Checking if reporter is part of match:", {
+        reporterId,
+        participantIds: matchData.participantIds,
+        isParticipant: matchData.participantIds?.includes(reporterId),
+      });
+
+      if (!matchData.participantIds?.includes(reporterId)) {
+        console.log("❌ Reporter is not part of this match");
         throw new functions.https.HttpsError(
           "permission-denied",
           "User not part of this match"
         );
       }
 
+      console.log("✅ Permission check passed - reporter is part of match");
+
       // Use transaction for atomic report + unmatch operations
+      console.log("🔄 Starting transaction for report + unmatch");
       const reportRef = db.collection("reports").doc();
       await db.runTransaction(async (transaction) => {
+        console.log("📝 Creating report document");
         // 1. Create the report
         const reportData = {
           reporterId,
@@ -367,23 +404,31 @@ export const reportAndUnmatch = functions.https.onCall(
         transaction.set(reportRef, reportData);
 
         // 2. Deactivate the match
+        console.log("🚫 Deactivating match:", matchId);
         transaction.update(db.collection("matches").doc(matchId), {
           isActive: false,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        // 3. Remove match from both users' currentMatches arrays atomically
-        transaction.update(db.collection("users").doc(matchData.user1Id), {
-          currentMatches: admin.firestore.FieldValue.arrayRemove(matchId),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        transaction.update(db.collection("users").doc(matchData.user2Id), {
-          currentMatches: admin.firestore.FieldValue.arrayRemove(matchId),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        // 3. Set all participants as available again
+        console.log(
+          "👥 Updating user documents for participants:",
+          matchData.participantIds
+        );
+        for (const participantId of matchData.participantIds) {
+          transaction.update(db.collection("users").doc(participantId), {
+            isAvailable: true,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
 
         // 4. Create a document in the blocked subcollection
+        console.log(
+          "🚫 Creating block record for reporter:",
+          reporterId,
+          "blocking:",
+          reportedUserId
+        );
         const blockData = {
           blockedUserId: reportedUserId,
           blockedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -402,8 +447,11 @@ export const reportAndUnmatch = functions.https.onCall(
         );
       });
 
+      console.log("✅ Transaction completed successfully");
+
       // Freeze the chat channel and send system message (outside transaction)
       try {
+        console.log("💬 Attempting to freeze chat channel");
         const { StreamChat } = await import("stream-chat");
         const { SecretManagerServiceClient } = await import(
           "@google-cloud/secret-manager"
@@ -453,13 +501,14 @@ export const reportAndUnmatch = functions.https.onCall(
         // Don't fail the operation if Stream Chat operations fail
       }
 
+      console.log("🎉 Report and unmatch completed successfully");
       return {
         message: "Report submitted and users unmatched successfully",
         reportId: reportRef.id,
         matchId: matchId,
       };
     } catch (error: any) {
-      console.error("Error in reportAndUnmatch:", error);
+      console.error("❌ Error in reportAndUnmatch:", error);
 
       if (error instanceof functions.https.HttpsError) {
         throw error;
@@ -573,23 +622,13 @@ export const blockUser = functions.https.onCall(
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               });
 
-              // Remove match from both users' currentMatches arrays
-              transaction.update(
-                db.collection("users").doc(matchData.user1Id),
-                {
-                  currentMatches:
-                    admin.firestore.FieldValue.arrayRemove(matchId),
+              // Set both users as available again
+              for (const participantId of matchData.participantIds) {
+                transaction.update(db.collection("users").doc(participantId), {
+                  isAvailable: true,
                   updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                }
-              );
-              transaction.update(
-                db.collection("users").doc(matchData.user2Id),
-                {
-                  currentMatches:
-                    admin.firestore.FieldValue.arrayRemove(matchId),
-                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                }
-              );
+                });
+              }
             }
           }
         }
