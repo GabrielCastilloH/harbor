@@ -82,27 +82,18 @@ export default function ProfileScreen() {
   const [unmatchLoading, setUnmatchLoading] = useState(false);
 
   useEffect(() => {
-    const fetchProfileAndMatchId = async () => {
+    const fetchProfile = async () => {
       if (!userId) {
         setLoading(false);
         return;
       }
 
       try {
-        // Fetch both profile data and matchId in parallel
-        const [profileResponse, matchIdResult] = await Promise.allSettled([
-          UserService.getUserById(userId),
-          // Only fetch matchId if not already provided and we have currentUserId
-          matchId || !currentUserId
-            ? Promise.resolve(matchId)
-            : MatchService.getMatchId(currentUserId, userId),
-        ]);
-
-        // Handle profile data
-        if (profileResponse.status === "fulfilled" && profileResponse.value) {
-          const response = profileResponse.value;
+        const response = await UserService.getUserById(userId);
+        if (response) {
           // Handle different response formats from Firebase
           let profileData = null;
+          let responseMatchId = null;
 
           if (response.firstName || (response as any).uid) {
             profileData = response as any;
@@ -111,6 +102,7 @@ export default function ProfileScreen() {
             ((response as any).user.firstName || (response as any).user.uid)
           ) {
             profileData = (response as any).user;
+            responseMatchId = (response as any).matchId;
           } else {
             console.error(
               "ProfileScreen - Invalid profile data format:",
@@ -122,48 +114,30 @@ export default function ProfileScreen() {
 
           if (profileData && profileData.firstName) {
             setProfile(profileData);
+            // Set matchId from the response, or use the one from route params if provided
+            setMatchId(matchId || responseMatchId);
+            // Add a minimum loading time to prevent blank page flash
+            setTimeout(() => {
+              setLoading(false);
+            }, 500);
           } else {
             console.error(
               "ProfileScreen - Missing required profile fields:",
               profileData
             );
             setLoading(false);
-            return;
           }
         } else {
-          console.error(
-            "ProfileScreen - Failed to fetch user profile:",
-            profileResponse
-          );
+          console.error("ProfileScreen - No data in response:", response);
           setLoading(false);
-          return;
         }
-
-        // Handle matchId
-        if (matchIdResult.status === "fulfilled" && matchIdResult.value) {
-          setMatchId(matchIdResult.value);
-        } else if (matchIdResult.status === "rejected") {
-          console.error(
-            "Error fetching matchId in ProfileScreen:",
-            matchIdResult.reason
-          );
-          // Don't set matchId if there was an error - this will show the unmatched message
-        }
-
-        // Add a minimum loading time to prevent blank page flash
-        setTimeout(() => {
-          setLoading(false);
-        }, 500);
       } catch (error) {
-        console.error(
-          "ProfileScreen - Failed to fetch profile and match data:",
-          error
-        );
+        console.error("ProfileScreen - Failed to fetch user profile:", error);
         setLoading(false);
       }
     };
 
-    fetchProfileAndMatchId();
+    fetchProfile();
   }, [userId, currentUserId, matchId]);
 
   // Fetch images with blur info - this ensures proper consent and blur levels
