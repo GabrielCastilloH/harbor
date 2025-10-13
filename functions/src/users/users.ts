@@ -1484,9 +1484,12 @@ async function blurImageBuffer(
   blurPercent: number
 ): Promise<Buffer> {
   try {
+    // Use sigma 25 for consistent blur level across the app
+    const sigma = 25;
     const blurredBuffer = await sharp(buffer)
-      .blur(blurPercent)
-      .jpeg({ quality: 30 }) // Lower quality for blurred images
+      .resize(800, 800, { fit: "inside", withoutEnlargement: true })
+      .blur(sigma)
+      .jpeg({ quality: 50 }) // Lower quality for blurred images
       .toBuffer();
     return blurredBuffer;
   } catch (error) {
