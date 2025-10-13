@@ -147,6 +147,14 @@ export const getUnviewedMatches = functions.https.onCall(
         );
       }
 
+      // SECURITY: Verify authenticated user is requesting their own matches
+      if (request.auth.uid !== userId) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User can only access their own unviewed matches"
+        );
+      }
+
       // Get unviewed matches for this user
       const allMatches = await db
         .collection("matches")
@@ -178,11 +186,16 @@ export const getUnviewedMatches = functions.https.onCall(
           .get();
 
         if (otherUserDoc.exists) {
-          matches.push({
-            matchId: doc.id,
-            match: matchData,
-            matchedProfile: otherUserDoc.data(),
-          });
+          // SECURITY: Filter out sensitive data (email and images) from matched profile
+          const userData = otherUserDoc.data();
+          if (userData) {
+            const { images, email, ...userDataWithoutSensitiveInfo } = userData;
+            matches.push({
+              matchId: doc.id,
+              match: matchData,
+              matchedProfile: userDataWithoutSensitiveInfo,
+            });
+          }
         }
       }
 
@@ -230,6 +243,14 @@ export const markMatchAsViewed = functions.https.onCall(
         throw new functions.https.HttpsError(
           "invalid-argument",
           "Match ID and User ID are required"
+        );
+      }
+
+      // SECURITY: Verify authenticated user is the one marking as viewed
+      if (request.auth.uid !== userId) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User can only mark their own matches as viewed"
         );
       }
 
@@ -447,6 +468,23 @@ export const updateMatchChannel = functions.https.onCall(
         );
       }
 
+      // SECURITY: Verify authenticated user is part of the match
+      const matchDoc = await db.collection("matches").doc(matchId).get();
+      if (!matchDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Match not found");
+      }
+
+      const matchData = matchDoc.data();
+      if (
+        matchData?.user1Id !== request.auth.uid &&
+        matchData?.user2Id !== request.auth.uid
+      ) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User is not part of this match"
+        );
+      }
+
       await db.collection("matches").doc(matchId).update({
         channelId,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -496,6 +534,23 @@ export const incrementMatchMessages = functions.https.onCall(
         throw new functions.https.HttpsError(
           "invalid-argument",
           "Match ID is required"
+        );
+      }
+
+      // SECURITY: Verify authenticated user is part of the match
+      const matchDoc = await db.collection("matches").doc(matchId).get();
+      if (!matchDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Match not found");
+      }
+
+      const matchData = matchDoc.data();
+      if (
+        matchData?.user1Id !== request.auth.uid &&
+        matchData?.user2Id !== request.auth.uid
+      ) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User is not part of this match"
         );
       }
 

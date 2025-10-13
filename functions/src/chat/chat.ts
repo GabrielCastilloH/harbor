@@ -125,6 +125,27 @@ export const generateUserToken = functions.https.onCall(
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
+      // SECURITY: Check if user is banned
+      const bannedDoc = await db.collection("bannedAccounts").doc(userId).get();
+      if (bannedDoc.exists) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User account is banned"
+        );
+      }
+
+      // SECURITY: Check if user is deleted
+      const deletedDoc = await db
+        .collection("deletedAccounts")
+        .doc(userId)
+        .get();
+      if (deletedDoc.exists) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User account has been deleted"
+        );
+      }
+
       // Get Stream API credentials from Secret Manager
       const [streamApiKeyVersion, streamApiSecretVersion] = await Promise.all([
         secretManager.accessSecretVersion({
@@ -197,6 +218,27 @@ export const generateToken = functions.https.onCall(
       const userDoc = await db.collection("users").doc(userId).get();
       if (!userDoc.exists) {
         throw new functions.https.HttpsError("not-found", "User not found");
+      }
+
+      // SECURITY: Check if user is banned
+      const bannedDoc = await db.collection("bannedAccounts").doc(userId).get();
+      if (bannedDoc.exists) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User account is banned"
+        );
+      }
+
+      // SECURITY: Check if user is deleted
+      const deletedDoc = await db
+        .collection("deletedAccounts")
+        .doc(userId)
+        .get();
+      if (deletedDoc.exists) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User account has been deleted"
+        );
       }
 
       // Get Stream API credentials from Secret Manager

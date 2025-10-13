@@ -46,6 +46,14 @@ export const createSwipe = functions.https.onCall(
         );
       }
 
+      // SECURITY: Verify authenticated user is the swiper (prevent impersonation)
+      if (request.auth.uid !== swiperId) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "User can only create swipes for themselves"
+        );
+      }
+
       const activeMatches = await db
         .collection("matches")
         .where("isActive", "==", true)

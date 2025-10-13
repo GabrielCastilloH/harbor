@@ -10,6 +10,19 @@ const secretManager = new SecretManagerServiceClient();
 const storage = new Storage();
 const bucket = storage.bucket("harbor-ch.firebasestorage.app"); // Fixed bucket name
 
+/**
+ * SECURITY: Helper function to check if user has admin privileges
+ */
+async function isAdmin(userId: string): Promise<boolean> {
+  try {
+    const user = await admin.auth().getUser(userId);
+    return user.customClaims?.admin === true;
+  } catch (error) {
+    console.error("Error checking admin status:", error);
+    return false;
+  }
+}
+
 async function getStreamClient(): Promise<StreamChat> {
   try {
     // Get Stream API credentials from Secret Manager
@@ -220,14 +233,10 @@ export const createUser = functions.https.onCall(
         validationErrors.push("Only Cornell email addresses are allowed");
       }
 
-      // Reject emails with + symbols or periods to prevent alias abuse
+      // Reject emails with + symbols to prevent alias abuse
+      // NOTE: Periods are VALID in Cornell emails (e.g., john.smith@cornell.edu)
       if (userData.email?.includes("+")) {
         validationErrors.push("Email addresses with + symbols are not allowed");
-      }
-
-      const emailLocalPart = userData.email?.split("@")[0];
-      if (emailLocalPart?.includes(".")) {
-        validationErrors.push("Email addresses with periods are not allowed");
       }
 
       // Validate profile content for inappropriate content
@@ -1368,6 +1377,22 @@ export const banUser = functions.https.onCall(
     request: functions.https.CallableRequest
   ): Promise<{ success: boolean; message: string }> => {
     try {
+      if (!request.auth) {
+        throw new functions.https.HttpsError(
+          "unauthenticated",
+          "User must be authenticated"
+        );
+      }
+
+      // SECURITY: Only admins can ban users
+      const userIsAdmin = await isAdmin(request.auth.uid);
+      if (!userIsAdmin) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "Only administrators can ban users"
+        );
+      }
+
       const {
         userId,
         reason = "Community guidelines violation",

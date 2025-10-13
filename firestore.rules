@@ -77,9 +77,13 @@ service cloud.firestore {
       allow create: if request.auth != null && !isBannedOrDeleted(request.auth.uid) && 
         (request.auth.uid == request.resource.data.user1Id || request.auth.uid == request.resource.data.user2Id);
 
-      // Users can only update their own consent/view flags
+      // SECURITY: Users can ONLY update consent/view flags, nothing else
+      // This prevents malicious users from modifying match state, message counts, etc.
       allow update: if request.auth != null && !isBannedOrDeleted(request.auth.uid) && 
-        (request.auth.uid == resource.data.user1Id || request.auth.uid == resource.data.user2Id);
+        (request.auth.uid == resource.data.user1Id || request.auth.uid == resource.data.user2Id) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'user1Consented', 'user2Consented', 'user1Viewed', 'user2Viewed', 'updatedAt'
+        ]);
     }
 
     // --- Reports ---
