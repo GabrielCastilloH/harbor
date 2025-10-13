@@ -4,7 +4,6 @@ import { CallableRequest } from "firebase-functions/v2/https";
 
 const db = admin.firestore();
 
-
 /**
  * Creates a match between two users
  */
@@ -74,7 +73,6 @@ export const createMatch = functions.https.onCall(
           participantIds: [user1Id, user2Id],
           matchDate: admin.firestore.FieldValue.serverTimestamp(),
           isActive: true,
-          status: "active",
           messageCount: 0,
           participantConsent: { [user1Id]: false, [user2Id]: false },
           participantViewed: { [user1Id]: false, [user2Id]: false },
@@ -84,7 +82,7 @@ export const createMatch = functions.https.onCall(
 
         transaction.set(matchRef, matchData);
 
-        // Set both users as unavailable (in a match)
+        // Set both users as unavailable
         transaction.update(user1Ref, {
           isAvailable: false,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -319,10 +317,9 @@ export const unmatchUsers = functions.https.onCall(
       }
 
       await db.runTransaction(async (transaction) => {
-        // Update match status
+        // Deactivate the match
         transaction.update(db.collection("matches").doc(matchId), {
           isActive: false,
-          status: "unmatched",
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 

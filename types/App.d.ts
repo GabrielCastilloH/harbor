@@ -14,7 +14,6 @@ export type Profile = {
   q1: string; // "Together we could:"
   q2: string; // "Favorite book, movie or song:"
   q3: string; // "Some of my hobbies are:"
-  currentMatches?: string[];
   paywallSeen?: boolean;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
