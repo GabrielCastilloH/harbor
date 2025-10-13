@@ -68,7 +68,6 @@ export const createMatch = functions.https.onCall(
       const result = await db.runTransaction(async (transaction) => {
         // Create the match
         const matchData = {
-          type: "individual",
           user1Id,
           user2Id,
           matchDate: admin.firestore.FieldValue.serverTimestamp(),

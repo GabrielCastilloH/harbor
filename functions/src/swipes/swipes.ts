@@ -158,7 +158,6 @@ export const createSwipe = functions.https.onCall(
             matchId = matchRef.id;
 
             const matchData = {
-              type: "individual",
               user1Id: swiperId,
               user2Id: swipedId,
               matchDate: admin.firestore.FieldValue.serverTimestamp(),
