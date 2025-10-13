@@ -1120,7 +1120,7 @@ export const deleteUser = functions.https.onCall(
                       // Freeze the channel and send a system message
                       await channel.update({ frozen: true });
                       await channel.sendMessage({
-                        text: "This chat has been frozen because one of the users deleted their account.",
+                        text: "This chat has been frozen because one of the users unmatched.",
                         user_id: "system",
                       });
                     } catch (channelError) {
