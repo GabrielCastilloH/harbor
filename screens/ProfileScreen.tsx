@@ -265,7 +265,7 @@ export default function ProfileScreen() {
         <View style={styles.unmatchedContainer}>
           <Text style={styles.unmatchedText}>
             You are not allowed to view profiles of people you are no longer
-            connected with.
+            matched with.
           </Text>
         </View>
       </View>
