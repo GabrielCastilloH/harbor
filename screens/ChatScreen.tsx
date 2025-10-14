@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     position: "absolute",
-    top: 0,
+    top: 120, // Start below the header (safe area + header height)
     left: 0,
     right: 0,
     bottom: 0,
