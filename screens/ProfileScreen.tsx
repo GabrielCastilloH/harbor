@@ -53,7 +53,6 @@ export default function ProfileScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showBlurWarning, setShowBlurWarning] = useState(false);
   const [imagesWithBlur, setImagesWithBlur] = useState<
     Array<{
       url: string;
@@ -384,38 +383,6 @@ export default function ProfileScreen() {
           </Pressable>
         </Modal>
 
-        {/* Blur Warning Modal */}
-        <Modal
-          visible={showBlurWarning}
-          transparent={true}
-          animationType="fade"
-        >
-          <View style={styles.warningModalBackground}>
-            <View style={styles.warningModalContent}>
-              <Text style={styles.warningTitle}>Photos Will Be Revealed</Text>
-              <Text style={styles.warningText}>
-                You've exchanged enough messages that your photos will start
-                becoming clearer. This is your last chance to unmatch while
-                remaining anonymous.
-              </Text>
-              <View style={styles.warningButtons}>
-                <Pressable
-                  style={[styles.warningButton, styles.unmatchButton]}
-                  onPress={handleUnmatch}
-                >
-                  <Text style={styles.warningButtonText}>Unmatch</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.warningButton, styles.continueButton]}
-                  onPress={() => setShowBlurWarning(false)}
-                >
-                  <Text style={styles.warningButtonText}>Continue</Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
         <View style={{ paddingHorizontal: 24 }}>
           <PersonalView profile={profile} showFlag={false} />
         </View>
@@ -512,53 +479,6 @@ const styles = StyleSheet.create({
   },
   unmatchLoadingText: {
     opacity: 0.8,
-  },
-  warningModalBackground: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  warningModalContent: {
-    backgroundColor: Colors.secondary100,
-    borderRadius: 16,
-    padding: 24,
-    width: "100%",
-    maxWidth: 400,
-  },
-  warningTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: Colors.primary500,
-    marginBottom: 12,
-    textAlign: "center",
-  },
-  warningText: {
-    fontSize: 16,
-    color: Colors.primary500,
-    marginBottom: 24,
-    textAlign: "center",
-    lineHeight: 24,
-  },
-  warningButtons: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-  },
-  warningButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    minWidth: 120,
-  },
-  continueButton: {
-    backgroundColor: Colors.primary500,
-  },
-  warningButtonText: {
-    color: Colors.secondary100,
-    fontWeight: "bold",
-    textAlign: "center",
-    fontSize: 16,
   },
   blurCard: {
     marginHorizontal: 24,

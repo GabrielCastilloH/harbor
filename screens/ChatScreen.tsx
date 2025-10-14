@@ -385,20 +385,12 @@ export default function ChatScreen() {
                   try {
                     const matchId = activeMatchId || (await resolveMatchId());
                     if (!matchId || !userId) return;
-                    await ConsentService.updateConsent(matchId, userId, false);
-                    try {
-                      const channelId =
-                        (channel as any)?.id ||
-                        (channel as any)?.cid?.split(":")[1];
-                      if (channelId) {
-                        await fetchUpdateChannelChatStatus(channelId, true);
-                        lastAppliedFreezeRef.current = true;
-                      }
-                    } catch {}
-                    setIsChatFrozen(true);
+                    await MatchService.unmatch(userId, matchId);
                     setShowConsentModal(false);
+                    // Navigate back since the match is now deactivated
+                    navigation.goBack();
                   } catch (e) {
-                    console.error("[#CONSENT] Unmatch/decline error:", e);
+                    console.error("[#CONSENT] Unmatch error:", e);
                   } finally {
                     setConsentSubmitting(null);
                   }
