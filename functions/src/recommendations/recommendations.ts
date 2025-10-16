@@ -172,9 +172,10 @@ export const getRecommendations = functions.https.onCall(
           swipedUsers = swipedUsersSnapshot.docs
             .filter((doc) => {
               const userData = doc.data();
-              // Filter by isActive (isAvailable is already filtered by the query)
+              // Filter by isActive and isBanned (isAvailable is already filtered by the query)
               const isActive = userData?.isActive !== false;
-              return isActive;
+              const notBanned = userData?.isBanned !== true;
+              return isActive && notBanned;
             })
             .map((doc) => {
               const userData = doc.data();
@@ -220,7 +221,8 @@ export const getRecommendations = functions.https.onCall(
               }
               const userData = doc.data();
               const isActive = userData?.isActive !== false;
-              return isActive;
+              const notBanned = userData?.isBanned !== true;
+              return isActive && notBanned;
             })
             .map((doc) => {
               const userData = doc.data();
@@ -265,9 +267,10 @@ export const getRecommendations = functions.https.onCall(
               .filter((doc) => {
                 if (matchedUserIds.has(doc.id)) return false;
                 const userData = doc.data();
-                // Filter by isActive (isAvailable is already filtered by the query)
+                // Filter by isActive and isBanned (isAvailable is already filtered by the query)
                 const isActive = userData?.isActive !== false;
-                return isActive;
+                const notBanned = userData?.isBanned !== true;
+                return isActive && notBanned;
               })
               .map((doc) => {
                 const userData = doc.data();
@@ -303,9 +306,10 @@ export const getRecommendations = functions.https.onCall(
             .filter((doc) => {
               if (matchedUserIds.has(doc.id)) return false;
               const userData = doc.data();
-              // Filter by isActive (isAvailable is already filtered by the query)
+              // Filter by isActive and isBanned (isAvailable is already filtered by the query)
               const isActive = userData?.isActive !== false;
-              return isActive;
+              const notBanned = userData?.isBanned !== true;
+              return isActive && notBanned;
             })
             .map((doc) => {
               const userData = doc.data();

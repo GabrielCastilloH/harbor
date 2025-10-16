@@ -1426,6 +1426,9 @@ export const banUser = functions.https.onCall(
 
       await db.collection("bannedAccounts").doc(userId).set(banData);
 
+      // Set isBanned flag on user document for efficient filtering
+      await db.collection("users").doc(userId).update({ isBanned: true });
+
       return {
         success: true,
         message: "User has been banned successfully",
