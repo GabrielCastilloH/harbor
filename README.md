@@ -1,4 +1,4 @@
-# 🌊 Harbor
+# 🌊 [Harbor](https://www.tryharbor.app/)
 
 **A unique dating app designed specifically for Cornell students that focuses on meaningful connections through progressive photo reveal and limited daily interactions.**
 
