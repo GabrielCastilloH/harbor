@@ -8,131 +8,20 @@ Harbor creates intrigue and encourages genuine conversations by gradually reveal
 
 This README provides a high-level overview of Harbor. For detailed information about specific aspects of the app, please refer to the documentation in the `md/` directory:
 
-<details>
-<summary><b>Core Features</b></summary>
-
-Learn about Harbor's key features including the progressive photo reveal system, smart matching, real-time chat, security features, and push notifications.
-
-📖 [Read more about Core Features](md/core-features.md)
-
-</details>
-
-<details>
-<summary><b>Swipe System Architecture</b></summary>
-
-Understand Harbor's subcollection-based swipe tracking system, performance benefits, data consistency, and user availability system.
-
-📖 [Read more about Swipe System](md/swipe-system.md)
-
-</details>
-
-<details>
-<summary><b>Database Schema</b></summary>
-
-Explore the complete Firestore database structure including users, matches, swipes, reports, and all subcollections with data types and design principles.
-
-📖 [Read more about Database Schema](md/database-schema.md)
-
-</details>
-
-<details>
-<summary><b>Technical Architecture</b></summary>
-
-Review the frontend stack, backend services, app structure, navigation architecture, and complete project file structure.
-
-📖 [Read more about Technical Architecture](md/technical-architecture.md)
-
-</details>
-
-<details>
-<summary><b>Firebase Cloud Functions</b></summary>
-
-Complete reference of all Cloud Functions including authentication, chat, images, swipes, matches, recommendations, reports, and user management functions.
-
-📖 [Read more about Cloud Functions](md/cloud-functions.md)
-
-</details>
-
-<details>
-<summary><b>Authentication & Google Sign-In</b></summary>
-
-Learn about Harbor's authentication flow, Google Sign-In implementation, and the different authentication states.
-
-📖 [Read more about Authentication](md/authentication.md)
-
-</details>
-
-<details>
-<summary><b>Account Management & Banning</b></summary>
-
-Understand the comprehensive account management system including deletion, banning, deactivation, and security considerations.
-
-📖 [Read more about Account Management](md/account-management.md)
-
-</details>
-
-<details>
-<summary><b>Profile Validation & Requirements</b></summary>
-
-Review all profile creation requirements, image specifications, required fields, text field limits, and data type definitions.
-
-📖 [Read more about Profile Validation](md/profile-validation.md)
-
-</details>
-
-<details>
-<summary><b>Progressive Photo Reveal System</b></summary>
-
-Deep dive into the two-phase blur system, technical implementation, blur configuration, and consent state management.
-
-📖 [Read more about Photo Reveal System](md/photo-reveal-system.md)
-
-</details>
-
-<details>
-<summary><b>Push Notifications System</b></summary>
-
-Learn about the push notification implementation, FCM integration, Stream Chat delivery, and notification types.
-
-📖 [Read more about Push Notifications](md/push-notifications.md)
-
-</details>
-
-<details>
-<summary><b>Premium Features (Currently Disabled)</b></summary>
-
-Information about the premium feature framework that's currently disabled but ready for future activation.
-
-📖 [Read more about Premium Features](md/premium-features.md)
-
-</details>
-
-<details>
-<summary><b>Security & Moderation</b></summary>
-
-Comprehensive overview of security measures including image moderation, user reporting, account management, data security, and multi-layer security architecture.
-
-📖 [Read more about Security](md/security.md)
-
-</details>
-
-<details>
-<summary><b>Getting Started</b></summary>
-
-Complete setup guide including prerequisites, Firebase setup, Stream Chat setup, frontend setup, and development commands.
-
-📖 [Read more about Getting Started](md/getting-started.md)
-
-</details>
-
-<details>
-<summary><b>Future Enhancements</b></summary>
-
-Planned features and technical improvements for Harbor's roadmap.
-
-📖 [Read more about Future Enhancements](md/future-enhancements.md)
-
-</details>
+- **[Core Features](md/core-features.md)** - Progressive photo reveal, smart matching, real-time chat, security, and push notifications
+- **[Swipe System Architecture](md/swipe-system.md)** - Subcollection-based swipe tracking, performance benefits, and user availability
+- **[Database Schema](md/database-schema.md)** - Complete Firestore database structure with all collections and subcollections
+- **[Technical Architecture](md/technical-architecture.md)** - Frontend stack, backend services, app structure, and project organization
+- **[Firebase Cloud Functions](md/cloud-functions.md)** - Complete reference of all Cloud Functions (auth, chat, images, matches, etc.)
+- **[Authentication & Google Sign-In](md/authentication.md)** - Authentication flow and Google Sign-In implementation
+- **[Account Management & Banning](md/account-management.md)** - Account deletion, banning, deactivation, and security
+- **[Profile Validation & Requirements](md/profile-validation.md)** - Profile creation requirements and data type definitions
+- **[Progressive Photo Reveal System](md/photo-reveal-system.md)** - Two-phase blur system and consent management
+- **[Push Notifications System](md/push-notifications.md)** - FCM integration and Stream Chat delivery
+- **[Premium Features (Currently Disabled)](md/premium-features.md)** - Premium feature framework (currently inactive)
+- **[Security & Moderation](md/security.md)** - Image moderation, user reporting, and multi-layer security architecture
+- **[Getting Started](md/getting-started.md)** - Setup guide, prerequisites, and development commands
+- **[Future Enhancements](md/future-enhancements.md)** - Planned features and technical improvements
 
 ## 🎯 Quick Overview
 
